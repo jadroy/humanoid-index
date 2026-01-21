@@ -10,6 +10,7 @@ export interface Humanoid {
   name: string;
   manufacturer: string;
   year?: number;
+  cost?: string; // Cost in a displayable format (e.g., "$50K", "$150K", "N/A")
   status?: "In Production" | "Prototype" | "Concept" | "Discontinued";
   height?: number; // in cm
   weight?: number; // in kg
@@ -17,7 +18,9 @@ export interface Humanoid {
   maxSpeed?: number; // m/s
   description?: string;
   imageUrl?: string; // Primary/cover image
+  logoUrl?: string; // Company logo
   media?: MediaItem[]; // Additional images and videos
+  purchaseUrl?: string; // Link to buy/learn more about the robot
 }
 
 export const humanoids: Humanoid[] = [
@@ -26,7 +29,9 @@ export const humanoids: Humanoid[] = [
     name: "Optimus Gen 2",
     manufacturer: "Tesla",
     imageUrl: "/robots/optimus.png",
+    logoUrl: "/robots/Tesla-logo.png",
     year: 2024,
+    cost: "N/A",
     status: "Prototype",
     height: 173,
     weight: 56,
@@ -48,6 +53,7 @@ export const humanoids: Humanoid[] = [
     manufacturer: "Boston Dynamics",
     imageUrl: "/robots/atlas.png",
     year: 2024,
+    cost: "N/A",
     status: "Prototype",
     height: 150,
     weight: 89,
@@ -65,6 +71,7 @@ export const humanoids: Humanoid[] = [
     manufacturer: "Sunday Robotics",
     imageUrl: "/robots/memo.png",
     year: 2025,
+    cost: "$50K",
     status: "Prototype",
     height: 122, // ~4 feet typical working height (can extend to 7 feet)
     description: "Domestic robot designed for household chores like loading dishwashers, making espresso, and folding laundry. Features wheeled base with adjustable height, dexterous dual-arm system, and AI trained on data from over 500 homes. Founded Family Beta program launching late 2026.",
@@ -75,11 +82,13 @@ export const humanoids: Humanoid[] = [
     manufacturer: "1X Technologies",
     imageUrl: "/robots/neo.png",
     year: 2024,
+    cost: "N/A",
     status: "Prototype",
     height: 165,
     weight: 30,
     maxSpeed: 4.0,
     description: "Lightweight bipedal humanoid designed for safe human interaction and home assistance applications.",
+    purchaseUrl: "https://www.1x.tech/order",
   },
   {
     id: "5",
@@ -87,6 +96,7 @@ export const humanoids: Humanoid[] = [
     manufacturer: "Agility Robotics",
     imageUrl: "/robots/digit.png",
     year: 2023,
+    cost: "$250K",
     status: "In Production",
     height: 175,
     weight: 65,
@@ -95,21 +105,12 @@ export const humanoids: Humanoid[] = [
     description: "A production-ready humanoid designed for logistics and warehouse automation. Currently deployed in Amazon facilities.",
   },
   {
-    id: "6",
-    name: "S1",
-    manufacturer: "Robostone",
-    imageUrl: "/robots/s1.png",
-    year: 2024,
-    status: "Prototype",
-    height: 170,
-    weight: 60,
-  },
-  {
     id: "7",
     name: "Figure 02",
     manufacturer: "Figure AI",
     imageUrl: "/robots/figure.png",
     year: 2024,
+    cost: "N/A",
     status: "Prototype",
     height: 167,
     weight: 70,
@@ -122,6 +123,7 @@ export const humanoids: Humanoid[] = [
     manufacturer: "Sanctuary AI",
     imageUrl: "/robots/placeholder.png",
     year: 2024,
+    cost: "N/A",
     status: "Prototype",
     height: 170,
     weight: 70,
@@ -134,6 +136,7 @@ export const humanoids: Humanoid[] = [
     manufacturer: "Ubtech",
     imageUrl: "/robots/placeholder.png",
     year: 2023,
+    cost: "$150K",
     status: "In Production",
     height: 145,
     weight: 63,
@@ -146,10 +149,30 @@ export const humanoids: Humanoid[] = [
     manufacturer: "Apptronik",
     imageUrl: "/robots/placeholder.png",
     year: 2024,
+    cost: "N/A",
     status: "Prototype",
     height: 173,
     weight: 73,
     dof: 34,
     description: "Modular humanoid platform designed for manufacturing and logistics with swappable battery packs.",
+  },
+  {
+    id: "11",
+    name: "G1",
+    manufacturer: "Unitree",
+    imageUrl: "/robots/g1.png",
+    year: 2024,
+    cost: "$16K",
+    status: "In Production",
+    height: 127,
+    weight: 35,
+    dof: 23,
+    maxSpeed: 2.0,
+    description: "Compact and affordable humanoid robot with advanced mobility and AI capabilities. Designed for research and early commercial applications.",
+    purchaseUrl: "https://shop.unitree.com/",
+    media: [
+      { type: 'image', url: '/robots/g1.png', caption: 'Front view' },
+      { type: 'image', url: '/robots/unitree-g1-humanoid-robot-2_43d63809-5fd6-4fbe-9f3c-31659aa50814_1200x1200 (1).webp', caption: 'Detailed view' },
+    ],
   },
 ];
