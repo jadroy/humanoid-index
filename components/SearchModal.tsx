@@ -96,7 +96,7 @@ export default function SearchModal() {
         <div className="max-h-96 overflow-y-auto">
           {query && filteredResults.length === 0 && (
             <div
-              className="px-5 py-8 text-center text-[12px]"
+              className="px-5 py-8 text-center text-[13px]"
               style={{ color: "rgba(98, 93, 93, 0.6)" }}
             >
               No results found
@@ -127,11 +127,11 @@ export default function SearchModal() {
 
               {/* Info */}
               <div className="flex-1">
-                <div className="text-[12px]" style={{ color: "#625D5D" }}>
+                <div className="text-[13px]" style={{ color: "#625D5D" }}>
                   {humanoid.name}
                 </div>
                 <div
-                  className="text-[11px]"
+                  className="text-[13px]"
                   style={{ color: "rgba(98, 93, 93, 0.6)" }}
                 >
                   {humanoid.manufacturer}
@@ -141,7 +141,7 @@ export default function SearchModal() {
               {/* Enter hint for selected */}
               {index === selectedIndex && (
                 <kbd
-                  className="px-2 py-1 rounded border border-neutral-200 text-[10px]"
+                  className="px-2 py-1 rounded border border-neutral-200 text-[13px]"
                   style={{ color: "rgba(98, 93, 93, 0.6)" }}
                 >
                   ↵
@@ -154,7 +154,7 @@ export default function SearchModal() {
         {/* Footer hint */}
         {query && filteredResults.length > 0 && (
           <div
-            className="px-5 py-2.5 border-t border-neutral-200 flex items-center gap-3 text-[10px]"
+            className="px-5 py-2.5 border-t border-neutral-200 flex items-center gap-3 text-[13px]"
             style={{ color: "rgba(98, 93, 93, 0.5)" }}
           >
             <span className="flex items-center gap-1">
