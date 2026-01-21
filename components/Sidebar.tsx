@@ -13,10 +13,10 @@ export interface ViewConfig {
 }
 
 export const defaultConfig: ViewConfig = {
-  cardWidth: 230,
+  cardWidth: 200,
   cardGap: 12,
-  cardRadius: 16,
-  cardPadding: 32,
+  cardRadius: 12,
+  cardPadding: 16,
   verticalPadding: 48,
   horizontalPadding: 20,
   badgeRadius: 8,
