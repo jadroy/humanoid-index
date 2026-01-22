@@ -21,3 +21,86 @@ h1, h2, h3, h4, h5, h6 {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* CSS Custom Properties for transitions */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 300ms;
+}
+
+/* Smooth horizontal scroll */
+.horizontal-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.horizontal-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* GPU acceleration utilities */
+.gpu-accelerated {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Subtle zone separation gradients */
+.fade-to-top {
+  background: linear-gradient(to top, white, transparent);
+}
+
+.fade-to-bottom {
+  background: linear-gradient(to bottom, white, transparent);
+}
+
+/* Slide-in animations with subtle blur */
+@keyframes slide-in-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes slide-in-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.animate-slide-from-top {
+  animation: slide-in-from-top 250ms var(--ease-out-expo) forwards;
+}
+
+.animate-slide-from-bottom {
+  animation: slide-in-from-bottom 250ms var(--ease-out-expo) forwards;
+}
+
+/* Blur fade only - no motion */
+@keyframes blur-fade-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.animate-blur-fade {
+  animation: blur-fade-in 200ms var(--ease-out-expo) forwards;
+}

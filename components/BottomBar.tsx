@@ -1,11 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { ViewConfig, defaultConfig } from "./Sidebar";
+import { ViewConfig } from "./Sidebar";
+
+export interface LayoutConfig {
+  cardSize: number;
+  gap: number;
+  activeScale: number;
+  inactiveScale: number;
+  margins: number;
+}
+
+export const defaultLayoutConfig: LayoutConfig = {
+  cardSize: 140,
+  gap: 280,
+  activeScale: 1.15,
+  inactiveScale: 0.95,
+  margins: 12,
+};
 
 interface BottomBarProps {
   config: ViewConfig;
   onConfigChange: (config: ViewConfig) => void;
+  layoutConfig: LayoutConfig;
+  onLayoutConfigChange: (config: LayoutConfig) => void;
   compareMode: boolean;
   selectedCount: number;
   onClearSelection: () => void;
@@ -15,15 +32,19 @@ interface BottomBarProps {
 export default function BottomBar({
   config,
   onConfigChange,
+  layoutConfig,
+  onLayoutConfigChange,
   compareMode,
   selectedCount,
   onClearSelection,
   onCompare,
 }: BottomBarProps) {
-  const [showSettings, setShowSettings] = useState(false);
+  const handleReset = () => {
+    onLayoutConfigChange(defaultLayoutConfig);
+  };
 
   return (
-    <div className="border-t border-neutral-100 bg-white px-6 py-3 flex items-center justify-between">
+    <div className="relative z-40 border-t border-neutral-100 bg-white px-6 py-3 flex items-center justify-between">
       {/* Left side - title */}
       <div className="flex items-center gap-4">
         <div>
@@ -32,54 +53,65 @@ export default function BottomBar({
         </div>
       </div>
 
-      {/* Center - quick controls */}
-      <div className="flex items-center gap-5">
+      {/* Center - layout controls */}
+      <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
           <span className="text-[13px] text-neutral-400">Size</span>
           <input
             type="range"
-            min={120}
+            min={80}
             max={300}
-            value={config.cardWidth}
-            onChange={(e) => onConfigChange({ ...config, cardWidth: Number(e.target.value) })}
-            className="w-16 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+            value={layoutConfig.cardSize}
+            onChange={(e) => onLayoutConfigChange({ ...layoutConfig, cardSize: Number(e.target.value) })}
+            className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
           />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[13px] text-neutral-400">Gap</span>
           <input
             type="range"
-            min={0}
-            max={32}
-            value={config.cardGap}
-            onChange={(e) => onConfigChange({ ...config, cardGap: Number(e.target.value) })}
-            className="w-16 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+            min={20}
+            max={500}
+            value={layoutConfig.gap}
+            onChange={(e) => onLayoutConfigChange({ ...layoutConfig, gap: Number(e.target.value) })}
+            className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
           />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[13px] text-neutral-400">Radius</span>
+          <span className="text-[13px] text-neutral-400">Focus</span>
           <input
             type="range"
-            min={0}
-            max={32}
-            value={config.cardRadius}
-            onChange={(e) => onConfigChange({ ...config, cardRadius: Number(e.target.value) })}
-            className="w-16 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+            min={100}
+            max={150}
+            value={layoutConfig.activeScale * 100}
+            onChange={(e) => onLayoutConfigChange({ ...layoutConfig, activeScale: Number(e.target.value) / 100 })}
+            className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
           />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[13px] text-neutral-400">Padding</span>
+          <span className="text-[13px] text-neutral-400">Unfocus</span>
           <input
             type="range"
-            min={0}
-            max={48}
-            value={config.cardPadding}
-            onChange={(e) => onConfigChange({ ...config, cardPadding: Number(e.target.value) })}
-            className="w-16 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+            min={60}
+            max={100}
+            value={layoutConfig.inactiveScale * 100}
+            onChange={(e) => onLayoutConfigChange({ ...layoutConfig, inactiveScale: Number(e.target.value) / 100 })}
+            className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] text-neutral-400">Margins</span>
+          <input
+            type="range"
+            min={4}
+            max={20}
+            value={layoutConfig.margins}
+            onChange={(e) => onLayoutConfigChange({ ...layoutConfig, margins: Number(e.target.value) })}
+            className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
           />
         </div>
         <button
-          onClick={() => onConfigChange(defaultConfig)}
+          onClick={handleReset}
           className="text-[13px] text-neutral-400 hover:text-neutral-600"
         >
           Reset
@@ -113,8 +145,8 @@ export default function BottomBar({
           </>
         ) : (
           <div className="flex items-center gap-2 text-[13px] text-neutral-400">
-            <kbd className="px-1.5 py-0.5 rounded border border-neutral-200 text-neutral-500">⌘K</kbd>
-            <span>Search</span>
+            <kbd className="px-1.5 py-0.5 rounded border border-neutral-200 text-neutral-500">←→</kbd>
+            <span>Navigate</span>
           </div>
         )}
       </div>
