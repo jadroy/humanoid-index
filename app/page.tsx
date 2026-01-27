@@ -7,7 +7,10 @@ import HumanoidCard from "@/components/HumanoidCard";
 import ComparePanel from "@/components/ComparePanel";
 import BottomBar, { LayoutConfig, defaultLayoutConfig } from "@/components/BottomBar";
 import ChatBot from "@/components/ChatBot";
-import { humanoids } from "@/data/humanoids";
+import ViewSwitcher, { ViewMode } from "@/components/ViewSwitcher";
+import GridView from "@/components/GridView";
+import HumanoidDetailSection from "@/components/HumanoidDetailSection";
+import { humanoids, legends, Humanoid } from "@/data/humanoids";
 
 export default function Home() {
   const router = useRouter();
@@ -20,11 +23,22 @@ export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [viewportRatio, setViewportRatio] = useState(0.2);
   const [isInActiveZone, setIsInActiveZone] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('carousel');
+  const [hoveredHumanoid, setHoveredHumanoid] = useState<Humanoid | null>(null);
+  const [isInDetailView, setIsInDetailView] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const [minimapStyle, setMinimapStyle] = useState<'thumbnails' | 'dots'>('thumbnails');
 
+  const pageScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const minimapRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef(0);
   const isDraggingMinimapRef = useRef(false);
+
+  // Fixed inset margins
+  const insetX = 252;
+  const insetY = 120;
+  const topBarInset = 24;
 
   // Scale - no hover effect, just scroll position based
   const getScale = useCallback((index: number) => {
@@ -33,47 +47,79 @@ export default function Home() {
     return Math.max(layoutConfig.inactiveScale, layoutConfig.activeScale - distance * 0.08);
   }, [layoutConfig.activeScale, layoutConfig.inactiveScale]);
 
-  // Opacity: items to the left fade out more, right stays visible
+  // Opacity: items to the left fade out more, right stays visible but clearly different
   const getOpacity = useCallback((index: number) => {
     const currentPos = scrollPositionRef.current;
     const diff = index - currentPos;
 
-    // Items to the left fade out aggressively
     if (diff < -0.5) return 0.15;
-    // Current item
-    if (Math.abs(diff) < 0.5) return 1;
-    // Items to the right fade gradually
-    return Math.max(0.4, 1 - diff * 0.15);
+    if (Math.abs(diff) < 0.4) return 1;
+    return Math.max(0.3, 1 - Math.abs(diff) * 0.4);
   }, []);
 
-
-  // Scroll to specific card
+  // Scroll to specific card by finding the DOM element
   const scrollToCard = useCallback((index: number) => {
-    const el = scrollRef.current;
-    if (!el) return;
+    const container = scrollRef.current;
+    if (!container) return;
 
-    const cardTotalWidth = layoutConfig.cardSize + layoutConfig.gap;
-    // Account for the placeholder card
-    const targetScroll = (index + 1) * cardTotalWidth;
-    el.scrollTo({ left: targetScroll, behavior: 'smooth' });
-  }, [layoutConfig.cardSize, layoutConfig.gap]);
+    const targetEl = container.querySelector(`[data-card-index="${index}"]`) as HTMLElement;
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, []);
+
+  // Scroll to detail view
+  const scrollToDetail = useCallback(() => {
+    const el = pageScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+  }, []);
+
+  // Scroll back to carousel
+  const scrollToCarousel = useCallback(() => {
+    const el = pageScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (showComparePanel) return; // Don't navigate when modal is open
+      if (showComparePanel) return;
 
       switch (e.key) {
         case 'ArrowLeft':
-          e.preventDefault();
-          scrollToCard(Math.max(0, currentIndex - 1));
+          if (!isInDetailView && viewMode === 'carousel') {
+            e.preventDefault();
+            scrollToCard(Math.max(0, currentIndex - 1));
+          }
           break;
         case 'ArrowRight':
-          e.preventDefault();
-          scrollToCard(Math.min(humanoids.length - 1, currentIndex + 1));
+          if (!isInDetailView && viewMode === 'carousel') {
+            e.preventDefault();
+            scrollToCard(Math.min(humanoids.length + legends.length - 1, currentIndex + 1));
+          }
+          break;
+        case 'ArrowDown':
+          if (!isInDetailView && isInActiveZone && viewMode === 'carousel') {
+            e.preventDefault();
+            scrollToDetail();
+          }
+          break;
+        case 'ArrowUp':
+          if (isInDetailView) {
+            e.preventDefault();
+            scrollToCarousel();
+          }
+          break;
+        case 'Escape':
+          if (isInDetailView) {
+            e.preventDefault();
+            scrollToCarousel();
+          }
           break;
         case 'Enter':
-          if (!compareMode) {
+          if (!compareMode && !isInDetailView) {
             router.push(`/robot/${humanoids[currentIndex].id}`);
           }
           break;
@@ -82,9 +128,9 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, compareMode, showComparePanel, scrollToCard, router]);
+  }, [currentIndex, compareMode, showComparePanel, scrollToCard, scrollToDetail, scrollToCarousel, isInDetailView, isInActiveZone, viewMode, router]);
 
-  // Leading/trailing space for scroll zones
+  // Window width tracking
   const [windowWidth, setWindowWidth] = useState(1200);
 
   useEffect(() => {
@@ -94,14 +140,27 @@ export default function Home() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fixed inset margins
-  const insetX = 252;
-  const insetY = 120;
+  // Content area width
+  const contentWidth = windowWidth - 2 * insetX;
+  const leadingSpace = Math.max(0, (contentWidth - layoutConfig.cardSize) / 2 - layoutConfig.gap);
+  const trailingSpace = Math.max(0, (contentWidth - layoutConfig.cardSize) / 2 - layoutConfig.gap);
 
-  // Trailing space after last card (so last card can be at left + space for outro)
-  const trailingSpace = windowWidth * 0.8;
+  // Page vertical scroll tracking
+  useEffect(() => {
+    const el = pageScrollRef.current;
+    if (!el) return;
 
-  // Horizontal scroll
+    const handlePageScroll = () => {
+      const scrollTop = el.scrollTop;
+      const viewportHeight = window.innerHeight;
+      setIsInDetailView(scrollTop > viewportHeight * 0.5);
+    };
+
+    el.addEventListener('scroll', handlePageScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handlePageScroll);
+  }, []);
+
+  // Horizontal scroll handling
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -109,12 +168,17 @@ export default function Home() {
     let rafId: number | null = null;
 
     const handleWheel = (e: WheelEvent) => {
-      // Use horizontal scroll directly (deltaX), or convert vertical if no horizontal
-      if (e.deltaX !== 0) {
-        // Native horizontal scroll - let it through
+      if (isInDetailView) return;
+
+      // Scroll down to detail view
+      if (e.deltaY > 30 && isInActiveZone && viewMode === 'carousel') {
+        e.preventDefault();
+        scrollToDetail();
         return;
       }
-      // If only vertical scroll (e.g., regular mouse wheel), convert to horizontal
+
+      if (e.deltaX !== 0) return;
+
       if (e.deltaY !== 0) {
         e.preventDefault();
         el.scrollLeft += e.deltaY;
@@ -122,22 +186,25 @@ export default function Home() {
     };
 
     const handleScroll = () => {
-      // Throttle state updates with RAF
       if (rafId) return;
       rafId = requestAnimationFrame(() => {
         rafId = null;
         const scrollLeft = el.scrollLeft;
         const cardTotalWidth = layoutConfig.cardSize + layoutConfig.gap;
-        // Account for placeholder card at index -1 (subtract one card width)
-        const adjustedScroll = scrollLeft - cardTotalWidth + insetX;
-        const fractionalIndex = adjustedScroll / cardTotalWidth;
+        let fractionalIndex = scrollLeft / cardTotalWidth - 1;
+
+        const separatorWidth = (layoutConfig.cardSize * 0.6 + layoutConfig.gap) / cardTotalWidth;
+        if (fractionalIndex > humanoids.length + separatorWidth * 0.5) {
+          fractionalIndex -= separatorWidth;
+        }
+
         const index = Math.round(fractionalIndex);
-
         scrollPositionRef.current = fractionalIndex;
-        setCurrentIndex(Math.max(0, Math.min(index, humanoids.length - 1)));
+        const totalRobots = humanoids.length + legends.length;
+        setCurrentIndex(Math.max(0, Math.min(index, totalRobots - 1)));
 
-        // In active zone when past the placeholder card
-        const inActiveZone = fractionalIndex >= -0.3 && fractionalIndex <= humanoids.length - 0.7;
+        const rawFractionalIndex = scrollLeft / cardTotalWidth - 1;
+        const inActiveZone = rawFractionalIndex >= -0.3 && rawFractionalIndex <= totalRobots + separatorWidth - 0.7;
         setIsInActiveZone(inActiveZone);
 
         const maxScroll = el.scrollWidth - el.clientWidth;
@@ -155,7 +222,7 @@ export default function Home() {
       el.removeEventListener('scroll', handleScroll);
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [layoutConfig.cardSize, layoutConfig.gap, insetX]);
+  }, [layoutConfig.cardSize, layoutConfig.gap, isInDetailView, isInActiveZone, viewMode, scrollToDetail]);
 
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -173,8 +240,23 @@ export default function Home() {
     setShowComparePanel(false);
   };
 
-  const currentHumanoid = humanoids[currentIndex];
-  const activeHumanoid = currentHumanoid;
+  // Combined list
+  const allRobots = [...humanoids, ...legends];
+  const currentHumanoid = allRobots[currentIndex];
+  const activeHumanoid = viewMode === 'grid' ? hoveredHumanoid : currentHumanoid;
+  const showActiveInfo = viewMode === 'grid' ? hoveredHumanoid !== null : isInActiveZone;
+  const isInLegendZone = currentIndex >= humanoids.length;
+
+  // Background colors - only legends get colored backgrounds
+  const legendBackgroundColors: Record<string, string> = {
+    "legend-1": "#faf8f5",
+    "legend-2": "#f9f8fa",
+  };
+  const bgColor = viewMode === 'grid'
+    ? '#ffffff'
+    : isInActiveZone && activeHumanoid && activeHumanoid.id.startsWith('legend-')
+      ? legendBackgroundColors[activeHumanoid.id] || '#fafafa'
+      : '#ffffff';
 
   const handleMinimapMouseMove = useCallback((clientX: number) => {
     const minimap = minimapRef.current;
@@ -182,8 +264,6 @@ export default function Home() {
     if (!minimap || !scrollEl) return;
 
     const rect = minimap.getBoundingClientRect();
-
-    // Direct position mapping - cursor X on minimap maps to scroll position
     const relativeX = clientX - rect.left;
     const progress = Math.max(0, Math.min(1, relativeX / rect.width));
     const maxScroll = scrollEl.scrollWidth - scrollEl.clientWidth;
@@ -193,11 +273,9 @@ export default function Home() {
   const handleMinimapMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     isDraggingMinimapRef.current = true;
-    // Immediately update scroll position on click
     handleMinimapMouseMove(e.clientX);
   };
 
-  // Global mouse handlers for minimap dragging
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (!isDraggingMinimapRef.current) return;
@@ -218,206 +296,338 @@ export default function Home() {
   }, [handleMinimapMouseMove]);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden" style={{ padding: `${insetY}px ${insetX}px`, backgroundColor: '#fafafa' }}>
-      {/* LABEL + MINIMAP ROW */}
-      <div className="flex-shrink-0 relative z-20 flex items-start justify-between">
-        {/* Left: Name/Manufacturer - aligned with first humanoid */}
-        {!isInActiveZone ? (
-          <div key="index-label" className="animate-blur-fade">
-            <div className="text-[13px] text-neutral-400 tracking-tight">Index</div>
-            <div className="text-[22px] font-medium text-neutral-800 tracking-tighter">Humanoid</div>
-          </div>
-        ) : (
-          <div key={`humanoid-${activeHumanoid.id}`} className="animate-blur-fade">
-            <div className="text-[13px] text-neutral-400 tracking-tight">{activeHumanoid.manufacturer}</div>
-            <div className="text-[22px] font-medium text-neutral-800 tracking-tighter">{activeHumanoid.name}</div>
-          </div>
-        )}
+    <div
+      ref={pageScrollRef}
+      className="h-screen overflow-y-auto overflow-x-hidden snap-y snap-mandatory scrollbar-hide transition-colors duration-700 ease-out"
+      style={{ backgroundColor: bgColor }}
+    >
+      {/* CAROUSEL SECTION */}
+      <section className={`flex-shrink-0 snap-start flex flex-col ${viewMode === 'grid' ? 'min-h-screen bg-white' : 'h-screen overflow-hidden'}`}>
+        {/* TOP BAR - View Switcher Only */}
+        <div
+          className="flex-shrink-0 relative z-20 flex justify-center"
+          style={{ padding: `${topBarInset}px ${insetX}px` }}
+        >
+          <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} />
+        </div>
 
-        {/* Center: Minimap with humanoid thumbnails */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
-          <div
-            ref={minimapRef}
-            className="relative h-10 bg-neutral-50/80 backdrop-blur-sm rounded-full cursor-pointer overflow-hidden border border-neutral-100 select-none"
-            style={{ width: `${Math.max(200, humanoids.length * 24 + 32)}px` }}
-            onMouseDown={handleMinimapMouseDown}
-            onDragStart={(e) => e.preventDefault()}
-          >
-            <div className="absolute inset-0 flex items-center justify-center px-3 gap-1 pointer-events-none">
-              {/* Placeholder dot */}
+        {/* MAIN CONTENT WRAPPER */}
+        <div className={`flex-1 flex flex-col ${viewMode === 'carousel' ? 'overflow-hidden' : 'overflow-visible'}`} style={viewMode === 'carousel' ? { padding: `0 ${insetX}px` } : undefined}>
+          {viewMode === 'carousel' ? (
+            <main
+              ref={scrollRef}
+              className="flex-1 horizontal-scroll overflow-x-auto overflow-y-hidden flex items-center select-none snap-x snap-mandatory"
+              style={{
+                marginLeft: -insetX,
+                marginRight: -insetX,
+                paddingLeft: insetX,
+                paddingRight: insetX,
+                scrollPaddingInline: insetX,
+              }}
+              onDragStart={(e) => e.preventDefault()}
+            >
               <div
-                className={`w-5 h-5 rounded-full flex-shrink-0 transition-all duration-200 overflow-hidden border-2 ${
-                  !isInActiveZone ? 'border-neutral-400 scale-110' : 'border-transparent scale-100 opacity-50'
-                }`}
+                className="flex items-end relative"
+                style={{ gap: `${layoutConfig.gap}px` }}
               >
-                <img
-                  src="/robots/placeholder.png"
-                  alt="Index"
-                  draggable={false}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              {humanoids.map((h, i) => (
                 <div
-                  key={h.id}
-                  className={`w-5 h-5 rounded-full flex-shrink-0 transition-all duration-200 overflow-hidden border-2 ${
-                    i === currentIndex && isInActiveZone
-                      ? 'border-neutral-400 scale-110'
-                      : 'border-transparent scale-100 opacity-60'
-                  }`}
+                  className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent"
+                  style={{ marginLeft: -100, marginRight: -100 }}
+                />
+                {leadingSpace > 0 && <div className="flex-shrink-0" style={{ width: leadingSpace }} />}
+
+                {/* Placeholder */}
+                <div
+                  className="flex-shrink-0 gpu-accelerated transition-transform duration-300 flex items-center justify-center snap-center"
+                  style={{
+                    width: `${layoutConfig.cardSize}px`,
+                    height: `${layoutConfig.cardSize * 2.1}px`,
+                    transitionTimingFunction: 'var(--ease-out-expo)',
+                  }}
                 >
                   <img
-                    src={h.imageUrl || '/robots/placeholder.png'}
-                    alt={h.name}
+                    src="/robots/placeholder.png"
+                    alt="Humanoid Index"
                     draggable={false}
-                    className="w-full h-full object-cover"
+                    className="h-full object-contain"
+                    style={{
+                      transform: `scale(${!isInActiveZone ? layoutConfig.activeScale : layoutConfig.inactiveScale})`,
+                      opacity: !isInActiveZone ? 1 : 0.15,
+                      transition: 'transform 300ms var(--ease-out-expo), opacity 300ms var(--ease-out-expo)',
+                    }}
                   />
                 </div>
-              ))}
+
+                {humanoids.map((humanoid, index) => (
+                  <div
+                    key={humanoid.id}
+                    data-card-index={index}
+                    className="flex-shrink-0 gpu-accelerated transition-transform duration-300 snap-center"
+                    style={{
+                      width: `${layoutConfig.cardSize}px`,
+                      height: `${layoutConfig.cardSize * 2.1}px`,
+                      transitionTimingFunction: 'var(--ease-out-expo)',
+                    }}
+                  >
+                    <HumanoidCard
+                      humanoid={humanoid}
+                      config={config}
+                      scale={getScale(index)}
+                      opacity={getOpacity(index)}
+                      compareMode={compareMode}
+                      isSelected={selectedIds.includes(humanoid.id)}
+                      onToggleSelect={handleToggleSelect}
+                    />
+                  </div>
+                ))}
+
+                {/* Hall of Fame Separator */}
+                <div
+                  className="flex-shrink-0 flex items-center justify-center snap-center"
+                  style={{
+                    width: `${layoutConfig.cardSize * 0.6}px`,
+                    height: `${layoutConfig.cardSize * 2.1}px`,
+                  }}
+                >
+                  <div className="text-center">
+                    <div className="text-[11px] uppercase tracking-widest text-neutral-400 mb-1">Hall of</div>
+                    <div className="text-[15px] font-medium text-neutral-600">Fame</div>
+                  </div>
+                </div>
+
+                {/* Legends */}
+                {legends.map((legend, index) => (
+                  <div
+                    key={legend.id}
+                    data-card-index={humanoids.length + index}
+                    className="flex-shrink-0 gpu-accelerated transition-transform duration-300 snap-center"
+                    style={{
+                      width: `${layoutConfig.cardSize}px`,
+                      height: `${layoutConfig.cardSize * 2.1}px`,
+                      transitionTimingFunction: 'var(--ease-out-expo)',
+                    }}
+                  >
+                    <HumanoidCard
+                      humanoid={legend}
+                      config={config}
+                      scale={getScale(humanoids.length + index)}
+                      opacity={getOpacity(humanoids.length + index)}
+                      compareMode={compareMode}
+                      isSelected={selectedIds.includes(legend.id)}
+                      onToggleSelect={handleToggleSelect}
+                    />
+                  </div>
+                ))}
+
+                <div
+                  className="flex-shrink-0 flex items-center justify-center"
+                  style={{ width: trailingSpace }}
+                >
+                  <div className="text-neutral-300 text-[13px]">
+                    created by roy
+                  </div>
+                </div>
+              </div>
+            </main>
+          ) : (
+            <main className="flex-1 bg-white">
+              <GridView
+                humanoids={humanoids}
+                layoutConfig={layoutConfig}
+                compareMode={compareMode}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+                onHoverChange={setHoveredHumanoid}
+              />
+            </main>
+          )}
+
+          {/* LABEL */}
+          <div className="flex-shrink-0 relative z-20 flex items-center justify-center py-4">
+            {!showActiveInfo || !activeHumanoid ? (
+              <div key="index-label" className="animate-blur-fade text-center">
+                <div className="text-[13px] text-neutral-400 tracking-tight">Index</div>
+                <div className="text-[16px] font-medium text-neutral-800 tracking-tight">Humanoid</div>
+              </div>
+            ) : (
+              <div key={`humanoid-${activeHumanoid.id}`} className="animate-blur-fade text-center">
+                <div className="text-[13px] text-neutral-400 tracking-tight">{activeHumanoid.manufacturer}</div>
+                <div className="text-[16px] font-medium text-neutral-800 tracking-tight">{activeHumanoid.name}</div>
+              </div>
+            )}
+          </div>
+
+          {/* MINIMAP */}
+          {viewMode === 'carousel' && (
+            <div className="flex-shrink-0 relative z-20 flex justify-center items-center gap-3 pb-4">
+              <div
+                ref={minimapRef}
+                className="relative bg-neutral-50/80 backdrop-blur-sm rounded-full cursor-pointer overflow-hidden border border-neutral-100 select-none transition-all duration-300"
+                style={{
+                  width: minimapStyle === 'thumbnails'
+                    ? `${Math.max(200, (humanoids.length + legends.length) * 24 + 56)}px`
+                    : `${Math.max(120, (humanoids.length + legends.length) * 12 + 40)}px`,
+                  height: minimapStyle === 'thumbnails' ? '40px' : '28px'
+                }}
+                onMouseDown={handleMinimapMouseDown}
+                onDragStart={(e) => e.preventDefault()}
+              >
+                {minimapStyle === 'thumbnails' ? (
+                  /* Thumbnail style */
+                  <div className="absolute inset-0 flex items-center justify-center px-3 gap-1 pointer-events-none">
+                    <div
+                      className={`w-5 h-5 rounded-full flex-shrink-0 transition-all duration-200 overflow-hidden border-2 ${
+                        !isInActiveZone ? 'border-neutral-400 scale-110' : 'border-transparent scale-100 opacity-50'
+                      }`}
+                    >
+                      <img
+                        src="/robots/placeholder.png"
+                        alt="Index"
+                        draggable={false}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {humanoids.map((h, i) => (
+                      <div
+                        key={h.id}
+                        className={`w-5 h-5 rounded-full flex-shrink-0 transition-all duration-200 overflow-hidden border-2 ${
+                          i === currentIndex && isInActiveZone
+                            ? 'border-neutral-400 scale-110'
+                            : 'border-transparent scale-100 opacity-60'
+                        }`}
+                      >
+                        <img
+                          src={h.imageUrl || '/robots/placeholder.png'}
+                          alt={h.name}
+                          draggable={false}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
+                    <div className="w-px h-4 bg-neutral-300 mx-1 flex-shrink-0" />
+                    {legends.map((h, i) => (
+                      <div
+                        key={h.id}
+                        className={`w-5 h-5 rounded-full flex-shrink-0 transition-all duration-200 overflow-hidden border-2 ${
+                          humanoids.length + i === currentIndex && isInActiveZone
+                            ? 'border-amber-400 scale-110'
+                            : 'border-transparent scale-100 opacity-60'
+                        }`}
+                      >
+                        <img
+                          src={h.imageUrl || '/robots/placeholder.png'}
+                          alt={h.name}
+                          draggable={false}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* Dots style - sleek minimal */
+                  <div className="absolute inset-0 flex items-center justify-center px-4 gap-2 pointer-events-none">
+                    <div
+                      className={`w-2 h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
+                        !isInActiveZone
+                          ? 'bg-neutral-800 scale-125'
+                          : 'bg-neutral-300 scale-100'
+                      }`}
+                    />
+                    {humanoids.map((_, i) => (
+                      <div
+                        key={i}
+                        className={`w-2 h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
+                          i === currentIndex && isInActiveZone
+                            ? 'bg-neutral-800 scale-125'
+                            : 'bg-neutral-300 scale-100'
+                        }`}
+                      />
+                    ))}
+                    <div className="w-px h-2 bg-neutral-300 mx-0.5 flex-shrink-0" />
+                    {legends.map((_, i) => (
+                      <div
+                        key={`legend-${i}`}
+                        className={`w-2 h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
+                          humanoids.length + i === currentIndex && isInActiveZone
+                            ? 'bg-amber-500 scale-125'
+                            : 'bg-amber-200 scale-100'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+                <div
+                  className="absolute top-1 bottom-1 bg-neutral-900/10 rounded-full pointer-events-none transition-all duration-150"
+                  style={{
+                    width: `${Math.max(15, viewportRatio * 100)}%`,
+                    left: `${scrollProgress * (100 - Math.max(15, viewportRatio * 100))}%`,
+                  }}
+                />
+              </div>
+
+              {/* Minimap style toggle */}
+              <button
+                onClick={() => setMinimapStyle(minimapStyle === 'thumbnails' ? 'dots' : 'thumbnails')}
+                className="p-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors"
+                title={minimapStyle === 'thumbnails' ? 'Switch to dots' : 'Switch to thumbnails'}
+              >
+                {minimapStyle === 'thumbnails' ? (
+                  <svg className="w-3.5 h-3.5 text-neutral-500" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="6" cy="12" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="18" cy="12" r="2" />
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                  </svg>
+                )}
+              </button>
             </div>
-            {/* Viewport indicator */}
+          )}
+
+          {/* Scroll down indicator */}
+          {viewMode === 'carousel' && (
             <div
-              className="absolute top-1 bottom-1 bg-neutral-900/10 rounded-full pointer-events-none transition-all duration-150"
+              className="flex-shrink-0 flex justify-center overflow-hidden transition-all duration-300 ease-out"
               style={{
-                width: `${Math.max(15, viewportRatio * 100)}%`,
-                left: `${scrollProgress * (100 - Math.max(15, viewportRatio * 100))}%`,
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Right: Compare button */}
-        <button
-          onClick={() => compareMode ? handleExitCompareMode() : setCompareMode(true)}
-          className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all ${
-            compareMode
-              ? 'bg-neutral-900 text-white'
-              : 'bg-white text-neutral-600 shadow-md hover:shadow-lg'
-          }`}
-        >
-          {compareMode ? 'Exit Compare' : 'Compare'}
-        </button>
-      </div>
-
-      {/* SCROLL AREA (flex-1) - extends beyond inset */}
-      <main
-        ref={scrollRef}
-        className="flex-1 horizontal-scroll overflow-x-auto overflow-y-hidden flex items-center select-none snap-x snap-mandatory"
-        style={{ marginLeft: -insetX, marginRight: -insetX, paddingLeft: insetX, paddingRight: insetX }}
-        onDragStart={(e) => e.preventDefault()}
-      >
-        <div
-          className="flex items-end relative"
-          style={{ gap: `${layoutConfig.gap}px` }}
-        >
-          {/* Floor */}
-          <div
-            className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent"
-            style={{ marginLeft: -100, marginRight: -100 }}
-          />
-          {/* Placeholder intro card */}
-          <div
-            className="flex-shrink-0 gpu-accelerated transition-transform duration-300 flex items-center justify-center snap-center"
-            style={{
-              width: `${layoutConfig.cardSize}px`,
-              height: `${layoutConfig.cardSize * 2.1}px`,
-              transitionTimingFunction: 'var(--ease-out-expo)',
-            }}
-          >
-            <img
-              src="/robots/placeholder.png"
-              alt="Humanoid Index"
-              draggable={false}
-              className="h-full object-contain"
-              style={{
-                transform: `scale(${!isInActiveZone ? layoutConfig.activeScale : layoutConfig.inactiveScale})`,
-                opacity: !isInActiveZone ? 1 : 0.15,
-                transition: 'transform 300ms var(--ease-out-expo), opacity 300ms var(--ease-out-expo)',
-              }}
-            />
-          </div>
-
-          {humanoids.map((humanoid, index) => (
-            <div
-              key={humanoid.id}
-              className="flex-shrink-0 gpu-accelerated transition-transform duration-300 snap-center"
-              style={{
-                width: `${layoutConfig.cardSize}px`,
-                height: `${layoutConfig.cardSize * 2.1}px`,
-                transitionTimingFunction: 'var(--ease-out-expo)',
+                maxHeight: isInActiveZone && !isInDetailView ? '48px' : '0px',
+                opacity: isInActiveZone && !isInDetailView ? 1 : 0,
+                paddingBottom: isInActiveZone && !isInDetailView ? '8px' : '0px',
               }}
             >
-              <HumanoidCard
-                humanoid={humanoid}
-                config={config}
-                scale={getScale(index)}
-                opacity={getOpacity(index)}
-                compareMode={compareMode}
-                isSelected={selectedIds.includes(humanoid.id)}
-                onToggleSelect={handleToggleSelect}
-              />
+              <button
+                onClick={scrollToDetail}
+                className="flex flex-col items-center gap-1 text-neutral-400 hover:text-neutral-600 transition-colors animate-pulse"
+              >
+                <span className="text-[11px] uppercase tracking-wider">More details</span>
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 5v14M5 12l7 7 7-7" />
+                </svg>
+              </button>
             </div>
-          ))}
-
-          {/* Trailing spacer with credit */}
-          <div
-            className="flex-shrink-0 flex items-center justify-center"
-            style={{ width: trailingSpace }}
-          >
-            <div className="text-neutral-300 text-[13px]">
-              created by roy
-            </div>
-          </div>
+          )}
         </div>
-      </main>
 
-      {/* STATS ZONE - fixed height to prevent layout shift */}
-      <div className="h-24 flex-shrink-0 relative z-20 flex items-start pt-2">
-        {isInActiveZone && (
-          <div key={`stats-${activeHumanoid.id}`} className="flex items-center gap-12 text-neutral-600 animate-blur-fade">
-            {activeHumanoid.height && (
-              <div>
-                <div className="text-[48px] font-light leading-none">{activeHumanoid.height}</div>
-                <div className="text-[13px] text-neutral-400 mt-1">cm</div>
-              </div>
-            )}
-            {activeHumanoid.weight && (
-              <div>
-                <div className="text-[48px] font-light leading-none">{activeHumanoid.weight}</div>
-                <div className="text-[13px] text-neutral-400 mt-1">kg</div>
-              </div>
-            )}
-            {activeHumanoid.maxSpeed && (
-              <div>
-                <div className="text-[48px] font-light leading-none">{activeHumanoid.maxSpeed}</div>
-                <div className="text-[13px] text-neutral-400 mt-1">m/s</div>
-              </div>
-            )}
-            {activeHumanoid.dof && (
-              <div>
-                <div className="text-[48px] font-light leading-none">{activeHumanoid.dof}</div>
-                <div className="text-[13px] text-neutral-400 mt-1">DOF</div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      </section>
 
-      {/* BOTTOM BAR - extends beyond inset */}
-      <div style={{ marginLeft: -insetX, marginRight: -insetX, marginBottom: -insetY }}>
-        <BottomBar
-          config={config}
-          onConfigChange={setConfig}
-          layoutConfig={layoutConfig}
-          onLayoutConfigChange={setLayoutConfig}
-          compareMode={compareMode}
-          selectedCount={selectedIds.length}
-          onClearSelection={() => setSelectedIds([])}
-          onCompare={() => setShowComparePanel(true)}
-        />
-      </div>
+      {/* DETAIL SECTION */}
+      {viewMode === 'carousel' && (
+        <section className="min-h-screen flex-shrink-0 snap-start bg-white">
+          {activeHumanoid && (
+            <HumanoidDetailSection
+              humanoid={activeHumanoid}
+              isActive={true}
+              onScrollUp={scrollToCarousel}
+            />
+          )}
+        </section>
+      )}
 
-      {/* Compare panel modal (z-50) */}
+      {/* Compare panel modal */}
       {showComparePanel && (
         <ComparePanel
           selectedIds={selectedIds}
@@ -429,6 +639,63 @@ export default function Home() {
 
       {/* AI Chatbot */}
       <ChatBot />
+
+      {/* Buy button - shows when current humanoid has purchaseUrl */}
+      {activeHumanoid?.purchaseUrl && showActiveInfo && (
+        <a
+          href={activeHumanoid.purchaseUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-28 right-20 z-30 bg-neutral-800 hover:bg-neutral-900 text-white px-3.5 py-1.5 text-[13px] font-medium rounded-full transition-colors duration-200 shadow-lg"
+        >
+          Buy
+        </a>
+      )}
+
+      {/* Bottom Left Buttons */}
+      <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2">
+        <button
+          onClick={() => setShowControls(!showControls)}
+          className={`p-2.5 rounded-full text-[13px] font-medium transition-all ${
+            showControls
+              ? 'bg-neutral-900 text-white'
+              : 'bg-white text-neutral-600 shadow-md hover:shadow-lg'
+          }`}
+          title="Toggle controls"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
+        <button
+          onClick={() => compareMode ? handleExitCompareMode() : setCompareMode(true)}
+          className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
+            compareMode
+              ? 'bg-neutral-900 text-white'
+              : 'bg-white text-neutral-600 shadow-md hover:shadow-lg'
+          }`}
+        >
+          {compareMode ? 'Exit Compare' : 'Compare'}
+        </button>
+      </div>
+
+      {/* Controls Panel */}
+      {showControls && (
+        <div className="fixed bottom-20 left-6 z-30">
+          <BottomBar
+            config={config}
+            onConfigChange={setConfig}
+            layoutConfig={layoutConfig}
+            onLayoutConfigChange={setLayoutConfig}
+            viewMode={viewMode}
+            compareMode={compareMode}
+            selectedCount={selectedIds.length}
+            onClearSelection={() => setSelectedIds([])}
+            onCompare={() => setShowComparePanel(true)}
+          />
+        </div>
+      )}
     </div>
   );
 }

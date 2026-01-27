@@ -1,3 +1,6 @@
+/* Design System: SOFT NEUTRAL - see styles/design-system.css for reference */
+@import '../styles/design-system.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,27 +8,25 @@
 * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--tracking-tight, -0.03em);
 }
 
 h1, h2, h3, h4, h5, h6 {
-  letter-spacing: -0.04em;
+  letter-spacing: var(--tracking-tighter, -0.04em);
 }
 
 ::selection {
-  background: #000;
+  background: var(--color-accent, #000);
   color: #fff;
 }
 
-/* Hide scrollbar for horizontal scroll */
+/* Hide scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
-}
-
-/* CSS Custom Properties for transitions */
-:root {
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-normal: 300ms;
 }
 
 /* Smooth horizontal scroll */
@@ -54,12 +55,16 @@ h1, h2, h3, h4, h5, h6 {
   background: linear-gradient(to bottom, white, transparent);
 }
 
-/* Slide-in animations with subtle blur */
+/* ═══════════════════════════════════════
+   ANIMATIONS
+   Using design system tokens
+   ═══════════════════════════════════════ */
+
 @keyframes slide-in-from-top {
   from {
     opacity: 0;
     transform: translateY(-12px);
-    filter: blur(4px);
+    filter: blur(var(--blur-sm));
   }
   to {
     opacity: 1;
@@ -72,7 +77,7 @@ h1, h2, h3, h4, h5, h6 {
   from {
     opacity: 0;
     transform: translateY(12px);
-    filter: blur(4px);
+    filter: blur(var(--blur-sm));
   }
   to {
     opacity: 1;
@@ -81,19 +86,10 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-.animate-slide-from-top {
-  animation: slide-in-from-top 250ms var(--ease-out-expo) forwards;
-}
-
-.animate-slide-from-bottom {
-  animation: slide-in-from-bottom 250ms var(--ease-out-expo) forwards;
-}
-
-/* Blur fade only - no motion */
 @keyframes blur-fade-in {
   from {
     opacity: 0;
-    filter: blur(4px);
+    filter: blur(var(--blur-sm));
   }
   to {
     opacity: 1;
@@ -101,6 +97,29 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-slide-from-top {
+  animation: slide-in-from-top var(--duration-normal) var(--ease-out-expo) forwards;
+}
+
+.animate-slide-from-bottom {
+  animation: slide-in-from-bottom var(--duration-normal) var(--ease-out-expo) forwards;
+}
+
 .animate-blur-fade {
-  animation: blur-fade-in 200ms var(--ease-out-expo) forwards;
+  animation: blur-fade-in var(--duration-normal) var(--ease-out-expo) forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 300ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }

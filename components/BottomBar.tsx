@@ -1,6 +1,7 @@
 "use client";
 
 import { ViewConfig } from "./Sidebar";
+import { ViewMode } from "./ViewSwitcher";
 
 export interface LayoutConfig {
   cardSize: number;
@@ -8,6 +9,8 @@ export interface LayoutConfig {
   activeScale: number;
   inactiveScale: number;
   margins: number;
+  gridCardSize: number;
+  gridGap: number;
 }
 
 export const defaultLayoutConfig: LayoutConfig = {
@@ -16,6 +19,8 @@ export const defaultLayoutConfig: LayoutConfig = {
   activeScale: 1.15,
   inactiveScale: 0.95,
   margins: 12,
+  gridCardSize: 220,
+  gridGap: 24,
 };
 
 interface BottomBarProps {
@@ -23,6 +28,7 @@ interface BottomBarProps {
   onConfigChange: (config: ViewConfig) => void;
   layoutConfig: LayoutConfig;
   onLayoutConfigChange: (config: LayoutConfig) => void;
+  viewMode: ViewMode;
   compareMode: boolean;
   selectedCount: number;
   onClearSelection: () => void;
@@ -34,6 +40,7 @@ export default function BottomBar({
   onConfigChange,
   layoutConfig,
   onLayoutConfigChange,
+  viewMode,
   compareMode,
   selectedCount,
   onClearSelection,
@@ -55,61 +62,90 @@ export default function BottomBar({
 
       {/* Center - layout controls */}
       <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] text-neutral-400">Size</span>
-          <input
-            type="range"
-            min={80}
-            max={300}
-            value={layoutConfig.cardSize}
-            onChange={(e) => onLayoutConfigChange({ ...layoutConfig, cardSize: Number(e.target.value) })}
-            className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] text-neutral-400">Gap</span>
-          <input
-            type="range"
-            min={20}
-            max={500}
-            value={layoutConfig.gap}
-            onChange={(e) => onLayoutConfigChange({ ...layoutConfig, gap: Number(e.target.value) })}
-            className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] text-neutral-400">Focus</span>
-          <input
-            type="range"
-            min={100}
-            max={150}
-            value={layoutConfig.activeScale * 100}
-            onChange={(e) => onLayoutConfigChange({ ...layoutConfig, activeScale: Number(e.target.value) / 100 })}
-            className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] text-neutral-400">Unfocus</span>
-          <input
-            type="range"
-            min={60}
-            max={100}
-            value={layoutConfig.inactiveScale * 100}
-            onChange={(e) => onLayoutConfigChange({ ...layoutConfig, inactiveScale: Number(e.target.value) / 100 })}
-            className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] text-neutral-400">Margins</span>
-          <input
-            type="range"
-            min={4}
-            max={20}
-            value={layoutConfig.margins}
-            onChange={(e) => onLayoutConfigChange({ ...layoutConfig, margins: Number(e.target.value) })}
-            className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
-          />
-        </div>
+        {viewMode === 'carousel' ? (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] text-neutral-400">Size</span>
+              <input
+                type="range"
+                min={80}
+                max={300}
+                value={layoutConfig.cardSize}
+                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, cardSize: Number(e.target.value) })}
+                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] text-neutral-400">Gap</span>
+              <input
+                type="range"
+                min={20}
+                max={500}
+                value={layoutConfig.gap}
+                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, gap: Number(e.target.value) })}
+                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] text-neutral-400">Focus</span>
+              <input
+                type="range"
+                min={100}
+                max={150}
+                value={layoutConfig.activeScale * 100}
+                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, activeScale: Number(e.target.value) / 100 })}
+                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] text-neutral-400">Unfocus</span>
+              <input
+                type="range"
+                min={60}
+                max={100}
+                value={layoutConfig.inactiveScale * 100}
+                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, inactiveScale: Number(e.target.value) / 100 })}
+                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] text-neutral-400">Margins</span>
+              <input
+                type="range"
+                min={4}
+                max={20}
+                value={layoutConfig.margins}
+                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, margins: Number(e.target.value) })}
+                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] text-neutral-400">Card Size</span>
+              <input
+                type="range"
+                min={120}
+                max={300}
+                value={layoutConfig.gridCardSize}
+                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, gridCardSize: Number(e.target.value) })}
+                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] text-neutral-400">Gap</span>
+              <input
+                type="range"
+                min={8}
+                max={48}
+                value={layoutConfig.gridGap}
+                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, gridGap: Number(e.target.value) })}
+                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+              />
+            </div>
+          </>
+        )}
         <button
           onClick={handleReset}
           className="text-[13px] text-neutral-400 hover:text-neutral-600"
