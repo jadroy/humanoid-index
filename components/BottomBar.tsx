@@ -51,9 +51,9 @@ export default function BottomBar({
   };
 
   return (
-    <div className="relative z-40 border-t border-neutral-100 bg-white px-6 py-3 flex items-center justify-between">
-      {/* Left side - title */}
-      <div className="flex items-center gap-4">
+    <div className="relative z-40 border-t border-neutral-100 bg-white px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-0 sm:justify-between rounded-xl shadow-lg">
+      {/* Left side - title (hidden on mobile) */}
+      <div className="hidden sm:flex items-center gap-4">
         <div>
           <span className="text-[13px] text-neutral-600">Humanoid</span>
           <span className="text-[13px] text-neutral-400 ml-1">Index</span>
@@ -61,9 +61,10 @@ export default function BottomBar({
       </div>
 
       {/* Center - layout controls */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
         {viewMode === 'carousel' ? (
           <>
+            {/* Mobile: simplified 2-slider version */}
             <div className="flex items-center gap-2">
               <span className="text-[13px] text-neutral-400">Size</span>
               <input
@@ -86,7 +87,8 @@ export default function BottomBar({
                 className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
               />
             </div>
-            <div className="flex items-center gap-2">
+            {/* Desktop only: additional controls */}
+            <div className="hidden sm:flex items-center gap-2">
               <span className="text-[13px] text-neutral-400">Focus</span>
               <input
                 type="range"
@@ -97,7 +99,7 @@ export default function BottomBar({
                 className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <span className="text-[13px] text-neutral-400">Unfocus</span>
               <input
                 type="range"
@@ -108,7 +110,7 @@ export default function BottomBar({
                 className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <span className="text-[13px] text-neutral-400">Margins</span>
               <input
                 type="range"
@@ -154,8 +156,8 @@ export default function BottomBar({
         </button>
       </div>
 
-      {/* Right side - compare info or keyboard hint */}
-      <div className="flex items-center gap-4">
+      {/* Right side - compare info or keyboard hint (hidden on mobile unless compare mode active) */}
+      <div className={`${compareMode && selectedCount > 0 ? 'flex' : 'hidden sm:flex'} items-center gap-4`}>
         {compareMode && selectedCount > 0 ? (
           <>
             <span className="text-[13px] text-neutral-600">

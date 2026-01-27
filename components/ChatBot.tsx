@@ -156,31 +156,31 @@ export default function ChatBot() {
   ];
 
   return (
-    <div className="fixed bottom-28 right-8 z-50">
+    <div className="fixed bottom-4 right-4 sm:bottom-28 sm:right-8 z-50">
       {/* Chat Panel */}
       {isOpen && (
-        <div className="absolute bottom-16 right-0 w-[340px] bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-neutral-200/50 overflow-hidden animate-blur-fade">
+        <div className="absolute bottom-16 right-0 w-[calc(100vw-32px)] sm:w-[360px] max-w-[360px] bg-gradient-to-b from-white to-neutral-50/95 backdrop-blur-xl rounded-[28px] shadow-[0_8px_40px_-12px_rgba(0,0,0,0.2)] border border-white/60 overflow-hidden animate-blur-fade">
           {/* Header */}
-          <div className="px-5 py-4 border-b border-neutral-100">
+          <div className="px-5 py-4 bg-gradient-to-r from-neutral-900 via-neutral-800 to-neutral-900">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neutral-800 to-neutral-600 flex items-center justify-center">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                    <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z" />
-                    <path d="M18 14v1a6 6 0 0 1-12 0v-1" />
-                    <path d="M12 19v3" />
+                <div className="w-9 h-9 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center ring-1 ring-white/20">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M5 20a7 7 0 0 1 14 0" />
+                    <path d="M12 12v2" />
                   </svg>
                 </div>
                 <div>
-                  <div className="text-[14px] font-medium text-neutral-800">Robot Advisor</div>
-                  <div className="text-[11px] text-neutral-400">Find your perfect humanoid</div>
+                  <div className="text-[14px] font-medium text-white">Robot Advisor</div>
+                  <div className="text-[11px] text-white/50">Find your perfect humanoid</div>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-7 h-7 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-colors"
+                className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-neutral-400">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/60">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
@@ -188,24 +188,25 @@ export default function ChatBot() {
           </div>
 
           {/* Messages */}
-          <div className="h-80 overflow-y-auto p-4 space-y-4">
+          <div className="h-[320px] overflow-y-auto p-5 space-y-4 scrollbar-thin">
             {messages.map((msg, i) => (
               <div
                 key={i}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-blur-fade`}
+                style={{ animationDelay: `${i * 50}ms` }}
               >
                 <div
                   className={`max-w-[85%] ${
                     msg.role === "user"
-                      ? "bg-neutral-900 text-white px-4 py-2.5 rounded-2xl rounded-br-sm"
-                      : "text-neutral-600"
+                      ? "bg-gradient-to-br from-neutral-900 to-neutral-800 text-white px-4 py-3 rounded-2xl rounded-br-md shadow-sm"
+                      : "bg-white/80 backdrop-blur-sm px-4 py-3 rounded-2xl rounded-bl-md shadow-sm ring-1 ring-neutral-100"
                   }`}
                 >
-                  <div className="text-[13px] leading-relaxed">
+                  <div className={`text-[13px] leading-relaxed ${msg.role === "assistant" ? "text-neutral-600" : ""}`}>
                     {msg.content.split("\n").map((line, j) => (
                       <p key={j} className={j > 0 ? "mt-2" : ""}>
                         {line.split("**").map((part, k) =>
-                          k % 2 === 1 ? <strong key={k} className={msg.role === "user" ? "text-white" : "text-neutral-800"}>{part}</strong> : part
+                          k % 2 === 1 ? <strong key={k} className={msg.role === "user" ? "text-white" : "text-neutral-800 font-semibold"}>{part}</strong> : part
                         )}
                       </p>
                     ))}
@@ -217,9 +218,9 @@ export default function ChatBot() {
                         <a
                           key={s.id}
                           href={`/robot/${s.id}`}
-                          className="group flex items-center gap-3 p-2 bg-white rounded-xl border border-neutral-200 hover:border-neutral-300 hover:shadow-sm transition-all"
+                          className="group flex items-center gap-3 p-2.5 bg-gradient-to-r from-neutral-50 to-white rounded-xl border border-neutral-200/80 hover:border-neutral-300 hover:shadow-md transition-all duration-200"
                         >
-                          <div className="w-10 h-10 rounded-lg bg-neutral-100 overflow-hidden flex-shrink-0">
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-50 overflow-hidden flex-shrink-0 ring-1 ring-neutral-200/50">
                             <img
                               src={s.imageUrl || "/robots/placeholder.png"}
                               alt={s.name}
@@ -227,12 +228,14 @@ export default function ChatBot() {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-[12px] font-medium text-neutral-800 truncate">{s.name}</div>
+                            <div className="text-[12px] font-semibold text-neutral-800 truncate">{s.name}</div>
                             <div className="text-[11px] text-neutral-400 truncate">{s.manufacturer}</div>
                           </div>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-neutral-300 group-hover:text-neutral-500 transition-colors flex-shrink-0">
-                            <path d="M9 18l6-6-6-6" />
-                          </svg>
+                          <div className="w-6 h-6 rounded-full bg-neutral-100 group-hover:bg-neutral-900 flex items-center justify-center transition-colors flex-shrink-0">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-neutral-400 group-hover:text-white transition-colors">
+                              <path d="M9 18l6-6-6-6" />
+                            </svg>
+                          </div>
                         </a>
                       ))}
                     </div>
@@ -245,8 +248,9 @@ export default function ChatBot() {
 
           {/* Quick prompts - only show if no user messages yet */}
           {messages.length === 1 && (
-            <div className="px-4 pb-2">
-              <div className="flex flex-wrap gap-1.5">
+            <div className="px-5 pb-3">
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide mb-2">Quick questions</p>
+              <div className="flex flex-wrap gap-2">
                 {quickPrompts.map((prompt) => (
                   <button
                     key={prompt}
@@ -255,7 +259,7 @@ export default function ChatBot() {
                       const response = generateResponse(prompt);
                       setMessages((prev) => [...prev, userMessage, response]);
                     }}
-                    className="px-3 py-1.5 text-[11px] text-neutral-500 bg-neutral-100 hover:bg-neutral-200 rounded-full transition-colors"
+                    className="px-4 py-2.5 sm:px-3.5 sm:py-2 text-[12px] text-neutral-600 bg-white hover:bg-neutral-900 hover:text-white rounded-xl ring-1 ring-neutral-200 hover:ring-neutral-900 transition-all duration-200 shadow-sm"
                   >
                     {prompt}
                   </button>
@@ -265,21 +269,21 @@ export default function ChatBot() {
           )}
 
           {/* Input */}
-          <div className="p-3 border-t border-neutral-100">
+          <div className="p-4 border-t border-neutral-100 bg-white/50">
             <form onSubmit={handleSubmit} className="flex gap-2">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="What do you need a robot for?"
-                className="flex-1 px-4 py-2.5 text-[13px] bg-neutral-100 rounded-full outline-none focus:bg-neutral-50 focus:ring-2 focus:ring-neutral-200 transition-all placeholder:text-neutral-400"
+                className="flex-1 px-4 py-3 text-[13px] bg-white rounded-xl outline-none ring-1 ring-neutral-200 focus:ring-2 focus:ring-neutral-900 transition-all placeholder:text-neutral-400"
               />
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className="w-10 h-10 bg-neutral-900 text-white rounded-full hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center flex-shrink-0"
+                className="w-11 h-11 bg-neutral-900 text-white rounded-xl hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center flex-shrink-0 shadow-sm hover:shadow-md"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </button>
@@ -291,18 +295,25 @@ export default function ChatBot() {
       {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 border ${
+        className={`relative group w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-300 ${
           isOpen
-            ? "bg-neutral-100 border-neutral-200 text-neutral-500"
-            : "bg-transparent border-neutral-300 text-neutral-400 hover:border-neutral-400 hover:text-neutral-500"
+            ? "bg-neutral-900 text-white shadow-lg"
+            : "bg-white text-neutral-600 shadow-lg shadow-neutral-200/50 hover:shadow-xl hover:scale-105 ring-1 ring-neutral-200/50"
         }`}
       >
+        {!isOpen && (
+          <span className="absolute inset-0 rounded-2xl animate-ping bg-neutral-900/10" style={{ animationDuration: '2s' }} />
+        )}
         {isOpen ? (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         ) : (
-          <span className="text-[15px] font-medium">?</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <path d="M12 17h.01" />
+          </svg>
         )}
       </button>
     </div>

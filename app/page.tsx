@@ -28,6 +28,7 @@ export default function Home() {
   const [isInDetailView, setIsInDetailView] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [minimapStyle, setMinimapStyle] = useState<'thumbnails' | 'dots'>('thumbnails');
+  const [windowWidth, setWindowWidth] = useState(1200);
 
   const pageScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -35,10 +36,18 @@ export default function Home() {
   const scrollPositionRef = useRef(0);
   const isDraggingMinimapRef = useRef(false);
 
-  // Fixed inset margins
-  const insetX = 252;
-  const insetY = 120;
-  const topBarInset = 24;
+  // Window width tracking
+  useEffect(() => {
+    setWindowWidth(window.innerWidth);
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Responsive inset margins
+  const insetX = windowWidth < 640 ? 16 : windowWidth < 768 ? 48 : windowWidth < 1024 ? 120 : 252;
+  const insetY = windowWidth < 640 ? 60 : windowWidth < 768 ? 80 : 120;
+  const topBarInset = windowWidth < 640 ? 12 : 24;
 
   // Scale - no hover effect, just scroll position based
   const getScale = useCallback((index: number) => {
@@ -129,16 +138,6 @@ export default function Home() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, compareMode, showComparePanel, scrollToCard, scrollToDetail, scrollToCarousel, isInDetailView, isInActiveZone, viewMode, router]);
-
-  // Window width tracking
-  const [windowWidth, setWindowWidth] = useState(1200);
-
-  useEffect(() => {
-    setWindowWidth(window.innerWidth);
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Content area width
   const contentWidth = windowWidth - 2 * insetX;
@@ -276,6 +275,13 @@ export default function Home() {
     handleMinimapMouseMove(e.clientX);
   };
 
+  // Touch handlers for minimap
+  const handleMinimapTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    isDraggingMinimapRef.current = true;
+    handleMinimapMouseMove(e.touches[0].clientX);
+  };
+
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (!isDraggingMinimapRef.current) return;
@@ -286,12 +292,25 @@ export default function Home() {
       isDraggingMinimapRef.current = false;
     };
 
+    const handleGlobalTouchMove = (e: TouchEvent) => {
+      if (!isDraggingMinimapRef.current) return;
+      handleMinimapMouseMove(e.touches[0].clientX);
+    };
+
+    const handleGlobalTouchEnd = () => {
+      isDraggingMinimapRef.current = false;
+    };
+
     window.addEventListener('mousemove', handleGlobalMouseMove);
     window.addEventListener('mouseup', handleGlobalMouseUp);
+    window.addEventListener('touchmove', handleGlobalTouchMove);
+    window.addEventListener('touchend', handleGlobalTouchEnd);
 
     return () => {
       window.removeEventListener('mousemove', handleGlobalMouseMove);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
+      window.removeEventListener('touchmove', handleGlobalTouchMove);
+      window.removeEventListener('touchend', handleGlobalTouchEnd);
     };
   }, [handleMinimapMouseMove]);
 
@@ -464,16 +483,51 @@ export default function Home() {
                 ref={minimapRef}
                 className="relative bg-neutral-50/80 backdrop-blur-sm rounded-full cursor-pointer overflow-hidden border border-neutral-100 select-none transition-all duration-300"
                 style={{
-                  width: minimapStyle === 'thumbnails'
-                    ? `${Math.max(200, (humanoids.length + legends.length) * 24 + 56)}px`
-                    : `${Math.max(120, (humanoids.length + legends.length) * 12 + 40)}px`,
-                  height: minimapStyle === 'thumbnails' ? '40px' : '28px'
+                  width: windowWidth < 640
+                    ? `${Math.max(120, (humanoids.length + legends.length) * 12 + 40)}px`
+                    : minimapStyle === 'thumbnails'
+                      ? `${Math.max(200, (humanoids.length + legends.length) * 24 + 56)}px`
+                      : `${Math.max(120, (humanoids.length + legends.length) * 12 + 40)}px`,
+                  height: windowWidth < 640 ? '32px' : minimapStyle === 'thumbnails' ? '40px' : '28px'
                 }}
                 onMouseDown={handleMinimapMouseDown}
+                onTouchStart={handleMinimapTouchStart}
                 onDragStart={(e) => e.preventDefault()}
               >
-                {minimapStyle === 'thumbnails' ? (
-                  /* Thumbnail style */
+                {(windowWidth < 640 || minimapStyle === 'dots') ? (
+                  /* Dots style - sleek minimal (forced on mobile) */
+                  <div className="absolute inset-0 flex items-center justify-center px-4 gap-2 pointer-events-none">
+                    <div
+                      className={`w-3 h-3 sm:w-2 sm:h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
+                        !isInActiveZone
+                          ? 'bg-neutral-800 scale-125'
+                          : 'bg-neutral-300 scale-100'
+                      }`}
+                    />
+                    {humanoids.map((_, i) => (
+                      <div
+                        key={i}
+                        className={`w-3 h-3 sm:w-2 sm:h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
+                          i === currentIndex && isInActiveZone
+                            ? 'bg-neutral-800 scale-125'
+                            : 'bg-neutral-300 scale-100'
+                        }`}
+                      />
+                    ))}
+                    <div className="w-px h-2 bg-neutral-300 mx-0.5 flex-shrink-0" />
+                    {legends.map((_, i) => (
+                      <div
+                        key={`legend-${i}`}
+                        className={`w-3 h-3 sm:w-2 sm:h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
+                          humanoids.length + i === currentIndex && isInActiveZone
+                            ? 'bg-amber-500 scale-125'
+                            : 'bg-amber-200 scale-100'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  /* Thumbnail style (desktop only) */
                   <div className="absolute inset-0 flex items-center justify-center px-3 gap-1 pointer-events-none">
                     <div
                       className={`w-5 h-5 rounded-full flex-shrink-0 transition-all duration-200 overflow-hidden border-2 ${
@@ -523,38 +577,6 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-                ) : (
-                  /* Dots style - sleek minimal */
-                  <div className="absolute inset-0 flex items-center justify-center px-4 gap-2 pointer-events-none">
-                    <div
-                      className={`w-2 h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
-                        !isInActiveZone
-                          ? 'bg-neutral-800 scale-125'
-                          : 'bg-neutral-300 scale-100'
-                      }`}
-                    />
-                    {humanoids.map((_, i) => (
-                      <div
-                        key={i}
-                        className={`w-2 h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
-                          i === currentIndex && isInActiveZone
-                            ? 'bg-neutral-800 scale-125'
-                            : 'bg-neutral-300 scale-100'
-                        }`}
-                      />
-                    ))}
-                    <div className="w-px h-2 bg-neutral-300 mx-0.5 flex-shrink-0" />
-                    {legends.map((_, i) => (
-                      <div
-                        key={`legend-${i}`}
-                        className={`w-2 h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
-                          humanoids.length + i === currentIndex && isInActiveZone
-                            ? 'bg-amber-500 scale-125'
-                            : 'bg-amber-200 scale-100'
-                        }`}
-                      />
-                    ))}
-                  </div>
                 )}
                 <div
                   className="absolute top-1 bottom-1 bg-neutral-900/10 rounded-full pointer-events-none transition-all duration-150"
@@ -565,10 +587,10 @@ export default function Home() {
                 />
               </div>
 
-              {/* Minimap style toggle */}
+              {/* Minimap style toggle - hidden on mobile */}
               <button
                 onClick={() => setMinimapStyle(minimapStyle === 'thumbnails' ? 'dots' : 'thumbnails')}
-                className="p-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors"
+                className="hidden sm:block p-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors"
                 title={minimapStyle === 'thumbnails' ? 'Switch to dots' : 'Switch to thumbnails'}
               >
                 {minimapStyle === 'thumbnails' ? (
@@ -646,14 +668,14 @@ export default function Home() {
           href={activeHumanoid.purchaseUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="fixed bottom-28 right-20 z-30 bg-neutral-800 hover:bg-neutral-900 text-white px-3.5 py-1.5 text-[13px] font-medium rounded-full transition-colors duration-200 shadow-lg"
+          className="fixed bottom-20 right-4 sm:bottom-28 sm:right-20 z-30 bg-neutral-800 hover:bg-neutral-900 text-white px-3.5 py-1.5 text-[13px] font-medium rounded-full transition-colors duration-200 shadow-lg"
         >
           Buy
         </a>
       )}
 
       {/* Bottom Left Buttons */}
-      <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2">
+      <div className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-30 flex items-center gap-2">
         <button
           onClick={() => setShowControls(!showControls)}
           className={`p-2.5 rounded-full text-[13px] font-medium transition-all ${
@@ -682,7 +704,7 @@ export default function Home() {
 
       {/* Controls Panel */}
       {showControls && (
-        <div className="fixed bottom-20 left-6 z-30">
+        <div className="fixed bottom-20 left-4 sm:left-6 z-30">
           <BottomBar
             config={config}
             onConfigChange={setConfig}

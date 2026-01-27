@@ -22,12 +22,9 @@ export default function GridView({
   onHoverChange,
 }: GridViewProps) {
   return (
-    <div className="w-full min-h-full px-6 py-6 bg-white">
+    <div className="w-full min-h-full px-4 sm:px-6 py-6 bg-white">
       <div
-        className="grid gap-2"
-        style={{
-          gridTemplateColumns: `repeat(5, 1fr)`,
-        }}
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2"
       >
         {humanoids.map((humanoid, index) => {
           const isSelected = selectedIds.includes(humanoid.id);
