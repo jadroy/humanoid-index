@@ -1,0 +1,252 @@
+/**
+ * SOFT NEUTRAL Design System
+ * A quiet, minimal aesthetic with warmth
+ *
+ * Characteristics:
+ * - Tight typography, small scales
+ * - Expo easing, blur transitions
+ * - Neutral palette with warm tints
+ * - Generous spacing, subtle depth
+ */
+
+:root {
+  /* ═══════════════════════════════════════
+     COLORS
+     ═══════════════════════════════════════ */
+
+  /* Neutral scale - primary palette */
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+
+  /* Warm whites - background tints */
+  --color-surface-warm: #fafaf8;
+  --color-surface-cool: #f8fafa;
+  --color-surface-neutral: #fafafa;
+  --color-surface-cream: #faf9f8;
+  --color-surface-blush: #faf8f9;
+
+  /* Accent - used sparingly */
+  --color-accent: #171717;
+  --color-accent-muted: #525252;
+  --color-accent-subtle: #a3a3a3;
+
+  /* Semantic */
+  --color-text-primary: var(--color-neutral-800);
+  --color-text-secondary: var(--color-neutral-600);
+  --color-text-muted: var(--color-neutral-400);
+  --color-border: var(--color-neutral-200);
+  --color-border-subtle: var(--color-neutral-100);
+
+
+  /* ═══════════════════════════════════════
+     TYPOGRAPHY
+     ═══════════════════════════════════════ */
+
+  /* Tracking - tighter than default */
+  --tracking-tighter: -0.04em;
+  --tracking-tight: -0.03em;
+  --tracking-normal: -0.02em;
+  --tracking-wide: 0.05em;    /* for uppercase labels */
+
+  /* Font sizes - small scale */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+
+  /* Line heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+
+  /* ═══════════════════════════════════════
+     SPACING
+     ═══════════════════════════════════════ */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+
+  /* ═══════════════════════════════════════
+     MOTION
+     ═══════════════════════════════════════ */
+
+  /* Easing - expo out feels smooth and responsive */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Durations */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+
+  /* Common transitions */
+  --transition-colors: color var(--duration-normal) var(--ease-out-expo),
+                       background-color var(--duration-normal) var(--ease-out-expo),
+                       border-color var(--duration-normal) var(--ease-out-expo);
+  --transition-transform: transform var(--duration-slow) var(--ease-out-expo);
+  --transition-opacity: opacity var(--duration-slow) var(--ease-out-expo);
+  --transition-all: all var(--duration-normal) var(--ease-out-expo);
+
+
+  /* ═══════════════════════════════════════
+     SHAPES
+     ═══════════════════════════════════════ */
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
+
+
+  /* ═══════════════════════════════════════
+     DEPTH / EFFECTS
+     ═══════════════════════════════════════ */
+
+  /* Shadows - subtle, diffuse */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.1);
+
+  /* Blur */
+  --blur-sm: 4px;
+  --blur-md: 8px;
+  --blur-lg: 16px;
+  --blur-xl: 24px;
+
+  /* Glass effect */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-bg-strong: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.05);
+}
+
+
+/* ═══════════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════════ */
+
+/* Glass panels */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+}
+
+.glass-strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+}
+
+/* Text styles */
+.text-label {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.text-body {
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+
+.text-heading {
+  font-size: var(--text-lg);
+  font-weight: 500;
+  letter-spacing: var(--tracking-tighter);
+  color: var(--color-text-primary);
+}
+
+/* Interactive states */
+.interactive {
+  transition: var(--transition-all);
+}
+
+.interactive:hover {
+  opacity: 0.8;
+}
+
+.interactive-scale {
+  transition: var(--transition-transform);
+}
+
+.interactive-scale:hover {
+  transform: scale(1.02);
+}
+
+.interactive-scale:active {
+  transform: scale(0.98);
+}
+
+
+/* ═══════════════════════════════════════════════
+   COMPONENT PATTERNS (reference)
+   ═══════════════════════════════════════════════
+
+   Button (pill):
+   - bg-neutral-900, text-white
+   - rounded-full, px-4 py-2
+   - text-[13px] font-medium
+   - hover:bg-neutral-800
+
+   Button (ghost):
+   - bg-transparent, text-neutral-600
+   - rounded-full, px-4 py-2
+   - text-[13px]
+   - hover:bg-neutral-100
+
+   Card:
+   - bg-white or bg-neutral-50/80
+   - rounded-2xl or rounded-3xl
+   - border border-neutral-100 or border-neutral-200/50
+   - p-4 to p-6
+
+   Input:
+   - bg-neutral-100, rounded-full
+   - px-4 py-2.5, text-[13px]
+   - focus:bg-neutral-50 focus:ring-2 focus:ring-neutral-200
+   - placeholder:text-neutral-400
+
+   Panel (floating):
+   - bg-white/95 backdrop-blur-xl
+   - rounded-3xl, shadow-2xl
+   - border border-neutral-200/50
+
+   Label:
+   - text-[11px] uppercase tracking-widest
+   - text-neutral-400
+
+   Minimap dot:
+   - w-2 h-2 rounded-full
+   - bg-neutral-300 (inactive)
+   - bg-neutral-800 scale-125 (active)
+
+   ═══════════════════════════════════════════════ */
