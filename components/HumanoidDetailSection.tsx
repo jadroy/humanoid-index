@@ -10,7 +10,7 @@ interface HumanoidDetailSectionProps {
 
 export default function HumanoidDetailSection({ humanoid, isActive, onScrollUp }: HumanoidDetailSectionProps) {
   return (
-    <div className="min-h-screen w-full px-8 md:px-16 lg:px-32 py-16">
+    <div className="min-h-screen w-full px-4 sm:px-8 md:px-16 lg:px-32 py-16">
       {/* Back to carousel button */}
       <button
         onClick={onScrollUp}
@@ -27,7 +27,7 @@ export default function HumanoidDetailSection({ humanoid, isActive, onScrollUp }
         {/* Header */}
         <div className="mb-16 pt-8">
           <div className="text-sm text-neutral-400 uppercase tracking-wider mb-2">{humanoid.manufacturer}</div>
-          <h1 className="text-5xl md:text-6xl font-medium text-neutral-900 tracking-tight mb-6">{humanoid.name}</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium text-neutral-900 tracking-tight mb-6">{humanoid.name}</h1>
           {humanoid.description && (
             <p className="text-xl text-neutral-600 leading-relaxed max-w-3xl">
               {humanoid.description}

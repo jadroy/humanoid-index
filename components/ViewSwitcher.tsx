@@ -20,13 +20,13 @@ export default function ViewSwitcher({ viewMode, onViewModeChange }: ViewSwitche
     >
       {/* Sliding highlight */}
       <span
-        className="absolute top-1 left-1 w-[28px] h-[28px] bg-white rounded-md shadow-sm transition-transform duration-150 ease-out"
+        className="absolute top-1 left-1 w-[32px] h-[32px] sm:w-[28px] sm:h-[28px] bg-white rounded-md shadow-sm transition-transform duration-150 ease-out"
         style={{
           transform: viewMode === 'grid' ? 'translateX(calc(100% + 2px))' : 'translateX(0)',
         }}
       />
       <span
-        className={`relative z-10 p-1.5 rounded-md transition-colors duration-200 ${
+        className={`relative z-10 p-2 sm:p-1.5 rounded-md transition-colors duration-200 ${
           viewMode === 'carousel' ? 'text-neutral-600' : 'text-neutral-400'
         }`}
       >
@@ -37,7 +37,7 @@ export default function ViewSwitcher({ viewMode, onViewModeChange }: ViewSwitche
         </svg>
       </span>
       <span
-        className={`relative z-10 p-1.5 rounded-md transition-colors duration-200 ${
+        className={`relative z-10 p-2 sm:p-1.5 rounded-md transition-colors duration-200 ${
           viewMode === 'grid' ? 'text-neutral-600' : 'text-neutral-400'
         }`}
       >
