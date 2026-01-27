@@ -54,17 +54,6 @@ export default function HumanoidCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Buy button - outside the link to avoid nested anchors */}
-      {!compareMode && humanoid.purchaseUrl && (
-        <a
-          href={humanoid.purchaseUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute top-2 right-2 z-20 opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 ease-out bg-neutral-700 hover:bg-neutral-900 text-white px-2 py-0.5 text-[13px] font-medium rounded-full whitespace-nowrap"
-        >
-          Buy
-        </a>
-      )}
 
       <CardWrapper {...cardProps as any}>
         <div

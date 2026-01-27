@@ -176,3 +176,34 @@ export const humanoids: Humanoid[] = [
     ],
   },
 ];
+
+// Hall of Fame - Pioneering and iconic humanoid robots
+export const legends: Humanoid[] = [
+  {
+    id: "legend-1",
+    name: "ASIMO",
+    manufacturer: "Honda",
+    imageUrl: "/robots/asimo.png",
+    year: 2000,
+    status: "Discontinued",
+    height: 130,
+    weight: 54,
+    dof: 57,
+    maxSpeed: 2.7,
+    description: "Honda's pioneering bipedal humanoid robot, developed over 20 years. ASIMO could run, climb stairs, and interact with humans. Retired in 2022 after inspiring a generation of humanoid robotics.",
+    media: [
+      { type: 'image', url: '/robots/asimo.png', caption: 'Full body' },
+      { type: 'image', url: '/robots/asimo-head.png', caption: 'Head detail' },
+    ],
+  },
+  {
+    id: "legend-2",
+    name: "Sophia",
+    manufacturer: "Hanson Robotics",
+    imageUrl: "/robots/sophia.png",
+    year: 2016,
+    status: "In Production",
+    height: 167,
+    description: "The world's most famous social humanoid robot. Sophia was granted Saudi Arabian citizenship in 2017, becoming the first robot to receive citizenship. Known for remarkably human-like facial expressions and AI-powered conversations.",
+  },
+];
