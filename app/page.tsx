@@ -49,32 +49,52 @@ export default function Home() {
   const insetY = windowWidth < 640 ? 60 : windowWidth < 768 ? 80 : 120;
   const topBarInset = windowWidth < 640 ? 12 : 24;
 
-  // Scale - no hover effect, just scroll position based
+  // Scale - smooth interpolation, center is larger
   const getScale = useCallback((index: number) => {
     const distance = Math.abs(index - scrollPositionRef.current);
-    if (distance < 0.5) return layoutConfig.activeScale;
-    return Math.max(layoutConfig.inactiveScale, layoutConfig.activeScale - distance * 0.08);
+    const t = Math.min(1, distance);
+    return layoutConfig.activeScale - t * (layoutConfig.activeScale - layoutConfig.inactiveScale);
   }, [layoutConfig.activeScale, layoutConfig.inactiveScale]);
 
-  // Opacity: items to the left fade out more, right stays visible but clearly different
-  const getOpacity = useCallback((index: number) => {
-    const currentPos = scrollPositionRef.current;
-    const diff = index - currentPos;
-
-    if (diff < -0.5) return 0.15;
-    if (Math.abs(diff) < 0.4) return 1;
-    return Math.max(0.3, 1 - Math.abs(diff) * 0.4);
+  // Overlay: 0 = no overlay (current), higher = more white overlay
+  const getOverlay = useCallback((index: number) => {
+    const distance = Math.abs(index - scrollPositionRef.current);
+    if (distance <= 0.3) return 0; // center card - no overlay
+    if (distance <= 1.2) return 0.35; // immediate neighbors - subtle overlay
+    if (distance <= 2.2) return 0.5; // 2 away - moderate overlay
+    // 3+ away - noticeable overlay
+    return 0.6;
   }, []);
 
-  // Scroll to specific card by finding the DOM element
+  // Vertical offset: curved arc like an orbit (flattened semi-circle)
+  const getVerticalOffset = useCallback((index: number) => {
+    const distance = index - scrollPositionRef.current;
+    // Use a parabolic curve for the orbital effect
+    // Cards at center are at the "front" (bottom), sides curve up and back
+    const curveIntensity = layoutConfig.orbitCurve / 100; // 0-0.2
+    return distance * distance * curveIntensity * layoutConfig.orbitMaxOffset;
+  }, [layoutConfig.orbitCurve, layoutConfig.orbitMaxOffset]);
+
+  // Horizontal depth offset: subtle push toward center for orbital feel
+  const getHorizontalOffset = useCallback((index: number) => {
+    const distance = index - scrollPositionRef.current;
+    // Positive values push right, negative push left (toward center)
+    const depthFactor = layoutConfig.orbitDepth / 100; // 0-0.5
+    return -distance * Math.abs(distance) * depthFactor * 10;
+  }, [layoutConfig.orbitDepth]);
+
+  // Track target index for keyboard navigation
+  const targetIndexRef = useRef(0);
+
+  // Scroll to specific card
   const scrollToCard = useCallback((index: number) => {
     const container = scrollRef.current;
     if (!container) return;
 
     const targetEl = container.querySelector(`[data-card-index="${index}"]`) as HTMLElement;
-    if (targetEl) {
-      targetEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }
+    if (!targetEl) return;
+
+    targetEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, []);
 
   // Scroll to detail view
@@ -91,22 +111,34 @@ export default function Home() {
     el.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Sync target index with current index
+  useEffect(() => {
+    targetIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showComparePanel) return;
 
+      const totalItems = humanoids.length + legends.length;
+
       switch (e.key) {
         case 'ArrowLeft':
           if (!isInDetailView && viewMode === 'carousel') {
             e.preventDefault();
-            scrollToCard(Math.max(0, currentIndex - 1));
+            // Use targetIndexRef for held keys to queue up destinations
+            const newIndex = Math.max(0, targetIndexRef.current - 1);
+            targetIndexRef.current = newIndex;
+            scrollToCard(newIndex);
           }
           break;
         case 'ArrowRight':
           if (!isInDetailView && viewMode === 'carousel') {
             e.preventDefault();
-            scrollToCard(Math.min(humanoids.length + legends.length - 1, currentIndex + 1));
+            const newIndex = Math.min(totalItems - 1, targetIndexRef.current + 1);
+            targetIndexRef.current = newIndex;
+            scrollToCard(newIndex);
           }
           break;
         case 'ArrowDown':
@@ -321,7 +353,7 @@ export default function Home() {
       style={{ backgroundColor: bgColor }}
     >
       {/* CAROUSEL SECTION */}
-      <section className={`flex-shrink-0 snap-start flex flex-col ${viewMode === 'grid' ? 'min-h-screen bg-white' : 'h-screen overflow-hidden'}`}>
+      <section className={`flex-shrink-0 snap-start flex flex-col relative ${viewMode === 'grid' ? 'min-h-screen bg-white' : 'h-screen overflow-hidden'}`}>
         {/* TOP BAR - View Switcher Only */}
         <div
           className="flex-shrink-0 relative z-20 flex justify-center"
@@ -331,7 +363,7 @@ export default function Home() {
         </div>
 
         {/* MAIN CONTENT WRAPPER */}
-        <div className={`flex-1 flex flex-col ${viewMode === 'carousel' ? 'overflow-hidden' : 'overflow-visible'}`} style={viewMode === 'carousel' ? { padding: `0 ${insetX}px` } : undefined}>
+        <div className={`flex-1 flex flex-col ${viewMode === 'carousel' ? 'overflow-hidden' : 'overflow-visible'}`} style={viewMode === 'carousel' ? { padding: `0 ${insetX}px`, paddingBottom: '8vh' } : undefined}>
           {viewMode === 'carousel' ? (
             <main
               ref={scrollRef}
@@ -349,19 +381,17 @@ export default function Home() {
                 className="flex items-end relative"
                 style={{ gap: `${layoutConfig.gap}px` }}
               >
-                <div
-                  className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent"
-                  style={{ marginLeft: -100, marginRight: -100 }}
-                />
                 {leadingSpace > 0 && <div className="flex-shrink-0" style={{ width: leadingSpace }} />}
 
                 {/* Placeholder */}
                 <div
-                  className="flex-shrink-0 gpu-accelerated transition-transform duration-300 flex items-center justify-center snap-center"
+                  data-card-index={-1}
+                  className="flex-shrink-0 gpu-accelerated flex items-center justify-center snap-center relative"
                   style={{
                     width: `${layoutConfig.cardSize}px`,
                     height: `${layoutConfig.cardSize * 2.1}px`,
-                    transitionTimingFunction: 'var(--ease-out-expo)',
+                    transform: `translateX(${getHorizontalOffset(-1)}px) translateY(${getVerticalOffset(-1)}px)`,
+                    transition: 'transform 150ms linear',
                   }}
                 >
                   <img
@@ -370,29 +400,38 @@ export default function Home() {
                     draggable={false}
                     className="h-full object-contain"
                     style={{
-                      transform: `scale(${!isInActiveZone ? layoutConfig.activeScale : layoutConfig.inactiveScale})`,
-                      opacity: !isInActiveZone ? 1 : 0.15,
-                      transition: 'transform 300ms var(--ease-out-expo), opacity 300ms var(--ease-out-expo)',
+                      transform: `scale(${getScale(-1)})`,
+                      transition: 'transform 150ms linear',
                     }}
                   />
+                  {getOverlay(-1) > 0 && (
+                    <div
+                      className="absolute inset-0 bg-white pointer-events-none"
+                      style={{
+                        opacity: getOverlay(-1),
+                        transition: 'opacity 150ms linear',
+                      }}
+                    />
+                  )}
                 </div>
 
                 {humanoids.map((humanoid, index) => (
                   <div
                     key={humanoid.id}
                     data-card-index={index}
-                    className="flex-shrink-0 gpu-accelerated transition-transform duration-300 snap-center"
+                    className="flex-shrink-0 gpu-accelerated snap-center"
                     style={{
                       width: `${layoutConfig.cardSize}px`,
                       height: `${layoutConfig.cardSize * 2.1}px`,
-                      transitionTimingFunction: 'var(--ease-out-expo)',
+                      transform: `translateX(${getHorizontalOffset(index)}px) translateY(${getVerticalOffset(index)}px)`,
+                      transition: 'transform 150ms linear',
                     }}
                   >
                     <HumanoidCard
                       humanoid={humanoid}
                       config={config}
                       scale={getScale(index)}
-                      opacity={getOpacity(index)}
+                      overlay={getOverlay(index)}
                       compareMode={compareMode}
                       isSelected={selectedIds.includes(humanoid.id)}
                       onToggleSelect={handleToggleSelect}
@@ -419,18 +458,19 @@ export default function Home() {
                   <div
                     key={legend.id}
                     data-card-index={humanoids.length + index}
-                    className="flex-shrink-0 gpu-accelerated transition-transform duration-300 snap-center"
+                    className="flex-shrink-0 gpu-accelerated snap-center"
                     style={{
                       width: `${layoutConfig.cardSize}px`,
                       height: `${layoutConfig.cardSize * 2.1}px`,
-                      transitionTimingFunction: 'var(--ease-out-expo)',
+                      transform: `translateX(${getHorizontalOffset(humanoids.length + index)}px) translateY(${getVerticalOffset(humanoids.length + index)}px)`,
+                      transition: 'transform 150ms linear',
                     }}
                   >
                     <HumanoidCard
                       humanoid={legend}
                       config={config}
                       scale={getScale(humanoids.length + index)}
-                      opacity={getOpacity(humanoids.length + index)}
+                      overlay={getOverlay(humanoids.length + index)}
                       compareMode={compareMode}
                       isSelected={selectedIds.includes(legend.id)}
                       onToggleSelect={handleToggleSelect}
@@ -461,6 +501,24 @@ export default function Home() {
             </main>
           )}
 
+
+          {/* BUY BUTTON */}
+          {viewMode === 'carousel' && (
+            <div className="flex-shrink-0 relative z-20 flex justify-center h-8">
+              {activeHumanoid?.purchaseUrl && showActiveInfo && (
+                <a
+                  key={`buy-${activeHumanoid.id}`}
+                  href={activeHumanoid.purchaseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="animate-blur-fade buy-button-glass"
+                >
+                  Buy
+                </a>
+              )}
+            </div>
+          )}
+
           {/* LABEL */}
           <div className="flex-shrink-0 relative z-20 flex items-center justify-center py-4">
             {!showActiveInfo || !activeHumanoid ? (
@@ -481,116 +539,193 @@ export default function Home() {
             <div className="flex-shrink-0 relative z-20 flex justify-center items-center gap-3 pb-4">
               <div
                 ref={minimapRef}
-                className="relative bg-neutral-50/80 backdrop-blur-sm rounded-full cursor-pointer overflow-hidden border border-neutral-100 select-none transition-all duration-300"
+                className="relative cursor-pointer select-none transition-all duration-300"
                 style={{
                   width: windowWidth < 640
-                    ? `${Math.max(120, (humanoids.length + legends.length) * 12 + 40)}px`
+                    ? `${Math.max(140, (humanoids.length + legends.length) * 14 + 40)}px`
                     : minimapStyle === 'thumbnails'
-                      ? `${Math.max(200, (humanoids.length + legends.length) * 24 + 56)}px`
-                      : `${Math.max(120, (humanoids.length + legends.length) * 12 + 40)}px`,
-                  height: windowWidth < 640 ? '32px' : minimapStyle === 'thumbnails' ? '40px' : '28px'
+                      ? `${Math.max(220, (humanoids.length + legends.length) * 26 + 56)}px`
+                      : `${Math.max(140, (humanoids.length + legends.length) * 14 + 40)}px`,
+                  height: windowWidth < 640 ? '40px' : minimapStyle === 'thumbnails' ? '48px' : '36px'
                 }}
                 onMouseDown={handleMinimapMouseDown}
                 onTouchStart={handleMinimapTouchStart}
                 onDragStart={(e) => e.preventDefault()}
               >
                 {(windowWidth < 640 || minimapStyle === 'dots') ? (
-                  /* Dots style - sleek minimal (forced on mobile) */
-                  <div className="absolute inset-0 flex items-center justify-center px-4 gap-2 pointer-events-none">
-                    <div
-                      className={`w-3 h-3 sm:w-2 sm:h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
-                        !isInActiveZone
-                          ? 'bg-neutral-800 scale-125'
-                          : 'bg-neutral-300 scale-100'
-                      }`}
-                    />
-                    {humanoids.map((_, i) => (
-                      <div
-                        key={i}
-                        className={`w-3 h-3 sm:w-2 sm:h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
-                          i === currentIndex && isInActiveZone
-                            ? 'bg-neutral-800 scale-125'
-                            : 'bg-neutral-300 scale-100'
-                        }`}
-                      />
-                    ))}
-                    <div className="w-px h-2 bg-neutral-300 mx-0.5 flex-shrink-0" />
-                    {legends.map((_, i) => (
-                      <div
-                        key={`legend-${i}`}
-                        className={`w-3 h-3 sm:w-2 sm:h-2 rounded-full flex-shrink-0 transition-all duration-200 ${
-                          humanoids.length + i === currentIndex && isInActiveZone
-                            ? 'bg-amber-500 scale-125'
-                            : 'bg-amber-200 scale-100'
-                        }`}
-                      />
-                    ))}
+                  /* Dots style - orbital arc arrangement */
+                  <div className="absolute inset-0 pointer-events-none">
+                    {(() => {
+                      const totalItems = 1 + humanoids.length + legends.length; // +1 for placeholder
+                      const arcHeight = windowWidth < 640 ? 8 : 6; // vertical arc amplitude
+                      return (
+                        <>
+                          {/* Placeholder dot */}
+                          {(() => {
+                            const normalizedPos = 0 / (totalItems - 1); // 0 to 1
+                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
+                            return (
+                              <div
+                                key="placeholder"
+                                className={`absolute w-3 h-3 sm:w-2 sm:h-2 rounded-full transition-all duration-200 ${
+                                  !isInActiveZone
+                                    ? 'bg-neutral-800 scale-125'
+                                    : 'bg-neutral-300 scale-100'
+                                }`}
+                                style={{
+                                  left: `${8 + normalizedPos * 84}%`,
+                                  top: `50%`,
+                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
+                                }}
+                              />
+                            );
+                          })()}
+                          {/* Humanoid dots */}
+                          {humanoids.map((_, i) => {
+                            const itemIndex = i + 1; // +1 for placeholder
+                            const normalizedPos = itemIndex / (totalItems - 1);
+                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
+                            return (
+                              <div
+                                key={i}
+                                className={`absolute w-3 h-3 sm:w-2 sm:h-2 rounded-full transition-all duration-200 ${
+                                  i === currentIndex && isInActiveZone
+                                    ? 'bg-neutral-800 scale-125'
+                                    : 'bg-neutral-300 scale-100'
+                                }`}
+                                style={{
+                                  left: `${8 + normalizedPos * 84}%`,
+                                  top: `50%`,
+                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
+                                }}
+                              />
+                            );
+                          })}
+                          {/* Legend dots */}
+                          {legends.map((_, i) => {
+                            const itemIndex = humanoids.length + 1 + i; // +1 for placeholder
+                            const normalizedPos = itemIndex / (totalItems - 1);
+                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
+                            return (
+                              <div
+                                key={`legend-${i}`}
+                                className={`absolute w-3 h-3 sm:w-2 sm:h-2 rounded-full transition-all duration-200 ${
+                                  humanoids.length + i === currentIndex && isInActiveZone
+                                    ? 'bg-amber-500 scale-125'
+                                    : 'bg-amber-200 scale-100'
+                                }`}
+                                style={{
+                                  left: `${8 + normalizedPos * 84}%`,
+                                  top: `50%`,
+                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
+                                }}
+                              />
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
-                  /* Thumbnail style (desktop only) */
-                  <div className="absolute inset-0 flex items-center justify-center px-3 gap-1 pointer-events-none">
-                    <div
-                      className={`w-5 h-5 rounded-full flex-shrink-0 transition-all duration-200 overflow-hidden border-2 ${
-                        !isInActiveZone ? 'border-neutral-400 scale-110' : 'border-transparent scale-100 opacity-50'
-                      }`}
-                    >
-                      <img
-                        src="/robots/placeholder.png"
-                        alt="Index"
-                        draggable={false}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    {humanoids.map((h, i) => (
-                      <div
-                        key={h.id}
-                        className={`w-5 h-5 rounded-full flex-shrink-0 transition-all duration-200 overflow-hidden border-2 ${
-                          i === currentIndex && isInActiveZone
-                            ? 'border-neutral-400 scale-110'
-                            : 'border-transparent scale-100 opacity-60'
-                        }`}
-                      >
-                        <img
-                          src={h.imageUrl || '/robots/placeholder.png'}
-                          alt={h.name}
-                          draggable={false}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
-                    <div className="w-px h-4 bg-neutral-300 mx-1 flex-shrink-0" />
-                    {legends.map((h, i) => (
-                      <div
-                        key={h.id}
-                        className={`w-5 h-5 rounded-full flex-shrink-0 transition-all duration-200 overflow-hidden border-2 ${
-                          humanoids.length + i === currentIndex && isInActiveZone
-                            ? 'border-amber-400 scale-110'
-                            : 'border-transparent scale-100 opacity-60'
-                        }`}
-                      >
-                        <img
-                          src={h.imageUrl || '/robots/placeholder.png'}
-                          alt={h.name}
-                          draggable={false}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
+                  /* Thumbnail style (desktop only) - orbital arc arrangement */
+                  <div className="absolute inset-0 pointer-events-none">
+                    {(() => {
+                      const totalItems = 1 + humanoids.length + legends.length;
+                      const arcHeight = 8; // vertical arc amplitude
+                      return (
+                        <>
+                          {/* Placeholder thumbnail */}
+                          {(() => {
+                            const normalizedPos = 0 / (totalItems - 1);
+                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
+                            return (
+                              <div
+                                key="placeholder"
+                                className={`absolute w-5 h-5 rounded-full transition-all duration-200 overflow-hidden border-2 ${
+                                  !isInActiveZone ? 'border-neutral-400 scale-110' : 'border-transparent scale-100 opacity-50'
+                                }`}
+                                style={{
+                                  left: `${6 + normalizedPos * 88}%`,
+                                  top: `50%`,
+                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
+                                }}
+                              >
+                                <img
+                                  src="/robots/placeholder.png"
+                                  alt="Index"
+                                  draggable={false}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            );
+                          })()}
+                          {/* Humanoid thumbnails */}
+                          {humanoids.map((h, i) => {
+                            const itemIndex = i + 1;
+                            const normalizedPos = itemIndex / (totalItems - 1);
+                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
+                            return (
+                              <div
+                                key={h.id}
+                                className={`absolute w-5 h-5 rounded-full transition-all duration-200 overflow-hidden border-2 ${
+                                  i === currentIndex && isInActiveZone
+                                    ? 'border-neutral-400 scale-110'
+                                    : 'border-transparent scale-100 opacity-60'
+                                }`}
+                                style={{
+                                  left: `${6 + normalizedPos * 88}%`,
+                                  top: `50%`,
+                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
+                                }}
+                              >
+                                <img
+                                  src={h.imageUrl || '/robots/placeholder.png'}
+                                  alt={h.name}
+                                  draggable={false}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            );
+                          })}
+                          {/* Legend thumbnails */}
+                          {legends.map((h, i) => {
+                            const itemIndex = humanoids.length + 1 + i;
+                            const normalizedPos = itemIndex / (totalItems - 1);
+                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
+                            return (
+                              <div
+                                key={h.id}
+                                className={`absolute w-5 h-5 rounded-full transition-all duration-200 overflow-hidden border-2 ${
+                                  humanoids.length + i === currentIndex && isInActiveZone
+                                    ? 'border-amber-400 scale-110'
+                                    : 'border-transparent scale-100 opacity-60'
+                                }`}
+                                style={{
+                                  left: `${6 + normalizedPos * 88}%`,
+                                  top: `50%`,
+                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
+                                }}
+                              >
+                                <img
+                                  src={h.imageUrl || '/robots/placeholder.png'}
+                                  alt={h.name}
+                                  draggable={false}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
-                <div
-                  className="absolute top-1 bottom-1 bg-neutral-900/10 rounded-full pointer-events-none transition-all duration-150"
-                  style={{
-                    width: `${Math.max(15, viewportRatio * 100)}%`,
-                    left: `${scrollProgress * (100 - Math.max(15, viewportRatio * 100))}%`,
-                  }}
-                />
               </div>
 
               {/* Minimap style toggle - hidden on mobile */}
               <button
                 onClick={() => setMinimapStyle(minimapStyle === 'thumbnails' ? 'dots' : 'thumbnails')}
-                className="hidden sm:block p-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors"
+                className="hidden sm:block p-1.5 rounded-full hover:bg-neutral-200 transition-colors"
                 title={minimapStyle === 'thumbnails' ? 'Switch to dots' : 'Switch to thumbnails'}
               >
                 {minimapStyle === 'thumbnails' ? (
@@ -611,28 +746,27 @@ export default function Home() {
             </div>
           )}
 
-          {/* Scroll down indicator */}
-          {viewMode === 'carousel' && (
-            <div
-              className="flex-shrink-0 flex justify-center overflow-hidden transition-all duration-300 ease-out"
-              style={{
-                maxHeight: isInActiveZone && !isInDetailView ? '48px' : '0px',
-                opacity: isInActiveZone && !isInDetailView ? 1 : 0,
-                paddingBottom: isInActiveZone && !isInDetailView ? '8px' : '0px',
-              }}
-            >
-              <button
-                onClick={scrollToDetail}
-                className="flex flex-col items-center gap-1 text-neutral-400 hover:text-neutral-600 transition-colors animate-pulse"
-              >
-                <span className="text-[11px] uppercase tracking-wider">More details</span>
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 5v14M5 12l7 7 7-7" />
-                </svg>
-              </button>
-            </div>
-          )}
         </div>
+
+        {/* Scroll down indicator - positioned at bottom */}
+        {viewMode === 'carousel' && (
+          <div
+            className="absolute bottom-4 left-0 right-0 flex justify-center transition-all duration-300 ease-out pointer-events-none"
+            style={{
+              opacity: isInActiveZone && !isInDetailView ? 1 : 0,
+            }}
+          >
+            <button
+              onClick={scrollToDetail}
+              className="flex flex-col items-center gap-1 text-neutral-400 hover:text-neutral-600 transition-colors animate-pulse pointer-events-auto"
+            >
+              <span className="text-[11px] uppercase tracking-wider">More details</span>
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12l7 7 7-7" />
+              </svg>
+            </button>
+          </div>
+        )}
 
       </section>
 
@@ -662,17 +796,6 @@ export default function Home() {
       {/* AI Chatbot */}
       <ChatBot />
 
-      {/* Buy button - shows when current humanoid has purchaseUrl */}
-      {activeHumanoid?.purchaseUrl && showActiveInfo && (
-        <a
-          href={activeHumanoid.purchaseUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fixed bottom-20 right-4 sm:bottom-28 sm:right-20 z-30 bg-neutral-800 hover:bg-neutral-900 text-white px-3.5 py-1.5 text-[13px] font-medium rounded-full transition-colors duration-200 shadow-lg"
-        >
-          Buy
-        </a>
-      )}
 
       {/* Bottom Left Buttons */}
       <div className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-30 flex items-center gap-2">

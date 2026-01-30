@@ -87,11 +87,11 @@ export default function GridView({
                   src={humanoid.imageUrl || "/robots/placeholder.png"}
                   alt={humanoid.name}
                   draggable={false}
-                  className="w-full h-full object-contain p-6"
+                  className="w-full h-full object-contain p-8"
                 />
 
                 {/* Top info - appears on hover */}
-                <div className="absolute inset-x-0 top-0 p-3 flex justify-between items-start opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
+                <div className="absolute inset-x-0 top-0 p-3 group-hover:p-2 flex justify-between items-start opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
                   <span className="px-2 py-0.5 bg-white rounded-full font-mono text-[13px] font-medium text-neutral-500">
                     {humanoid.cost || "N/A"}
                   </span>
@@ -103,7 +103,7 @@ export default function GridView({
                 </div>
 
                 {/* Bottom info - appears on hover */}
-                <div className="absolute inset-x-0 bottom-0 p-3 flex justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
+                <div className="absolute inset-x-0 bottom-0 p-3 group-hover:p-2 flex justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
                   <div className="flex gap-3 px-2 py-0.5 bg-white/80 backdrop-blur-sm rounded-full">
                     {humanoid.height && (
                       <span className="font-mono text-[13px] font-medium text-neutral-500">
@@ -128,12 +128,27 @@ export default function GridView({
               </div>
 
               {/* Label */}
-              <div className="mt-2 mb-4 text-center px-1">
-                <div className="text-sm font-medium text-neutral-800 truncate">
-                  {humanoid.name}
+              <div className="mt-2 mb-4 px-1 flex items-center gap-2">
+                <div className="w-6 h-6 flex-shrink-0 rounded bg-neutral-100 flex items-center justify-center overflow-hidden">
+                  {humanoid.logoUrl ? (
+                    <img
+                      src={humanoid.logoUrl}
+                      alt={humanoid.manufacturer}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-[8px] font-medium text-neutral-400">
+                      {humanoid.manufacturer.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
                 </div>
-                <div className="text-xs text-neutral-400 truncate mt-0.5">
-                  {humanoid.manufacturer}
+                <div className="min-w-0 text-left leading-tight">
+                  <div className="text-[13px] font-medium text-neutral-800 truncate">
+                    {humanoid.name}
+                  </div>
+                  <div className="text-[11px] text-neutral-400 truncate">
+                    {humanoid.manufacturer}
+                  </div>
                 </div>
               </div>
             </CardWrapper>
