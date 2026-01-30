@@ -9,7 +9,7 @@ interface HumanoidCardProps {
   humanoid: Humanoid;
   config: ViewConfig;
   scale?: number;
-  opacity?: number;
+  overlay?: number; // 0 = no overlay, 1 = fully white
   compareMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
@@ -19,7 +19,7 @@ export default function HumanoidCard({
   humanoid,
   config,
   scale = 1,
-  opacity = 1,
+  overlay = 0,
   compareMode = false,
   isSelected = false,
   onToggleSelect
@@ -83,11 +83,20 @@ export default function HumanoidCard({
             className="h-full object-contain"
             style={{
               transform: `scale(${scale})`,
-              opacity,
-              transition: 'transform 300ms var(--ease-out-expo), opacity 300ms var(--ease-out-expo)',
-              willChange: 'transform, opacity',
+              transition: 'transform 150ms linear',
+              willChange: 'transform',
             }}
           />
+          {/* White overlay for non-current cards */}
+          {overlay > 0 && (
+            <div
+              className="absolute inset-0 bg-white pointer-events-none"
+              style={{
+                opacity: overlay,
+                transition: 'opacity 150ms linear',
+              }}
+            />
+          )}
         </div>
       </CardWrapper>
     </div>

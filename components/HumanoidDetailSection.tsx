@@ -11,17 +11,6 @@ interface HumanoidDetailSectionProps {
 export default function HumanoidDetailSection({ humanoid, isActive, onScrollUp }: HumanoidDetailSectionProps) {
   return (
     <div className="min-h-screen w-full px-4 sm:px-8 md:px-16 lg:px-32 py-16">
-      {/* Back to carousel button */}
-      <button
-        onClick={onScrollUp}
-        className="fixed top-8 left-8 z-50 flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full text-neutral-600 hover:text-neutral-900 transition-colors shadow-lg border border-neutral-100"
-      >
-        <svg className="w-4 h-4 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 5v14M5 12l7 7 7-7" />
-        </svg>
-        <span className="text-[13px] font-medium">Back</span>
-      </button>
-
       {/* Main content */}
       <div className="max-w-6xl mx-auto">
         {/* Header */}

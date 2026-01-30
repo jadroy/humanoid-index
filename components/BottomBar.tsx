@@ -11,16 +11,24 @@ export interface LayoutConfig {
   margins: number;
   gridCardSize: number;
   gridGap: number;
+  // Orbital parameters
+  orbitCurve: number;      // curve intensity (0-20)
+  orbitMaxOffset: number;  // max vertical offset (50-200)
+  orbitDepth: number;      // horizontal depth compression (0-50)
 }
 
 export const defaultLayoutConfig: LayoutConfig = {
   cardSize: 140,
-  gap: 280,
+  gap: 120,
   activeScale: 1.15,
   inactiveScale: 0.95,
   margins: 12,
   gridCardSize: 220,
   gridGap: 24,
+  // Orbital defaults
+  orbitCurve: 8,
+  orbitMaxOffset: 120,
+  orbitDepth: 15,
 };
 
 interface BottomBarProps {
@@ -118,6 +126,40 @@ export default function BottomBar({
                 max={20}
                 value={layoutConfig.margins}
                 onChange={(e) => onLayoutConfigChange({ ...layoutConfig, margins: Number(e.target.value) })}
+                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+              />
+            </div>
+            {/* Orbital controls */}
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="text-[13px] text-neutral-400">Curve</span>
+              <input
+                type="range"
+                min={0}
+                max={20}
+                value={layoutConfig.orbitCurve}
+                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, orbitCurve: Number(e.target.value) })}
+                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+              />
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="text-[13px] text-neutral-400">Arc</span>
+              <input
+                type="range"
+                min={50}
+                max={200}
+                value={layoutConfig.orbitMaxOffset}
+                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, orbitMaxOffset: Number(e.target.value) })}
+                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+              />
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="text-[13px] text-neutral-400">Depth</span>
+              <input
+                type="range"
+                min={0}
+                max={50}
+                value={layoutConfig.orbitDepth}
+                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, orbitDepth: Number(e.target.value) })}
                 className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
               />
             </div>
