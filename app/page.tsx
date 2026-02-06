@@ -19,21 +19,22 @@ export default function Home() {
   const [compareMode, setCompareMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showComparePanel, setShowComparePanel] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(2); // Start on Memo
   const [scrollProgress, setScrollProgress] = useState(0);
   const [viewportRatio, setViewportRatio] = useState(0.2);
-  const [isInActiveZone, setIsInActiveZone] = useState(false);
+  const [isInActiveZone, setIsInActiveZone] = useState(true); // Start on Memo
   const [viewMode, setViewMode] = useState<ViewMode>('carousel');
   const [hoveredHumanoid, setHoveredHumanoid] = useState<Humanoid | null>(null);
   const [isInDetailView, setIsInDetailView] = useState(false);
   const [showControls, setShowControls] = useState(false);
-  const [minimapStyle, setMinimapStyle] = useState<'thumbnails' | 'dots'>('thumbnails');
+  const [minimapStyle, setMinimapStyle] = useState<'thumbnails' | 'dots'>('dots');
+  const [hideUI, setHideUI] = useState(false);
   const [windowWidth, setWindowWidth] = useState(1200);
 
   const pageScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const minimapRef = useRef<HTMLDivElement>(null);
-  const scrollPositionRef = useRef(0);
+  const scrollPositionRef = useRef(2); // Start on Memo
   const isDraggingMinimapRef = useRef(false);
 
   // Window width tracking
@@ -83,8 +84,17 @@ export default function Home() {
     return -distance * Math.abs(distance) * depthFactor * 10;
   }, [layoutConfig.orbitDepth]);
 
+  // Bottom fade: cards on edges fade in from bottom
+  const getBottomFade = useCallback((index: number) => {
+    const distance = Math.abs(index - scrollPositionRef.current);
+    if (distance <= 1.5) return 0; // center and immediate neighbors - no fade
+    if (distance <= 2.5) return 0.3; // 2 away - subtle fade
+    if (distance <= 3.5) return 0.6; // 3 away - moderate fade
+    return 0.85; // 4+ away - strong fade
+  }, []);
+
   // Track target index for keyboard navigation
-  const targetIndexRef = useRef(0);
+  const targetIndexRef = useRef(2); // Start on Memo
 
   // Scroll to specific card
   const scrollToCard = useCallback((index: number) => {
@@ -115,6 +125,20 @@ export default function Home() {
   useEffect(() => {
     targetIndexRef.current = currentIndex;
   }, [currentIndex]);
+
+  // Scroll to initial position (Memo) on mount
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      const targetEl = container.querySelector('[data-card-index="2"]') as HTMLElement;
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'instant', inline: 'center', block: 'nearest' });
+      }
+    });
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {
@@ -162,6 +186,13 @@ export default function Home() {
         case 'Enter':
           if (!compareMode && !isInDetailView) {
             router.push(`/robot/${humanoids[currentIndex].id}`);
+          }
+          break;
+        case 'H':
+        case 'h':
+          if (e.shiftKey) {
+            e.preventDefault();
+            setHideUI(prev => !prev);
           }
           break;
       }
@@ -353,8 +384,8 @@ export default function Home() {
       style={{ backgroundColor: bgColor }}
     >
       {/* CAROUSEL SECTION */}
-      <section className={`flex-shrink-0 snap-start flex flex-col relative ${viewMode === 'grid' ? 'min-h-screen bg-white' : 'h-screen overflow-hidden'}`}>
-        {/* TOP BAR - View Switcher Only */}
+      <section className={`flex-shrink-0 snap-start flex flex-col relative ${viewMode === 'grid' ? 'min-h-screen bg-white' : 'h-screen overflow-x-hidden'}`}>
+        {/* TOP BAR - View Switcher Only (always visible) */}
         <div
           className="flex-shrink-0 relative z-20 flex justify-center"
           style={{ padding: `${topBarInset}px ${insetX}px` }}
@@ -363,7 +394,7 @@ export default function Home() {
         </div>
 
         {/* MAIN CONTENT WRAPPER */}
-        <div className={`flex-1 flex flex-col ${viewMode === 'carousel' ? 'overflow-hidden' : 'overflow-visible'}`} style={viewMode === 'carousel' ? { padding: `0 ${insetX}px`, paddingBottom: '8vh' } : undefined}>
+        <div className={`flex-1 flex flex-col ${viewMode === 'carousel' ? 'overflow-x-hidden' : 'overflow-visible'}`} style={viewMode === 'carousel' ? { padding: `0 ${insetX}px`, paddingBottom: '8vh' } : undefined}>
           {viewMode === 'carousel' ? (
             <main
               ref={scrollRef}
@@ -432,6 +463,7 @@ export default function Home() {
                       config={config}
                       scale={getScale(index)}
                       overlay={getOverlay(index)}
+                      bottomFade={getBottomFade(index)}
                       compareMode={compareMode}
                       isSelected={selectedIds.includes(humanoid.id)}
                       onToggleSelect={handleToggleSelect}
@@ -471,6 +503,7 @@ export default function Home() {
                       config={config}
                       scale={getScale(humanoids.length + index)}
                       overlay={getOverlay(humanoids.length + index)}
+                      bottomFade={getBottomFade(humanoids.length + index)}
                       compareMode={compareMode}
                       isSelected={selectedIds.includes(legend.id)}
                       onToggleSelect={handleToggleSelect}
@@ -536,7 +569,7 @@ export default function Home() {
 
           {/* MINIMAP */}
           {viewMode === 'carousel' && (
-            <div className="flex-shrink-0 relative z-20 flex justify-center items-center gap-3 pb-4">
+            <div className="flex-shrink-0 relative z-20 flex justify-center pb-4">
               <div
                 ref={minimapRef}
                 className="relative cursor-pointer select-none transition-all duration-300"
@@ -721,28 +754,6 @@ export default function Home() {
                   </div>
                 )}
               </div>
-
-              {/* Minimap style toggle - hidden on mobile */}
-              <button
-                onClick={() => setMinimapStyle(minimapStyle === 'thumbnails' ? 'dots' : 'thumbnails')}
-                className="hidden sm:block p-1.5 rounded-full hover:bg-neutral-200 transition-colors"
-                title={minimapStyle === 'thumbnails' ? 'Switch to dots' : 'Switch to thumbnails'}
-              >
-                {minimapStyle === 'thumbnails' ? (
-                  <svg className="w-3.5 h-3.5 text-neutral-500" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="6" cy="12" r="2" />
-                    <circle cx="12" cy="12" r="2" />
-                    <circle cx="18" cy="12" r="2" />
-                  </svg>
-                ) : (
-                  <svg className="w-3.5 h-3.5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="7" height="7" rx="1" />
-                    <rect x="14" y="3" width="7" height="7" rx="1" />
-                    <rect x="3" y="14" width="7" height="7" rx="1" />
-                    <rect x="14" y="14" width="7" height="7" rx="1" />
-                  </svg>
-                )}
-              </button>
             </div>
           )}
 
@@ -794,39 +805,64 @@ export default function Home() {
       )}
 
       {/* AI Chatbot */}
-      <ChatBot />
+      {!hideUI && <ChatBot />}
 
+      {/* Minimap style toggle - bottom right, hidden on mobile */}
+      {!hideUI && viewMode === 'carousel' && (
+        <button
+          onClick={() => setMinimapStyle(minimapStyle === 'thumbnails' ? 'dots' : 'thumbnails')}
+          className="hidden sm:block fixed bottom-6 right-6 z-30 p-2.5 rounded-full bg-white text-neutral-500 shadow-md hover:shadow-lg hover:bg-neutral-50 transition-all"
+          title={minimapStyle === 'thumbnails' ? 'Switch to dots' : 'Switch to thumbnails'}
+        >
+          {minimapStyle === 'thumbnails' ? (
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="6" cy="12" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="18" cy="12" r="2" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+          )}
+        </button>
+      )}
 
       {/* Bottom Left Buttons */}
-      <div className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-30 flex items-center gap-2">
-        <button
-          onClick={() => setShowControls(!showControls)}
-          className={`p-2.5 rounded-full text-[13px] font-medium transition-all ${
-            showControls
-              ? 'bg-neutral-900 text-white'
-              : 'bg-white text-neutral-600 shadow-md hover:shadow-lg'
-          }`}
-          title="Toggle controls"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        </button>
-        <button
-          onClick={() => compareMode ? handleExitCompareMode() : setCompareMode(true)}
-          className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
-            compareMode
-              ? 'bg-neutral-900 text-white'
-              : 'bg-white text-neutral-600 shadow-md hover:shadow-lg'
-          }`}
-        >
-          {compareMode ? 'Exit Compare' : 'Compare'}
-        </button>
-      </div>
+      {!hideUI && (
+        <div className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-30 flex items-center gap-2">
+          <button
+            onClick={() => setShowControls(!showControls)}
+            className={`p-2.5 rounded-full text-[13px] font-medium transition-all ${
+              showControls
+                ? 'bg-neutral-900 text-white'
+                : 'bg-white text-neutral-600 shadow-md hover:shadow-lg'
+            }`}
+            title="Toggle controls"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+          <button
+            onClick={() => compareMode ? handleExitCompareMode() : setCompareMode(true)}
+            className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
+              compareMode
+                ? 'bg-neutral-900 text-white'
+                : 'bg-white text-neutral-600 shadow-md hover:shadow-lg'
+            }`}
+          >
+            {compareMode ? 'Exit Compare' : 'Compare'}
+          </button>
+        </div>
+      )}
 
       {/* Controls Panel */}
-      {showControls && (
+      {!hideUI && showControls && (
         <div className="fixed bottom-20 left-4 sm:left-6 z-30">
           <BottomBar
             config={config}

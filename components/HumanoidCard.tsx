@@ -10,6 +10,7 @@ interface HumanoidCardProps {
   config: ViewConfig;
   scale?: number;
   overlay?: number; // 0 = no overlay, 1 = fully white
+  bottomFade?: number; // 0 = no fade, 1 = full fade from bottom
   compareMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
@@ -20,6 +21,7 @@ export default function HumanoidCard({
   config,
   scale = 1,
   overlay = 0,
+  bottomFade = 0,
   compareMode = false,
   isSelected = false,
   onToggleSelect
@@ -93,6 +95,18 @@ export default function HumanoidCard({
               className="absolute inset-0 bg-white pointer-events-none"
               style={{
                 opacity: overlay,
+                transition: 'opacity 150ms linear',
+              }}
+            />
+          )}
+          {/* Bottom fade gradient for edge cards */}
+          {bottomFade > 0 && (
+            <div
+              className="absolute inset-x-0 bottom-0 pointer-events-none"
+              style={{
+                height: '40%',
+                background: 'linear-gradient(to bottom, transparent 0%, white 100%)',
+                opacity: bottomFade,
                 transition: 'opacity 150ms linear',
               }}
             />

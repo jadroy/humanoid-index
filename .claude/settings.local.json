@@ -7,7 +7,12 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git checkout:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git push)",
+      "Bash(npm run dev:*)",
+      "Bash(pkill:*)",
+      "Bash(npx next dev:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

@@ -22,9 +22,12 @@ export default function GridView({
   onHoverChange,
 }: GridViewProps) {
   return (
-    <div className="w-full min-h-full px-4 sm:px-6 py-6 bg-white">
+    <div className="w-full min-h-full bg-white">
       <div
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2"
+        className="grid w-full"
+        style={{
+          gridTemplateColumns: `repeat(${layoutConfig.gridColumns}, 1fr)`,
+        }}
       >
         {humanoids.map((humanoid, index) => {
           const isSelected = selectedIds.includes(humanoid.id);
@@ -41,116 +44,78 @@ export default function GridView({
             ? { onClick: handleClick }
             : { href: `/robot/${humanoid.id}` };
 
+          const borderOpacity = layoutConfig.gridBorderOpacity / 100;
+
           return (
             <CardWrapper
               key={humanoid.id}
               {...(cardProps as any)}
-              className="relative group cursor-pointer animate-fade-in-up flex flex-col"
+              className={`relative group cursor-pointer flex flex-col items-center justify-center aspect-square ${
+                isSelected ? "bg-neutral-100" : ""
+              }`}
+              style={{
+                borderRight: `1px solid rgba(0,0,0,${borderOpacity * 0.1})`,
+                borderBottom: `1px solid rgba(0,0,0,${borderOpacity * 0.1})`,
+              }}
               onMouseEnter={() => onHoverChange(humanoid)}
               onMouseLeave={() => onHoverChange(null)}
-              style={{
-                animationDelay: `${index * 20}ms`,
-                animationFillMode: 'backwards',
-              }}
             >
-              <div
-                className={`relative overflow-hidden rounded-xl bg-neutral-50 transition-colors duration-300 aspect-[3/4] ${
-                  isSelected ? "ring-2 ring-neutral-900" : ""
-                } hover:bg-neutral-100`}
-              >
-                {/* Compare mode selection indicator */}
-                {compareMode && (
-                  <div
-                    className={`absolute top-3 right-3 z-20 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
-                      isSelected
-                        ? "bg-neutral-900 border-neutral-900"
-                        : "bg-white/80 border-neutral-300"
-                    }`}
-                  >
-                    {isSelected && (
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="3"
-                      >
-                        <path d="M5 12l5 5L20 7" />
-                      </svg>
-                    )}
-                  </div>
-                )}
-
-                {/* Image */}
-                <img
-                  src={humanoid.imageUrl || "/robots/placeholder.png"}
-                  alt={humanoid.name}
-                  draggable={false}
-                  className="w-full h-full object-contain p-8"
-                />
-
-                {/* Top info - appears on hover */}
-                <div className="absolute inset-x-0 top-0 p-3 group-hover:p-2 flex justify-between items-start opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
-                  <span className="px-2 py-0.5 bg-white rounded-full font-mono text-[13px] font-medium text-neutral-500">
-                    {humanoid.cost || "N/A"}
-                  </span>
-                  {humanoid.purchaseUrl && (
-                    <span className="px-3 py-0.5 bg-neutral-700 rounded-full font-mono text-[13px] font-medium text-white">
-                      Buy
-                    </span>
-                  )}
-                </div>
-
-                {/* Bottom info - appears on hover */}
-                <div className="absolute inset-x-0 bottom-0 p-3 group-hover:p-2 flex justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out">
-                  <div className="flex gap-3 px-2 py-0.5 bg-white/80 backdrop-blur-sm rounded-full">
-                    {humanoid.height && (
-                      <span className="font-mono text-[13px] font-medium text-neutral-500">
-                        {humanoid.height}cm
-                      </span>
-                    )}
-                    {humanoid.weight && (
-                      <span className="font-mono text-[13px] font-medium text-neutral-500">
-                        {humanoid.weight}kg
-                      </span>
-                    )}
-                    {humanoid.maxSpeed && (
-                      <span className="font-mono text-[13px] font-medium text-neutral-500">
-                        {humanoid.maxSpeed}m/s
-                      </span>
-                    )}
-                    {!humanoid.height && !humanoid.weight && !humanoid.maxSpeed && (
-                      <span className="font-mono text-[13px] font-medium text-neutral-500">No specs</span>
-                    )}
-                  </div>
-                </div>
+              {/* Sci-fi corner brackets - appear on hover */}
+              <div className="absolute inset-4 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-100 z-10">
+                {/* Top left */}
+                <div className="absolute top-0 left-0 w-4 h-4 border-l border-t border-neutral-300" />
+                {/* Top right */}
+                <div className="absolute top-0 right-0 w-4 h-4 border-r border-t border-neutral-300" />
+                {/* Bottom left */}
+                <div className="absolute bottom-0 left-0 w-4 h-4 border-l border-b border-neutral-300" />
+                {/* Bottom right */}
+                <div className="absolute bottom-0 right-0 w-4 h-4 border-r border-b border-neutral-300" />
               </div>
 
-              {/* Label */}
-              <div className="mt-2 mb-4 px-1 flex items-center gap-2">
-                <div className="w-6 h-6 flex-shrink-0 rounded bg-neutral-100 flex items-center justify-center overflow-hidden">
-                  {humanoid.logoUrl ? (
-                    <img
-                      src={humanoid.logoUrl}
-                      alt={humanoid.manufacturer}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-[8px] font-medium text-neutral-400">
-                      {humanoid.manufacturer.slice(0, 2).toUpperCase()}
-                    </span>
+              {/* Compare mode selection indicator */}
+              {compareMode && (
+                <div
+                  className={`absolute top-3 right-3 z-20 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-100 ${
+                    isSelected
+                      ? "bg-neutral-900 border-neutral-900"
+                      : "bg-white/80 border-neutral-300"
+                  }`}
+                >
+                  {isSelected && (
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="3"
+                    >
+                      <path d="M5 12l5 5L20 7" />
+                    </svg>
                   )}
                 </div>
-                <div className="min-w-0 text-left leading-tight">
-                  <div className="text-[13px] font-medium text-neutral-800 truncate">
-                    {humanoid.name}
-                  </div>
-                  <div className="text-[11px] text-neutral-400 truncate">
-                    {humanoid.manufacturer}
-                  </div>
+              )}
+
+              {/* Image */}
+              <img
+                src={humanoid.imageUrl || "/robots/placeholder.png"}
+                alt={humanoid.name}
+                draggable={false}
+                className="w-full h-full object-contain transition-opacity duration-100"
+                style={{
+                  padding: `${layoutConfig.gridPadding}px`,
+                  opacity: 1,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = String(layoutConfig.gridHoverOpacity / 100)}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              />
+
+              {/* Label - shows on hover */}
+              {layoutConfig.gridShowLabels && (
+                <div className="absolute bottom-3 text-center text-[11px] text-neutral-400 truncate px-2 w-full opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+                  {humanoid.name}
                 </div>
-              </div>
+              )}
             </CardWrapper>
           );
         })}
