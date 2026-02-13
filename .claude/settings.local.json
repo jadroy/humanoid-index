@@ -12,7 +12,13 @@
       "Bash(npm run dev:*)",
       "Bash(pkill:*)",
       "Bash(npx next dev:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx next build:*)",
+      "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index status)",
+      "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index diff)",
+      "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index log --oneline -5)",
+      "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index add .claude/settings.local.json app/layout.tsx)",
+      "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index commit -m \"$\\(cat <<''EOF''\nUpdate background color to neutral-50 and add local CLI permissions\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
     ],
     "deny": [],
     "ask": []

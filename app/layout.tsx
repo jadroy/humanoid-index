@@ -16,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={GeistSans.variable}>
-      <body className={`${GeistMono.className} antialiased bg-white text-gray-900`}>
+      <body className={`${GeistMono.className} antialiased bg-neutral-50 text-gray-900`}>
         {children}
         <SearchModal />
       </body>
