@@ -1,29 +1,78 @@
 "use client";
 
-export type ViewMode = 'carousel' | 'grid';
+import { useRef, useEffect, useState } from "react";
+
+export type ViewMode = 'carousel' | 'grid' | 'smash';
 
 interface ViewSwitcherProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  width?: number;
 }
 
-export default function ViewSwitcher({ viewMode, onViewModeChange }: ViewSwitcherProps) {
-  const toggle = () => {
-    onViewModeChange(viewMode === 'carousel' ? 'grid' : 'carousel');
-  };
+const modes: { key: ViewMode; label: string; shortcut: string }[] = [
+  { key: 'carousel', label: 'Lineup', shortcut: '1' },
+  { key: 'grid', label: 'Grid', shortcut: '2' },
+];
+
+export default function ViewSwitcher({ viewMode, onViewModeChange, width }: ViewSwitcherProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0 });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const activeBtn = container.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement;
+    if (!activeBtn) return;
+    setSliderStyle({
+      left: activeBtn.offsetLeft,
+      width: activeBtn.offsetWidth,
+    });
+  }, [viewMode]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const mode = modes.find(m => m.shortcut === e.key);
+      if (mode) onViewModeChange(mode.key);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onViewModeChange]);
 
   return (
-    <button
-      onClick={toggle}
-      className="relative w-10 h-5 bg-neutral-200 rounded-full transition-colors duration-200 hover:bg-neutral-300"
-      title={`Switch to ${viewMode === 'carousel' ? 'grid' : 'carousel'} view`}
+    <div
+      className="flex items-center justify-center font-mono text-[11px] uppercase tracking-normal select-none"
+      style={width ? { width: `${width}px` } : undefined}
     >
-      <span
-        className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ease-out"
-        style={{
-          transform: viewMode === 'grid' ? 'translateX(20px)' : 'translateX(0)',
-        }}
-      />
-    </button>
+      <div
+        ref={containerRef}
+        className="relative flex items-center gap-0 border border-neutral-200 rounded px-0.5 py-0.5"
+      >
+        {/* Sliding background */}
+        <div
+          className="absolute top-0.5 bottom-0.5 rounded-sm bg-neutral-100 transition-all duration-250 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          style={{ left: `${sliderStyle.left}px`, width: `${sliderStyle.width}px` }}
+        />
+        {modes.map((mode) => (
+          <button
+            key={mode.key}
+            data-mode={mode.key}
+            onClick={() => onViewModeChange(mode.key)}
+            className="relative z-10 px-2.5 py-0.5 transition-colors duration-150 flex items-center gap-1.5"
+            style={{ color: viewMode === mode.key ? '#000' : '#bbb' }}
+          >
+            {mode.label}
+            <span
+              className="text-[9px] opacity-30"
+              style={{ color: viewMode === mode.key ? '#000' : '#999' }}
+            >
+              {mode.shortcut}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

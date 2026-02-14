@@ -12,7 +12,6 @@ export interface LayoutConfig {
   gridCardSize: number;
   gridGap: number;
   gridColumns: number;
-  gridBorderOpacity: number; // 0-100
   gridPadding: number; // padding inside cells
   gridShowLabels: boolean;
   gridHoverOpacity: number; // 0-100
@@ -23,15 +22,14 @@ export interface LayoutConfig {
 }
 
 export const defaultLayoutConfig: LayoutConfig = {
-  cardSize: 140,
-  gap: 240,
+  cardSize: 180,
+  gap: 360,
   activeScale: 1.15,
   inactiveScale: 0.95,
   margins: 12,
   gridCardSize: 220,
   gridGap: 24,
   gridColumns: 5,
-  gridBorderOpacity: 50,
   gridPadding: 48,
   gridShowLabels: true,
   gridHoverOpacity: 80,
@@ -210,17 +208,6 @@ export default function BottomBar({
                 className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
               />
               <span className="text-[11px] text-neutral-400 w-3">{layoutConfig.gridColumns}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] text-neutral-400">Borders</span>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={layoutConfig.gridBorderOpacity}
-                onChange={(e) => onLayoutConfigChange({ ...layoutConfig, gridBorderOpacity: Number(e.target.value) })}
-                className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
-              />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[13px] text-neutral-400">Padding</span>

@@ -18,7 +18,20 @@
       "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index diff)",
       "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index log --oneline -5)",
       "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index add .claude/settings.local.json app/layout.tsx)",
-      "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index commit -m \"$\\(cat <<''EOF''\nUpdate background color to neutral-50 and add local CLI permissions\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index commit -m \"$\\(cat <<''EOF''\nUpdate background color to neutral-50 and add local CLI permissions\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(git config:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git stash:*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)",
+      "Bash(git stash pop:*)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm info:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

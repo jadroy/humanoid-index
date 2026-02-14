@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { GeistPixelGrid } from "geist/font/pixel";
 import "./globals.css";
 import SearchModal from "@/components/SearchModal";
 
@@ -15,8 +15,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={GeistSans.variable}>
-      <body className={`${GeistMono.className} antialiased bg-neutral-50 text-gray-900`}>
+    <html lang="en" className={`${GeistMono.variable} ${GeistPixelGrid.variable}`}>
+      <body className={`${GeistPixelGrid.className} antialiased bg-white text-black`}>
         {children}
         <SearchModal />
       </body>
