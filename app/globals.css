@@ -283,3 +283,34 @@ h1, h2, h3, h4, h5, h6 {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+
+/* ═══════════════════════════════════════
+   HUD OVERLAY
+   ═══════════════════════════════════════ */
+
+.hud-scanlines {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.015) 0px,
+    rgba(0, 0, 0, 0.015) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+.hud-vignette {
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 50%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.02) 100%
+  );
+}
+
+@keyframes hud-blink {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.6; }
+}
+
+.hud-blink {
+  animation: hud-blink 3s ease-in-out infinite;
+}

@@ -8,6 +8,7 @@ interface ViewSwitcherProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   width?: number;
+  showHud?: boolean;
 }
 
 const modes: { key: ViewMode; label: string; shortcut: string }[] = [
@@ -15,7 +16,7 @@ const modes: { key: ViewMode; label: string; shortcut: string }[] = [
   { key: 'grid', label: 'Grid', shortcut: '2' },
 ];
 
-export default function ViewSwitcher({ viewMode, onViewModeChange, width }: ViewSwitcherProps) {
+export default function ViewSwitcher({ viewMode, onViewModeChange, width, showHud = true }: ViewSwitcherProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0 });
 
@@ -46,6 +47,13 @@ export default function ViewSwitcher({ viewMode, onViewModeChange, width }: View
       className="flex items-center justify-center font-mono text-[11px] uppercase tracking-normal select-none"
       style={width ? { width: `${width}px` } : undefined}
     >
+      {/* Left flanking line */}
+      {showHud && (
+        <div
+          className="flex-1 h-px"
+          style={{ background: 'linear-gradient(to right, transparent, rgba(0,0,0,0.08))' }}
+        />
+      )}
       <div
         ref={containerRef}
         className="relative flex items-center gap-0 border border-neutral-200 rounded px-0.5 py-0.5"
@@ -73,6 +81,13 @@ export default function ViewSwitcher({ viewMode, onViewModeChange, width }: View
           </button>
         ))}
       </div>
+      {/* Right flanking line */}
+      {showHud && (
+        <div
+          className="flex-1 h-px"
+          style={{ background: 'linear-gradient(to left, transparent, rgba(0,0,0,0.08))' }}
+        />
+      )}
     </div>
   );
 }

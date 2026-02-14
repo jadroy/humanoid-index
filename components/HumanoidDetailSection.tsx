@@ -32,12 +32,6 @@ export default function HumanoidDetailSection({ humanoid, isActive, onScrollUp }
               <div className="text-sm text-neutral-400 mt-1">Year</div>
             </div>
           )}
-          {humanoid.status && (
-            <div className="bg-neutral-50 rounded-2xl p-6">
-              <div className="text-lg font-medium text-neutral-900">{humanoid.status}</div>
-              <div className="text-sm text-neutral-400 mt-1">Status</div>
-            </div>
-          )}
           {humanoid.cost && (
             <div className="bg-neutral-50 rounded-2xl p-6">
               <div className="text-2xl font-light text-neutral-900">{humanoid.cost}</div>

@@ -25,6 +25,7 @@ export default function Home() {
   const [enlargedHumanoid, setEnlargedHumanoid] = useState<Humanoid | null>(null);
   const [showIntro, setShowIntro] = useState(true);
   const [introExiting, setIntroExiting] = useState(false);
+  const [showHud, setShowHud] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const minimapRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef(0);
@@ -331,6 +332,81 @@ export default function Home() {
       className={`h-screen transition-colors duration-500 ease-out ${viewMode === 'grid' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'}`}
       style={{ backgroundColor: currentBg }}
     >
+      {/* ═══ HUD OVERLAY ═══ */}
+      {!showIntro && (
+        <>
+          {/* HUD toggle */}
+          <button
+            onClick={() => setShowHud(h => !h)}
+            className="fixed z-[3] font-mono text-[9px] uppercase tracking-wider transition-colors duration-150"
+            style={{
+              bottom: '18px',
+              left: windowWidth < 640 ? '20px' : '24px',
+              color: showHud ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.10)',
+            }}
+          >
+            HUD {showHud ? 'ON' : 'OFF'}
+          </button>
+
+          {showHud && (
+            <>
+              {/* Corner brackets */}
+              <div className="fixed inset-0 z-[1] pointer-events-none">
+                <div className="absolute top-4 left-4 w-8 h-8 border-l border-t" style={{ borderColor: 'rgba(0,0,0,0.08)' }} />
+                <div className="absolute top-4 right-4 w-8 h-8 border-r border-t" style={{ borderColor: 'rgba(0,0,0,0.08)' }} />
+                <div className="absolute bottom-4 left-4 w-8 h-8 border-l border-b" style={{ borderColor: 'rgba(0,0,0,0.08)' }} />
+                <div className="absolute bottom-4 right-4 w-8 h-8 border-r border-b" style={{ borderColor: 'rgba(0,0,0,0.08)' }} />
+              </div>
+
+              {/* Scanline overlay */}
+              <div className="fixed inset-0 z-[1] pointer-events-none hud-scanlines" />
+
+              {/* Vignette overlay */}
+              <div className="fixed inset-0 z-[1] pointer-events-none hud-vignette" />
+
+              {/* Top-left system readout */}
+              <div
+                className="fixed z-[2] pointer-events-none font-mono text-[9px] leading-relaxed flex flex-col"
+                style={{ top: '20px', left: windowWidth < 640 ? '20px' : '24px', color: 'rgba(0,0,0,0.12)' }}
+              >
+                <span>SYS.HUMANOID_INDEX</span>
+                <span>MODE: {viewMode === 'carousel' ? 'LINEUP' : viewMode === 'grid' ? 'GRID' : 'SMASH'}</span>
+                <span>UNITS: {humanoids.length + legends.length}</span>
+                <span className="flex items-center gap-1">
+                  <span
+                    className="inline-block rounded-full hud-blink"
+                    style={{ width: '4px', height: '4px', backgroundColor: 'rgba(0,0,0,0.4)' }}
+                  />
+                  ACTIVE
+                </span>
+              </div>
+
+              {/* Top-right coordinate readout — carousel only */}
+              {viewMode === 'carousel' && (
+                <div
+                  className="fixed z-[2] pointer-events-none font-mono text-[9px] leading-relaxed text-right flex flex-col"
+                  style={{ top: '20px', right: windowWidth < 640 ? '20px' : '24px', color: 'rgba(0,0,0,0.12)' }}
+                >
+                  <span>POS: {(scrollProgress * 100).toFixed(1)}%</span>
+                  <span>IDX: {String(currentIndex).padStart(3, '0')}</span>
+                  <span>FRM: {String(allRobotsCount).padStart(3, '0')}</span>
+                </div>
+              )}
+
+              {/* Center crosshair — carousel only */}
+              {viewMode === 'carousel' && (
+                <div className="fixed inset-0 z-[1] pointer-events-none flex items-center justify-center">
+                  <div className="relative" style={{ width: '24px', height: '24px' }}>
+                    <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2" style={{ width: '1px', backgroundColor: 'rgba(0,0,0,0.06)' }} />
+                    <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2" style={{ height: '1px', backgroundColor: 'rgba(0,0,0,0.06)' }} />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+
       {/* INTRO — all humanoids side by side */}
       {showIntro && (
         <section
@@ -384,7 +460,7 @@ export default function Home() {
             className="flex-shrink-0 relative z-20 flex justify-center"
             style={{ padding: `${topBarInset}px ${insetX}px` }}
           >
-            <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} width={trackWidth} />
+            <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} width={trackWidth} showHud={showHud} />
           </div>
           <div className="flex-1 min-h-0">
             <SmashPicker humanoids={allRobots} />
@@ -400,7 +476,7 @@ export default function Home() {
           className="flex-shrink-0 relative z-20 flex justify-center"
           style={{ padding: `${topBarInset}px ${insetX}px` }}
         >
-          <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} width={trackWidth} />
+          <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} width={trackWidth} showHud={showHud} />
         </div>
 
         {/* Factory floor grid — low, flat perspective */}
@@ -496,21 +572,37 @@ export default function Home() {
                       data-card-index={index}
                       className="flex-shrink-0 gpu-accelerated relative group z-20 animate-float"
                       style={{
-                        width: `${layoutConfig.cardSize}px`,
+                        width: `${humanoid.id === '__intro__' ? layoutConfig.cardSize * 2.4 : layoutConfig.cardSize}px`,
                         height: `${layoutConfig.cardSize * 2.1}px`,
                         opacity: cardOpacity,
                         transform: `scale(${isEnlarged ? 1.15 : Math.max(0.88, 1.03 - distance * 0.08)}) translateY(${Math.min(distance * 20, 25)}px)${isCenter && !isEnlarged ? ' translate(var(--mouse-x, 0px), var(--mouse-y, 0px))' : ''}`,
                         transition: 'opacity 0.15s ease-out, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                       }}
                     >
-                      {/* Intro card — special content */}
+                      {/* Intro card — angled title */}
                       {humanoid.id === '__intro__' ? (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <div className="font-mono text-center flex flex-col gap-3">
-                            <div className="text-[20px] text-[#333] tracking-wider uppercase">Humanoid Index</div>
-                            <div className="text-[11px] text-[#aaa] leading-relaxed">
-                              {humanoids.length} robots<br />
-                              Scroll to explore
+                        <div className="w-full h-full flex items-center justify-center" style={{ perspective: '600px' }}>
+                          <div
+                            className="font-mono flex flex-col items-start"
+                            style={{
+                              transform: 'rotateY(-8deg) skewY(-1.5deg)',
+                              transformOrigin: 'left center',
+                            }}
+                          >
+                            <div
+                              className="tracking-tight uppercase leading-[0.85]"
+                              style={{ fontSize: '44px', color: 'rgba(0,0,0,0.35)' }}
+                            >
+                              Humanoid
+                            </div>
+                            <div
+                              className="tracking-tight uppercase leading-[0.85]"
+                              style={{ fontSize: '44px', color: 'rgba(0,0,0,0.18)' }}
+                            >
+                              Index
+                            </div>
+                            <div className="text-[10px] mt-3 tracking-wider" style={{ color: 'rgba(0,0,0,0.2)' }}>
+                              {humanoids.length + legends.length} UNITS &middot; SCROLL &rarr;
                             </div>
                           </div>
                         </div>
@@ -575,7 +667,6 @@ export default function Home() {
                       {isCenter && !isEnlarged && (() => {
                         const stats = [
                           humanoid.year && { label: 'year', value: humanoid.year },
-                          humanoid.status && { label: 'status', value: humanoid.status },
                           humanoid.height && { label: 'height', value: `${humanoid.height}cm` },
                           humanoid.weight && { label: 'weight', value: `${humanoid.weight}kg` },
                           humanoid.dof && { label: 'dof', value: humanoid.dof },
