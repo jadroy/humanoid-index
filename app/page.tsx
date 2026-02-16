@@ -641,30 +641,6 @@ export default function Home() {
           </>
         )}
 
-        {/* Nav indicators — always show, wrap */}
-        {viewMode === 'carousel' && !enlargedHumanoid && (
-          <>
-            <div key="prev" className="absolute left-5 top-1/2 -translate-y-1/2 z-[55] pointer-events-none animate-blur-fade">
-              <div
-                className="inline-flex items-center gap-1.5 rounded-[5px] border border-neutral-300 bg-neutral-50 font-mono px-2.5 py-1"
-                style={{ boxShadow: '0 1px 0 0 rgba(0,0,0,0.08)' }}
-              >
-                <span className="text-[12px] text-neutral-400">&#8592;</span>
-                <span className="text-[11px] uppercase text-neutral-500 tracking-wide">prev</span>
-              </div>
-            </div>
-            <div key="next" className="absolute right-5 top-1/2 -translate-y-1/2 z-[55] pointer-events-none animate-blur-fade">
-              <div
-                className="inline-flex items-center gap-1.5 rounded-[5px] border border-neutral-300 bg-neutral-50 font-mono px-2.5 py-1"
-                style={{ boxShadow: '0 1px 0 0 rgba(0,0,0,0.08)' }}
-              >
-                <span className="text-[11px] uppercase text-neutral-500 tracking-wide">next</span>
-                <span className="text-[12px] text-neutral-400">&#8594;</span>
-              </div>
-            </div>
-          </>
-        )}
-
         {/* MAIN CONTENT */}
         <div className={`flex flex-col ${viewMode === 'carousel' ? 'flex-1 justify-center overflow-hidden' : 'overflow-visible'}`}>
           {viewMode === 'carousel' ? (
