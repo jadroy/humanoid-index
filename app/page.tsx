@@ -484,8 +484,23 @@ export default function Home() {
           onClick={() => {
             setViewMode('carousel');
             setEasterShake(true);
-            velocityRef.current = -30;
             if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
+            velocityRef.current = 0;
+            const target = currentIndexRef.current * ANGLE_PER_CARD;
+            const startRot = target - 360;
+            currentRotationRef.current = startRot;
+            const startTime = performance.now();
+            const animate = (now: number) => {
+              const progress = Math.min(1, (now - startTime) / 800);
+              const e = 1 - Math.pow(1 - progress, 3);
+              currentRotationRef.current = startRot + 360 * e;
+              if (progress < 1) {
+                animationRef.current = requestAnimationFrame(animate);
+              } else {
+                animationRef.current = null;
+              }
+            };
+            animationRef.current = requestAnimationFrame(animate);
             setTimeout(() => setEasterShake(false), 600);
           }}
         >
