@@ -63,6 +63,7 @@ export default function Home() {
   const currentIndexRef = useRef(0);
   const touchStartRef = useRef<{ x: number; rotation: number } | null>(null);
   const transitionUntilRef = useRef(0);
+  const enterAnimRef = useRef<{ start: number; startRot: number; targetRx: number; targetRy: number } | null>(null);
 
   const minimapRef = useRef<HTMLDivElement>(null);
   const isDraggingMinimapRef = useRef(false);
@@ -165,6 +166,19 @@ export default function Home() {
         }
       }
 
+      // Enter animation: expand ring + spin + scale cards
+      let enterScale = 1;
+      const ea = enterAnimRef.current;
+      if (ea) {
+        const progress = Math.min(1, (now - ea.start) / 900);
+        const e = 1 - Math.pow(1 - progress, 3);
+        currentRotationRef.current = ea.startRot + 120 * e;
+        ellipseRef.current.rx = ea.targetRx * 0.5 + ea.targetRx * 0.5 * e;
+        ellipseRef.current.ry = ea.targetRy * 0.5 + ea.targetRy * 0.5 * e;
+        enterScale = 0.7 + 0.3 * e;
+        if (progress >= 1) enterAnimRef.current = null;
+      }
+
       const rotation = currentRotationRef.current;
       const newIndex = normalizeIndex(rotation);
       if (newIndex !== currentIndexRef.current) {
@@ -208,7 +222,7 @@ export default function Home() {
         const isCenter = absAngle < ANGLE_PER_CARD * 0.5;
 
         const isEnlarged = isEnlargedMode && enlargedRef.current?.id === allRobots[i].id;
-        let fx = x, fy = y, fScale = scale, fOpacity = opacity, fBlur = blur, fRotY = rotY;
+        let fx = x, fy = y, fScale = scale * enterScale, fOpacity = opacity, fBlur = blur, fRotY = rotY;
 
         if (isEnlargedMode) {
           if (isEnlarged) {
@@ -332,13 +346,25 @@ export default function Home() {
   const handleViewChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
     if (mode === 'carousel') {
-      // Start at intro title, then glide to first robot
-      currentRotationRef.current = 0;
-      velocityRef.current = 0;
+      // Spin + expand: start as tiny circle, expand to full ring while spinning
       if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
-      setTimeout(() => animateToIndex(1), 80);
+      velocityRef.current = 0;
+      const target = ANGLE_PER_CARD;
+      const startRot = target - 120;
+      currentRotationRef.current = startRot;
+      // Guard against multiple ViewSwitcher instances firing simultaneously
+      if (!enterAnimRef.current) {
+        enterAnimRef.current = {
+          start: performance.now(),
+          startRot,
+          targetRx: ellipseRef.current.rx,
+          targetRy: ellipseRef.current.ry,
+        };
+        ellipseRef.current.rx = enterAnimRef.current.targetRx * 0.5;
+        ellipseRef.current.ry = enterAnimRef.current.targetRy * 0.5;
+      }
     }
-  }, [animateToIndex]);
+  }, []);
 
   // Minimap: click/drag → jump to card (angle-based for elliptical map)
   const handleMinimapNav = useCallback((clientX: number, clientY: number) => {
@@ -399,7 +425,7 @@ export default function Home() {
           onClick={() => {
             setViewMode('carousel');
             setEasterShake(true);
-            velocityRef.current = 30;
+            velocityRef.current = -30;
             if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
             setTimeout(() => setEasterShake(false), 600);
           }}
