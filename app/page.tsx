@@ -40,6 +40,7 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('carousel');
   const [hoveredHumanoid, setHoveredHumanoid] = useState<Humanoid | null>(null);
+  const [hoveredCarouselCard, setHoveredCarouselCard] = useState<Humanoid | null>(null);
   const [windowWidth, setWindowWidth] = useState(1200);
   const [enlargedHumanoid, setEnlargedHumanoid] = useState<Humanoid | null>(null);
   const [showIntro, setShowIntro] = useState(true);
@@ -162,9 +163,16 @@ export default function Home() {
       const now = performance.now();
 
       if (!isEnlargedMode && animationRef.current === null && !dragRef.current) {
+        // Cursor-position drift: mouse near edges gently rotates the carousel
+        const mx = mouseTarget.current.x; // -1 (left) to 1 (right)
+        const deadZone = 0.15;
+        const raw = Math.abs(mx) > deadZone ? (Math.abs(mx) - deadZone) / (1 - deadZone) : 0;
+        const drift = raw > 0 ? Math.sign(mx) * raw * raw * 0.06 : 0;
+        velocityRef.current += drift;
+
         currentRotationRef.current += velocityRef.current;
         velocityRef.current *= FRICTION;
-        if (Math.abs(velocityRef.current) < SNAP_THRESHOLD) {
+        if (Math.abs(velocityRef.current) < SNAP_THRESHOLD && Math.abs(drift) === 0) {
           velocityRef.current = 0;
           const nearest = Math.round(currentRotationRef.current / ANGLE_PER_CARD) * ANGLE_PER_CARD;
           const snapDelta = nearest - currentRotationRef.current;
@@ -235,8 +243,8 @@ export default function Home() {
           if (isEnlarged) {
             fx = 0; fy = -offsetY; fScale = 1.12; fOpacity = 1; fBlur = 0; fRotY = 0;
           } else {
-            fOpacity = Math.max(0, 0.15 - absAngle * 0.003);
-            fBlur = 3;
+            fOpacity = Math.max(0.05, 0.25 - absAngle * 0.003);
+            fBlur = 2;
           }
         }
 
@@ -246,9 +254,9 @@ export default function Home() {
         el.style.transform = `translate3d(${fx + mx}px, ${fy + my + offsetY}px, 0) scale(${fScale}) rotateY(${fRotY}deg)`;
         el.style.opacity = String(fOpacity);
         el.style.filter = fBlur > 0.1 ? `blur(${fBlur}px)` : 'none';
-        el.style.zIndex = String(zIdx);
+        el.style.zIndex = isEnlarged ? '1100' : String(zIdx);
         el.style.visibility = 'visible';
-        el.style.pointerEvents = isCenter || isEnlarged ? 'auto' : 'none';
+        el.style.pointerEvents = isEnlarged || depth > 0.3 ? 'auto' : 'none';
         el.style.transition = needsTransition
           ? 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease'
           : 'none';
@@ -726,6 +734,14 @@ export default function Home() {
                     transition: 'opacity 0.5s ease',
                   }}
                 />
+                {/* Click-anywhere backdrop to dismiss enlarged card */}
+                {enlargedHumanoid && (
+                  <div
+                    className="absolute inset-0 z-[999]"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setEnlargedHumanoid(null)}
+                  />
+                )}
                 {/* Dot markers on the ring */}
                 {allRobots.map((_, i) => (
                   <div
@@ -763,6 +779,14 @@ export default function Home() {
                         marginLeft: `${-cardW / 2}px`,
                         marginTop: `${-cardH / 2}px`,
                         willChange: 'transform, opacity',
+                      }}
+                      onMouseEnter={() => {
+                        if (!isDraggingRef.current && !enlargedHumanoid && humanoid.id !== '__intro__') {
+                          setHoveredCarouselCard(humanoid);
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredCarouselCard(prev => prev?.id === humanoid.id ? null : prev);
                       }}
                     >
                       {humanoid.id === '__intro__' ? (
@@ -814,74 +838,26 @@ export default function Home() {
                 })}
               </div>
 
-              {/* Stats panel — outside 3D context to avoid transform distortion */}
-              {currentHumanoid && !isIntro && !enlargedHumanoid && (
-                <div
-                  key={currentHumanoid.id}
-                  className="absolute z-[60] pointer-events-none font-mono text-left flex flex-col animate-stat-cascade"
-                  style={{
-                    left: '50%',
-                    top: '50%',
-                    transform: `translateX(${cardW / 2 + 80}px) translateY(${ellipseRef.current.flipY * ellipseRef.current.ry + ellipseRef.current.offsetY - cardH / 2 + 10}px) perspective(200px) rotateY(12deg)`,
-                    transformOrigin: 'left center',
-                    width: '200px',
-                  }}
-                >
-                  <div className="text-[28px] leading-none tracking-tight" style={{ color: showHud ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.85)' }}>
-                    {currentHumanoid.name}
+              {/* Label — active card info */}
+              {!isIntro && !enlargedHumanoid && (() => {
+                const display = hoveredCarouselCard || currentHumanoid;
+                if (!display || display.id === '__intro__') return null;
+                return (
+                  <div
+                    key={display.id}
+                    className="absolute z-[60] pointer-events-none font-mono animate-blur-fade"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      transform: `translate(-50%, ${ellipseRef.current.flipY * ellipseRef.current.ry + ellipseRef.current.offsetY + cardH / 2 + 16}px)`,
+                    }}
+                  >
+                    <div className="text-[11px] leading-none tracking-wider uppercase px-3 py-1.5 rounded-full border border-neutral-200" style={{ color: 'rgba(0,0,0,0.5)', whiteSpace: 'nowrap' }}>
+                      {display.name} <span style={{ color: 'rgba(0,0,0,0.2)' }}>&middot;</span> {display.manufacturer}
+                    </div>
                   </div>
-                  <div className="text-[28px] leading-none tracking-tight" style={{ color: showHud ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.45)' }}>
-                    {currentHumanoid.manufacturer}
-                  </div>
-                  <div className="flex flex-col gap-[6px] mt-4 text-left" style={{ textTransform: 'none' }}>
-                    {[
-                      currentHumanoid.height && { label: 'height', value: `${currentHumanoid.height}cm`, pct: ((currentHumanoid.height - 100) / 100) * 100 },
-                      currentHumanoid.weight && { label: 'weight', value: `${currentHumanoid.weight}kg`, pct: (currentHumanoid.weight / 100) * 100 },
-                      currentHumanoid.dof && { label: 'dof', value: currentHumanoid.dof, pct: (currentHumanoid.dof / 70) * 100 },
-                      currentHumanoid.maxSpeed && { label: 'speed', value: `${currentHumanoid.maxSpeed}m/s`, pct: (currentHumanoid.maxSpeed / 4.5) * 100 },
-                    ].filter(Boolean).map((stat, i) => {
-                      const s = stat as { label: string; value: string | number; pct: number };
-                      const clampedPct = Math.max(4, Math.min(100, s.pct));
-                      return (
-                        <div key={s.label} className="animate-stat-cascade" style={{ animationDelay: `${80 + i * 60}ms` }}>
-                          <div className="flex justify-between items-baseline text-[13px] leading-none mb-[3px]">
-                            <span style={{ color: showHud ? '#999' : '#777' }}>{s.label}</span>
-                            <span className="text-[15px]" style={{ color: showHud ? '#555' : '#222' }}>{s.value}</span>
-                          </div>
-                          <div className="relative h-[3px] w-full rounded-full" style={{ backgroundColor: showHud ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.08)' }}>
-                            <div
-                              className="absolute inset-y-0 left-0 rounded-full animate-bar-fill"
-                              style={{
-                                width: `${clampedPct}%`,
-                                backgroundColor: showHud ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.35)',
-                                animationDelay: `${120 + i * 60}ms`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {currentHumanoid.purchaseUrl && (() => {
-                    const isNeo = currentHumanoid.id === '4';
-                    return (
-                      <a
-                        href={currentHumanoid.purchaseUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`animate-blur-fade-stagger font-mono text-[12px] font-medium px-4 py-1 mt-3 rounded-sm transition-colors duration-150 uppercase tracking-wider text-center self-start pointer-events-auto ${
-                          isNeo
-                            ? 'bg-[#d4c5a0]/20 hover:bg-[#d4c5a0]/30 text-[#8a7a55] border border-[#d4c5a0]/40'
-                            : 'bg-black/5 hover:bg-black/10 text-black border border-black/15'
-                        }`}
-                        style={{ animationDelay: `190ms` }}
-                      >
-                        Buy
-                      </a>
-                    );
-                  })()}
-                </div>
-              )}
+                );
+              })()}
             </main>
           ) : (
             <main>
