@@ -299,6 +299,7 @@ export default function Home() {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (viewMode !== 'carousel') return;
       switch (e.key) {
         case 'ArrowLeft':
@@ -327,6 +328,17 @@ export default function Home() {
   const currentBg = '#fff';
   const cardW = layoutConfig.cardSize;
   const cardH = layoutConfig.cardSize * 2.1;
+
+  const handleViewChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    if (mode === 'carousel') {
+      // Start at intro title, then glide to first robot
+      currentRotationRef.current = 0;
+      velocityRef.current = 0;
+      if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
+      setTimeout(() => animateToIndex(1), 80);
+    }
+  }, [animateToIndex]);
 
   // Minimap: click/drag → jump to card (angle-based for elliptical map)
   const handleMinimapNav = useCallback((clientX: number, clientY: number) => {
@@ -387,7 +399,7 @@ export default function Home() {
           onClick={() => {
             setViewMode('carousel');
             setEasterShake(true);
-            velocityRef.current = (Math.random() > 0.5 ? 1 : -1) * 30;
+            velocityRef.current = 30;
             if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
             setTimeout(() => setEasterShake(false), 600);
           }}
@@ -399,31 +411,37 @@ export default function Home() {
       {/* ═══ HUD OVERLAY ═══ */}
       {!showIntro && (
         <>
-          {/* HUD toggle — top-right, matches view switcher style */}
+          {/* HUD toggle — top-right, sliding pill like view switcher */}
           <div
-            className="fixed z-[5] flex items-center gap-0 border border-neutral-200 rounded px-0.5 py-0.5 font-mono text-[11px] uppercase tracking-normal select-none"
+            className="fixed z-[5]"
             style={{
               top: windowWidth < 640 ? '10px' : '13px',
               right: windowWidth < 640 ? '10px' : '14px',
             }}
           >
-            {['Off', 'HUD'].map((label) => {
-              const isActive = label === 'HUD' ? showHud : !showHud;
-              return (
-                <button
-                  key={label}
-                  onClick={() => setShowHud(label === 'HUD')}
-                  className="relative z-10 px-2.5 py-0.5 transition-colors duration-150"
-                  style={{
-                    color: isActive ? '#000' : '#bbb',
-                    backgroundColor: isActive ? 'rgba(0,0,0,0.04)' : 'transparent',
-                    borderRadius: '3px',
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
+            <div className="relative flex items-center gap-0 border border-neutral-200 rounded px-0.5 py-0.5 font-mono text-[11px] uppercase tracking-normal select-none">
+              {/* Sliding background */}
+              <div
+                className="absolute top-0.5 bottom-0.5 rounded-sm bg-neutral-100 transition-all duration-250 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                style={{
+                  width: 'calc(50% - 2px)',
+                  left: showHud ? 'calc(50% + 1px)' : '2px',
+                }}
+              />
+              {['Off', 'HUD'].map((label) => {
+                const isActive = label === 'HUD' ? showHud : !showHud;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setShowHud(label === 'HUD')}
+                    className="relative z-10 px-2.5 py-0.5 transition-colors duration-200"
+                    style={{ color: isActive ? '#000' : '#bbb' }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {showHud && (
@@ -532,7 +550,7 @@ export default function Home() {
             className="flex-shrink-0 relative z-20 flex justify-center"
             style={{ padding: `${topBarInset}px ${insetX}px` }}
           >
-            <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} width={trackWidth} showHud={showHud} />
+            <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} showHud={showHud} />
           </div>
           <div className="flex-1 min-h-0">
             <CharacterSelect humanoids={allRobots} />
@@ -547,7 +565,7 @@ export default function Home() {
             className="flex-shrink-0 relative z-20 flex justify-center"
             style={{ padding: `${topBarInset}px ${insetX}px` }}
           >
-            <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} width={trackWidth} showHud={showHud} />
+            <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} showHud={showHud} />
           </div>
           <div className="flex-1 min-h-0">
             <SmashPicker humanoids={allRobots} />
@@ -563,7 +581,7 @@ export default function Home() {
           className="flex-shrink-0 relative z-20 flex justify-center"
           style={{ padding: `${topBarInset}px ${insetX}px` }}
         >
-          <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} width={trackWidth} showHud={showHud} />
+          <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} showHud={showHud} />
         </div>
 
         {/* Factory floor grid — low, flat perspective */}
