@@ -5,116 +5,58 @@ import type { Humanoid } from "@/data/humanoids";
 
 const MAX_COMPARE = 4;
 
-const STAT_DEFS = [
-  { key: "height" as const, label: "height", unit: "cm", max: 200, min: 100 },
-  { key: "weight" as const, label: "weight", unit: "kg", max: 100, min: 0 },
-  { key: "dof" as const, label: "dof", unit: "", max: 70, min: 0 },
-  { key: "maxSpeed" as const, label: "speed", unit: "m/s", max: 4.5, min: 0 },
-] as const;
-
-const BAR_COLORS = [
-  "rgba(0,0,0,0.35)",
-  "rgba(0,0,0,0.22)",
-  "rgba(0,0,0,0.16)",
-  "rgba(0,0,0,0.11)",
-];
-
 interface CharacterSelectProps {
   humanoids: Humanoid[];
 }
 
 export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [compareMode, setCompareMode] = useState(false);
+  // Filter out non-selectable items (intro card, etc.)
+  const roster = humanoids.filter((h) => h.id !== "__intro__");
+
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const rosterRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const activeIndex = hoveredIndex ?? selectedIndex;
-  const active = humanoids[activeIndex];
+  const hoveredHumanoid = hoveredIndex !== null ? roster[hoveredIndex] : null;
+  const isEmpty = compareIds.length === 0;
+  const isSingleView = compareIds.length <= 1;
 
-  // The list of humanoids to display in the right panel
-  const displayedHumanoids: Humanoid[] = compareMode && compareIds.length > 0
-    ? compareIds.map((id) => humanoids.find((h) => h.id === id)).filter(Boolean) as Humanoid[]
-    : [active];
+  // In single view, hover previews the hovered item; otherwise show the selected
+  const singleActive = isSingleView && !isEmpty
+    ? (hoveredHumanoid ?? roster.find((h) => h.id === compareIds[0]) ?? null)
+    : isSingleView && isEmpty
+    ? hoveredHumanoid
+    : null;
 
-  const isSingleView = displayedHumanoids.length <= 1;
-  const singleActive = isSingleView ? displayedHumanoids[0] || active : null;
+  const displayedHumanoids = !isSingleView
+    ? compareIds.map((id) => roster.find((h) => h.id === id)).filter(Boolean) as Humanoid[]
+    : [];
 
-  const exitCompareMode = useCallback(() => {
-    setCompareMode(false);
-    setCompareIds([]);
-  }, []);
-
-  const toggleCompareMode = useCallback(() => {
-    if (compareMode) {
-      exitCompareMode();
-    } else {
-      setCompareMode(true);
-      // Auto-add the currently selected humanoid as the first compare item
-      setCompareIds([humanoids[selectedIndex]?.id].filter(Boolean) as string[]);
-    }
-  }, [compareMode, exitCompareMode, humanoids, selectedIndex]);
-
-  const toggleCompareId = useCallback((id: string) => {
+  const handleClick = useCallback((id: string) => {
     setCompareIds((prev) => {
-      if (prev.includes(id)) {
-        // Don't remove if it's the last one
-        if (prev.length <= 1) return prev;
-        return prev.filter((x) => x !== id);
-      }
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= MAX_COMPARE) return prev;
       return [...prev, id];
     });
   }, []);
 
-  // Auto-scroll selected item into view
-  useEffect(() => {
-    const el = itemRefs.current[selectedIndex];
-    if (el) {
-      el.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
-  }, [selectedIndex]);
+  const resetToEmpty = useCallback(() => {
+    setCompareIds([]);
+  }, []);
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      if (e.key === "Escape" && compareMode) {
+      if (e.key === "Escape" && compareIds.length > 0) {
         e.preventDefault();
-        exitCompareMode();
+        resetToEmpty();
         return;
       }
-
-      let newIndex = selectedIndex;
-      switch (e.key) {
-        case "ArrowUp":
-          e.preventDefault();
-          newIndex = Math.max(0, selectedIndex - 1);
-          break;
-        case "ArrowDown":
-          e.preventDefault();
-          newIndex = Math.min(humanoids.length - 1, selectedIndex + 1);
-          break;
-        case "Home":
-          e.preventDefault();
-          newIndex = 0;
-          break;
-        case "End":
-          e.preventDefault();
-          newIndex = humanoids.length - 1;
-          break;
-        default:
-          return;
-      }
-      if (newIndex !== selectedIndex) {
-        setSelectedIndex(newIndex);
-        setHoveredIndex(null);
-      }
     },
-    [selectedIndex, humanoids.length, compareMode, exitCompareMode]
+    [compareIds.length, resetToEmpty]
   );
 
   useEffect(() => {
@@ -122,13 +64,15 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // Stat bars for the single preview
-  const singleStatBars = singleActive ? [
-    singleActive.height && { label: "height", value: `${singleActive.height}cm`, pct: ((singleActive.height - 100) / 100) * 100 },
-    singleActive.weight && { label: "weight", value: `${singleActive.weight}kg`, pct: (singleActive.weight / 100) * 100 },
-    singleActive.dof && { label: "dof", value: singleActive.dof, pct: (singleActive.dof / 70) * 100 },
-    singleActive.maxSpeed && { label: "speed", value: `${singleActive.maxSpeed}m/s`, pct: (singleActive.maxSpeed / 4.5) * 100 },
-  ].filter(Boolean) as { label: string; value: string | number; pct: number }[] : [];
+  // Stat bars helper
+  const getStatBars = (h: Humanoid) => [
+    h.height && { label: "height", value: `${h.height}cm`, pct: ((h.height - 100) / 100) * 100 },
+    h.weight && { label: "weight", value: `${h.weight}kg`, pct: (h.weight / 100) * 100 },
+    h.dof && { label: "dof", value: h.dof, pct: (h.dof / 70) * 100 },
+    h.maxSpeed && { label: "speed", value: `${h.maxSpeed}m/s`, pct: (h.maxSpeed / 4.5) * 100 },
+  ].filter(Boolean) as { label: string; value: string | number; pct: number }[];
+
+  const singleStatBars = singleActive ? getStatBars(singleActive) : [];
 
   const singleSpecGrid = singleActive ? [
     singleActive.year && { label: "Year", value: singleActive.year },
@@ -137,139 +81,104 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
     singleActive.manufacturer && { label: "Mfr", value: singleActive.manufacturer },
   ].filter(Boolean) as { label: string; value: string | number }[] : [];
 
-  // Stat rows for multi-comparison
-  const compareStatRows = !isSingleView ? STAT_DEFS.map((def) => {
-    const values = displayedHumanoids.map((h) => h[def.key] ?? null);
-    const numericValues = values.filter((v): v is number => v !== null);
-    const maxVal = numericValues.length > 0 ? Math.max(...numericValues) : 0;
-    return { ...def, values, maxVal };
-  }).filter((row) => row.values.some((v) => v !== null)) : [];
-
   return (
     <div className="w-full h-full flex overflow-hidden select-none bg-white">
       {/* ═══ LEFT: Scrollable roster ═══ */}
       <div
-        className="flex-shrink-0 flex flex-col overflow-hidden"
+        ref={rosterRef}
+        className="flex-shrink-0 overflow-y-auto overflow-x-hidden scrollbar-hide"
         style={{
           width: "200px",
           borderRight: "1px solid #e5e5e5",
         }}
       >
-        {/* Compare toggle */}
-        <button
-          onClick={toggleCompareMode}
-          className="flex items-center justify-center gap-1.5 px-3 py-2 font-mono text-[10px] tracking-[0.08em] uppercase transition-colors duration-150 flex-shrink-0"
-          style={{
-            borderBottom: "1px solid #e5e5e5",
-            background: compareMode ? "#000" : "transparent",
-            color: compareMode ? "#fff" : "#999",
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.7 }}>
-            <rect x="1" y="2" width="4" height="8" rx="0.5" stroke="currentColor" strokeWidth="1" />
-            <rect x="7" y="2" width="4" height="8" rx="0.5" stroke="currentColor" strokeWidth="1" />
-          </svg>
-          Compare{compareMode && compareIds.length > 1 ? ` (${compareIds.length})` : ""}
-        </button>
+        {roster.map((humanoid, index) => {
+          const isInCompare = compareIds.includes(humanoid.id);
+          const isHovered = index === hoveredIndex;
+          const isOnlySelected = isSingleView && compareIds[0] === humanoid.id;
 
-        <div
-          ref={rosterRef}
-          className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide"
-        >
-          {humanoids.map((humanoid, index) => {
-            const isSelected = index === selectedIndex;
-            const isHovered = index === hoveredIndex;
-            const isActive = index === activeIndex;
-            const isCompared = compareIds.includes(humanoid.id);
-
-            return (
-              <button
-                key={humanoid.id}
-                ref={(el) => { itemRefs.current[index] = el; }}
-                onClick={() => {
-                  if (compareMode) {
-                    toggleCompareId(humanoid.id);
-                  } else {
-                    setSelectedIndex(index);
-                    setHoveredIndex(null);
-                  }
-                }}
-                onMouseEnter={() => setHoveredIndex(index)}
-                onMouseLeave={() => setHoveredIndex(null)}
-                className="relative w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100 font-mono"
-                style={{
-                  background: compareMode
-                    ? isCompared ? "#f0f0f0" : isHovered ? "#fafafa" : "transparent"
-                    : isSelected ? "#f5f5f5" : isHovered ? "#fafafa" : "transparent",
-                  borderBottom: "1px solid #f0f0f0",
-                  opacity: 0,
-                  animation: `select-slide-in 300ms cubic-bezier(0.22, 1, 0.36, 1) ${30 + index * 20}ms forwards`,
-                }}
-              >
-                {/* Pulsing corner brackets on selected (single mode) */}
-                {!compareMode && isSelected && (
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{ animation: "select-bracket-pulse 1.2s ease-in-out infinite" }}
-                  >
-                    <div className="absolute top-0 left-0 w-2 h-2 border-l border-t border-black" />
-                    <div className="absolute top-0 right-0 w-2 h-2 border-r border-t border-black" />
-                    <div className="absolute bottom-0 left-0 w-2 h-2 border-l border-b border-black" />
-                    <div className="absolute bottom-0 right-0 w-2 h-2 border-r border-b border-black" />
-                  </div>
-                )}
-
-                {/* Portrait */}
-                <div className="w-[36px] h-[36px] flex-shrink-0 flex items-center justify-center">
-                  <img
-                    src={humanoid.imageUrl || "/robots/placeholder.png"}
-                    alt={humanoid.name}
-                    draggable={false}
-                    className="max-w-full max-h-full object-contain"
-                    style={{
-                      opacity: compareMode ? (isCompared ? 1 : 0.35) : isActive ? 1 : 0.35,
-                      transition: "opacity 0.12s ease",
-                    }}
-                  />
+          return (
+            <button
+              key={humanoid.id}
+              ref={(el) => { itemRefs.current[index] = el; }}
+              onClick={() => handleClick(humanoid.id)}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              className="relative w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100 font-mono"
+              style={{
+                background: isInCompare ? "#f0f0f0" : isHovered ? "#fafafa" : "transparent",
+                borderBottom: "1px solid #f0f0f0",
+                opacity: 0,
+                animation: `select-slide-in 300ms cubic-bezier(0.22, 1, 0.36, 1) ${30 + index * 20}ms forwards`,
+              }}
+            >
+              {/* Pulsing corner brackets on single selected */}
+              {isOnlySelected && !isHovered && (
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ animation: "select-bracket-pulse 1.2s ease-in-out infinite" }}
+                >
+                  <div className="absolute top-0 left-0 w-2 h-2 border-l border-t border-black" />
+                  <div className="absolute top-0 right-0 w-2 h-2 border-r border-t border-black" />
+                  <div className="absolute bottom-0 left-0 w-2 h-2 border-l border-b border-black" />
+                  <div className="absolute bottom-0 right-0 w-2 h-2 border-r border-b border-black" />
                 </div>
+              )}
 
-                {/* Name */}
-                <div className="min-w-0 flex-1">
-                  <div
-                    className="text-[10px] tracking-[0.06em] uppercase truncate"
-                    style={{ color: compareMode ? (isCompared ? "#000" : "#999") : isActive ? "#000" : "#999" }}
-                  >
-                    {humanoid.name}
-                  </div>
-                  <div className="text-[8px] tracking-[0.08em] uppercase truncate text-[#bbb]">
-                    {humanoid.manufacturer}
-                  </div>
+              {/* Portrait */}
+              <div className="w-[36px] h-[36px] flex-shrink-0 flex items-center justify-center">
+                <img
+                  src={humanoid.imageUrl || "/robots/placeholder.png"}
+                  alt={humanoid.name}
+                  draggable={false}
+                  className="max-w-full max-h-full object-contain"
+                  style={{
+                    opacity: isInCompare || isHovered ? 1 : 0.35,
+                    transition: "opacity 0.12s ease",
+                  }}
+                />
+              </div>
+
+              {/* Name */}
+              <div className="min-w-0 flex-1">
+                <div
+                  className="text-[10px] tracking-[0.06em] uppercase truncate"
+                  style={{ color: isInCompare || isHovered ? "#000" : "#999" }}
+                >
+                  {humanoid.name}
                 </div>
+                <div className="text-[8px] tracking-[0.08em] uppercase truncate text-[#bbb]">
+                  {humanoid.manufacturer}
+                </div>
+              </div>
 
-                {/* Selection indicator */}
-                {compareMode ? (
-                  isCompared ? (
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="flex-shrink-0">
-                      <rect x="0.5" y="0.5" width="11" height="11" rx="2" fill="#000" stroke="#000" strokeWidth="1" />
-                      <path d="M3 6L5.5 8.5L9 3.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  ) : (
-                    <div className="w-3 h-3 rounded-[3px] border border-[#ccc] flex-shrink-0" />
-                  )
-                ) : (
-                  isSelected && (
-                    <div className="w-1 h-1 rounded-full bg-black flex-shrink-0" />
-                  )
-                )}
-              </button>
-            );
-          })}
-        </div>
+              {/* Indicator */}
+              {isInCompare ? (
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="flex-shrink-0">
+                  <rect x="0.5" y="0.5" width="11" height="11" rx="2" fill="#000" stroke="#000" strokeWidth="1" />
+                  <path d="M3 6L5.5 8.5L9 3.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : (
+                <div
+                  className="w-3 h-3 rounded-[3px] border flex-shrink-0 transition-colors duration-100"
+                  style={{ borderColor: isHovered ? "#999" : "#ddd" }}
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* ═══ RIGHT: Unified preview panel ═══ */}
+      {/* ═══ RIGHT: Preview panel ═══ */}
       <div className="flex-1 flex flex-col items-center overflow-y-auto px-6 py-6 min-h-0">
-        {isSingleView && singleActive ? (
+        {isEmpty && !singleActive ? (
+          /* ── Empty state ── */
+          <div className="flex flex-col items-center justify-center my-auto font-mono text-center">
+            <div className="text-[11px] text-[#ccc] tracking-wider uppercase">
+              Select humanoids to compare
+            </div>
+          </div>
+        ) : isSingleView && singleActive ? (
           /* ── Single humanoid preview ── */
           <div
             key={singleActive.id}
@@ -361,16 +270,22 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
                 Buy
               </a>
             )}
+
+            {/* Hint to add more */}
+            <div className="font-mono text-[10px] text-[#ccc] mt-6 tracking-wider uppercase">
+              Select others to compare
+            </div>
           </div>
         ) : (
-          /* ── Multi-humanoid comparison ── */
-          <div className="w-full max-w-[720px] mx-auto my-auto">
-            {/* Robot columns */}
-            <div
-              className="grid gap-4 w-full"
-              style={{ gridTemplateColumns: `repeat(${displayedHumanoids.length}, 1fr)` }}
-            >
-              {displayedHumanoids.map((h, i) => (
+          /* ── Side by side ── */
+          <div
+            className="grid gap-6 w-full my-auto"
+            style={{ gridTemplateColumns: `repeat(${displayedHumanoids.length}, 1fr)` }}
+          >
+            {displayedHumanoids.map((h, i) => {
+              const stats = getStatBars(h);
+
+              return (
                 <div
                   key={h.id}
                   className="flex flex-col items-center font-mono"
@@ -379,7 +294,7 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
                     animation: `select-compare-in 350ms cubic-bezier(0.22, 1, 0.36, 1) ${60 + i * 80}ms forwards`,
                   }}
                 >
-                  <div className="relative w-full flex items-center justify-center" style={{ height: "180px" }}>
+                  <div className="relative w-full flex items-center justify-center" style={{ height: "200px" }}>
                     <img
                       src={h.imageUrl || "/robots/placeholder.png"}
                       alt={h.name}
@@ -395,45 +310,31 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
                       }}
                     />
                   </div>
-                  <div className="text-[14px] leading-none tracking-tight text-black mt-2 text-center">
+
+                  <div className="text-[16px] leading-none tracking-tight text-black mt-3 text-center">
                     {h.name}
                   </div>
-                  <div className="text-[10px] leading-none tracking-tight text-[#999] mt-1 text-center">
+                  <div className="text-[11px] leading-none tracking-tight text-[#999] mt-1 text-center">
                     {h.manufacturer}
                   </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Stat comparison bars */}
-            {compareStatRows.length > 0 && (
-              <div className="w-full flex flex-col gap-4 mt-6" style={{ textTransform: "none" }}>
-                {compareStatRows.map((row, ri) => (
-                  <div key={row.key} className="animate-stat-cascade" style={{ animationDelay: `${150 + ri * 60}ms` }}>
-                    <div className="text-[11px] font-mono text-[#999] uppercase mb-1.5">{row.label}</div>
-                    <div className="flex flex-col gap-[5px]">
-                      {displayedHumanoids.map((h, ci) => {
-                        const val = row.values[ci];
-                        if (val === null) return (
-                          <div key={h.id} className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono text-[#ccc] w-[52px] text-right shrink-0">&mdash;</span>
-                            <div className="relative h-[4px] w-full rounded-full" style={{ backgroundColor: "rgba(0,0,0,0.04)" }} />
-                          </div>
-                        );
-                        const pct = Math.max(4, Math.min(100, ((val - row.min) / (row.max - row.min)) * 100));
-                        const isHighest = val === row.maxVal;
+                  {stats.length > 0 && (
+                    <div className="w-full flex flex-col gap-[6px] mt-4 px-1" style={{ textTransform: "none" }}>
+                      {stats.map((stat, si) => {
+                        const clampedPct = Math.max(4, Math.min(100, stat.pct));
                         return (
-                          <div key={h.id} className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono w-[52px] text-right shrink-0" style={{ color: isHighest ? "#000" : "#999" }}>
-                              {val}{row.unit}
-                            </span>
-                            <div className="relative h-[4px] w-full rounded-full" style={{ backgroundColor: "rgba(0,0,0,0.06)" }}>
+                          <div key={stat.label} className="animate-stat-cascade" style={{ animationDelay: `${120 + i * 80 + si * 50}ms` }}>
+                            <div className="flex justify-between items-baseline text-[11px] leading-none mb-[2px]">
+                              <span style={{ color: "#999" }}>{stat.label}</span>
+                              <span className="text-[12px]" style={{ color: "#444" }}>{stat.value}</span>
+                            </div>
+                            <div className="relative h-[3px] w-full rounded-full" style={{ backgroundColor: "rgba(0,0,0,0.08)" }}>
                               <div
                                 className="absolute inset-y-0 left-0 rounded-full animate-bar-fill"
                                 style={{
-                                  width: `${pct}%`,
-                                  backgroundColor: isHighest ? "rgba(0,0,0,0.55)" : BAR_COLORS[ci] || BAR_COLORS[0],
-                                  animationDelay: `${200 + ri * 60 + ci * 40}ms`,
+                                  width: `${clampedPct}%`,
+                                  backgroundColor: "rgba(0,0,0,0.30)",
+                                  animationDelay: `${160 + i * 80 + si * 50}ms`,
                                 }}
                               />
                             </div>
@@ -441,20 +342,10 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
                         );
                       })}
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Legend */}
-            <div className="flex items-center gap-4 mt-5 font-mono text-[9px] text-[#bbb] uppercase">
-              {displayedHumanoids.map((h, i) => (
-                <div key={h.id} className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-[2px]" style={{ backgroundColor: BAR_COLORS[i] || BAR_COLORS[0] }} />
-                  {h.name}
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
       </div>

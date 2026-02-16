@@ -11,14 +11,18 @@ import CatalogIndex from "@/components/CatalogIndex";
 import { humanoids, legends, Humanoid } from "@/data/humanoids";
 import { defaultLayoutConfig } from "@/components/BottomBar";
 
-// ═══ Cursors ═══
-const CURSOR_DRAG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M7 9l-3 3 3 3M17 9l3 3-3 3' fill='none' stroke='%23999' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='5' y1='12' x2='19' y2='12' stroke='%23999' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, ew-resize`;
-const CURSOR_DRAGGING = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M7 9l-3 3 3 3M17 9l3 3-3 3' fill='none' stroke='%23555' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='5' y1='12' x2='19' y2='12' stroke='%23555' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, ew-resize`;
+// ═══ Ring Shape Presets ═══
+const RING_PRESETS = [
+  { id: 'wide',   label: 'Wide',   rx: 660, ry: 110, offsetY: -40 },
+  { id: 'round',  label: 'Round',  rx: 420, ry: 320, offsetY: -60 },
+  { id: 'tight',  label: 'Tight',  rx: 320, ry: 180, offsetY: -50 },
+  { id: 'flat',   label: 'Flat',   rx: 800, ry: 55,  offsetY: -30 },
+] as const;
 
 // ═══ 3D Carousel Constants ═══
-const DEFAULT_RX = 620;
-const DEFAULT_RY = 107;
-const DEFAULT_OFFSET_Y = -90;
+const DEFAULT_RX: number = RING_PRESETS[0].rx;
+const DEFAULT_RY: number = RING_PRESETS[0].ry;
+const DEFAULT_OFFSET_Y: number = RING_PRESETS[0].offsetY;
 const WHEEL_SENSITIVITY = 0.08;
 const FRICTION = 0.92;
 const SNAP_THRESHOLD = 0.08;
@@ -27,10 +31,11 @@ const SNAP_STRENGTH = 0.08;
 const introItem: Humanoid = { id: '__intro__', name: 'Humanoid Index', manufacturer: '' };
 const allRobots = [introItem, ...humanoids, ...legends];
 const N_CARDS = allRobots.length;
-const ANGLE_PER_CARD = 360 / N_CARDS;
+const CARD_SPACING = 15; // fixed degrees between cards — independent of count
+const TOTAL_ARC = N_CARDS * CARD_SPACING;
 
 function normalizeIndex(rotation: number): number {
-  const raw = rotation / ANGLE_PER_CARD;
+  const raw = rotation / CARD_SPACING;
   return ((Math.round(raw) % N_CARDS) + N_CARDS) % N_CARDS;
 }
 
@@ -50,6 +55,9 @@ export default function Home() {
   const [, forceControls] = useState(0);
   const [scrollModal, setScrollModal] = useState<string | null>(null);
   const [easterShake, setEasterShake] = useState(false);
+  const [activePreset, setActivePreset] = useState('wide');
+  const presetAnimRef = useRef<number | null>(null);
+  const fadeRef = useRef({ center: 1, near: 0.6, mid: 0.25, far: 0.08 });
   const ellipseRef = useRef({ rx: DEFAULT_RX, ry: DEFAULT_RY, offsetY: DEFAULT_OFFSET_Y, flipY: 1 });
   const scrollAccumRef = useRef(0);
   const scrollResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -80,7 +88,7 @@ export default function Home() {
   // Keep enlargedRef in sync + set transition deadline on exit
   useEffect(() => {
     if (enlargedHumanoid === null && enlargedRef.current !== null) {
-      transitionUntilRef.current = performance.now() + 700;
+      transitionUntilRef.current = performance.now() + 350;
     }
     enlargedRef.current = enlargedHumanoid;
   }, [enlargedHumanoid]);
@@ -136,12 +144,12 @@ export default function Home() {
     if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
     velocityRef.current = 0;
     const startRotation = currentRotationRef.current;
-    let diff = targetIdx * ANGLE_PER_CARD - startRotation;
-    diff = ((diff % 360) + 540) % 360 - 180;
+    let diff = targetIdx * CARD_SPACING - startRotation;
+    diff = ((diff % TOTAL_ARC) + TOTAL_ARC * 1.5) % TOTAL_ARC - TOTAL_ARC / 2;
     const startTime = performance.now();
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
     const animate = (now: number) => {
-      const progress = Math.min(1, (now - startTime) / 400);
+      const progress = Math.min(1, (now - startTime) / 200);
       currentRotationRef.current = startRotation + diff * easeOutCubic(progress);
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
@@ -151,6 +159,26 @@ export default function Home() {
     };
     animationRef.current = requestAnimationFrame(animate);
   }, []);
+
+  // Trigger enter animation when intro dismisses
+  useEffect(() => {
+    if (showIntro || viewMode !== 'carousel') return;
+    velocityRef.current = 0;
+    const target = CARD_SPACING;
+    const startRot = target - 120;
+    currentRotationRef.current = startRot;
+    if (!enterAnimRef.current) {
+      enterAnimRef.current = {
+        start: performance.now(),
+        startRot,
+        targetRx: DEFAULT_RX,
+        targetRy: DEFAULT_RY,
+      };
+      ellipseRef.current.rx = DEFAULT_RX * 0.5;
+      ellipseRef.current.ry = DEFAULT_RY * 0.5;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showIntro]);
 
   // ═══ Main rAF render loop — positions all cards via transforms ═══
   useEffect(() => {
@@ -163,18 +191,11 @@ export default function Home() {
       const now = performance.now();
 
       if (!isEnlargedMode && animationRef.current === null && !dragRef.current) {
-        // Cursor-position drift: mouse near edges gently rotates the carousel
-        const mx = mouseTarget.current.x; // -1 (left) to 1 (right)
-        const deadZone = 0.15;
-        const raw = Math.abs(mx) > deadZone ? (Math.abs(mx) - deadZone) / (1 - deadZone) : 0;
-        const drift = raw > 0 ? Math.sign(mx) * raw * raw * 0.06 : 0;
-        velocityRef.current += drift;
-
         currentRotationRef.current += velocityRef.current;
         velocityRef.current *= FRICTION;
-        if (Math.abs(velocityRef.current) < SNAP_THRESHOLD && Math.abs(drift) === 0) {
+        if (Math.abs(velocityRef.current) < SNAP_THRESHOLD) {
           velocityRef.current = 0;
-          const nearest = Math.round(currentRotationRef.current / ANGLE_PER_CARD) * ANGLE_PER_CARD;
+          const nearest = Math.round(currentRotationRef.current / CARD_SPACING) * CARD_SPACING;
           const snapDelta = nearest - currentRotationRef.current;
           currentRotationRef.current += snapDelta * SNAP_STRENGTH;
           if (Math.abs(snapDelta) < 0.05) currentRotationRef.current = nearest;
@@ -201,8 +222,6 @@ export default function Home() {
         setCurrentIndex(newIndex);
       }
 
-      const needsTransition = isEnlargedMode || now < transitionUntilRef.current;
-
       const { rx, ry, offsetY, flipY } = ellipseRef.current;
 
       // Update ring track size/position
@@ -219,9 +238,17 @@ export default function Home() {
         const el = cardRefs.current[i];
         if (!el) continue;
 
-        const rawAngle = i * ANGLE_PER_CARD - rotation;
-        const angle = ((rawAngle % 360) + 540) % 360 - 180;
+        // Index-distance-based angle — fixed spacing regardless of card count
+        const currentIdx = rotation / CARD_SPACING;
+        let idxDiff = i - currentIdx;
+        idxDiff = idxDiff - Math.round(idxDiff / N_CARDS) * N_CARDS;
+        const angle = idxDiff * CARD_SPACING;
         const absAngle = Math.abs(angle);
+
+        if (absAngle > 150 && !isEnlargedMode) {
+          el.style.visibility = 'hidden';
+          continue;
+        }
         const rad = (angle * Math.PI) / 180;
 
         // Elliptical path — cards travel around visible ring
@@ -229,12 +256,15 @@ export default function Home() {
         const y = flipY * Math.cos(rad) * ry;
         const depth = (Math.cos(rad) + 1) / 2;       // 1.0 at front, 0.0 at back
 
-        const scale = 0.3 + 0.7 * depth;
-        const opacity = Math.max(0.08, Math.pow(depth, 1.8));
-        const blur = (1 - depth) * 4;
+        const centerBoost = Math.max(0, 1 - absAngle / (CARD_SPACING * 2)) * 0.15;
+        const scale = (0.3 + 0.7 * depth) * (1 + centerBoost);
+        const steps = absAngle / CARD_SPACING;
+        const f = fadeRef.current;
+        const opacity = steps < 0.5 ? f.center : steps < 1.5 ? f.near : steps < 2.5 ? f.mid : f.far;
+        const blur = 0;
         const zIdx = Math.round(depth * 1000);
         const rotY = angle * 0.3;
-        const isCenter = absAngle < ANGLE_PER_CARD * 0.5;
+        const isCenter = absAngle < CARD_SPACING * 0.5;
 
         const isEnlarged = isEnlargedMode && enlargedRef.current?.id === allRobots[i].id;
         let fx = x, fy = y, fScale = scale * enterScale, fOpacity = opacity, fBlur = blur, fRotY = rotY;
@@ -248,17 +278,15 @@ export default function Home() {
           }
         }
 
-        const mx = isCenter && !isEnlargedMode ? mouseCurrent.current.x * 10 : 0;
-        const my = isCenter && !isEnlargedMode ? mouseCurrent.current.y * 6 : 0;
-
-        el.style.transform = `translate3d(${fx + mx}px, ${fy + my + offsetY}px, 0) scale(${fScale}) rotateY(${fRotY}deg)`;
+        el.style.transform = `translate3d(${fx}px, ${fy + offsetY}px, 0) scale(${fScale}) rotateY(${fRotY}deg)`;
         el.style.opacity = String(fOpacity);
         el.style.filter = fBlur > 0.1 ? `blur(${fBlur}px)` : 'none';
         el.style.zIndex = isEnlarged ? '1100' : String(zIdx);
         el.style.visibility = 'visible';
-        el.style.pointerEvents = isEnlarged || depth > 0.3 ? 'auto' : 'none';
-        el.style.transition = needsTransition
-          ? 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease'
+        el.style.pointerEvents = isEnlarged ? 'auto' : 'none';
+        const useTransition = isEnlargedMode || now < transitionUntilRef.current;
+        el.style.transition = useTransition
+          ? 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, filter 0.2s ease'
           : 'none';
 
         // Position dot marker on the ring
@@ -328,9 +356,6 @@ export default function Home() {
   // Mouse drag support
   useEffect(() => {
     if (viewMode !== 'carousel' || showIntro) return;
-    const carouselEl = carouselRef.current;
-    if (!carouselEl) return;
-
     const handleMouseDown = (e: MouseEvent) => {
       if (enlargedRef.current) return;
       const target = e.target as HTMLElement;
@@ -346,35 +371,47 @@ export default function Home() {
       const dx = e.clientX - dragRef.current.x;
       if (!isDraggingRef.current && Math.abs(dx) > 4) {
         isDraggingRef.current = true;
-        carouselEl.style.cursor = CURSOR_DRAGGING;
+        document.body.style.cursor = 'grabbing';
       }
       if (isDraggingRef.current) {
         const now = performance.now();
         const frameDx = e.clientX - dragRef.current.prevX;
         const frameDt = now - dragRef.current.prevTime;
         if (frameDt > 0) {
-          velocityRef.current = -(frameDx / frameDt) * 3;
+          velocityRef.current = -(frameDx / frameDt) * 1.5;
         }
         dragRef.current.prevX = e.clientX;
         dragRef.current.prevTime = now;
-        currentRotationRef.current = dragRef.current.rotation - dx * 0.3;
+        currentRotationRef.current = dragRef.current.rotation - dx * 0.15;
       }
     };
     const handleMouseUp = () => {
       if (!dragRef.current) return;
       dragRef.current = null;
       isDraggingRef.current = false;
-      carouselEl.style.cursor = CURSOR_DRAG;
+      document.body.style.cursor = '';
     };
-
-    carouselEl.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
-      carouselEl.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
+  }, [viewMode, showIntro]);
+
+  // Double-click to select/dismiss
+  useEffect(() => {
+    if (viewMode !== 'carousel' || showIntro) return;
+    const handleDblClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button, a, input, [data-no-drag]')) return;
+      const h = allRobots[currentIndexRef.current];
+      if (h) setEnlargedHumanoid(prev => prev ? null : h);
+    };
+    document.addEventListener('dblclick', handleDblClick);
+    return () => document.removeEventListener('dblclick', handleDblClick);
   }, [viewMode, showIntro]);
 
   // Keyboard navigation
@@ -392,7 +429,11 @@ export default function Home() {
           animateToIndex((currentIndexRef.current + 1) % N_CARDS);
           break;
         case 'Enter':
-          { const h = allRobots[currentIndexRef.current]; if (h) setEnlargedHumanoid(h); }
+        case ' ':
+          e.preventDefault();
+          { const h = allRobots[currentIndexRef.current];
+            if (h) setEnlargedHumanoid(prev => prev ? null : h);
+          }
           break;
         case 'Escape':
           setEnlargedHumanoid(null);
@@ -416,7 +457,7 @@ export default function Home() {
       // Spin + expand: start as tiny circle, expand to full ring while spinning
       if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
       velocityRef.current = 0;
-      const target = ANGLE_PER_CARD;
+      const target = CARD_SPACING;
       const startRot = target - 120;
       currentRotationRef.current = startRot;
       // Guard against multiple ViewSwitcher instances firing simultaneously
@@ -442,10 +483,34 @@ export default function Home() {
     const dy = clientY - (rect.top + rect.height / 2);
     const { flipY } = ellipseRef.current;
     const clickAngle = Math.atan2(dx, flipY * dy) * (180 / Math.PI);
-    const offset = Math.round(clickAngle / ANGLE_PER_CARD);
+    const offset = Math.round(clickAngle / (360 / N_CARDS));
     const target = ((currentIndexRef.current + offset) % N_CARDS + N_CARDS) % N_CARDS;
     animateToIndex(target);
   }, [animateToIndex]);
+
+  const applyPreset = useCallback((presetId: string) => {
+    const preset = RING_PRESETS.find(p => p.id === presetId);
+    if (!preset) return;
+    setActivePreset(presetId);
+    if (presetAnimRef.current) cancelAnimationFrame(presetAnimRef.current);
+    const startRx = ellipseRef.current.rx;
+    const startRy = ellipseRef.current.ry;
+    const startOY = ellipseRef.current.offsetY;
+    const startTime = performance.now();
+    const animate = (now: number) => {
+      const progress = Math.min(1, (now - startTime) / 500);
+      const e = 1 - Math.pow(1 - progress, 3);
+      ellipseRef.current.rx = startRx + (preset.rx - startRx) * e;
+      ellipseRef.current.ry = startRy + (preset.ry - startRy) * e;
+      ellipseRef.current.offsetY = startOY + (preset.offsetY - startOY) * e;
+      if (progress < 1) {
+        presetAnimRef.current = requestAnimationFrame(animate);
+      } else {
+        presetAnimRef.current = null;
+      }
+    };
+    presetAnimRef.current = requestAnimationFrame(animate);
+  }, []);
 
   const handleMinimapMouseDown = (e: React.MouseEvent) => {
     e.preventDefault(); isDraggingMinimapRef.current = true; handleMinimapNav(e.clientX, e.clientY);
@@ -494,7 +559,7 @@ export default function Home() {
             setEasterShake(true);
             if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
             velocityRef.current = 0;
-            const target = currentIndexRef.current * ANGLE_PER_CARD;
+            const target = currentIndexRef.current * CARD_SPACING;
             const startRot = target - 360;
             currentRotationRef.current = startRot;
             const startTime = performance.now();
@@ -716,7 +781,7 @@ export default function Home() {
               <div
                 ref={carouselRef}
                 className="absolute inset-0"
-                style={{ perspective: '1200px', cursor: CURSOR_DRAG }}
+                style={{ perspective: '1200px' }}
               >
                 {/* Visible ring track */}
                 <div
@@ -804,34 +869,11 @@ export default function Home() {
                           </div>
                         </div>
                       ) : (
-                      <>
-                      {/* Targeting corners */}
-                      {isCenterCard && !isEnlarged && (
-                        <div
-                          className="absolute z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-out pointer-events-none"
-                          style={{ top: '10px', bottom: '10px', left: '-40px', right: '-40px' }}
-                        >
-                          <div className="absolute inset-[20px] group-hover:inset-[10px] transition-all duration-150 ease-out pointer-events-none">
-                            <div className="absolute top-0 left-0 w-4 h-4 border-l border-t border-neutral-300" />
-                            <div className="absolute top-0 right-0 w-4 h-4 border-r border-t border-neutral-300" />
-                            <div className="absolute bottom-0 left-0 w-4 h-4 border-l border-b border-neutral-300" />
-                            <div className="absolute bottom-0 right-0 w-4 h-4 border-r border-b border-neutral-300" />
-                          </div>
-                        </div>
-                      )}
-                      {isCenterCard && !isEnlarged && (
-                        <div
-                          className="absolute bottom-[5%] left-1/2 -translate-x-1/2 rounded-[50%] pointer-events-none"
-                          style={{ width: '50%', height: '10px', background: 'radial-gradient(ellipse, rgba(0,0,0,0.12) 0%, transparent 70%)' }}
-                        />
-                      )}
                       <HumanoidCard
                         humanoid={humanoid}
                         config={config}
                         effectClass="distortion-wave"
-                        onClick={() => !isDraggingRef.current && isCenterCard && setEnlargedHumanoid(isEnlarged ? null : humanoid)}
                       />
-                      </>
                       )}
                     </div>
                   );
@@ -845,7 +887,7 @@ export default function Home() {
                 return (
                   <div
                     key={display.id}
-                    className="absolute z-[60] pointer-events-none font-mono animate-blur-fade"
+                    className="absolute z-[60] pointer-events-none font-mono animate-blur-fade flex flex-col items-center gap-2"
                     style={{
                       left: '50%',
                       top: '50%',
@@ -854,6 +896,17 @@ export default function Home() {
                   >
                     <div className="text-[11px] leading-none tracking-wider uppercase px-3 py-1.5 rounded-full border border-neutral-200" style={{ color: 'rgba(0,0,0,0.5)', whiteSpace: 'nowrap' }}>
                       {display.name} <span style={{ color: 'rgba(0,0,0,0.2)' }}>&middot;</span> {display.manufacturer}
+                    </div>
+                    <div
+                      className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest"
+                      style={{ color: 'rgba(0,0,0,0.18)' }}
+                    >
+                      <span
+                        className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border"
+                        style={{ borderColor: 'rgba(0,0,0,0.1)', fontSize: '8px', minWidth: '42px', letterSpacing: '0.08em' }}
+                      >
+                        space
+                      </span>
                     </div>
                   </div>
                 );
@@ -903,7 +956,9 @@ export default function Home() {
                   />
                   {/* Dots on the ring */}
                   {allRobots.map((_, i) => {
-                    const ang = (i - currentIndex) * ANGLE_PER_CARD;
+                    let idxDiff = i - currentIndex;
+                    idxDiff = idxDiff - Math.round(idxDiff / N_CARDS) * N_CARDS;
+                    const ang = idxDiff * (360 / N_CARDS); // evenly spaced on minimap
                     const rad = (ang * Math.PI) / 180;
                     const dotX = Math.sin(rad) * MINI_RX;
                     const dotY = ep.flipY * Math.cos(rad) * MINI_RY;
@@ -948,7 +1003,53 @@ export default function Home() {
         </div>
       )}
 
-      {/* ═══ RING CONTROLS ═══ */}
+      {/* ═══ RING SHAPE PRESETS — bottom center ═══ */}
+      {!showIntro && viewMode === 'carousel' && !enlargedHumanoid && (
+        <div
+          className="fixed z-[100] flex items-center gap-2 animate-blur-fade"
+          style={{
+            bottom: '18px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+          }}
+        >
+          {RING_PRESETS.map((preset) => {
+            const isActive = activePreset === preset.id;
+            const svgRx = (preset.rx / 800) * 14;
+            const svgRy = (preset.ry / 320) * 10;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => applyPreset(preset.id)}
+                className="group relative flex items-center justify-center transition-all duration-200"
+                style={{
+                  width: '36px',
+                  height: '28px',
+                  borderRadius: '6px',
+                  border: `1px solid ${isActive ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.06)'}`,
+                  background: isActive ? 'rgba(0,0,0,0.04)' : 'transparent',
+                }}
+                title={preset.label}
+              >
+                <svg width="30" height="20" viewBox="0 0 30 20">
+                  <ellipse
+                    cx="15"
+                    cy="10"
+                    rx={svgRx}
+                    ry={svgRy}
+                    fill="none"
+                    stroke={isActive ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)'}
+                    strokeWidth="1"
+                    className="transition-all duration-200 group-hover:stroke-[rgba(0,0,0,0.35)]"
+                  />
+                </svg>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ═══ DEV CONTROLS — bottom-right corner ═══ */}
       {!showIntro && viewMode === 'carousel' && (
         <>
           <button
@@ -960,13 +1061,15 @@ export default function Home() {
               color: showControls ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.10)',
             }}
           >
-            Ring {showControls ? 'ON' : 'OFF'}
+            Tune
           </button>
           {showControls && (
             <div
               className="fixed z-[100] bg-white/90 backdrop-blur-sm border border-neutral-200 rounded-lg font-mono shadow-sm"
-              style={{ bottom: '40px', right: '24px', width: '220px', padding: '12px 14px' }}
+              style={{ bottom: '38px', right: '24px', width: '240px', padding: '12px 14px' }}
             >
+              {/* Ring shape sliders */}
+              <div className="text-[9px] uppercase tracking-wider text-neutral-300 mb-2">Ring</div>
               {([
                 { label: 'Spread X', key: 'rx' as const, min: 100, max: 900 },
                 { label: 'Spread Y', key: 'ry' as const, min: 30, max: 500 },
@@ -975,7 +1078,7 @@ export default function Home() {
                 <div key={key} className="mb-2">
                   <div className="flex justify-between text-[10px] text-neutral-400 mb-0.5">
                     <span>{label}</span>
-                    <span className="text-neutral-600">{ellipseRef.current[key]}</span>
+                    <span className="text-neutral-600">{Math.round(ellipseRef.current[key])}</span>
                   </div>
                   <input
                     type="range" min={min} max={max} step={10}
@@ -985,7 +1088,7 @@ export default function Home() {
                   />
                 </div>
               ))}
-              <div className="flex items-center justify-between mt-1 pt-2 border-t border-neutral-100">
+              <div className="flex items-center justify-between mb-3 pt-1 pb-2 border-b border-neutral-100">
                 <span className="text-[10px] text-neutral-400">Direction</span>
                 <button
                   onClick={() => { ellipseRef.current.flipY *= -1; forceControls(n => n + 1); }}
@@ -994,6 +1097,28 @@ export default function Home() {
                   {ellipseRef.current.flipY === -1 ? 'Front Top' : 'Front Bottom'}
                 </button>
               </div>
+
+              {/* Fade sliders */}
+              <div className="text-[9px] uppercase tracking-wider text-neutral-300 mb-2">Fade</div>
+              {([
+                { label: 'Center', key: 'center' as const },
+                { label: '±1 Card', key: 'near' as const },
+                { label: '±2 Cards', key: 'mid' as const },
+                { label: 'Far', key: 'far' as const },
+              ]).map(({ label, key }) => (
+                <div key={key} className="mb-2 last:mb-0">
+                  <div className="flex justify-between text-[10px] text-neutral-400 mb-0.5">
+                    <span>{label}</span>
+                    <span className="text-neutral-600">{fadeRef.current[key].toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range" min={0} max={100} step={1}
+                    value={fadeRef.current[key] * 100}
+                    onChange={e => { fadeRef.current[key] = +e.target.value / 100; forceControls(n => n + 1); }}
+                    className="w-full h-1 appearance-none bg-neutral-200 rounded-full outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neutral-500"
+                  />
+                </div>
+              ))}
             </div>
           )}
         </>
