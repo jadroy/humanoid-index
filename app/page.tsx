@@ -1,61 +1,85 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { ViewConfig, defaultConfig } from "@/components/Sidebar";
 import HumanoidCard from "@/components/HumanoidCard";
 import ViewSwitcher, { ViewMode } from "@/components/ViewSwitcher";
 import GridView from "@/components/GridView";
 import SmashPicker from "@/components/SmashPicker";
+import CharacterSelect from "@/components/CharacterSelect";
+import CatalogIndex from "@/components/CatalogIndex";
 import { humanoids, legends, Humanoid } from "@/data/humanoids";
 import { defaultLayoutConfig } from "@/components/BottomBar";
 
+// ═══ 3D Carousel Constants ═══
+const DEFAULT_RX = 600;
+const DEFAULT_RY = 250;
+const DEFAULT_OFFSET_Y = 120;
+const WHEEL_SENSITIVITY = 0.15;
+const FRICTION = 0.92;
+const SNAP_THRESHOLD = 0.08;
+const SNAP_STRENGTH = 0.08;
+
+const introItem: Humanoid = { id: '__intro__', name: 'Humanoid Index', manufacturer: '' };
+const allRobots = [introItem, ...humanoids, ...legends];
+const N_CARDS = allRobots.length;
+const ANGLE_PER_CARD = 360 / N_CARDS;
+
+function normalizeIndex(rotation: number): number {
+  const raw = rotation / ANGLE_PER_CARD;
+  return ((Math.round(raw) % N_CARDS) + N_CARDS) % N_CARDS;
+}
+
 export default function Home() {
-  const router = useRouter();
   const [config] = useState<ViewConfig>(defaultConfig);
   const [layoutConfig] = useState(defaultLayoutConfig);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [viewportRatio, setViewportRatio] = useState(0.2);
-  const [isInActiveZone, setIsInActiveZone] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('carousel');
   const [hoveredHumanoid, setHoveredHumanoid] = useState<Humanoid | null>(null);
   const [windowWidth, setWindowWidth] = useState(1200);
-  const [scrollFraction, setScrollFraction] = useState(0);
   const [enlargedHumanoid, setEnlargedHumanoid] = useState<Humanoid | null>(null);
   const [showIntro, setShowIntro] = useState(true);
   const [introExiting, setIntroExiting] = useState(false);
-  const [showHud, setShowHud] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showHud, setShowHud] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const [, forceControls] = useState(0);
+  const ellipseRef = useRef({ rx: DEFAULT_RX, ry: DEFAULT_RY, offsetY: DEFAULT_OFFSET_Y, flipY: -1 });
+
+  // 3D carousel refs
+  const currentRotationRef = useRef(0);
+  const velocityRef = useRef(0);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dotRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const ringRef = useRef<HTMLDivElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const animationRef = useRef<number | null>(null);
+  const enlargedRef = useRef<Humanoid | null>(null);
+  const currentIndexRef = useRef(0);
+  const touchStartRef = useRef<{ x: number; rotation: number } | null>(null);
+  const transitionUntilRef = useRef(0);
+
   const minimapRef = useRef<HTMLDivElement>(null);
-  const scrollPositionRef = useRef(0);
+  const isDraggingMinimapRef = useRef(false);
   const mouseTarget = useRef({ x: 0, y: 0 });
   const mouseCurrent = useRef({ x: 0, y: 0 });
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const isDraggingMinimapRef = useRef(false);
-  const scrollAnimationRef = useRef<number | null>(null);
 
-  // Dismiss intro on click or keypress
+  // Keep enlargedRef in sync + set transition deadline on exit
+  useEffect(() => {
+    if (enlargedHumanoid === null && enlargedRef.current !== null) {
+      transitionUntilRef.current = performance.now() + 700;
+    }
+    enlargedRef.current = enlargedHumanoid;
+  }, [enlargedHumanoid]);
+
+  // Auto-dismiss intro
   useEffect(() => {
     if (!showIntro || introExiting) return;
-    const dismiss = () => {
+    const timer = setTimeout(() => {
       setIntroExiting(true);
-      setTimeout(() => {
-        setShowIntro(false);
-        setIntroExiting(false);
-      }, 700);
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
-      dismiss();
-    };
-    const handleClick = () => dismiss();
-    window.addEventListener('keydown', handleKey);
-    window.addEventListener('click', handleClick);
-    return () => {
-      window.removeEventListener('keydown', handleKey);
-      window.removeEventListener('click', handleClick);
-    };
+      setTimeout(() => { setShowIntro(false); setIntroExiting(false); }, 400);
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [showIntro, introExiting]);
 
   // Window width tracking
@@ -66,7 +90,7 @@ export default function Home() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Mouse parallax — subtle tilt following cursor, applied via CSS vars
+  // Mouse parallax — smooth cursor tracking for center card
   useEffect(() => {
     let raf: number;
     const handleMouseMove = (e: MouseEvent) => {
@@ -80,272 +104,320 @@ export default function Home() {
       const t = mouseTarget.current;
       c.x += (t.x - c.x) * 0.06;
       c.y += (t.y - c.y) * 0.06;
-      const el = carouselRef.current;
-      if (el) {
-        el.style.setProperty('--mouse-x', `${c.x * 10}px`);
-        el.style.setProperty('--mouse-y', `${c.y * 6}px`);
-      }
       raf = requestAnimationFrame(tick);
     };
     window.addEventListener('mousemove', handleMouseMove);
     raf = requestAnimationFrame(tick);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      cancelAnimationFrame(raf);
-    };
+    return () => { window.removeEventListener('mousemove', handleMouseMove); cancelAnimationFrame(raf); };
   }, []);
 
-  // Responsive inset margins
+  // Layout
   const insetX = windowWidth < 640 ? 16 : windowWidth < 768 ? 48 : windowWidth < 1024 ? 120 : 252;
   const topBarInset = windowWidth < 640 ? 6 : 10;
+  const allRobotsCount = humanoids.length + legends.length;
+  const trackWidth = Math.max(140, allRobotsCount * 11);
 
-  // Track target index for keyboard navigation
-  const targetIndexRef = useRef(0);
-
-  // Scroll to specific card — cancellable animation for responsive rapid keypresses
-  const scrollToCard = useCallback((index: number) => {
-    const container = scrollRef.current;
-    if (!container) return;
-
-    // Cancel any in-flight animation immediately
-    if (scrollAnimationRef.current !== null) {
-      cancelAnimationFrame(scrollAnimationRef.current);
-      scrollAnimationRef.current = null;
-    }
-
-    // Find the actual card element and center it
-    const targetEl = container.querySelector(`[data-card-index="${index}"]`) as HTMLElement;
-    if (!targetEl) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const cardRect = targetEl.getBoundingClientRect();
-    const cardCenter = cardRect.left + cardRect.width / 2;
-    const containerCenter = containerRect.left + containerRect.width / 2;
-    const targetScroll = container.scrollLeft + (cardCenter - containerCenter);
-    const clampedTarget = Math.max(0, Math.min(targetScroll, container.scrollWidth - container.clientWidth));
-
-    const startScroll = container.scrollLeft;
-    const distance = clampedTarget - startScroll;
-    if (Math.abs(distance) < 1) return;
-
-    const duration = Math.min(300, Math.max(150, Math.abs(distance) * 0.4));
+  // Animate to specific card index (shortest angular path)
+  const animateToIndex = useCallback((targetIdx: number) => {
+    if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
+    velocityRef.current = 0;
+    const startRotation = currentRotationRef.current;
+    let diff = targetIdx * ANGLE_PER_CARD - startRotation;
+    diff = ((diff % 360) + 540) % 360 - 180;
     const startTime = performance.now();
-
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-
     const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(1, elapsed / duration);
-      const eased = easeOutCubic(progress);
-
-      container.scrollLeft = startScroll + distance * eased;
-
+      const progress = Math.min(1, (now - startTime) / 400);
+      currentRotationRef.current = startRotation + diff * easeOutCubic(progress);
       if (progress < 1) {
-        scrollAnimationRef.current = requestAnimationFrame(animate);
+        animationRef.current = requestAnimationFrame(animate);
       } else {
-        scrollAnimationRef.current = null;
+        animationRef.current = null;
       }
     };
-
-    scrollAnimationRef.current = requestAnimationFrame(animate);
+    animationRef.current = requestAnimationFrame(animate);
   }, []);
 
-  // Scroll to initial position when carousel appears (after intro dismisses)
+  // ═══ Main rAF render loop — positions all cards via transforms ═══
   useEffect(() => {
-    if (showIntro) return;
-    const container = scrollRef.current;
-    if (!container) return;
-    requestAnimationFrame(() => {
-      const targetEl = container.querySelector('[data-card-index="0"]') as HTMLElement;
-      if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'instant', inline: 'center', block: 'nearest' });
+    if (viewMode !== 'carousel' || showIntro) {
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      return;
+    }
+    const loop = () => {
+      const isEnlargedMode = !!enlargedRef.current;
+      const now = performance.now();
+
+      if (!isEnlargedMode && animationRef.current === null) {
+        currentRotationRef.current += velocityRef.current;
+        velocityRef.current *= FRICTION;
+        if (Math.abs(velocityRef.current) < SNAP_THRESHOLD) {
+          velocityRef.current = 0;
+          const nearest = Math.round(currentRotationRef.current / ANGLE_PER_CARD) * ANGLE_PER_CARD;
+          const snapDelta = nearest - currentRotationRef.current;
+          currentRotationRef.current += snapDelta * SNAP_STRENGTH;
+          if (Math.abs(snapDelta) < 0.05) currentRotationRef.current = nearest;
+        }
       }
-    });
-  }, [showIntro]);
+
+      const rotation = currentRotationRef.current;
+      const newIndex = normalizeIndex(rotation);
+      if (newIndex !== currentIndexRef.current) {
+        currentIndexRef.current = newIndex;
+        setCurrentIndex(newIndex);
+      }
+
+      const needsTransition = isEnlargedMode || now < transitionUntilRef.current;
+
+      const { rx, ry, offsetY, flipY } = ellipseRef.current;
+
+      // Update ring track size/position
+      if (ringRef.current) {
+        ringRef.current.style.opacity = isEnlargedMode ? '0' : '1';
+        ringRef.current.style.width = `${rx * 2}px`;
+        ringRef.current.style.height = `${ry * 2}px`;
+        ringRef.current.style.marginLeft = `${-rx}px`;
+        ringRef.current.style.marginTop = `${-ry}px`;
+        ringRef.current.style.transform = `translateY(${offsetY}px)`;
+      }
+
+      for (let i = 0; i < N_CARDS; i++) {
+        const el = cardRefs.current[i];
+        if (!el) continue;
+
+        const rawAngle = i * ANGLE_PER_CARD - rotation;
+        const angle = ((rawAngle % 360) + 540) % 360 - 180;
+        const absAngle = Math.abs(angle);
+        const rad = (angle * Math.PI) / 180;
+
+        // Elliptical path — cards travel around visible ring
+        const x = Math.sin(rad) * rx;
+        const y = flipY * Math.cos(rad) * ry;
+        const depth = (Math.cos(rad) + 1) / 2;       // 1.0 at front, 0.0 at back
+
+        const scale = 0.3 + 0.7 * depth;
+        const opacity = Math.max(0.08, Math.pow(depth, 1.8));
+        const blur = (1 - depth) * 4;
+        const zIdx = Math.round(depth * 1000);
+        const rotY = angle * 0.3;
+        const isCenter = absAngle < ANGLE_PER_CARD * 0.5;
+
+        const isEnlarged = isEnlargedMode && enlargedRef.current?.id === allRobots[i].id;
+        let fx = x, fy = y, fScale = scale, fOpacity = opacity, fBlur = blur, fRotY = rotY;
+
+        if (isEnlargedMode) {
+          if (isEnlarged) {
+            fx = 0; fy = -offsetY; fScale = 1.12; fOpacity = 1; fBlur = 0; fRotY = 0;
+          } else {
+            fOpacity = Math.max(0, 0.15 - absAngle * 0.003);
+            fBlur = 3;
+          }
+        }
+
+        const mx = isCenter && !isEnlargedMode ? mouseCurrent.current.x * 10 : 0;
+        const my = isCenter && !isEnlargedMode ? mouseCurrent.current.y * 6 : 0;
+
+        el.style.transform = `translate3d(${fx + mx}px, ${fy + my + offsetY}px, 0) scale(${fScale}) rotateY(${fRotY}deg)`;
+        el.style.opacity = String(fOpacity);
+        el.style.filter = fBlur > 0.1 ? `blur(${fBlur}px)` : 'none';
+        el.style.zIndex = String(zIdx);
+        el.style.visibility = 'visible';
+        el.style.pointerEvents = isCenter || isEnlarged ? 'auto' : 'none';
+        el.style.transition = needsTransition
+          ? 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease'
+          : 'none';
+
+        // Position dot marker on the ring
+        const dot = dotRefs.current[i];
+        if (dot) {
+          dot.style.transform = `translate(${x}px, ${y + offsetY}px)`;
+          dot.style.opacity = isEnlargedMode ? '0' : String(isCenter ? 0.6 : Math.max(0.08, depth * 0.25));
+        }
+      }
+      rafIdRef.current = requestAnimationFrame(loop);
+    };
+    rafIdRef.current = requestAnimationFrame(loop);
+    return () => { if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current); };
+  }, [viewMode, showIntro]);
+
+  // Wheel handler
+  useEffect(() => {
+    if (viewMode !== 'carousel' || showIntro) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (enlargedRef.current) return;
+      e.preventDefault();
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      velocityRef.current += delta * WHEEL_SENSITIVITY;
+      if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
+    };
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    return () => document.removeEventListener('wheel', handleWheel);
+  }, [viewMode, showIntro]);
+
+  // Touch support
+  useEffect(() => {
+    if (viewMode !== 'carousel' || showIntro) return;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (enlargedRef.current) return;
+      touchStartRef.current = { x: e.touches[0].clientX, rotation: currentRotationRef.current };
+      velocityRef.current = 0;
+      if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!touchStartRef.current || enlargedRef.current) return;
+      currentRotationRef.current = touchStartRef.current.rotation - (e.touches[0].clientX - touchStartRef.current.x) * 0.3;
+    };
+    const handleTouchEnd = () => {
+      if (!touchStartRef.current) return;
+      touchStartRef.current = null;
+      animateToIndex(normalizeIndex(currentRotationRef.current));
+    };
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [viewMode, showIntro, animateToIndex]);
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const totalItems = humanoids.length + legends.length;
-
+      if (viewMode !== 'carousel') return;
       switch (e.key) {
         case 'ArrowLeft':
-          if (viewMode === 'carousel') {
-            e.preventDefault();
-            const newIndex = Math.max(0, targetIndexRef.current - 1);
-            targetIndexRef.current = newIndex;
-            scrollToCard(newIndex);
-          }
+          e.preventDefault();
+          animateToIndex((currentIndexRef.current - 1 + N_CARDS) % N_CARDS);
           break;
         case 'ArrowRight':
-          if (viewMode === 'carousel') {
-            e.preventDefault();
-            const newIndex = Math.min(totalItems - 1, targetIndexRef.current + 1);
-            targetIndexRef.current = newIndex;
-            scrollToCard(newIndex);
-          }
+          e.preventDefault();
+          animateToIndex((currentIndexRef.current + 1) % N_CARDS);
           break;
         case 'Enter':
-          {
-            const allRobots = [...humanoids, ...legends];
-            if (allRobots[currentIndex]) {
-              setEnlargedHumanoid(allRobots[currentIndex]);
-            }
-          }
+          { const h = allRobots[currentIndexRef.current]; if (h) setEnlargedHumanoid(h); }
           break;
         case 'Escape':
           setEnlargedHumanoid(null);
           break;
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, scrollToCard, viewMode, router]);
+  }, [viewMode, animateToIndex]);
 
-  const allRobotsCount = humanoids.length + legends.length;
-  // Shared width for minimap, view switcher, and targeting corners
-  const trackWidth = Math.max(140, allRobotsCount * 11);
-
-  // Padding to center first/last card in viewport
-  // Gap sized so ~50px of each neighbor peeks into the viewport edges
-  const effectiveGap = Math.max(layoutConfig.gap, (windowWidth - layoutConfig.cardSize) / 2 - 50);
-
-  // Padding to allow first/last card to center in viewport
-  const innerPad = Math.max(0, windowWidth / 2 - insetX - layoutConfig.cardSize / 2);
-
-  // Horizontal scroll handling — wheel listener on document so overlays don't block it
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    let rafId: number | null = null;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (e.deltaX !== 0) return;
-
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-      }
-    };
-
-    const handleScroll = () => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        const scrollLeft = el.scrollLeft;
-        const cardTotalWidth = layoutConfig.cardSize + effectiveGap;
-        const fractionalIndex = scrollLeft / cardTotalWidth;
-
-        const index = Math.round(fractionalIndex);
-        scrollPositionRef.current = fractionalIndex;
-        setScrollFraction(fractionalIndex);
-        const totalRobots = humanoids.length + legends.length;
-        setCurrentIndex(Math.max(0, Math.min(index, totalRobots - 1)));
-
-        const inActiveZone = fractionalIndex >= -0.3 && fractionalIndex <= totalRobots - 0.7;
-        setIsInActiveZone(inActiveZone);
-
-        const maxScroll = el.scrollWidth - el.clientWidth;
-        setScrollProgress(maxScroll > 0 ? scrollLeft / maxScroll : 0);
-        setViewportRatio(el.scrollWidth > 0 ? el.clientWidth / el.scrollWidth : 0.2);
-      });
-    };
-
-    document.addEventListener('wheel', handleWheel, { passive: false });
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-
-    return () => {
-      document.removeEventListener('wheel', handleWheel);
-      el.removeEventListener('scroll', handleScroll);
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, [layoutConfig.cardSize, effectiveGap, viewMode, showIntro]);
-
-  // All robots flat list with intro card at index 0
-  const introItem: Humanoid = { id: '__intro__', name: 'Humanoid Index', manufacturer: '' };
-  const allRobots = [introItem, ...humanoids, ...legends];
+  // Derived values
   const currentHumanoid = allRobots[currentIndex];
   const isIntro = currentHumanoid?.id === '__intro__';
-  const activeHumanoid = viewMode === 'grid' ? hoveredHumanoid : (isIntro ? null : currentHumanoid);
-  const showActiveInfo = viewMode === 'grid' ? hoveredHumanoid !== null : (isInActiveZone && !isIntro);
-
   const currentBg = '#fff';
+  const cardW = layoutConfig.cardSize;
+  const cardH = layoutConfig.cardSize * 2.1;
 
-  const handleMinimapMouseMove = useCallback((clientX: number) => {
+  // Minimap: click/drag → jump to card (angle-based for elliptical map)
+  const handleMinimapNav = useCallback((clientX: number, clientY: number) => {
     const minimap = minimapRef.current;
-    const scrollEl = scrollRef.current;
-    if (!minimap || !scrollEl) return;
-
+    if (!minimap) return;
     const rect = minimap.getBoundingClientRect();
-    const relativeX = clientX - rect.left;
-    const progress = Math.max(0, Math.min(1, relativeX / rect.width));
-    const maxScroll = scrollEl.scrollWidth - scrollEl.clientWidth;
-    scrollEl.scrollLeft = progress * maxScroll;
-  }, []);
+    const dx = clientX - (rect.left + rect.width / 2);
+    const dy = clientY - (rect.top + rect.height / 2);
+    const { flipY } = ellipseRef.current;
+    const clickAngle = Math.atan2(dx, flipY * dy) * (180 / Math.PI);
+    const offset = Math.round(clickAngle / ANGLE_PER_CARD);
+    const target = ((currentIndexRef.current + offset) % N_CARDS + N_CARDS) % N_CARDS;
+    animateToIndex(target);
+  }, [animateToIndex]);
 
-  const handleMinimapMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    isDraggingMinimapRef.current = true;
-    handleMinimapMouseMove(e.clientX);
+  const handleMinimapMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault(); isDraggingMinimapRef.current = true; handleMinimapNav(e.clientX, e.clientY);
   };
-
-  const handleMinimapTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    isDraggingMinimapRef.current = true;
-    handleMinimapMouseMove(e.touches[0].clientX);
+  const handleMinimapTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault(); isDraggingMinimapRef.current = true; handleMinimapNav(e.touches[0].clientX, e.touches[0].clientY);
   };
 
   useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      if (!isDraggingMinimapRef.current) return;
-      handleMinimapMouseMove(e.clientX);
-    };
-    const handleGlobalMouseUp = () => {
-      isDraggingMinimapRef.current = false;
-    };
-    const handleGlobalTouchMove = (e: TouchEvent) => {
-      if (!isDraggingMinimapRef.current) return;
-      handleMinimapMouseMove(e.touches[0].clientX);
-    };
-    const handleGlobalTouchEnd = () => {
-      isDraggingMinimapRef.current = false;
-    };
-
-    window.addEventListener('mousemove', handleGlobalMouseMove);
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    window.addEventListener('touchmove', handleGlobalTouchMove);
-    window.addEventListener('touchend', handleGlobalTouchEnd);
-
+    const onMove = (e: MouseEvent) => { if (isDraggingMinimapRef.current) handleMinimapNav(e.clientX, e.clientY); };
+    const onUp = () => { isDraggingMinimapRef.current = false; };
+    const onTouchMove = (e: TouchEvent) => { if (isDraggingMinimapRef.current) handleMinimapNav(e.touches[0].clientX, e.touches[0].clientY); };
+    const onTouchEnd = () => { isDraggingMinimapRef.current = false; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onTouchMove);
+    window.addEventListener('touchend', onTouchEnd);
     return () => {
-      window.removeEventListener('mousemove', handleGlobalMouseMove);
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
-      window.removeEventListener('touchmove', handleGlobalTouchMove);
-      window.removeEventListener('touchend', handleGlobalTouchEnd);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
     };
-  }, [handleMinimapMouseMove]);
+  }, [handleMinimapNav]);
 
   return (
     <div
       className={`h-screen transition-colors duration-500 ease-out ${viewMode === 'grid' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'}`}
       style={{ backgroundColor: currentBg }}
     >
+      {/* ═══ LOGO MARK — abstract humanoid silhouette lineup ═══ */}
+      {!showIntro && (
+        <div
+          className="fixed z-[4] pointer-events-none animate-blur-fade"
+          style={{
+            top: windowWidth < 640 ? '10px' : '14px',
+            left: windowWidth < 640 ? '12px' : '16px',
+          }}
+        >
+          <svg width="52" height="20" viewBox="0 0 52 20" fill="black" opacity="0.3">
+            {/* Each figure: circle head + rounded-rect body */}
+            {[
+              { x: 4,  h: 13 },
+              { x: 11, h: 13 },
+              { x: 18, h: 14 },
+              { x: 25, h: 13 },
+              { x: 32, h: 13 },
+              { x: 39, h: 14 },
+              { x: 46, h: 13 },
+            ].map((f, i) => (
+              <g key={i}>
+                <circle cx={f.x} cy={20 - f.h - 2} r={1.6} />
+                <rect x={f.x - 1.4} y={20 - f.h} width={2.8} height={f.h} rx={1} />
+              </g>
+            ))}
+          </svg>
+        </div>
+      )}
+
       {/* ═══ HUD OVERLAY ═══ */}
       {!showIntro && (
         <>
-          {/* HUD toggle */}
+          {/* HUD toggle — top-right switch */}
           <button
             onClick={() => setShowHud(h => !h)}
-            className="fixed z-[3] font-mono text-[9px] uppercase tracking-wider transition-colors duration-150"
+            className="fixed z-[4] flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-wider select-none transition-colors duration-150"
             style={{
-              bottom: '18px',
-              left: windowWidth < 640 ? '20px' : '24px',
-              color: showHud ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.10)',
+              top: windowWidth < 640 ? '12px' : '16px',
+              right: windowWidth < 640 ? '12px' : '16px',
+              color: showHud ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.25)',
             }}
           >
-            HUD {showHud ? 'ON' : 'OFF'}
+            <span>HUD</span>
+            <div
+              className="relative rounded-full transition-colors duration-200"
+              style={{
+                width: '28px',
+                height: '14px',
+                backgroundColor: showHud ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.12)',
+              }}
+            >
+              <div
+                className="absolute top-[2px] rounded-full bg-white transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                style={{
+                  width: '10px',
+                  height: '10px',
+                  left: showHud ? '16px' : '2px',
+                  boxShadow: '0 0.5px 2px rgba(0,0,0,0.2)',
+                }}
+              />
+            </div>
           </button>
 
           {showHud && (
@@ -367,10 +439,10 @@ export default function Home() {
               {/* Top-left system readout */}
               <div
                 className="fixed z-[2] pointer-events-none font-mono text-[9px] leading-relaxed flex flex-col"
-                style={{ top: '20px', left: windowWidth < 640 ? '20px' : '24px', color: 'rgba(0,0,0,0.12)' }}
+                style={{ top: '36px', left: windowWidth < 640 ? '12px' : '16px', color: 'rgba(0,0,0,0.12)' }}
               >
                 <span>SYS.HUMANOID_INDEX</span>
-                <span>MODE: {viewMode === 'carousel' ? 'LINEUP' : viewMode === 'grid' ? 'GRID' : 'SMASH'}</span>
+                <span>MODE: {viewMode === 'carousel' ? 'LINEUP' : viewMode === 'grid' ? 'GRID' : viewMode === 'select' ? 'SELECT' : 'SMASH'}</span>
                 <span>UNITS: {humanoids.length + legends.length}</span>
                 <span className="flex items-center gap-1">
                   <span
@@ -387,7 +459,7 @@ export default function Home() {
                   className="fixed z-[2] pointer-events-none font-mono text-[9px] leading-relaxed text-right flex flex-col"
                   style={{ top: '20px', right: windowWidth < 640 ? '20px' : '24px', color: 'rgba(0,0,0,0.12)' }}
                 >
-                  <span>POS: {(scrollProgress * 100).toFixed(1)}%</span>
+                  <span>POS: {(currentIndex / N_CARDS * 100).toFixed(1)}%</span>
                   <span>IDX: {String(currentIndex).padStart(3, '0')}</span>
                   <span>FRM: {String(allRobotsCount).padStart(3, '0')}</span>
                 </div>
@@ -407,20 +479,17 @@ export default function Home() {
         </>
       )}
 
-      {/* INTRO — all humanoids side by side */}
+      {/* INTRO — brief splash with all humanoids */}
       {showIntro && (
         <section
-          className="absolute inset-0 z-50 h-screen flex flex-col items-center justify-center bg-white cursor-pointer select-none overflow-hidden"
+          className="absolute inset-0 z-50 h-screen flex flex-col items-center justify-center bg-white select-none overflow-hidden"
+          style={{
+            opacity: introExiting ? 0 : 1,
+            transition: 'opacity 400ms ease-out',
+          }}
         >
-          <div className="animate-blur-fade flex flex-col items-center gap-8">
-            <div
-              className="flex items-end gap-[3px]"
-              style={{
-                transform: introExiting ? 'scale(5)' : 'scale(1)',
-                opacity: introExiting ? 0 : 1,
-                transition: 'transform 700ms cubic-bezier(0.16, 1, 0.3, 1), opacity 700ms ease-out',
-              }}
-            >
+          <div className="animate-blur-fade flex flex-col items-center gap-6">
+            <div className="flex items-end gap-[3px]">
               {allRobots.map((humanoid, i) => (
                 <img
                   key={humanoid.id}
@@ -435,20 +504,24 @@ export default function Home() {
                 />
               ))}
             </div>
-            <div
-              className="flex flex-col items-center gap-2"
-              style={{
-                opacity: introExiting ? 0 : 1,
-                transition: 'opacity 200ms ease-out',
-              }}
-            >
-              <div className="font-mono text-[13px] text-[#999] tracking-wider uppercase">
-                Humanoid Index
-              </div>
-              <div className="font-mono text-[11px] text-[#ccc] tracking-wider uppercase animate-blur-fade-delayed">
-                Click to enter
-              </div>
+            <div className="font-mono text-[13px] text-[#999] tracking-wider uppercase animate-blur-fade-delayed">
+              Humanoid Index
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* CHARACTER SELECT — full screen takeover */}
+      {viewMode === 'select' && !showIntro && (
+        <section className="h-screen flex flex-col animate-blur-fade">
+          <div
+            className="flex-shrink-0 relative z-20 flex justify-center"
+            style={{ padding: `${topBarInset}px ${insetX}px` }}
+          >
+            <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} width={trackWidth} showHud={showHud} />
+          </div>
+          <div className="flex-1 min-h-0">
+            <CharacterSelect humanoids={allRobots} />
           </div>
         </section>
       )}
@@ -469,8 +542,8 @@ export default function Home() {
       )}
 
       {/* CAROUSEL SECTION */}
-      {viewMode !== 'smash' && !showIntro && (
-      <section className={`flex flex-col relative animate-blur-fade ${viewMode === 'grid' ? 'min-h-screen bg-white overflow-y-auto' : 'h-screen overflow-x-hidden'}`}>
+      {viewMode !== 'smash' && viewMode !== 'select' && !showIntro && (
+      <section className={`flex flex-col relative animate-blur-fade ${viewMode === 'grid' ? 'min-h-screen bg-white overflow-y-auto' : 'h-screen overflow-hidden'}`}>
         {/* TOP BAR */}
         <div
           className="flex-shrink-0 relative z-20 flex justify-center"
@@ -494,130 +567,132 @@ export default function Home() {
           </div>
         )}
 
-        {/* Left/right click zones with carat cursors */}
+        {/* Left/right click zones — always visible, wrap around */}
         {viewMode === 'carousel' && (
           <>
-            {currentIndex > 0 && (
-              <div
-                onClick={() => { targetIndexRef.current = currentIndex - 1; scrollToCard(currentIndex - 1); }}
-                className="absolute top-0 left-0 bottom-0 z-10 select-none"
-                style={{ width: '45%', cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M15 4l-8 8 8 8' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 12 12, pointer` }}
-              />
-            )}
-            {currentIndex < allRobots.length - 1 && (
-              <div
-                onClick={() => { targetIndexRef.current = currentIndex + 1; scrollToCard(currentIndex + 1); }}
-                className="absolute top-0 right-0 bottom-0 z-10 select-none"
-                style={{ width: '45%', cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M9 4l8 8-8 8' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 12 12, pointer` }}
-              />
-            )}
+            <div
+              onClick={() => animateToIndex((currentIndex - 1 + N_CARDS) % N_CARDS)}
+              className="absolute top-0 left-0 bottom-0 z-[50] select-none"
+              style={{ width: '40%', cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M15 4l-8 8 8 8' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 12 12, pointer` }}
+            />
+            <div
+              onClick={() => animateToIndex((currentIndex + 1) % N_CARDS)}
+              className="absolute top-0 right-0 bottom-0 z-[50] select-none"
+              style={{ width: '40%', cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M9 4l8 8-8 8' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 12 12, pointer` }}
+            />
           </>
         )}
 
-        {/* Peek overlays — labels on edges */}
+        {/* Nav indicators — always show, wrap */}
         {viewMode === 'carousel' && !enlargedHumanoid && (
           <>
-            {currentIndex > 0 && allRobots[currentIndex - 1].id !== '__intro__' && (
-              <div key={`prev-${currentIndex}`} className="absolute left-8 top-1/2 -translate-y-1/2 z-[15] pointer-events-none animate-blur-fade">
-                <span className="font-mono text-[11px] text-[#ccc]">{allRobots[currentIndex - 1].name}</span>
+            <div key="prev" className="absolute left-5 top-1/2 -translate-y-1/2 z-[55] pointer-events-none animate-blur-fade">
+              <div
+                className="inline-flex items-center gap-1.5 rounded-[5px] border border-neutral-300 bg-neutral-50 font-mono px-2.5 py-1"
+                style={{ boxShadow: '0 1px 0 0 rgba(0,0,0,0.08)' }}
+              >
+                <span className="text-[12px] text-neutral-400">&#8592;</span>
+                <span className="text-[11px] uppercase text-neutral-500 tracking-wide">prev</span>
               </div>
-            )}
-            {currentIndex < allRobots.length - 1 && (
-              <div key={`next-${currentIndex}`} className="absolute right-8 top-1/2 -translate-y-1/2 z-[15] pointer-events-none animate-blur-fade">
-                <span className="font-mono text-[11px] text-[#ccc]">{allRobots[currentIndex + 1].name}</span>
+            </div>
+            <div key="next" className="absolute right-5 top-1/2 -translate-y-1/2 z-[55] pointer-events-none animate-blur-fade">
+              <div
+                className="inline-flex items-center gap-1.5 rounded-[5px] border border-neutral-300 bg-neutral-50 font-mono px-2.5 py-1"
+                style={{ boxShadow: '0 1px 0 0 rgba(0,0,0,0.08)' }}
+              >
+                <span className="text-[11px] uppercase text-neutral-500 tracking-wide">next</span>
+                <span className="text-[12px] text-neutral-400">&#8594;</span>
               </div>
-            )}
+            </div>
           </>
         )}
 
         {/* MAIN CONTENT */}
-        <div className={`flex-1 flex flex-col justify-center ${viewMode === 'carousel' ? 'overflow-x-hidden' : 'overflow-visible'}`} style={viewMode === 'carousel' ? { padding: `0 ${insetX}px`, paddingBottom: '4vh' } : undefined}>
+        <div className={`flex flex-col ${viewMode === 'carousel' ? 'flex-1 justify-center overflow-hidden' : 'overflow-visible'}`}>
           {viewMode === 'carousel' ? (
-            <main
-              ref={scrollRef}
-              className="flex-1 horizontal-scroll overflow-x-auto overflow-y-hidden flex items-center select-none"
-              style={{
-                marginLeft: -insetX,
-                marginRight: -insetX,
-                paddingLeft: insetX,
-                paddingRight: insetX,
-                scrollPaddingInline: insetX,
-              }}
-              onDragStart={(e) => e.preventDefault()}
-            >
+            <main className="flex-1 relative overflow-hidden select-none" onDragStart={(e) => e.preventDefault()}>
+              {/* 3D carousel container */}
               <div
                 ref={carouselRef}
-                className="flex items-end relative"
-                style={{
-                  gap: `${effectiveGap}px`,
-                  paddingLeft: `${innerPad}px`,
-                  paddingRight: `${innerPad}px`,
-                }}
+                className="absolute inset-0"
+                style={{ perspective: '1200px' }}
               >
-                {/* All robots — flat, targeting corners on center */}
+                {/* Visible ring track */}
+                <div
+                  ref={ringRef}
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: '50%',
+                    top: '50%',
+                    width: DEFAULT_RX * 2,
+                    height: DEFAULT_RY * 2,
+                    marginLeft: -DEFAULT_RX,
+                    marginTop: -DEFAULT_RY,
+                    borderRadius: '50%',
+                    border: '1px solid rgba(0,0,0,0.06)',
+                    transition: 'opacity 0.5s ease',
+                  }}
+                />
+                {/* Dot markers on the ring */}
+                {allRobots.map((_, i) => (
+                  <div
+                    key={`dot-${i}`}
+                    ref={el => { dotRefs.current[i] = el; }}
+                    className="absolute pointer-events-none"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      width: '3px',
+                      height: '3px',
+                      marginLeft: '-1.5px',
+                      marginTop: '-1.5px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(0,0,0,0.3)',
+                      transition: 'opacity 0.3s ease',
+                    }}
+                  />
+                ))}
                 {allRobots.map((humanoid, index) => {
-                  const distance = Math.abs(index - scrollFraction);
-                  const isCenter = distance < 0.5;
+                  const isCenterCard = index === currentIndex;
                   const isEnlarged = enlargedHumanoid?.id === humanoid.id;
-                  // Center card: full opacity fading slightly with distance
-                  // Neighbors: subtle peek opacity, fading out further away
-                  const cardOpacity = enlargedHumanoid
-                    ? (isEnlarged ? 1 : 0)
-                    : distance < 0.5
-                      ? 1 - distance * 0.6
-                      : Math.max(0, 0.25 - (distance - 0.5) * 0.2);
+
                   return (
                     <div
                       key={humanoid.id}
+                      ref={el => { cardRefs.current[index] = el; }}
                       data-card-index={index}
-                      className="flex-shrink-0 gpu-accelerated relative group z-20 animate-float"
+                      className="absolute group"
                       style={{
-                        width: `${humanoid.id === '__intro__' ? layoutConfig.cardSize * 2.4 : layoutConfig.cardSize}px`,
-                        height: `${layoutConfig.cardSize * 2.1}px`,
-                        opacity: cardOpacity,
-                        transform: `scale(${isEnlarged ? 1.15 : Math.max(0.88, 1.03 - distance * 0.08)}) translateY(${Math.min(distance * 20, 25)}px)${isCenter && !isEnlarged ? ' translate(var(--mouse-x, 0px), var(--mouse-y, 0px))' : ''}`,
-                        transition: 'opacity 0.15s ease-out, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                        width: `${cardW}px`,
+                        height: `${cardH}px`,
+                        left: '50%',
+                        top: '50%',
+                        marginLeft: `${-cardW / 2}px`,
+                        marginTop: `${-cardH / 2}px`,
+                        willChange: 'transform, opacity',
                       }}
                     >
-                      {/* Intro card — angled title */}
                       {humanoid.id === '__intro__' ? (
-                        <div className="w-full h-full flex items-center justify-center" style={{ perspective: '600px' }}>
-                          <div
-                            className="font-mono flex flex-col items-start"
-                            style={{
-                              transform: 'rotateY(-8deg) skewY(-1.5deg)',
-                              transformOrigin: 'left center',
-                            }}
-                          >
-                            <div
-                              className="tracking-tight uppercase leading-[0.85]"
-                              style={{ fontSize: '44px', color: 'rgba(0,0,0,0.35)' }}
-                            >
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="font-mono flex flex-col items-center">
+                            <div className="tracking-tight uppercase leading-[0.85]" style={{ fontSize: '32px', color: 'rgba(0,0,0,0.35)' }}>
                               Humanoid
                             </div>
-                            <div
-                              className="tracking-tight uppercase leading-[0.85]"
-                              style={{ fontSize: '44px', color: 'rgba(0,0,0,0.18)' }}
-                            >
+                            <div className="tracking-tight uppercase leading-[0.85]" style={{ fontSize: '32px', color: 'rgba(0,0,0,0.18)' }}>
                               Index
                             </div>
                             <div className="text-[10px] mt-3 tracking-wider" style={{ color: 'rgba(0,0,0,0.2)' }}>
-                              {humanoids.length + legends.length} UNITS &middot; SCROLL &rarr;
+                              {humanoids.length + legends.length} UNITS
                             </div>
                           </div>
                         </div>
                       ) : (
                       <>
-                      {/* Targeting corners — hidden until hover, then hones in */}
-                      {isCenter && !isEnlarged && (
+                      {/* Targeting corners */}
+                      {isCenterCard && !isEnlarged && (
                         <div
                           className="absolute z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-out pointer-events-none"
-                          style={{
-                            top: '10px',
-                            bottom: '10px',
-                            left: '-40px',
-                            right: '-40px',
-                          }}
+                          style={{ top: '10px', bottom: '10px', left: '-40px', right: '-40px' }}
                         >
                           <div className="absolute inset-[20px] group-hover:inset-[10px] transition-all duration-150 ease-out pointer-events-none">
                             <div className="absolute top-0 left-0 w-4 h-4 border-l border-t border-neutral-300" />
@@ -627,98 +702,96 @@ export default function Home() {
                           </div>
                         </div>
                       )}
-                      {isCenter && !isEnlarged && (
+                      {isCenterCard && !isEnlarged && (
                         <div
                           className="absolute bottom-[5%] left-1/2 -translate-x-1/2 rounded-[50%] pointer-events-none"
-                          style={{
-                            width: '50%',
-                            height: '10px',
-                            background: 'radial-gradient(ellipse, rgba(0,0,0,0.12) 0%, transparent 70%)',
-                          }}
+                          style={{ width: '50%', height: '10px', background: 'radial-gradient(ellipse, rgba(0,0,0,0.12) 0%, transparent 70%)' }}
                         />
                       )}
                       <HumanoidCard
                         humanoid={humanoid}
                         config={config}
                         effectClass="distortion-wave"
-                        onClick={() => isCenter && setEnlargedHumanoid(isEnlarged ? null : humanoid)}
+                        onClick={() => isCenterCard && setEnlargedHumanoid(isEnlarged ? null : humanoid)}
                       />
-                      {/* Floating counter — left side, mirroring stats */}
-                      {isCenter && !isEnlarged && (
-                        <div
-                          className="absolute font-mono text-right pointer-events-none animate-stat-cascade"
-                          style={{
-                            right: `${layoutConfig.cardSize + 80}px`,
-                            top: '10px',
-                            width: '140px',
-                            transform: 'perspective(400px) rotateY(-8deg)',
-                            transformOrigin: 'right center',
-                          }}
-                        >
-                          <div className="text-[28px] leading-none tracking-tight" style={{ color: 'rgba(0,0,0,0.15)' }}>
-                            {String(index).padStart(2, '0')}
-                          </div>
-                          <div className="text-[11px] mt-1" style={{ color: 'rgba(0,0,0,0.1)' }}>
-                            / {String(allRobots.length - 1).padStart(2, '0')}
-                          </div>
-                        </div>
-                      )}
-                      {/* Floating stats — right side, hidden when enlarged */}
-                      {isCenter && !isEnlarged && (() => {
-                        const stats = [
-                          humanoid.year && { label: 'year', value: humanoid.year },
-                          humanoid.height && { label: 'height', value: `${humanoid.height}cm` },
-                          humanoid.weight && { label: 'weight', value: `${humanoid.weight}kg` },
-                          humanoid.dof && { label: 'dof', value: humanoid.dof },
-                          humanoid.maxSpeed && { label: 'speed', value: `${humanoid.maxSpeed}m/s` },
-                          humanoid.cost && humanoid.cost !== "N/A" && { label: 'cost', value: humanoid.cost },
-                        ].filter(Boolean) as { label: string; value: string | number }[];
-                        return (
-                          <div
-                            className="absolute font-mono text-[11px] text-left flex flex-col justify-between"
-                            style={{ left: `${layoutConfig.cardSize + 80}px`, top: '10px', bottom: '10px', width: '200px', textTransform: 'none', transform: 'perspective(400px) rotateY(8deg)', transformOrigin: 'left center' }}
-                          >
-                            <div className="flex flex-col gap-0 pointer-events-none">
-                              {stats.map((stat, i) => (
-                                <div
-                                  key={stat.label}
-                                  className="animate-stat-cascade leading-none"
-                                  style={{ animationDelay: `${80 + i * 60}ms` }}
-                                >
-                                  <span className="text-[#888]">{stat.label}</span> <span className="text-[#555]">{stat.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                            {humanoid.purchaseUrl && (() => {
-                              const isNeo = humanoid.id === '4';
-                              return (
-                                <a
-                                  href={humanoid.purchaseUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={`animate-blur-fade-stagger font-mono text-[12px] font-medium px-4 py-1 rounded-sm transition-colors duration-150 uppercase tracking-wider text-center self-start ${
-                                    isNeo
-                                      ? 'bg-[#d4c5a0]/20 hover:bg-[#d4c5a0]/30 text-[#8a7a55] border border-[#d4c5a0]/40'
-                                      : 'bg-black/5 hover:bg-black/10 text-black border border-black/15'
-                                  }`}
-                                  style={{ animationDelay: `190ms` }}
-                                >
-                                  Buy
-                                </a>
-                              );
-                            })()}
-                          </div>
-                        );
-                      })()}
                       </>
                       )}
                     </div>
                   );
                 })}
               </div>
+
+              {/* Stats panel — outside 3D context to avoid transform distortion */}
+              {currentHumanoid && !isIntro && !enlargedHumanoid && (
+                <div
+                  key={currentHumanoid.id}
+                  className="absolute z-[60] pointer-events-none font-mono text-left flex flex-col animate-stat-cascade"
+                  style={{
+                    left: '50%',
+                    top: '50%',
+                    transform: `translateX(${cardW / 2 + 80}px) translateY(${ellipseRef.current.flipY * ellipseRef.current.ry + ellipseRef.current.offsetY - cardH / 2 + 10}px) perspective(200px) rotateY(12deg)`,
+                    transformOrigin: 'left center',
+                    width: '200px',
+                  }}
+                >
+                  <div className="text-[28px] leading-none tracking-tight" style={{ color: showHud ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.85)' }}>
+                    {currentHumanoid.name}
+                  </div>
+                  <div className="text-[28px] leading-none tracking-tight" style={{ color: showHud ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.45)' }}>
+                    {currentHumanoid.manufacturer}
+                  </div>
+                  <div className="flex flex-col gap-[6px] mt-4 text-left" style={{ textTransform: 'none' }}>
+                    {[
+                      currentHumanoid.height && { label: 'height', value: `${currentHumanoid.height}cm`, pct: ((currentHumanoid.height - 100) / 100) * 100 },
+                      currentHumanoid.weight && { label: 'weight', value: `${currentHumanoid.weight}kg`, pct: (currentHumanoid.weight / 100) * 100 },
+                      currentHumanoid.dof && { label: 'dof', value: currentHumanoid.dof, pct: (currentHumanoid.dof / 70) * 100 },
+                      currentHumanoid.maxSpeed && { label: 'speed', value: `${currentHumanoid.maxSpeed}m/s`, pct: (currentHumanoid.maxSpeed / 4.5) * 100 },
+                    ].filter(Boolean).map((stat, i) => {
+                      const s = stat as { label: string; value: string | number; pct: number };
+                      const clampedPct = Math.max(4, Math.min(100, s.pct));
+                      return (
+                        <div key={s.label} className="animate-stat-cascade" style={{ animationDelay: `${80 + i * 60}ms` }}>
+                          <div className="flex justify-between items-baseline text-[13px] leading-none mb-[3px]">
+                            <span style={{ color: showHud ? '#999' : '#777' }}>{s.label}</span>
+                            <span className="text-[15px]" style={{ color: showHud ? '#555' : '#222' }}>{s.value}</span>
+                          </div>
+                          <div className="relative h-[3px] w-full rounded-full" style={{ backgroundColor: showHud ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.08)' }}>
+                            <div
+                              className="absolute inset-y-0 left-0 rounded-full animate-bar-fill"
+                              style={{
+                                width: `${clampedPct}%`,
+                                backgroundColor: showHud ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.35)',
+                                animationDelay: `${120 + i * 60}ms`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {currentHumanoid.purchaseUrl && (() => {
+                    const isNeo = currentHumanoid.id === '4';
+                    return (
+                      <a
+                        href={currentHumanoid.purchaseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`animate-blur-fade-stagger font-mono text-[12px] font-medium px-4 py-1 mt-3 rounded-sm transition-colors duration-150 uppercase tracking-wider text-center self-start pointer-events-auto ${
+                          isNeo
+                            ? 'bg-[#d4c5a0]/20 hover:bg-[#d4c5a0]/30 text-[#8a7a55] border border-[#d4c5a0]/40'
+                            : 'bg-black/5 hover:bg-black/10 text-black border border-black/15'
+                        }`}
+                        style={{ animationDelay: `190ms` }}
+                      >
+                        Buy
+                      </a>
+                    );
+                  })()}
+                </div>
+              )}
             </main>
           ) : (
-            <main className="flex-1">
+            <main>
               <GridView
                 humanoids={humanoids}
                 layoutConfig={layoutConfig}
@@ -727,62 +800,123 @@ export default function Home() {
                 onToggleSelect={() => {}}
                 onHoverChange={setHoveredHumanoid}
               />
+              {viewMode === 'grid' && (
+                <CatalogIndex humanoids={humanoids} legends={legends} />
+              )}
             </main>
           )}
 
-          {/* MINIMAP — dashes */}
-          {viewMode === 'carousel' && (
-            <div className="flex-shrink-0 relative z-20 flex justify-center pt-2 pb-3 transition-opacity duration-300" style={{ opacity: enlargedHumanoid ? 0 : 1 }}>
-              <div
-                ref={minimapRef}
-                className="relative cursor-pointer select-none flex items-center justify-center gap-[3px]"
-                style={{
-                  width: `${trackWidth}px`,
-                  height: '20px',
-                }}
-                onMouseDown={handleMinimapMouseDown}
-                onTouchStart={handleMinimapTouchStart}
-                onDragStart={(e) => e.preventDefault()}
-              >
-                {allRobots.map((_, i) => {
-                  const isActive = i === currentIndex && isInActiveZone;
-                  return (
-                    <div
-                      key={i}
-                      className="transition-all duration-200"
-                      style={{
-                        width: isActive ? '13px' : '8px',
-                        height: '1px',
-                        backgroundColor: isActive ? '#000' : '#ccc',
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* LABEL + BUY + INFO — fixed height so layout never shifts, hidden when enlarged */}
-          <div
-            className="flex-shrink-0 relative z-20 flex flex-col items-center justify-center py-2 transition-opacity duration-300"
-            style={{ height: '120px', opacity: enlargedHumanoid ? 0 : 1 }}
-          >
-            {showActiveInfo && activeHumanoid ? (
-              <>
-                <div key={`humanoid-${activeHumanoid.id}`} className="animate-blur-fade text-center font-mono">
-                  <div className="text-[13px] text-[#999] tracking-normal">{activeHumanoid.manufacturer}</div>
-                  <div className="text-[13px] text-black tracking-normal">{activeHumanoid.name}</div>
+          {/* MINIMAP — elliptical ring */}
+          {viewMode === 'carousel' && (() => {
+            const ep = ellipseRef.current;
+            const MINI_RX = 60;
+            const MINI_RY = Math.max(12, Math.min(35, Math.round(MINI_RX * ep.ry / ep.rx)));
+            return (
+              <div className="flex-shrink-0 relative z-20 flex justify-center pt-2 pb-3 transition-opacity duration-300" style={{ opacity: enlargedHumanoid ? 0 : 1 }}>
+                <div
+                  ref={minimapRef}
+                  className="relative cursor-pointer select-none"
+                  style={{ width: `${MINI_RX * 2 + 16}px`, height: `${MINI_RY * 2 + 16}px` }}
+                  onMouseDown={handleMinimapMouseDown}
+                  onTouchStart={handleMinimapTouchStart}
+                  onDragStart={(e) => e.preventDefault()}
+                >
+                  {/* Mini ring outline */}
+                  <div
+                    className="absolute pointer-events-none"
+                    style={{
+                      left: '50%', top: '50%',
+                      width: MINI_RX * 2, height: MINI_RY * 2,
+                      marginLeft: -MINI_RX, marginTop: -MINI_RY,
+                      borderRadius: '50%',
+                      border: '1px solid rgba(0,0,0,0.06)',
+                    }}
+                  />
+                  {/* Dots on the ring */}
+                  {allRobots.map((_, i) => {
+                    const ang = (i - currentIndex) * ANGLE_PER_CARD;
+                    const rad = (ang * Math.PI) / 180;
+                    const dotX = Math.sin(rad) * MINI_RX;
+                    const dotY = ep.flipY * Math.cos(rad) * MINI_RY;
+                    const depth = (Math.cos(rad) + 1) / 2;
+                    const isActive = i === currentIndex;
+                    return (
+                      <div
+                        key={i}
+                        className="absolute transition-all duration-300"
+                        style={{
+                          left: '50%', top: '50%',
+                          width: isActive ? '5px' : '2px',
+                          height: isActive ? '5px' : '2px',
+                          borderRadius: '50%',
+                          backgroundColor: isActive ? '#000' : `rgba(0,0,0,${0.08 + depth * 0.15})`,
+                          transform: `translate(${dotX - (isActive ? 2.5 : 1)}px, ${dotY - (isActive ? 2.5 : 1)}px)`,
+                        }}
+                      />
+                    );
+                  })}
                 </div>
-              </>
-            ) : (
-              <div />
-            )}
-          </div>
+              </div>
+            );
+          })()}
+
+          {/* Bottom spacer — keeps layout stable */}
+          <div className="flex-shrink-0" style={{ height: '40px' }} />
 
         </div>
       </section>
       )}
 
+      {/* ═══ RING CONTROLS ═══ */}
+      {!showIntro && viewMode === 'carousel' && (
+        <>
+          <button
+            onClick={() => setShowControls(s => !s)}
+            className="fixed z-[100] font-mono text-[9px] uppercase tracking-wider transition-colors duration-150"
+            style={{
+              bottom: '18px',
+              right: windowWidth < 640 ? '20px' : '24px',
+              color: showControls ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.10)',
+            }}
+          >
+            Ring {showControls ? 'ON' : 'OFF'}
+          </button>
+          {showControls && (
+            <div
+              className="fixed z-[100] bg-white/90 backdrop-blur-sm border border-neutral-200 rounded-lg font-mono shadow-sm"
+              style={{ bottom: '40px', right: '24px', width: '220px', padding: '12px 14px' }}
+            >
+              {([
+                { label: 'Spread X', key: 'rx' as const, min: 100, max: 900 },
+                { label: 'Spread Y', key: 'ry' as const, min: 30, max: 500 },
+                { label: 'Offset Y', key: 'offsetY' as const, min: -300, max: 400 },
+              ]).map(({ label, key, min, max }) => (
+                <div key={key} className="mb-2">
+                  <div className="flex justify-between text-[10px] text-neutral-400 mb-0.5">
+                    <span>{label}</span>
+                    <span className="text-neutral-600">{ellipseRef.current[key]}</span>
+                  </div>
+                  <input
+                    type="range" min={min} max={max} step={10}
+                    value={ellipseRef.current[key]}
+                    onChange={e => { ellipseRef.current[key] = +e.target.value; forceControls(n => n + 1); }}
+                    className="w-full h-1 appearance-none bg-neutral-200 rounded-full outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neutral-500"
+                  />
+                </div>
+              ))}
+              <div className="flex items-center justify-between mt-1 pt-2 border-t border-neutral-100">
+                <span className="text-[10px] text-neutral-400">Direction</span>
+                <button
+                  onClick={() => { ellipseRef.current.flipY *= -1; forceControls(n => n + 1); }}
+                  className="text-[10px] px-2 py-0.5 rounded border border-neutral-200 text-neutral-500 hover:bg-neutral-50 transition-colors"
+                >
+                  {ellipseRef.current.flipY === -1 ? 'Front Top' : 'Front Bottom'}
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

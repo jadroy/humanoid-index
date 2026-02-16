@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from "react";
 
-export type ViewMode = 'carousel' | 'grid' | 'smash';
+export type ViewMode = 'carousel' | 'grid' | 'select' | 'smash';
 
 interface ViewSwitcherProps {
   viewMode: ViewMode;
@@ -14,6 +14,7 @@ interface ViewSwitcherProps {
 const modes: { key: ViewMode; label: string; shortcut: string }[] = [
   { key: 'carousel', label: 'Lineup', shortcut: '1' },
   { key: 'grid', label: 'Grid', shortcut: '2' },
+  { key: 'select', label: 'Select', shortcut: '3' },
 ];
 
 export default function ViewSwitcher({ viewMode, onViewModeChange, width, showHud = true }: ViewSwitcherProps) {

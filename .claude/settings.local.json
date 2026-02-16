@@ -31,7 +31,8 @@
       "WebSearch",
       "WebFetch(domain:www.npmjs.com)",
       "Bash(npm info:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(dig:*)"
     ],
     "deny": [],
     "ask": []
