@@ -22,7 +22,7 @@ export interface LayoutConfig {
 }
 
 export const defaultLayoutConfig: LayoutConfig = {
-  cardSize: 180,
+  cardSize: 150,
   gap: 360,
   activeScale: 1.15,
   inactiveScale: 0.95,
