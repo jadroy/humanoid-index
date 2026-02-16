@@ -374,7 +374,26 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+@keyframes select-compare-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
 @keyframes select-bracket-pulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
+}
+
+@keyframes easter-shake {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.985); }
+  100% { transform: scale(1); }
 }

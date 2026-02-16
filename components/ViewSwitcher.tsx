@@ -12,9 +12,9 @@ interface ViewSwitcherProps {
 }
 
 const modes: { key: ViewMode; label: string; shortcut: string }[] = [
-  { key: 'carousel', label: 'Lineup', shortcut: '1' },
+  { key: 'carousel', label: 'Carousel', shortcut: '1' },
   { key: 'grid', label: 'Grid', shortcut: '2' },
-  { key: 'select', label: 'Select', shortcut: '3' },
+  { key: 'select', label: 'Compare', shortcut: '3' },
 ];
 
 export default function ViewSwitcher({ viewMode, onViewModeChange, width, showHud = true }: ViewSwitcherProps) {

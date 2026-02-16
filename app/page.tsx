@@ -43,7 +43,12 @@ export default function Home() {
   const [showHud, setShowHud] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [, forceControls] = useState(0);
+  const [scrollModal, setScrollModal] = useState<string | null>(null);
+  const [easterShake, setEasterShake] = useState(false);
   const ellipseRef = useRef({ rx: DEFAULT_RX, ry: DEFAULT_RY, offsetY: DEFAULT_OFFSET_Y, flipY: -1 });
+  const scrollAccumRef = useRef(0);
+  const scrollResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollModalShownRef = useRef(false);
 
   // 3D carousel refs
   const currentRotationRef = useRef(0);
@@ -249,6 +254,15 @@ export default function Home() {
       const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       velocityRef.current += delta * WHEEL_SENSITIVITY;
       if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
+
+      // Easter egg: one-time modal after excessive scrolling
+      scrollAccumRef.current += Math.abs(delta);
+      if (scrollResetTimerRef.current) clearTimeout(scrollResetTimerRef.current);
+      scrollResetTimerRef.current = setTimeout(() => { scrollAccumRef.current = 0; }, 1500);
+      if (scrollAccumRef.current > 50000 && !scrollModalShownRef.current) {
+        scrollModalShownRef.current = true;
+        setScrollModal('what are you doing');
+      }
     };
     document.addEventListener('wheel', handleWheel, { passive: false });
     return () => document.removeEventListener('wheel', handleWheel);
@@ -354,71 +368,63 @@ export default function Home() {
 
   return (
     <div
-      className={`h-screen transition-colors duration-500 ease-out ${viewMode === 'grid' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'}`}
-      style={{ backgroundColor: currentBg }}
+      className={`relative h-screen transition-colors duration-500 ease-out ${viewMode === 'grid' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'}`}
+      style={{
+        backgroundColor: currentBg,
+        animation: easterShake ? 'easter-shake 0.6s ease-out' : 'none',
+      }}
     >
-      {/* ═══ LOGO MARK — abstract humanoid silhouette lineup ═══ */}
+      {/* ═══ LOGO ═══ */}
       {!showIntro && (
         <div
-          className="fixed z-[4] pointer-events-none animate-blur-fade"
+          className="fixed z-[5] animate-blur-fade font-mono text-[11px] font-medium uppercase tracking-wider cursor-pointer select-none rounded border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 transition-colors duration-150"
           style={{
-            top: windowWidth < 640 ? '10px' : '14px',
-            left: windowWidth < 640 ? '12px' : '16px',
+            top: windowWidth < 640 ? '10px' : '13px',
+            left: windowWidth < 640 ? '10px' : '14px',
+            color: 'rgba(0,0,0,0.7)',
+            padding: '3px 10px',
+          }}
+          onClick={() => {
+            setViewMode('carousel');
+            setEasterShake(true);
+            velocityRef.current = (Math.random() > 0.5 ? 1 : -1) * 30;
+            if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
+            setTimeout(() => setEasterShake(false), 600);
           }}
         >
-          <svg width="52" height="20" viewBox="0 0 52 20" fill="black" opacity="0.3">
-            {/* Each figure: circle head + rounded-rect body */}
-            {[
-              { x: 4,  h: 13 },
-              { x: 11, h: 13 },
-              { x: 18, h: 14 },
-              { x: 25, h: 13 },
-              { x: 32, h: 13 },
-              { x: 39, h: 14 },
-              { x: 46, h: 13 },
-            ].map((f, i) => (
-              <g key={i}>
-                <circle cx={f.x} cy={20 - f.h - 2} r={1.6} />
-                <rect x={f.x - 1.4} y={20 - f.h} width={2.8} height={f.h} rx={1} />
-              </g>
-            ))}
-          </svg>
+          Humanoid Index
         </div>
       )}
 
       {/* ═══ HUD OVERLAY ═══ */}
       {!showIntro && (
         <>
-          {/* HUD toggle — top-right switch */}
-          <button
-            onClick={() => setShowHud(h => !h)}
-            className="fixed z-[4] flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-wider select-none transition-colors duration-150"
+          {/* HUD toggle — top-right, matches view switcher style */}
+          <div
+            className="fixed z-[5] flex items-center gap-0 border border-neutral-200 rounded px-0.5 py-0.5 font-mono text-[11px] uppercase tracking-normal select-none"
             style={{
-              top: windowWidth < 640 ? '12px' : '16px',
-              right: windowWidth < 640 ? '12px' : '16px',
-              color: showHud ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.25)',
+              top: windowWidth < 640 ? '10px' : '13px',
+              right: windowWidth < 640 ? '10px' : '14px',
             }}
           >
-            <span>HUD</span>
-            <div
-              className="relative rounded-full transition-colors duration-200"
-              style={{
-                width: '28px',
-                height: '14px',
-                backgroundColor: showHud ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.12)',
-              }}
-            >
-              <div
-                className="absolute top-[2px] rounded-full bg-white transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                style={{
-                  width: '10px',
-                  height: '10px',
-                  left: showHud ? '16px' : '2px',
-                  boxShadow: '0 0.5px 2px rgba(0,0,0,0.2)',
-                }}
-              />
-            </div>
-          </button>
+            {['Off', 'HUD'].map((label) => {
+              const isActive = label === 'HUD' ? showHud : !showHud;
+              return (
+                <button
+                  key={label}
+                  onClick={() => setShowHud(label === 'HUD')}
+                  className="relative z-10 px-2.5 py-0.5 transition-colors duration-150"
+                  style={{
+                    color: isActive ? '#000' : '#bbb',
+                    backgroundColor: isActive ? 'rgba(0,0,0,0.04)' : 'transparent',
+                    borderRadius: '3px',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
 
           {showHud && (
             <>
@@ -442,7 +448,7 @@ export default function Home() {
                 style={{ top: '36px', left: windowWidth < 640 ? '12px' : '16px', color: 'rgba(0,0,0,0.12)' }}
               >
                 <span>SYS.HUMANOID_INDEX</span>
-                <span>MODE: {viewMode === 'carousel' ? 'LINEUP' : viewMode === 'grid' ? 'GRID' : viewMode === 'select' ? 'SELECT' : 'SMASH'}</span>
+                <span>MODE: {viewMode === 'carousel' ? 'CAROUSEL' : viewMode === 'grid' ? 'GRID' : viewMode === 'select' ? 'COMPARE' : 'SMASH'}</span>
                 <span>UNITS: {humanoids.length + legends.length}</span>
                 <span className="flex items-center gap-1">
                   <span
@@ -511,9 +517,17 @@ export default function Home() {
         </section>
       )}
 
-      {/* CHARACTER SELECT — full screen takeover */}
-      {viewMode === 'select' && !showIntro && (
-        <section className="h-screen flex flex-col animate-blur-fade">
+      {/* CHARACTER SELECT — always mounted overlay for smooth transitions */}
+      {!showIntro && (
+        <section
+          className="absolute inset-0 h-screen flex flex-col bg-white"
+          style={{
+            opacity: viewMode === 'select' ? 1 : 0,
+            pointerEvents: viewMode === 'select' ? 'auto' : 'none',
+            transition: 'opacity 350ms cubic-bezier(0.22, 1, 0.36, 1)',
+            zIndex: viewMode === 'select' ? 10 : -1,
+          }}
+        >
           <div
             className="flex-shrink-0 relative z-20 flex justify-center"
             style={{ padding: `${topBarInset}px ${insetX}px` }}
@@ -542,7 +556,7 @@ export default function Home() {
       )}
 
       {/* CAROUSEL SECTION */}
-      {viewMode !== 'smash' && viewMode !== 'select' && !showIntro && (
+      {viewMode !== 'smash' && !showIntro && (
       <section className={`flex flex-col relative animate-blur-fade ${viewMode === 'grid' ? 'min-h-screen bg-white overflow-y-auto' : 'h-screen overflow-hidden'}`}>
         {/* TOP BAR */}
         <div
@@ -865,6 +879,18 @@ export default function Home() {
 
         </div>
       </section>
+      )}
+
+      {/* ═══ SCROLL EASTER EGG ═══ */}
+      {scrollModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center animate-blur-fade cursor-pointer"
+          onClick={() => setScrollModal(null)}
+        >
+          <div className="font-mono text-[13px] text-neutral-400">
+            {scrollModal}
+          </div>
+        </div>
       )}
 
       {/* ═══ RING CONTROLS ═══ */}
