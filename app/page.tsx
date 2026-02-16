@@ -11,11 +11,15 @@ import CatalogIndex from "@/components/CatalogIndex";
 import { humanoids, legends, Humanoid } from "@/data/humanoids";
 import { defaultLayoutConfig } from "@/components/BottomBar";
 
+// ═══ Cursors ═══
+const CURSOR_DRAG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M7 9l-3 3 3 3M17 9l3 3-3 3' fill='none' stroke='%23999' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='5' y1='12' x2='19' y2='12' stroke='%23999' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, ew-resize`;
+const CURSOR_DRAGGING = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M7 9l-3 3 3 3M17 9l3 3-3 3' fill='none' stroke='%23555' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='5' y1='12' x2='19' y2='12' stroke='%23555' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") 12 12, ew-resize`;
+
 // ═══ 3D Carousel Constants ═══
-const DEFAULT_RX = 600;
-const DEFAULT_RY = 250;
-const DEFAULT_OFFSET_Y = 120;
-const WHEEL_SENSITIVITY = 0.15;
+const DEFAULT_RX = 620;
+const DEFAULT_RY = 107;
+const DEFAULT_OFFSET_Y = -90;
+const WHEEL_SENSITIVITY = 0.08;
 const FRICTION = 0.92;
 const SNAP_THRESHOLD = 0.08;
 const SNAP_STRENGTH = 0.08;
@@ -45,7 +49,7 @@ export default function Home() {
   const [, forceControls] = useState(0);
   const [scrollModal, setScrollModal] = useState<string | null>(null);
   const [easterShake, setEasterShake] = useState(false);
-  const ellipseRef = useRef({ rx: DEFAULT_RX, ry: DEFAULT_RY, offsetY: DEFAULT_OFFSET_Y, flipY: -1 });
+  const ellipseRef = useRef({ rx: DEFAULT_RX, ry: DEFAULT_RY, offsetY: DEFAULT_OFFSET_Y, flipY: 1 });
   const scrollAccumRef = useRef(0);
   const scrollResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollModalShownRef = useRef(false);
@@ -62,6 +66,8 @@ export default function Home() {
   const enlargedRef = useRef<Humanoid | null>(null);
   const currentIndexRef = useRef(0);
   const touchStartRef = useRef<{ x: number; rotation: number } | null>(null);
+  const dragRef = useRef<{ x: number; rotation: number; prevX: number; prevTime: number } | null>(null);
+  const isDraggingRef = useRef(false);
   const transitionUntilRef = useRef(0);
   const enterAnimRef = useRef<{ start: number; startRot: number; targetRx: number; targetRy: number } | null>(null);
 
@@ -100,6 +106,7 @@ export default function Home() {
   useEffect(() => {
     let raf: number;
     const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingRef.current) return;
       mouseTarget.current = {
         x: (e.clientX / window.innerWidth - 0.5) * 2,
         y: (e.clientY / window.innerHeight - 0.5) * 2,
@@ -154,7 +161,7 @@ export default function Home() {
       const isEnlargedMode = !!enlargedRef.current;
       const now = performance.now();
 
-      if (!isEnlargedMode && animationRef.current === null) {
+      if (!isEnlargedMode && animationRef.current === null && !dragRef.current) {
         currentRotationRef.current += velocityRef.current;
         velocityRef.current *= FRICTION;
         if (Math.abs(velocityRef.current) < SNAP_THRESHOLD) {
@@ -309,6 +316,58 @@ export default function Home() {
       document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [viewMode, showIntro, animateToIndex]);
+
+  // Mouse drag support
+  useEffect(() => {
+    if (viewMode !== 'carousel' || showIntro) return;
+    const carouselEl = carouselRef.current;
+    if (!carouselEl) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (enlargedRef.current) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('button, a, input, [data-no-drag]')) return;
+      const now = performance.now();
+      dragRef.current = { x: e.clientX, rotation: currentRotationRef.current, prevX: e.clientX, prevTime: now };
+      isDraggingRef.current = false;
+      velocityRef.current = 0;
+      if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
+    };
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = e.clientX - dragRef.current.x;
+      if (!isDraggingRef.current && Math.abs(dx) > 4) {
+        isDraggingRef.current = true;
+        carouselEl.style.cursor = CURSOR_DRAGGING;
+      }
+      if (isDraggingRef.current) {
+        const now = performance.now();
+        const frameDx = e.clientX - dragRef.current.prevX;
+        const frameDt = now - dragRef.current.prevTime;
+        if (frameDt > 0) {
+          velocityRef.current = -(frameDx / frameDt) * 3;
+        }
+        dragRef.current.prevX = e.clientX;
+        dragRef.current.prevTime = now;
+        currentRotationRef.current = dragRef.current.rotation - dx * 0.3;
+      }
+    };
+    const handleMouseUp = () => {
+      if (!dragRef.current) return;
+      dragRef.current = null;
+      isDraggingRef.current = false;
+      carouselEl.style.cursor = CURSOR_DRAG;
+    };
+
+    carouselEl.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      carouselEl.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [viewMode, showIntro]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -625,21 +684,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Left/right click zones — always visible, wrap around */}
-        {viewMode === 'carousel' && (
-          <>
-            <div
-              onClick={() => animateToIndex((currentIndex - 1 + N_CARDS) % N_CARDS)}
-              className="absolute top-0 left-0 bottom-0 z-[50] select-none"
-              style={{ width: '40%', cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M15 4l-8 8 8 8' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 12 12, pointer` }}
-            />
-            <div
-              onClick={() => animateToIndex((currentIndex + 1) % N_CARDS)}
-              className="absolute top-0 right-0 bottom-0 z-[50] select-none"
-              style={{ width: '40%', cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M9 4l8 8-8 8' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 12 12, pointer` }}
-            />
-          </>
-        )}
 
         {/* MAIN CONTENT */}
         <div className={`flex flex-col ${viewMode === 'carousel' ? 'flex-1 justify-center overflow-hidden' : 'overflow-visible'}`}>
@@ -649,7 +693,7 @@ export default function Home() {
               <div
                 ref={carouselRef}
                 className="absolute inset-0"
-                style={{ perspective: '1200px' }}
+                style={{ perspective: '1200px', cursor: CURSOR_DRAG }}
               >
                 {/* Visible ring track */}
                 <div
@@ -746,7 +790,7 @@ export default function Home() {
                         humanoid={humanoid}
                         config={config}
                         effectClass="distortion-wave"
-                        onClick={() => isCenterCard && setEnlargedHumanoid(isEnlarged ? null : humanoid)}
+                        onClick={() => !isDraggingRef.current && isCenterCard && setEnlargedHumanoid(isEnlarged ? null : humanoid)}
                       />
                       </>
                       )}
