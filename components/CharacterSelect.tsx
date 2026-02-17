@@ -10,53 +10,85 @@ interface CharacterSelectProps {
 }
 
 export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
-  // Filter out non-selectable items (intro card, etc.)
   const roster = humanoids.filter((h) => h.id !== "__intro__");
 
-  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
   const rosterRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const hoveredHumanoid = hoveredIndex !== null ? roster[hoveredIndex] : null;
-  const isEmpty = compareIds.length === 0;
-  const isSingleView = compareIds.length <= 1;
+  const activeIndex = hoveredIndex ?? selectedIndex;
+  const active = roster[activeIndex];
+  const isComparing = compareIds.length >= 2;
 
-  // In single view, hover previews the hovered item; otherwise show the selected
-  const singleActive = isSingleView && !isEmpty
-    ? (hoveredHumanoid ?? roster.find((h) => h.id === compareIds[0]) ?? null)
-    : isSingleView && isEmpty
-    ? hoveredHumanoid
-    : null;
-
-  const displayedHumanoids = !isSingleView
+  const displayedHumanoids = isComparing
     ? compareIds.map((id) => roster.find((h) => h.id === id)).filter(Boolean) as Humanoid[]
     : [];
 
-  const handleClick = useCallback((id: string) => {
+  // Add/remove from compare set
+  const togglePin = useCallback((id: string) => {
     setCompareIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.includes(id)) {
+        return prev.filter((x) => x !== id);
+      }
       if (prev.length >= MAX_COMPARE) return prev;
+      // If pinning the first extra, auto-include the currently selected item
+      if (prev.length === 0) {
+        const selectedId = roster[selectedIndex]?.id;
+        if (selectedId && selectedId !== id) return [selectedId, id];
+        return [id];
+      }
       return [...prev, id];
     });
-  }, []);
+  }, [roster, selectedIndex]);
 
-  const resetToEmpty = useCallback(() => {
-    setCompareIds([]);
-  }, []);
+  // Auto-scroll selected item into view
+  useEffect(() => {
+    const el = itemRefs.current[selectedIndex];
+    if (el) {
+      el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [selectedIndex]);
 
-  // Keyboard navigation
+  // Keyboard
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       if (e.key === "Escape" && compareIds.length > 0) {
         e.preventDefault();
-        resetToEmpty();
+        setCompareIds([]);
         return;
       }
+
+      let newIndex = selectedIndex;
+      switch (e.key) {
+        case "ArrowUp":
+          e.preventDefault();
+          newIndex = Math.max(0, selectedIndex - 1);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          newIndex = Math.min(roster.length - 1, selectedIndex + 1);
+          break;
+        case "Home":
+          e.preventDefault();
+          newIndex = 0;
+          break;
+        case "End":
+          e.preventDefault();
+          newIndex = roster.length - 1;
+          break;
+        default:
+          return;
+      }
+      if (newIndex !== selectedIndex) {
+        setSelectedIndex(newIndex);
+        setHoveredIndex(null);
+      }
     },
-    [compareIds.length, resetToEmpty]
+    [selectedIndex, roster.length, compareIds.length]
   );
 
   useEffect(() => {
@@ -72,13 +104,13 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
     h.maxSpeed && { label: "speed", value: `${h.maxSpeed}m/s`, pct: (h.maxSpeed / 4.5) * 100 },
   ].filter(Boolean) as { label: string; value: string | number; pct: number }[];
 
-  const singleStatBars = singleActive ? getStatBars(singleActive) : [];
+  const statBars = active ? getStatBars(active) : [];
 
-  const singleSpecGrid = singleActive ? [
-    singleActive.year && { label: "Year", value: singleActive.year },
-    singleActive.cost && { label: "Cost", value: singleActive.cost },
-    singleActive.status && { label: "Status", value: singleActive.status },
-    singleActive.manufacturer && { label: "Mfr", value: singleActive.manufacturer },
+  const specGrid = active ? [
+    active.year && { label: "Year", value: active.year },
+    active.cost && { label: "Cost", value: active.cost },
+    active.status && { label: "Status", value: active.status },
+    active.manufacturer && { label: "Mfr", value: active.manufacturer },
   ].filter(Boolean) as { label: string; value: string | number }[] : [];
 
   return (
@@ -86,34 +118,34 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
       {/* ═══ LEFT: Scrollable roster ═══ */}
       <div
         ref={rosterRef}
-        className="flex-shrink-0 overflow-y-auto overflow-x-hidden scrollbar-hide"
+        className="flex-shrink-0 overflow-y-auto overflow-x-hidden scrollbar-hide w-[140px] sm:w-[200px]"
         style={{
-          width: "200px",
           borderRight: "1px solid #e5e5e5",
         }}
       >
         {roster.map((humanoid, index) => {
-          const isInCompare = compareIds.includes(humanoid.id);
+          const isSelected = index === selectedIndex;
           const isHovered = index === hoveredIndex;
-          const isOnlySelected = isSingleView && compareIds[0] === humanoid.id;
+          const isActive = index === activeIndex;
+          const isPinned = compareIds.includes(humanoid.id);
 
           return (
             <button
               key={humanoid.id}
               ref={(el) => { itemRefs.current[index] = el; }}
-              onClick={() => handleClick(humanoid.id)}
+              onClick={() => { setSelectedIndex(index); setHoveredIndex(null); }}
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
-              className="relative w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100 font-mono"
+              className="relative w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100 font-mono group/item"
               style={{
-                background: isInCompare ? "#f0f0f0" : isHovered ? "#fafafa" : "transparent",
+                background: isSelected ? "#f5f5f5" : isHovered ? "#fafafa" : "transparent",
                 borderBottom: "1px solid #f0f0f0",
                 opacity: 0,
                 animation: `select-slide-in 300ms cubic-bezier(0.22, 1, 0.36, 1) ${30 + index * 20}ms forwards`,
               }}
             >
-              {/* Pulsing corner brackets on single selected */}
-              {isOnlySelected && !isHovered && (
+              {/* Pulsing corner brackets on selected */}
+              {isSelected && !isComparing && (
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{ animation: "select-bracket-pulse 1.2s ease-in-out infinite" }}
@@ -126,14 +158,14 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
               )}
 
               {/* Portrait */}
-              <div className="w-[36px] h-[36px] flex-shrink-0 flex items-center justify-center">
+              <div className="w-[28px] h-[28px] sm:w-[36px] sm:h-[36px] flex-shrink-0 flex items-center justify-center">
                 <img
                   src={humanoid.imageUrl || "/robots/placeholder.png"}
                   alt={humanoid.name}
                   draggable={false}
                   className="max-w-full max-h-full object-contain"
                   style={{
-                    opacity: isInCompare || isHovered ? 1 : 0.35,
+                    opacity: isActive || isPinned ? 1 : 0.35,
                     transition: "opacity 0.12s ease",
                   }}
                 />
@@ -143,26 +175,39 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
               <div className="min-w-0 flex-1">
                 <div
                   className="text-[10px] tracking-[0.06em] uppercase truncate"
-                  style={{ color: isInCompare || isHovered ? "#000" : "#999" }}
+                  style={{ color: isActive || isPinned ? "#000" : "#999" }}
                 >
                   {humanoid.name}
                 </div>
-                <div className="text-[8px] tracking-[0.08em] uppercase truncate text-[#bbb]">
+                <div className="hidden sm:block text-[8px] tracking-[0.08em] uppercase truncate text-[#bbb]">
                   {humanoid.manufacturer}
                 </div>
               </div>
 
-              {/* Indicator */}
-              {isInCompare ? (
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="flex-shrink-0">
-                  <rect x="0.5" y="0.5" width="11" height="11" rx="2" fill="#000" stroke="#000" strokeWidth="1" />
-                  <path d="M3 6L5.5 8.5L9 3.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+              {/* Pin / add-to-compare button */}
+              {isPinned ? (
+                <div
+                  role="button"
+                  onClick={(e) => { e.stopPropagation(); togglePin(humanoid.id); }}
+                  className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-[4px] transition-colors duration-100 hover:bg-black/10"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <rect x="0.5" y="0.5" width="11" height="11" rx="2" fill="#000" stroke="#000" strokeWidth="1" />
+                    <path d="M3 6L5.5 8.5L9 3.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              ) : isSelected ? (
+                <div className="w-1 h-1 rounded-full bg-black flex-shrink-0" />
               ) : (
                 <div
-                  className="w-3 h-3 rounded-[3px] border flex-shrink-0 transition-colors duration-100"
-                  style={{ borderColor: isHovered ? "#999" : "#ddd" }}
-                />
+                  role="button"
+                  onClick={(e) => { e.stopPropagation(); togglePin(humanoid.id); }}
+                  className="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded-[4px] opacity-0 group-hover/item:opacity-100 transition-all duration-100 hover:bg-black/10"
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M5 2V8M2 5H8" stroke="#999" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                </div>
               )}
             </button>
           );
@@ -170,25 +215,18 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
       </div>
 
       {/* ═══ RIGHT: Preview panel ═══ */}
-      <div className="flex-1 flex flex-col items-center overflow-y-auto px-6 py-6 min-h-0">
-        {isEmpty && !singleActive ? (
-          /* ── Empty state ── */
-          <div className="flex flex-col items-center justify-center my-auto font-mono text-center">
-            <div className="text-[11px] text-[#ccc] tracking-wider uppercase">
-              Select humanoids to compare
-            </div>
-          </div>
-        ) : isSingleView && singleActive ? (
+      <div className="flex-1 flex flex-col items-center overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 min-h-0">
+        {!isComparing && active ? (
           /* ── Single humanoid preview ── */
           <div
-            key={singleActive.id}
+            key={active.id}
             className="flex flex-col items-center w-full max-w-[480px] my-auto"
             style={{ animation: "select-preview-in 400ms cubic-bezier(0.22, 1, 0.36, 1) forwards" }}
           >
-            <div className="relative w-full flex items-center justify-center" style={{ height: "320px" }}>
+            <div className="relative w-full flex items-center justify-center h-[200px] sm:h-[320px]">
               <img
-                src={singleActive.imageUrl || "/robots/placeholder.png"}
-                alt={singleActive.name}
+                src={active.imageUrl || "/robots/placeholder.png"}
+                alt={active.name}
                 draggable={false}
                 className="max-h-full max-w-full object-contain"
               />
@@ -204,16 +242,16 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
 
             <div className="w-full mt-4 font-mono text-center">
               <div className="text-[24px] leading-none tracking-tight text-black">
-                {singleActive.name}
+                {active.name}
               </div>
               <div className="text-[14px] leading-none tracking-tight text-[#999] mt-1">
-                {singleActive.manufacturer}
+                {active.manufacturer}
               </div>
             </div>
 
-            {singleStatBars.length > 0 && (
+            {statBars.length > 0 && (
               <div className="w-full flex flex-col gap-[6px] mt-5" style={{ textTransform: "none" }}>
-                {singleStatBars.map((stat, i) => {
+                {statBars.map((stat, i) => {
                   const clampedPct = Math.max(4, Math.min(100, stat.pct));
                   return (
                     <div key={stat.label} className="animate-stat-cascade" style={{ animationDelay: `${80 + i * 60}ms` }}>
@@ -237,12 +275,12 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
               </div>
             )}
 
-            {singleSpecGrid.length > 0 && (
+            {specGrid.length > 0 && (
               <div
                 className="w-full grid grid-cols-2 gap-x-6 gap-y-2 mt-5 font-mono text-[11px]"
                 style={{ textTransform: "none" }}
               >
-                {singleSpecGrid.map((spec) => (
+                {specGrid.map((spec) => (
                   <div key={spec.label} className="flex justify-between">
                     <span className="text-[#999] uppercase">{spec.label}</span>
                     <span className="text-[#444]">{spec.value}</span>
@@ -251,18 +289,18 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
               </div>
             )}
 
-            {singleActive.description && (
+            {active.description && (
               <p
                 className="w-full font-mono text-[11px] leading-relaxed text-[#777] mt-4"
                 style={{ textTransform: "none" }}
               >
-                {singleActive.description}
+                {active.description}
               </p>
             )}
 
-            {singleActive.purchaseUrl && (
+            {active.purchaseUrl && (
               <a
-                href={singleActive.purchaseUrl}
+                href={active.purchaseUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-mono text-[12px] font-medium px-4 py-1 mt-4 rounded-sm transition-colors duration-150 uppercase tracking-wider text-center bg-black/5 hover:bg-black/10 text-black border border-black/15"
@@ -270,13 +308,8 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
                 Buy
               </a>
             )}
-
-            {/* Hint to add more */}
-            <div className="font-mono text-[10px] text-[#ccc] mt-6 tracking-wider uppercase">
-              Select others to compare
-            </div>
           </div>
-        ) : (
+        ) : isComparing ? (
           /* ── Side by side ── */
           <div
             className="grid gap-6 w-full my-auto"
@@ -284,7 +317,6 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
           >
             {displayedHumanoids.map((h, i) => {
               const stats = getStatBars(h);
-
               return (
                 <div
                   key={h.id}
@@ -347,7 +379,7 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
               );
             })}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

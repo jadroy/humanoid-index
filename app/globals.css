@@ -123,27 +123,23 @@ h1, h2, h3, h4, h5, h6 {
 
 @keyframes slide-in-from-top {
   from {
-    opacity: 0;
-    transform: translateY(-12px);
-    filter: blur(var(--blur-sm));
+    opacity: 0.6;
+    transform: translateY(-40px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 
 @keyframes slide-in-from-bottom {
   from {
-    opacity: 0;
-    transform: translateY(12px);
-    filter: blur(var(--blur-sm));
+    opacity: 0.6;
+    transform: translateY(40px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 
@@ -170,11 +166,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .animate-slide-from-top {
-  animation: slide-in-from-top var(--duration-normal) var(--ease-out-expo) forwards;
+  animation: slide-in-from-top 1000ms var(--ease-out-expo) forwards;
 }
 
 .animate-slide-from-bottom {
-  animation: slide-in-from-bottom var(--duration-normal) var(--ease-out-expo) forwards;
+  animation: slide-in-from-bottom 1000ms var(--ease-out-expo) forwards;
 }
 
 .animate-blur-fade {
@@ -189,6 +185,15 @@ h1, h2, h3, h4, h5, h6 {
 .animate-blur-fade-stagger {
   opacity: 0;
   animation: blur-fade-in-heavy 300ms var(--ease-out-expo) forwards;
+}
+
+.animate-logo-pulse {
+  animation: logo-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes logo-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
 }
 
 @keyframes blur-fade-in-heavy {
@@ -313,36 +318,6 @@ h1, h2, h3, h4, h5, h6 {
   50% { opacity: 0.4; }
 }
 
-/* ═══════════════════════════════════════
-   HUD OVERLAY
-   ═══════════════════════════════════════ */
-
-.hud-scanlines {
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.015) 0px,
-    rgba(0, 0, 0, 0.015) 1px,
-    transparent 1px,
-    transparent 4px
-  );
-}
-
-.hud-vignette {
-  background: radial-gradient(
-    ellipse 80% 70% at 50% 50%,
-    transparent 50%,
-    rgba(0, 0, 0, 0.02) 100%
-  );
-}
-
-@keyframes hud-blink {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 0.6; }
-}
-
-.hud-blink {
-  animation: hud-blink 3s ease-in-out infinite;
-}
 
 /* ═══════════════════════════════════════
    CHARACTER SELECT ANIMATIONS
@@ -395,4 +370,9 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes easter-shake {
   0% { transform: scale(0.99); }
   100% { transform: scale(1); }
+}
+
+@keyframes spotlight-pulse {
+  0% { transform: scale(0.8); opacity: 0.4; }
+  100% { transform: scale(1.6); opacity: 0; }
 }

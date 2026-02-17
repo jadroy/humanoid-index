@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { Humanoid } from "@/data/humanoids";
 import type { LayoutConfig } from "./BottomBar";
@@ -20,13 +20,22 @@ export default function GridView({
   onHoverChange,
 }: GridViewProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [windowWidth, setWindowWidth] = useState(1200);
+  useEffect(() => {
+    setWindowWidth(window.innerWidth);
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const responsiveCols = windowWidth < 480 ? 2 : windowWidth < 768 ? 3 : layoutConfig.gridColumns;
 
   return (
     <div className="w-full min-h-full pt-8">
       <div
         className="grid w-full"
         style={{
-          gridTemplateColumns: `repeat(${layoutConfig.gridColumns}, 1fr)`,
+          gridTemplateColumns: `repeat(${responsiveCols}, 1fr)`,
           rowGap: '40px',
         }}
       >

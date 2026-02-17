@@ -91,9 +91,11 @@ export default function Home() {
   const dragRef = useRef<{ x: number; rotation: number; prevX: number; prevTime: number } | null>(null);
   const isDraggingRef = useRef(false);
   const transitionUntilRef = useRef(0);
-  const enterAnimRef = useRef<{ start: number; startRot: number; targetRx: number; targetRy: number; startRx?: number; startRy?: number; startOffsetY?: number; targetOffsetY?: number; startCardScale?: number; targetCardScale?: number } | null>(null);
+  const enterAnimRef = useRef<{ start: number; startRot: number; targetRx: number; targetRy: number; startRx?: number; startRy?: number; startOffsetY?: number; targetOffsetY?: number; startCardScale?: number; targetCardScale?: number; fadeIn?: boolean } | null>(null);
   const bumpRef = useRef<number>(0); // timestamp of spacebar bump
 
+  const labelRef = useRef<HTMLDivElement>(null);
+  const cardDimsRef = useRef({ w: 150, h: 315 });
   const minimapRef = useRef<HTMLDivElement>(null);
   const isDraggingMinimapRef = useRef(false);
   const mouseTarget = useRef({ x: 0, y: 0 });
@@ -204,21 +206,22 @@ export default function Home() {
       const presets = scaledPresets(window.innerWidth);
       const round = presets.find(p => p.id === 'round')!;
       const wide = presets.find(p => p.id === 'wide')!;
-      ellipseRef.current.rx = round.rx;
-      ellipseRef.current.ry = round.ry;
+      ellipseRef.current.rx = round.rx * 0.4;
+      ellipseRef.current.ry = round.ry * 0.4;
       ellipseRef.current.offsetY = round.offsetY;
-      ellipseRef.current.cardScale = round.cardScale;
+      ellipseRef.current.cardScale = round.cardScale * 0.5;
       enterAnimRef.current = {
         start: performance.now(),
         startRot,
         targetRx: wide.rx,
         targetRy: wide.ry,
-        startRx: round.rx,
-        startRy: round.ry,
+        startRx: round.rx * 0.4,
+        startRy: round.ry * 0.4,
         startOffsetY: round.offsetY,
         targetOffsetY: wide.offsetY,
-        startCardScale: round.cardScale,
+        startCardScale: round.cardScale * 0.5,
         targetCardScale: wide.cardScale,
+        fadeIn: true,
       };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -248,6 +251,7 @@ export default function Home() {
 
       // Enter animation: round→wide morph + spin + scale cards
       let enterScale = 1;
+      let enterOpacity = 1;
       const ea = enterAnimRef.current;
       if (ea) {
         const progress = Math.min(1, (now - ea.start) / 1400);
@@ -258,6 +262,7 @@ export default function Home() {
         if (ea.startOffsetY != null) ellipseRef.current.offsetY = ea.startOffsetY + (ea.targetOffsetY! - ea.startOffsetY) * e;
         if (ea.startCardScale != null) ellipseRef.current.cardScale = ea.startCardScale + (ea.targetCardScale! - ea.startCardScale) * e;
         enterScale = (ea.startCardScale ?? 0.7) + ((ea.targetCardScale ?? 1) - (ea.startCardScale ?? 0.7)) * e;
+        if (ea.fadeIn) enterOpacity = Math.min(1, progress * 2.5); // fade in over first ~40% of animation
         if (progress >= 1) enterAnimRef.current = null;
       }
 
@@ -272,7 +277,7 @@ export default function Home() {
 
       // Update ring track size/position
       if (ringRef.current) {
-        ringRef.current.style.opacity = isEnlargedMode ? '0' : '1';
+        ringRef.current.style.opacity = isEnlargedMode ? '0' : String(enterOpacity);
         ringRef.current.style.width = `${rx * 2}px`;
         ringRef.current.style.height = `${ry * 2}px`;
         ringRef.current.style.marginLeft = `${-rx}px`;
@@ -313,7 +318,7 @@ export default function Home() {
         const isCenter = absAngle < CARD_SPACING * 0.5;
 
         const isEnlarged = isEnlargedMode && enlargedRef.current?.id === allRobots[i].id;
-        let fx = x, fy = y, fScale = scale * enterScale * ellipseRef.current.cardScale, fOpacity = opacity, fBlur = blur, fRotY = rotY;
+        let fx = x, fy = y, fScale = scale * enterScale * ellipseRef.current.cardScale, fOpacity = opacity * enterOpacity, fBlur = blur, fRotY = rotY;
 
         if (isEnlargedMode) {
           if (isEnlarged) {
@@ -342,18 +347,13 @@ export default function Home() {
             el.style.zIndex = '1100';
             el.style.visibility = 'visible';
             el.style.pointerEvents = 'auto';
-            const isBumping = bumpRef.current > 0;
-            const useTransition = now < transitionUntilRef.current;
-            el.style.transition = isBumping
-              ? 'none'
-              : useTransition
-                ? 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease'
-                : hasTilt ? 'none' : 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease';
+            // Always rAF-driven, no CSS transitions on the enlarged card
+            el.style.transition = 'none';
             continue; // skip the default transform assignment below
           } else {
-            // Push surrounding cards outward — mostly horizontal
-            fx = x * 1.6;
-            fy = y * 1.1;
+            // Push surrounding cards outward — gentle drift like wind
+            fx = x * 1.45;
+            fy = y * 1.05;
             fOpacity = Math.max(0.15, 0.5 - absAngle * 0.004);
             fBlur = 1;
           }
@@ -366,8 +366,10 @@ export default function Home() {
         el.style.visibility = 'visible';
         el.style.pointerEvents = isEnlarged ? 'auto' : 'none';
         const useTransition = isEnlargedMode || now < transitionUntilRef.current;
+        // Stagger: cards further from center drift slower
+        const stagger = isEnlargedMode ? 0.7 + steps * 0.12 : 0.6;
         el.style.transition = useTransition
-          ? 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.6s ease, filter 0.5s ease'
+          ? `transform ${stagger}s cubic-bezier(0.25, 0.8, 0.25, 1), opacity ${stagger}s ease-out, filter ${stagger * 0.8}s ease-out`
           : 'none';
 
         // Position dot marker on the ring
@@ -377,6 +379,16 @@ export default function Home() {
           dot.style.opacity = isEnlargedMode ? '0' : String(isCenter ? 0.6 : Math.max(0.08, depth * 0.25));
         }
       }
+
+      // Position floating label above center card
+      if (labelRef.current) {
+        const centerY = flipY * ry;
+        const centerScale = 1.15 * enterScale * ellipseRef.current.cardScale;
+        const labelY = centerY + offsetY - (cardDimsRef.current.h * centerScale) / 2 - 40;
+        labelRef.current.style.transform = `translate(-50%, ${labelY}px)`;
+        labelRef.current.style.opacity = isEnlargedMode ? '0' : '1';
+      }
+
       rafIdRef.current = requestAnimationFrame(loop);
     };
     rafIdRef.current = requestAnimationFrame(loop);
@@ -526,17 +538,13 @@ export default function Home() {
         case 'Enter':
         case ' ':
           e.preventDefault();
-          if (e.repeat) break; // ignore held key repeats
-          { const h = allRobots[currentIndexRef.current];
-            if (h) {
-              const willEnlarge = !enlargedRef.current;
-              setEnlargedHumanoid(prev => prev ? null : h);
-              if (willEnlarge) {
-                bumpRef.current = performance.now();
-                setSpacePressed(true);
-                setTimeout(() => setSpacePressed(false), 300);
-              }
-            }
+          if (e.repeat) break;
+          if (enlargedRef.current) {
+            // Already in spotlight — dismiss
+            setEnlargedHumanoid(null);
+          } else {
+            // Depress only — launch on keyup
+            setSpacePressed(true);
           }
           break;
         case 'Escape':
@@ -544,9 +552,23 @@ export default function Home() {
           break;
       }
     };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if ((e.key === ' ' || e.key === 'Enter') && spacePressed) {
+        const h = allRobots[currentIndexRef.current];
+        if (h && !enlargedRef.current) {
+          bumpRef.current = performance.now();
+          setEnlargedHumanoid(h);
+          // Keep depressed until spotlight transition finishes
+          setTimeout(() => setSpacePressed(false), 600);
+        } else {
+          setSpacePressed(false);
+        }
+      }
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode, animateToIndex]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
+  }, [viewMode, animateToIndex, spacePressed]);
 
   // Derived values
   const currentHumanoid = allRobots[currentIndex];
@@ -554,6 +576,7 @@ export default function Home() {
   const currentBg = '#fff';
   const cardW = windowWidth < 640 ? Math.min(layoutConfig.cardSize, 100) : layoutConfig.cardSize;
   const cardH = cardW * 2.1;
+  cardDimsRef.current = { w: cardW, h: cardH };
 
   const toggleFx = useCallback((fx: string) => {
     setSpotlightFx(prev => {
@@ -684,7 +707,7 @@ export default function Home() {
       {/* ═══ LOGO ═══ */}
       {!showIntro && (
         <div
-          className="fixed z-[5] animate-blur-fade cursor-pointer select-none transition-opacity duration-150 hover:opacity-70"
+          className="fixed z-[5] animate-slide-from-top cursor-pointer select-none transition-opacity duration-150 hover:opacity-70"
           style={{
             top: windowWidth < 640 ? '10px' : '13px',
             left: windowWidth < 640 ? '10px' : '14px',
@@ -701,7 +724,7 @@ export default function Home() {
               // Push-and-spin: fast flick at start, long gentle wind-down
               const k = 8;
               const e = (1 - Math.exp(-k * progress)) / (1 - Math.exp(-k));
-              currentRotationRef.current = startRot + TOTAL_ARC * e;
+              currentRotationRef.current = startRot - TOTAL_ARC * e;
               if (progress < 1) {
                 animationRef.current = requestAnimationFrame(animate);
               } else {
@@ -712,7 +735,7 @@ export default function Home() {
             setTimeout(() => setEasterShake(false), 600);
           }}
         >
-          <img src="/robots/logo-0.png" alt="Humanoid Index" draggable="false" className="object-contain" style={{ height: '22px' }} />
+          <img src="/robots/darker logo.png" alt="Humanoid Index" draggable="false" className="object-contain" style={{ height: '22px' }} />
         </div>
       )}
 
@@ -778,7 +801,7 @@ export default function Home() {
       <section className={`flex flex-col relative animate-blur-fade ${viewMode === 'grid' ? 'min-h-screen bg-white overflow-y-auto' : 'h-screen overflow-hidden'}`}>
         {/* TOP BAR */}
         <div
-          className="flex-shrink-0 relative z-20 flex justify-center"
+          className="flex-shrink-0 relative z-20 flex justify-center animate-slide-from-top"
           style={{ padding: `${topBarInset}px ${insetX}px` }}
         >
           <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} />
@@ -896,38 +919,36 @@ export default function Home() {
                           </div>
                         </div>
                       ) : (
-                      <HumanoidCard
-                        humanoid={humanoid}
-                        config={config}
-                        effectClass="distortion-wave"
-                        isEnlarged={enlargedHumanoid?.id === humanoid.id}
-                      />
+                      <>
+                        <HumanoidCard
+                          humanoid={humanoid}
+                          config={config}
+                          effectClass="distortion-wave"
+                          isEnlarged={enlargedHumanoid?.id === humanoid.id}
+                        />
+                      </>
                       )}
                     </div>
                   );
                 })}
               </div>
 
-              {/* Label — active card info */}
-              {!isIntro && !enlargedHumanoid && (() => {
-                const display = hoveredCarouselCard || currentHumanoid;
-                if (!display || display.id === '__intro__') return null;
-                return (
-                  <div
-                    key={display.id}
-                    className="absolute z-[60] pointer-events-none font-mono animate-blur-fade flex flex-col items-center gap-2"
-                    style={{
-                      left: '50%',
-                      top: '50%',
-                      transform: `translate(-50%, ${ellipseRef.current.flipY * ellipseRef.current.ry + ellipseRef.current.offsetY + cardH / 2 + 16}px)`,
-                    }}
-                  >
-                    <div className="text-[11px] leading-none tracking-wider uppercase px-3 py-1.5 rounded-full border border-neutral-200" style={{ color: 'rgba(0,0,0,0.5)', whiteSpace: 'nowrap' }}>
-                      {display.name} <span style={{ color: 'rgba(0,0,0,0.2)' }}>&middot;</span> {display.manufacturer}
-                    </div>
+              {/* Floating label — persistent container, text swaps */}
+              {!isIntro && (
+                <div
+                  ref={labelRef}
+                  className="absolute z-[60] pointer-events-none font-mono"
+                  style={{
+                    left: '50%',
+                    top: '50%',
+                    transition: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease',
+                  }}
+                >
+                  <div className="text-[11px] leading-none tracking-wider uppercase px-3 py-1.5 rounded-full border border-neutral-200 whitespace-nowrap" style={{ color: 'rgba(0,0,0,0.5)' }}>
+                    {(hoveredCarouselCard || currentHumanoid)?.name} <span style={{ color: 'rgba(0,0,0,0.2)' }}>&middot;</span> {(hoveredCarouselCard || currentHumanoid)?.manufacturer}
                   </div>
-                );
-              })()}
+                </div>
+              )}
 
 
             </main>
@@ -953,7 +974,7 @@ export default function Home() {
             const MINI_RX = 60;
             const MINI_RY = Math.max(12, Math.min(35, Math.round(MINI_RX * ep.ry / ep.rx)));
             return (
-              <div className="flex-shrink-0 relative z-20 flex justify-center pt-2 pb-3 transition-all duration-300" style={{
+              <div className="flex-shrink-0 relative z-20 flex justify-center pt-2 pb-3 animate-slide-from-bottom transition-all duration-500 ease-out" style={{
                 opacity: enlargedHumanoid ? 0.3 : 1,
               }}>
                 <div
@@ -1009,15 +1030,17 @@ export default function Home() {
             );
           })()}
 
-          {/* Spacebar hint — under minimap */}
-          {viewMode === 'carousel' && !enlargedHumanoid && windowWidth >= 640 && (
-            <div className="flex-shrink-0 flex justify-center pointer-events-none transition-opacity duration-300" style={{ opacity: enlargedHumanoid ? 0 : 1 }}>
+          {/* Spacebar hint — under minimap, always mounted to preserve layout */}
+          {viewMode === 'carousel' && windowWidth >= 640 && (
+            <div className="flex-shrink-0 flex justify-center pointer-events-none animate-slide-from-bottom transition-opacity duration-500 ease-out" style={{ opacity: enlargedHumanoid ? 0 : 1 }}>
               <div
-                className="flex items-center rounded border transition-all duration-100"
+                className="flex items-center rounded border transition-all duration-150 ease-out"
                 style={{
-                  borderColor: spacePressed ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.15)',
-                  backgroundColor: spacePressed ? 'rgba(0,0,0,0.04)' : 'transparent',
+                  borderColor: spacePressed ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)',
+                  backgroundColor: spacePressed ? 'rgba(0,0,0,0.05)' : 'transparent',
                   padding: '2px 8px',
+                  transform: spacePressed ? 'translateY(1.5px) scale(0.95)' : 'translateY(0) scale(1)',
+                  boxShadow: spacePressed ? 'none' : '0 1px 0 rgba(0,0,0,0.06)',
                 }}
               >
                 <span
