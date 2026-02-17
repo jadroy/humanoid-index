@@ -95,21 +95,16 @@ export default function Home() {
   const labelEntryRef = useRef<number>(0);
   const cardDimsRef = useRef({ w: 150, h: 315 });
   const waveRef = useRef<{ start: number } | null>(null);
+  const spotlightSwapRef = useRef<{ start: number; fromId: string } | null>(null);
   const minimapRef = useRef<HTMLDivElement>(null);
   const isDraggingMinimapRef = useRef(false);
   const mouseTarget = useRef({ x: 0, y: 0 });
   const mouseCurrent = useRef({ x: 0, y: 0 });
 
-  // Keep enlargedRef in sync + set transition deadline on exit + track prev for A/B ghost
+  // Keep enlargedRef in sync + set transition deadline on exit
   useEffect(() => {
     if (enlargedHumanoid === null && enlargedRef.current !== null) {
       transitionUntilRef.current = performance.now() + 350;
-    }
-    if (enlargedHumanoid && enlargedRef.current && enlargedHumanoid.id !== enlargedRef.current.id) {
-      setPrevEnlarged(enlargedRef.current);
-    }
-    if (enlargedHumanoid && !enlargedRef.current) {
-      // fresh spotlight, keep prev from last session
     }
     enlargedRef.current = enlargedHumanoid;
   }, [enlargedHumanoid]);
@@ -306,9 +301,11 @@ export default function Home() {
         const y = flipY * Math.cos(rad) * ry;
         const depth = (Math.cos(rad) + 1) / 2;       // 1.0 at front, 0.0 at back
 
-        const centerBoost = Math.max(0, 1 - absAngle / (CARD_SPACING * 2)) * 0.15;
-        const scale = (0.3 + 0.7 * depth) * (1 + centerBoost);
         const steps = absAngle / CARD_SPACING;
+        // Scale waterfall — center card is tall "tick", neighbors cascade down sharply
+        const proximity = Math.max(0, 1 - steps / 3);  // smooth falloff over 3 steps
+        const cascade = Math.pow(proximity, 1.8);    // center peak with gentle shoulder
+        const scale = (0.3 + 0.7 * depth) * (0.82 + 0.35 * cascade);
         const f = fadeRef.current;
         const opacity = steps < 0.5 ? f.center : steps < 1.5 ? f.near : steps < 2.5 ? f.mid : f.far;
         const blur = 0;
@@ -321,8 +318,10 @@ export default function Home() {
 
         if (isEnlargedMode) {
           if (isEnlarged) {
-            fx = 0; fy = -offsetY; fScale = 1.12; fOpacity = 1; fBlur = 0; fRotY = 0;
-            // Bump — snappy pop up then settle
+            fx = 0; fy = -offsetY; fScale = 1.12; fBlur = 0; fRotY = 0;
+            fOpacity = 1;
+
+            // Bump — snappy pop up then settle (spacebar entry only)
             let bumpY = 0;
             if (bumpRef.current > 0) {
               const elapsed = now - bumpRef.current;
@@ -348,6 +347,10 @@ export default function Home() {
             fOpacity = Math.max(0.12, 0.45 - absAngle * 0.004);
             fBlur = 1;
           }
+
+          // Clear swap flag after snap window
+          const swap = spotlightSwapRef.current;
+          if (swap && (now - swap.start) >= 100) spotlightSwapRef.current = null;
         }
 
         // Wave effect — ripple outward from center
@@ -377,7 +380,8 @@ export default function Home() {
         el.style.zIndex = isEnlarged ? '1100' : String(zIdx);
         el.style.visibility = 'visible';
         el.style.pointerEvents = isEnlarged ? 'auto' : 'none';
-        const useTransition = isEnlargedMode || now < transitionUntilRef.current;
+        const swapRecent = spotlightSwapRef.current && (now - spotlightSwapRef.current.start) < 100;
+        const useTransition = (isEnlargedMode || now < transitionUntilRef.current) && !swapRecent;
         el.style.transition = (useTransition && !wv)
           ? 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease-out, filter 0.3s ease-out'
           : 'none';
@@ -574,11 +578,41 @@ export default function Home() {
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault();
-          animateToIndex((currentIndexRef.current - 1 + N_CARDS) % N_CARDS);
+          { const nextIdx = (currentIndexRef.current - 1 + N_CARDS) % N_CARDS;
+            if (enlargedRef.current) {
+              // Instant spotlight swap — snap rotation, no animation
+              if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
+              currentRotationRef.current = nextIdx * CARD_SPACING;
+              spotlightSwapRef.current = { start: performance.now(), fromId: enlargedRef.current.id };
+              const next = allRobots[nextIdx];
+              if (next && next.id !== '__intro__') {
+                setEnlargedHumanoid(next);
+              } else {
+                setEnlargedHumanoid(null);
+              }
+            } else {
+              animateToIndex(nextIdx);
+            }
+          }
           break;
         case 'ArrowRight':
           e.preventDefault();
-          animateToIndex((currentIndexRef.current + 1) % N_CARDS);
+          { const nextIdx = (currentIndexRef.current + 1) % N_CARDS;
+            if (enlargedRef.current) {
+              // Instant spotlight swap — snap rotation, no animation
+              if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
+              currentRotationRef.current = nextIdx * CARD_SPACING;
+              spotlightSwapRef.current = { start: performance.now(), fromId: enlargedRef.current.id };
+              const next = allRobots[nextIdx];
+              if (next && next.id !== '__intro__') {
+                setEnlargedHumanoid(next);
+              } else {
+                setEnlargedHumanoid(null);
+              }
+            } else {
+              animateToIndex(nextIdx);
+            }
+          }
           break;
         case 'Enter':
         case ' ':
@@ -735,7 +769,7 @@ export default function Home() {
       className={`relative h-screen transition-colors duration-500 ease-out ${viewMode === 'grid' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'}`}
       style={{
         backgroundColor: currentBg,
-        animation: easterShake ? 'easter-shake 0.6s ease-out' : 'none',
+        animation: easterShake ? 'easter-shake 0.9s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
       }}
     >
       {/* ═══ LOGO ═══ */}
@@ -766,7 +800,7 @@ export default function Home() {
               }
             };
             animationRef.current = requestAnimationFrame(animate);
-            setTimeout(() => setEasterShake(false), 600);
+            setTimeout(() => setEasterShake(false), 900);
           }}
         >
           <img src="/robots/darker logo.png" alt="Humanoid Index" draggable="false" className="object-contain" style={{ height: '22px' }} />
@@ -1000,18 +1034,22 @@ export default function Home() {
           {/* MINIMAP — elliptical ring */}
           {viewMode === 'carousel' && (() => {
             const ep = ellipseRef.current;
+            const isSpotlight = !!enlargedHumanoid;
             const MINI_RX = 60;
             const MINI_RY = Math.max(12, Math.min(35, Math.round(MINI_RX * ep.ry / ep.rx)));
+            const expandScale = isSpotlight ? 1.35 : 1;
+            const miniRxExpanded = MINI_RX * expandScale;
+            const miniRyExpanded = MINI_RY * expandScale;
             return (
               <div className="flex-shrink-0 relative z-20 flex justify-center pt-2 pb-3 animate-slide-from-bottom transition-all duration-500 ease-out" style={{
-                opacity: enlargedHumanoid ? 0.3 : 1,
+                opacity: isSpotlight ? 0.3 : 1,
               }}>
                 <div
                   ref={minimapRef}
-                  className="relative cursor-pointer select-none transition-transform duration-300 ease-out"
+                  className="relative cursor-pointer select-none transition-all duration-400 ease-out"
                   style={{
-                    width: `${MINI_RX * 2 + 16}px`,
-                    height: `${MINI_RY * 2 + 16}px`,
+                    width: `${miniRxExpanded * 2 + 16}px`,
+                    height: `${miniRyExpanded * 2 + 16}px`,
                   }}
                   onMouseDown={handleMinimapMouseDown}
                   onTouchStart={handleMinimapTouchStart}
@@ -1019,11 +1057,11 @@ export default function Home() {
                 >
                   {/* Mini ring outline */}
                   <div
-                    className="absolute pointer-events-none"
+                    className="absolute pointer-events-none transition-all duration-400 ease-out"
                     style={{
                       left: '50%', top: '50%',
-                      width: MINI_RX * 2, height: MINI_RY * 2,
-                      marginLeft: -MINI_RX, marginTop: -MINI_RY,
+                      width: miniRxExpanded * 2, height: miniRyExpanded * 2,
+                      marginLeft: -miniRxExpanded, marginTop: -miniRyExpanded,
                       borderRadius: '50%',
                       border: '1px solid rgba(0,0,0,0.06)',
                     }}
@@ -1032,22 +1070,25 @@ export default function Home() {
                   {allRobots.map((_, i) => {
                     let idxDiff = i - currentIndex;
                     idxDiff = idxDiff - Math.round(idxDiff / N_CARDS) * N_CARDS;
-                    const ang = idxDiff * (360 / N_CARDS); // evenly spaced on minimap
+                    const ang = idxDiff * (360 / N_CARDS);
                     const rad = (ang * Math.PI) / 180;
-                    const dotX = Math.sin(rad) * MINI_RX;
-                    const dotY = ep.flipY * Math.cos(rad) * MINI_RY;
+                    const dotX = Math.sin(rad) * miniRxExpanded;
+                    const dotY = ep.flipY * Math.cos(rad) * miniRyExpanded;
                     const depth = (Math.cos(rad) + 1) / 2;
                     const isActive = i === currentIndex;
                     return (
                       <div
                         key={i}
-                        className="absolute transition-all duration-300"
+                        className="absolute transition-all duration-400 ease-out"
                         style={{
                           left: '50%', top: '50%',
                           width: isActive ? '5px' : '2px',
                           height: isActive ? '5px' : '2px',
                           borderRadius: '50%',
-                          backgroundColor: isActive ? '#000' : `rgba(0,0,0,${0.08 + depth * 0.15})`,
+                          backgroundColor: isActive
+                            ? (isSpotlight ? 'rgba(180, 140, 80, 0.85)' : '#000')
+                            : `rgba(0,0,0,${0.08 + depth * 0.15})`,
+                          boxShadow: isActive && isSpotlight ? '0 0 6px 2px rgba(180, 140, 80, 0.25)' : 'none',
                           transform: `translate(${dotX - (isActive ? 2.5 : 1)}px, ${dotY - (isActive ? 2.5 : 1)}px)`,
                         }}
                       />

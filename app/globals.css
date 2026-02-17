@@ -368,7 +368,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes easter-shake {
-  0% { transform: scale(0.99); }
+  0% { transform: scale(1); }
+  18% { transform: scale(0.975); }
   100% { transform: scale(1); }
 }
 
