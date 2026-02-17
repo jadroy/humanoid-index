@@ -2,19 +2,9 @@
 
 import { useRef } from "react";
 import type { Humanoid } from "@/data/humanoids";
-import type { ViewConfig } from "./Sidebar";
 
 interface HumanoidCardProps {
   humanoid: Humanoid;
-  config: ViewConfig;
-  scale?: number;
-  overlay?: number;
-  bottomFade?: number;
-  compareMode?: boolean;
-  isSelected?: boolean;
-  onToggleSelect?: (id: string) => void;
-  isActive?: boolean;
-  onInfoChange?: (open: boolean) => void;
   onClick?: () => void;
   effectClass?: string;
   isEnlarged?: boolean;

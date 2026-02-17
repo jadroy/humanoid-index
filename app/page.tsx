@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ViewConfig, defaultConfig } from "@/components/Sidebar";
 import HumanoidCard from "@/components/HumanoidCard";
 import ViewSwitcher, { ViewMode } from "@/components/ViewSwitcher";
 import GridView from "@/components/GridView";
@@ -48,8 +47,7 @@ function normalizeIndex(rotation: number): number {
 }
 
 export default function Home() {
-  const [config] = useState<ViewConfig>(defaultConfig);
-  const [layoutConfig] = useState(defaultLayoutConfig);
+  const layoutConfig = defaultLayoutConfig;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('carousel');
   const [hoveredHumanoid, setHoveredHumanoid] = useState<Humanoid | null>(null);
@@ -58,7 +56,6 @@ export default function Home() {
   const [enlargedHumanoid, setEnlargedHumanoid] = useState<Humanoid | null>(null);
   const [spotlightFx, setSpotlightFx] = useState<Set<string>>(new Set(['specs']));
   const [prevEnlarged, setPrevEnlarged] = useState<Humanoid | null>(null);
-  const [spacePressed, setSpacePressed] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [introExiting, setIntroExiting] = useState(false);
 
@@ -95,7 +92,9 @@ export default function Home() {
   const bumpRef = useRef<number>(0); // timestamp of spacebar bump
 
   const labelRef = useRef<HTMLDivElement>(null);
+  const labelEntryRef = useRef<number>(0);
   const cardDimsRef = useRef({ w: 150, h: 315 });
+  const waveRef = useRef<{ start: number } | null>(null);
   const minimapRef = useRef<HTMLDivElement>(null);
   const isDraggingMinimapRef = useRef(false);
   const mouseTarget = useRef({ x: 0, y: 0 });
@@ -322,40 +321,53 @@ export default function Home() {
 
         if (isEnlargedMode) {
           if (isEnlarged) {
-            const hasTilt = spotlightFxRef.current.has('tilt');
-            const tiltRY = hasTilt ? mouseCurrent.current.x * 12 : 0;
-            const tiltRX = hasTilt ? mouseCurrent.current.y * -8 : 0;
-            fx = 0; fy = -offsetY; fScale = 1.12; fOpacity = 1; fBlur = 0; fRotY = tiltRY;
-            // Spacebar bump — quick rise, brief hold, smooth settle
+            fx = 0; fy = -offsetY; fScale = 1.12; fOpacity = 1; fBlur = 0; fRotY = 0;
+            // Bump — snappy pop up then settle
             let bumpY = 0;
             if (bumpRef.current > 0) {
               const elapsed = now - bumpRef.current;
-              const duration = 450;
-              if (elapsed < duration) {
-                const t = elapsed / duration;
-                // Fast rise to peak at ~20%, hold briefly, then ease out
-                const rise = Math.min(1, t / 0.2);
-                const fall = Math.max(0, (t - 0.3) / 0.7);
-                bumpY = -12 * rise * (1 - fall * fall);
+              if (elapsed < 250) {
+                const t = elapsed / 250;
+                bumpY = -10 * Math.sin(t * Math.PI) * (1 - t * 0.5);
               } else {
                 bumpRef.current = 0;
               }
             }
-            el.style.transform = `translate3d(${fx}px, ${fy + offsetY + bumpY}px, 0) scale(${fScale}) rotateY(${tiltRY}deg) rotateX(${tiltRX}deg)`;
-            el.style.opacity = String(fOpacity);
+            el.style.transform = `translate3d(0px, ${bumpY}px, 0) scale(${fScale})`;
+            el.style.opacity = '1';
             el.style.filter = 'none';
             el.style.zIndex = '1100';
             el.style.visibility = 'visible';
             el.style.pointerEvents = 'auto';
-            // Always rAF-driven, no CSS transitions on the enlarged card
             el.style.transition = 'none';
-            continue; // skip the default transform assignment below
+            continue;
           } else {
-            // Push surrounding cards outward — gentle drift like wind
-            fx = x * 1.45;
+            // Push out — subtle horizontal spread
+            fx = x * 1.4;
             fy = y * 1.05;
-            fOpacity = Math.max(0.15, 0.5 - absAngle * 0.004);
+            fOpacity = Math.max(0.12, 0.45 - absAngle * 0.004);
             fBlur = 1;
+          }
+        }
+
+        // Wave effect — ripple outward from center
+        const wv = waveRef.current;
+        if (wv) {
+          const elapsed = now - wv.start;
+          // Radiates both directions from center
+          const delay = steps / 20 * 1000;
+          const localT = (elapsed - delay) / 300;
+
+          if (elapsed < 800) {
+            if (localT > 0 && localT < 1) {
+              const wave = Math.sin(localT * Math.PI);
+              // Push outward along the ring's radial direction
+              fx += Math.sin(rad) * wave * 12;
+              fy += flipY * Math.cos(rad) * wave * 12;
+              fScale *= 1 + wave * 0.05;
+            }
+          } else {
+            waveRef.current = null;
           }
         }
 
@@ -366,10 +378,8 @@ export default function Home() {
         el.style.visibility = 'visible';
         el.style.pointerEvents = isEnlarged ? 'auto' : 'none';
         const useTransition = isEnlargedMode || now < transitionUntilRef.current;
-        // Stagger: cards further from center drift slower
-        const stagger = isEnlargedMode ? 0.7 + steps * 0.12 : 0.6;
-        el.style.transition = useTransition
-          ? `transform ${stagger}s cubic-bezier(0.25, 0.8, 0.25, 1), opacity ${stagger}s ease-out, filter ${stagger * 0.8}s ease-out`
+        el.style.transition = (useTransition && !wv)
+          ? 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease-out, filter 0.3s ease-out'
           : 'none';
 
         // Position dot marker on the ring
@@ -380,13 +390,44 @@ export default function Home() {
         }
       }
 
-      // Position floating label above center card
+      // Position floating label above center card — settles from above
       if (labelRef.current) {
+        if (!labelEntryRef.current) labelEntryRef.current = now;
+        const labelAge = now - labelEntryRef.current;
+        const entryDuration = 700;
+        const entryProgress = Math.min(1, labelAge / entryDuration);
+        const entryEase = 1 - Math.pow(1 - entryProgress, 3); // ease-out cubic
+
         const centerY = flipY * ry;
         const centerScale = 1.15 * enterScale * ellipseRef.current.cardScale;
         const labelY = centerY + offsetY - (cardDimsRef.current.h * centerScale) / 2 - 40;
-        labelRef.current.style.transform = `translate(-50%, ${labelY}px)`;
-        labelRef.current.style.opacity = isEnlargedMode ? '0' : '1';
+        // Start 25px above final position, settle down softly
+        const entryOffset = (1 - entryEase) * -25;
+        labelRef.current.style.transform = `translate(-50%, ${labelY + entryOffset}px)`;
+        labelRef.current.style.opacity = isEnlargedMode ? '0' : String(Math.min(entryEase, 1));
+      } else {
+        labelEntryRef.current = 0; // reset when label unmounts
+      }
+
+      // Minimap catapult — synced to bump, squishes down then springs back
+      if (minimapRef.current) {
+        if (bumpRef.current > 0) {
+          const elapsed = now - bumpRef.current;
+          if (elapsed < 300) {
+            const t = elapsed / 300;
+            // Quick squish down (first 30%), then spring up past neutral
+            const squish = t < 0.3
+              ? t / 0.3
+              : 1 - (t - 0.3) / 0.7;
+            const scaleY = 1 - squish * 0.15;
+            const pushY = squish * 4;
+            minimapRef.current.style.transform = `translateY(${pushY}px) scaleY(${scaleY})`;
+          } else {
+            minimapRef.current.style.transform = 'translateY(0) scaleY(1)';
+          }
+        } else {
+          minimapRef.current.style.transform = 'translateY(0) scaleY(1)';
+        }
       }
 
       rafIdRef.current = requestAnimationFrame(loop);
@@ -515,7 +556,11 @@ export default function Home() {
       const target = e.target as HTMLElement;
       if (target.closest('button, a, input, [data-no-drag]')) return;
       const h = allRobots[currentIndexRef.current];
-      if (h) setEnlargedHumanoid(prev => prev ? null : h);
+      if (h && h.id === '__intro__') {
+        waveRef.current = { start: performance.now() };
+      } else if (h) {
+        setEnlargedHumanoid(prev => prev ? null : h);
+      }
     };
     document.addEventListener('dblclick', handleDblClick);
     return () => document.removeEventListener('dblclick', handleDblClick);
@@ -539,12 +584,15 @@ export default function Home() {
         case ' ':
           e.preventDefault();
           if (e.repeat) break;
-          if (enlargedRef.current) {
-            // Already in spotlight — dismiss
-            setEnlargedHumanoid(null);
-          } else {
-            // Depress only — launch on keyup
-            setSpacePressed(true);
+          { const h = allRobots[currentIndexRef.current];
+            if (h && h.id === '__intro__') {
+              // Scatter & reform
+              waveRef.current = { start: performance.now() };
+            } else if (h) {
+              const willEnlarge = !enlargedRef.current;
+              setEnlargedHumanoid(prev => prev ? null : h);
+              if (willEnlarge) bumpRef.current = performance.now();
+            }
           }
           break;
         case 'Escape':
@@ -552,23 +600,9 @@ export default function Home() {
           break;
       }
     };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if ((e.key === ' ' || e.key === 'Enter') && spacePressed) {
-        const h = allRobots[currentIndexRef.current];
-        if (h && !enlargedRef.current) {
-          bumpRef.current = performance.now();
-          setEnlargedHumanoid(h);
-          // Keep depressed until spotlight transition finishes
-          setTimeout(() => setSpacePressed(false), 600);
-        } else {
-          setSpacePressed(false);
-        }
-      }
-    };
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
-  }, [viewMode, animateToIndex, spacePressed]);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewMode, animateToIndex]);
 
   // Derived values
   const currentHumanoid = allRobots[currentIndex];
@@ -922,7 +956,6 @@ export default function Home() {
                       <>
                         <HumanoidCard
                           humanoid={humanoid}
-                          config={config}
                           effectClass="distortion-wave"
                           isEnlarged={enlargedHumanoid?.id === humanoid.id}
                         />
@@ -941,7 +974,6 @@ export default function Home() {
                   style={{
                     left: '50%',
                     top: '50%',
-                    transition: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease',
                   }}
                 >
                   <div className="text-[11px] leading-none tracking-wider uppercase px-3 py-1.5 rounded-full border border-neutral-200 whitespace-nowrap" style={{ color: 'rgba(0,0,0,0.5)' }}>
@@ -957,9 +989,6 @@ export default function Home() {
               <GridView
                 humanoids={humanoids}
                 layoutConfig={layoutConfig}
-                compareMode={false}
-                selectedIds={[]}
-                onToggleSelect={() => {}}
                 onHoverChange={setHoveredHumanoid}
               />
               {viewMode === 'grid' && (
@@ -983,7 +1012,6 @@ export default function Home() {
                   style={{
                     width: `${MINI_RX * 2 + 16}px`,
                     height: `${MINI_RY * 2 + 16}px`,
-                    transform: spacePressed ? 'translateY(3px) scale(0.92)' : 'translateY(0) scale(1)',
                   }}
                   onMouseDown={handleMinimapMouseDown}
                   onTouchStart={handleMinimapTouchStart}
@@ -1032,21 +1060,18 @@ export default function Home() {
 
           {/* Spacebar hint — under minimap, always mounted to preserve layout */}
           {viewMode === 'carousel' && windowWidth >= 640 && (
-            <div className="flex-shrink-0 flex justify-center pointer-events-none animate-slide-from-bottom transition-opacity duration-500 ease-out" style={{ opacity: enlargedHumanoid ? 0 : 1 }}>
+            <div className="flex-shrink-0 flex justify-center pointer-events-none animate-slide-from-bottom transition-opacity duration-400 ease-out" style={{ opacity: enlargedHumanoid ? 0 : 1 }}>
               <div
-                className="flex items-center rounded border transition-all duration-150 ease-out"
+                className="flex items-center rounded border"
                 style={{
-                  borderColor: spacePressed ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)',
-                  backgroundColor: spacePressed ? 'rgba(0,0,0,0.05)' : 'transparent',
+                  borderColor: 'rgba(0,0,0,0.12)',
                   padding: '2px 8px',
-                  transform: spacePressed ? 'translateY(1.5px) scale(0.95)' : 'translateY(0) scale(1)',
-                  boxShadow: spacePressed ? 'none' : '0 1px 0 rgba(0,0,0,0.06)',
                 }}
               >
                 <span
-                  className="text-[10px] uppercase tracking-wider transition-colors duration-100"
+                  className="text-[10px] uppercase tracking-wider"
                   style={{
-                    color: spacePressed ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)',
+                    color: 'rgba(0,0,0,0.25)',
                     fontFamily: 'system-ui, -apple-system, sans-serif',
                     fontWeight: 500,
                   }}

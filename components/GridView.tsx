@@ -8,9 +8,6 @@ import type { LayoutConfig } from "./BottomBar";
 interface GridViewProps {
   humanoids: Humanoid[];
   layoutConfig: LayoutConfig;
-  compareMode: boolean;
-  selectedIds: string[];
-  onToggleSelect: (id: string) => void;
   onHoverChange: (humanoid: Humanoid | null) => void;
 }
 
