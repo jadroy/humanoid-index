@@ -11,18 +11,26 @@ import CatalogIndex from "@/components/CatalogIndex";
 import { humanoids, legends, Humanoid } from "@/data/humanoids";
 import { defaultLayoutConfig } from "@/components/BottomBar";
 
-// ═══ Ring Shape Presets ═══
-const RING_PRESETS = [
-  { id: 'wide',   label: 'Wide',   rx: 660, ry: 110, offsetY: -40 },
-  { id: 'round',  label: 'Round',  rx: 420, ry: 320, offsetY: -60 },
-  { id: 'tight',  label: 'Tight',  rx: 320, ry: 180, offsetY: -50 },
-  { id: 'flat',   label: 'Flat',   rx: 800, ry: 55,  offsetY: -30 },
+// ═══ Ring Shape Presets (desktop baseline) ═══
+const RING_PRESETS_BASE = [
+  { id: 'wide',   label: 'Wide',   rx: 660, ry: 110, offsetY: -40, cardScale: 1 },
+  { id: 'round',  label: 'Round',  rx: 420, ry: 320, offsetY: -60, cardScale: 0.7 },
 ] as const;
 
+function scaledPresets(w: number) {
+  const scale = w < 640 ? w / 900 : w < 1024 ? w / 1200 : 1;
+  return RING_PRESETS_BASE.map(p => ({
+    ...p,
+    rx: Math.round(p.rx * scale),
+    ry: Math.round(p.ry * scale),
+    offsetY: Math.round(p.offsetY * scale),
+  }));
+}
+
 // ═══ 3D Carousel Constants ═══
-const DEFAULT_RX: number = RING_PRESETS[0].rx;
-const DEFAULT_RY: number = RING_PRESETS[0].ry;
-const DEFAULT_OFFSET_Y: number = RING_PRESETS[0].offsetY;
+const DEFAULT_RX: number = RING_PRESETS_BASE[0].rx;
+const DEFAULT_RY: number = RING_PRESETS_BASE[0].ry;
+const DEFAULT_OFFSET_Y: number = RING_PRESETS_BASE[0].offsetY;
 const WHEEL_SENSITIVITY = 0.08;
 const FRICTION = 0.92;
 const SNAP_THRESHOLD = 0.08;
@@ -48,17 +56,22 @@ export default function Home() {
   const [hoveredCarouselCard, setHoveredCarouselCard] = useState<Humanoid | null>(null);
   const [windowWidth, setWindowWidth] = useState(1200);
   const [enlargedHumanoid, setEnlargedHumanoid] = useState<Humanoid | null>(null);
+  const [spotlightFx, setSpotlightFx] = useState<Set<string>>(new Set(['specs']));
+  const [prevEnlarged, setPrevEnlarged] = useState<Humanoid | null>(null);
+  const [spacePressed, setSpacePressed] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const [introExiting, setIntroExiting] = useState(false);
-  const [showHud, setShowHud] = useState(false);
+
   const [showControls, setShowControls] = useState(false);
   const [, forceControls] = useState(0);
   const [scrollModal, setScrollModal] = useState<string | null>(null);
   const [easterShake, setEasterShake] = useState(false);
   const [activePreset, setActivePreset] = useState('wide');
   const presetAnimRef = useRef<number | null>(null);
-  const fadeRef = useRef({ center: 1, near: 0.6, mid: 0.25, far: 0.08 });
-  const ellipseRef = useRef({ rx: DEFAULT_RX, ry: DEFAULT_RY, offsetY: DEFAULT_OFFSET_Y, flipY: 1 });
+  const fadeRef = useRef({ center: 1, near: 0.75, mid: 0.5, far: 0.25 });
+  const spotlightFxRef = useRef(spotlightFx);
+  const ringPresets = scaledPresets(windowWidth);
+  const ellipseRef = useRef({ rx: DEFAULT_RX, ry: DEFAULT_RY, offsetY: DEFAULT_OFFSET_Y, flipY: 1, cardScale: 1 });
   const scrollAccumRef = useRef(0);
   const scrollResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollModalShownRef = useRef(false);
@@ -78,20 +91,29 @@ export default function Home() {
   const dragRef = useRef<{ x: number; rotation: number; prevX: number; prevTime: number } | null>(null);
   const isDraggingRef = useRef(false);
   const transitionUntilRef = useRef(0);
-  const enterAnimRef = useRef<{ start: number; startRot: number; targetRx: number; targetRy: number } | null>(null);
+  const enterAnimRef = useRef<{ start: number; startRot: number; targetRx: number; targetRy: number; startRx?: number; startRy?: number; startOffsetY?: number; targetOffsetY?: number; startCardScale?: number; targetCardScale?: number } | null>(null);
+  const bumpRef = useRef<number>(0); // timestamp of spacebar bump
 
   const minimapRef = useRef<HTMLDivElement>(null);
   const isDraggingMinimapRef = useRef(false);
   const mouseTarget = useRef({ x: 0, y: 0 });
   const mouseCurrent = useRef({ x: 0, y: 0 });
 
-  // Keep enlargedRef in sync + set transition deadline on exit
+  // Keep enlargedRef in sync + set transition deadline on exit + track prev for A/B ghost
   useEffect(() => {
     if (enlargedHumanoid === null && enlargedRef.current !== null) {
       transitionUntilRef.current = performance.now() + 350;
     }
+    if (enlargedHumanoid && enlargedRef.current && enlargedHumanoid.id !== enlargedRef.current.id) {
+      setPrevEnlarged(enlargedRef.current);
+    }
+    if (enlargedHumanoid && !enlargedRef.current) {
+      // fresh spotlight, keep prev from last session
+    }
     enlargedRef.current = enlargedHumanoid;
   }, [enlargedHumanoid]);
+
+  useEffect(() => { spotlightFxRef.current = spotlightFx; }, [spotlightFx]);
 
   // Auto-dismiss intro
   useEffect(() => {
@@ -99,16 +121,27 @@ export default function Home() {
     const timer = setTimeout(() => {
       setIntroExiting(true);
       setTimeout(() => { setShowIntro(false); setIntroExiting(false); }, 400);
-    }, 1000);
+    }, 2200);
     return () => clearTimeout(timer);
   }, [showIntro, introExiting]);
 
-  // Window width tracking
+  // Window width tracking + rescale ring on resize
   useEffect(() => {
-    setWindowWidth(window.innerWidth);
-    const handleResize = () => setWindowWidth(window.innerWidth);
+    const apply = () => {
+      const w = window.innerWidth;
+      setWindowWidth(w);
+      const presets = scaledPresets(w);
+      const active = presets.find(p => p.id === activePreset) || presets[0];
+      ellipseRef.current.rx = active.rx;
+      ellipseRef.current.ry = active.ry;
+      ellipseRef.current.offsetY = active.offsetY;
+      ellipseRef.current.cardScale = active.cardScale;
+    };
+    apply();
+    const handleResize = () => apply();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Mouse parallax — smooth cursor tracking for center card
@@ -160,7 +193,7 @@ export default function Home() {
     animationRef.current = requestAnimationFrame(animate);
   }, []);
 
-  // Trigger enter animation when intro dismisses
+  // Trigger enter animation: start as round preset, morph to wide
   useEffect(() => {
     if (showIntro || viewMode !== 'carousel') return;
     velocityRef.current = 0;
@@ -168,14 +201,25 @@ export default function Home() {
     const startRot = target - 120;
     currentRotationRef.current = startRot;
     if (!enterAnimRef.current) {
+      const presets = scaledPresets(window.innerWidth);
+      const round = presets.find(p => p.id === 'round')!;
+      const wide = presets.find(p => p.id === 'wide')!;
+      ellipseRef.current.rx = round.rx;
+      ellipseRef.current.ry = round.ry;
+      ellipseRef.current.offsetY = round.offsetY;
+      ellipseRef.current.cardScale = round.cardScale;
       enterAnimRef.current = {
         start: performance.now(),
         startRot,
-        targetRx: DEFAULT_RX,
-        targetRy: DEFAULT_RY,
+        targetRx: wide.rx,
+        targetRy: wide.ry,
+        startRx: round.rx,
+        startRy: round.ry,
+        startOffsetY: round.offsetY,
+        targetOffsetY: wide.offsetY,
+        startCardScale: round.cardScale,
+        targetCardScale: wide.cardScale,
       };
-      ellipseRef.current.rx = DEFAULT_RX * 0.5;
-      ellipseRef.current.ry = DEFAULT_RY * 0.5;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showIntro]);
@@ -202,16 +246,18 @@ export default function Home() {
         }
       }
 
-      // Enter animation: expand ring + spin + scale cards
+      // Enter animation: round→wide morph + spin + scale cards
       let enterScale = 1;
       const ea = enterAnimRef.current;
       if (ea) {
-        const progress = Math.min(1, (now - ea.start) / 900);
+        const progress = Math.min(1, (now - ea.start) / 1400);
         const e = 1 - Math.pow(1 - progress, 3);
         currentRotationRef.current = ea.startRot + 120 * e;
-        ellipseRef.current.rx = ea.targetRx * 0.5 + ea.targetRx * 0.5 * e;
-        ellipseRef.current.ry = ea.targetRy * 0.5 + ea.targetRy * 0.5 * e;
-        enterScale = 0.7 + 0.3 * e;
+        ellipseRef.current.rx = (ea.startRx ?? ea.targetRx * 0.5) + (ea.targetRx - (ea.startRx ?? ea.targetRx * 0.5)) * e;
+        ellipseRef.current.ry = (ea.startRy ?? ea.targetRy * 0.5) + (ea.targetRy - (ea.startRy ?? ea.targetRy * 0.5)) * e;
+        if (ea.startOffsetY != null) ellipseRef.current.offsetY = ea.startOffsetY + (ea.targetOffsetY! - ea.startOffsetY) * e;
+        if (ea.startCardScale != null) ellipseRef.current.cardScale = ea.startCardScale + (ea.targetCardScale! - ea.startCardScale) * e;
+        enterScale = (ea.startCardScale ?? 0.7) + ((ea.targetCardScale ?? 1) - (ea.startCardScale ?? 0.7)) * e;
         if (progress >= 1) enterAnimRef.current = null;
       }
 
@@ -267,14 +313,49 @@ export default function Home() {
         const isCenter = absAngle < CARD_SPACING * 0.5;
 
         const isEnlarged = isEnlargedMode && enlargedRef.current?.id === allRobots[i].id;
-        let fx = x, fy = y, fScale = scale * enterScale, fOpacity = opacity, fBlur = blur, fRotY = rotY;
+        let fx = x, fy = y, fScale = scale * enterScale * ellipseRef.current.cardScale, fOpacity = opacity, fBlur = blur, fRotY = rotY;
 
         if (isEnlargedMode) {
           if (isEnlarged) {
-            fx = 0; fy = -offsetY; fScale = 1.12; fOpacity = 1; fBlur = 0; fRotY = 0;
+            const hasTilt = spotlightFxRef.current.has('tilt');
+            const tiltRY = hasTilt ? mouseCurrent.current.x * 12 : 0;
+            const tiltRX = hasTilt ? mouseCurrent.current.y * -8 : 0;
+            fx = 0; fy = -offsetY; fScale = 1.12; fOpacity = 1; fBlur = 0; fRotY = tiltRY;
+            // Spacebar bump — quick rise, brief hold, smooth settle
+            let bumpY = 0;
+            if (bumpRef.current > 0) {
+              const elapsed = now - bumpRef.current;
+              const duration = 450;
+              if (elapsed < duration) {
+                const t = elapsed / duration;
+                // Fast rise to peak at ~20%, hold briefly, then ease out
+                const rise = Math.min(1, t / 0.2);
+                const fall = Math.max(0, (t - 0.3) / 0.7);
+                bumpY = -12 * rise * (1 - fall * fall);
+              } else {
+                bumpRef.current = 0;
+              }
+            }
+            el.style.transform = `translate3d(${fx}px, ${fy + offsetY + bumpY}px, 0) scale(${fScale}) rotateY(${tiltRY}deg) rotateX(${tiltRX}deg)`;
+            el.style.opacity = String(fOpacity);
+            el.style.filter = 'none';
+            el.style.zIndex = '1100';
+            el.style.visibility = 'visible';
+            el.style.pointerEvents = 'auto';
+            const isBumping = bumpRef.current > 0;
+            const useTransition = now < transitionUntilRef.current;
+            el.style.transition = isBumping
+              ? 'none'
+              : useTransition
+                ? 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease'
+                : hasTilt ? 'none' : 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease';
+            continue; // skip the default transform assignment below
           } else {
-            fOpacity = Math.max(0.05, 0.25 - absAngle * 0.003);
-            fBlur = 2;
+            // Push surrounding cards outward — mostly horizontal
+            fx = x * 1.6;
+            fy = y * 1.1;
+            fOpacity = Math.max(0.15, 0.5 - absAngle * 0.004);
+            fBlur = 1;
           }
         }
 
@@ -286,7 +367,7 @@ export default function Home() {
         el.style.pointerEvents = isEnlarged ? 'auto' : 'none';
         const useTransition = isEnlargedMode || now < transitionUntilRef.current;
         el.style.transition = useTransition
-          ? 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, filter 0.2s ease'
+          ? 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.6s ease, filter 0.5s ease'
           : 'none';
 
         // Position dot marker on the ring
@@ -325,23 +406,37 @@ export default function Home() {
     return () => document.removeEventListener('wheel', handleWheel);
   }, [viewMode, showIntro]);
 
-  // Touch support
+  // Touch support — with velocity tracking for momentum
+  const touchPrevRef = useRef<{ x: number; time: number } | null>(null);
   useEffect(() => {
     if (viewMode !== 'carousel' || showIntro) return;
     const handleTouchStart = (e: TouchEvent) => {
       if (enlargedRef.current) return;
-      touchStartRef.current = { x: e.touches[0].clientX, rotation: currentRotationRef.current };
+      const x = e.touches[0].clientX;
+      touchStartRef.current = { x, rotation: currentRotationRef.current };
+      touchPrevRef.current = { x, time: performance.now() };
       velocityRef.current = 0;
       if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
     };
     const handleTouchMove = (e: TouchEvent) => {
       if (!touchStartRef.current || enlargedRef.current) return;
-      currentRotationRef.current = touchStartRef.current.rotation - (e.touches[0].clientX - touchStartRef.current.x) * 0.3;
+      const x = e.touches[0].clientX;
+      const now = performance.now();
+      currentRotationRef.current = touchStartRef.current.rotation - (x - touchStartRef.current.x) * 0.25;
+      // Track velocity from last frame
+      if (touchPrevRef.current) {
+        const dt = now - touchPrevRef.current.time;
+        if (dt > 0) {
+          velocityRef.current = -(x - touchPrevRef.current.x) / dt * 1.2;
+        }
+      }
+      touchPrevRef.current = { x, time: now };
     };
     const handleTouchEnd = () => {
       if (!touchStartRef.current) return;
       touchStartRef.current = null;
-      animateToIndex(normalizeIndex(currentRotationRef.current));
+      touchPrevRef.current = null;
+      // Let momentum carry via the rAF loop instead of snapping immediately
     };
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
     document.addEventListener('touchmove', handleTouchMove, { passive: true });
@@ -351,7 +446,7 @@ export default function Home() {
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [viewMode, showIntro, animateToIndex]);
+  }, [viewMode, showIntro]);
 
   // Mouse drag support
   useEffect(() => {
@@ -431,8 +526,17 @@ export default function Home() {
         case 'Enter':
         case ' ':
           e.preventDefault();
+          if (e.repeat) break; // ignore held key repeats
           { const h = allRobots[currentIndexRef.current];
-            if (h) setEnlargedHumanoid(prev => prev ? null : h);
+            if (h) {
+              const willEnlarge = !enlargedRef.current;
+              setEnlargedHumanoid(prev => prev ? null : h);
+              if (willEnlarge) {
+                bumpRef.current = performance.now();
+                setSpacePressed(true);
+                setTimeout(() => setSpacePressed(false), 300);
+              }
+            }
           }
           break;
         case 'Escape':
@@ -448,8 +552,38 @@ export default function Home() {
   const currentHumanoid = allRobots[currentIndex];
   const isIntro = currentHumanoid?.id === '__intro__';
   const currentBg = '#fff';
-  const cardW = layoutConfig.cardSize;
-  const cardH = layoutConfig.cardSize * 2.1;
+  const cardW = windowWidth < 640 ? Math.min(layoutConfig.cardSize, 100) : layoutConfig.cardSize;
+  const cardH = cardW * 2.1;
+
+  const toggleFx = useCallback((fx: string) => {
+    setSpotlightFx(prev => {
+      const next = new Set(prev);
+      if (next.has(fx)) next.delete(fx); else next.add(fx);
+      return next;
+    });
+  }, []);
+
+  // Compute rankings for the spotlight
+  const getRank = useCallback((h: Humanoid) => {
+    const all = [...humanoids, ...legends].filter(r => r.id !== '__intro__');
+    const ranks: { label: string; rank: number; total: number; value: string }[] = [];
+    if (h.maxSpeed) {
+      const sorted = all.filter(r => r.maxSpeed).sort((a, b) => (b.maxSpeed || 0) - (a.maxSpeed || 0));
+      const rank = sorted.findIndex(r => r.id === h.id) + 1;
+      if (rank <= 3) ranks.push({ label: 'Fastest', rank, total: sorted.length, value: `${h.maxSpeed}m/s` });
+    }
+    if (h.height) {
+      const sorted = all.filter(r => r.height).sort((a, b) => (b.height || 0) - (a.height || 0));
+      const rank = sorted.findIndex(r => r.id === h.id) + 1;
+      if (rank <= 3) ranks.push({ label: 'Tallest', rank, total: sorted.length, value: `${h.height}cm` });
+    }
+    if (h.dof) {
+      const sorted = all.filter(r => r.dof).sort((a, b) => (b.dof || 0) - (a.dof || 0));
+      const rank = sorted.findIndex(r => r.id === h.id) + 1;
+      if (rank <= 3) ranks.push({ label: 'Most DOF', rank, total: sorted.length, value: `${h.dof}` });
+    }
+    return ranks.length > 0 ? ranks[0] : null;
+  }, []);
 
   const handleViewChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
@@ -489,13 +623,15 @@ export default function Home() {
   }, [animateToIndex]);
 
   const applyPreset = useCallback((presetId: string) => {
-    const preset = RING_PRESETS.find(p => p.id === presetId);
+    const presets = scaledPresets(window.innerWidth);
+    const preset = presets.find(p => p.id === presetId);
     if (!preset) return;
     setActivePreset(presetId);
     if (presetAnimRef.current) cancelAnimationFrame(presetAnimRef.current);
     const startRx = ellipseRef.current.rx;
     const startRy = ellipseRef.current.ry;
     const startOY = ellipseRef.current.offsetY;
+    const startCS = ellipseRef.current.cardScale;
     const startTime = performance.now();
     const animate = (now: number) => {
       const progress = Math.min(1, (now - startTime) / 500);
@@ -503,6 +639,7 @@ export default function Home() {
       ellipseRef.current.rx = startRx + (preset.rx - startRx) * e;
       ellipseRef.current.ry = startRy + (preset.ry - startRy) * e;
       ellipseRef.current.offsetY = startOY + (preset.offsetY - startOY) * e;
+      ellipseRef.current.cardScale = startCS + (preset.cardScale - startCS) * e;
       if (progress < 1) {
         presetAnimRef.current = requestAnimationFrame(animate);
       } else {
@@ -547,26 +684,24 @@ export default function Home() {
       {/* ═══ LOGO ═══ */}
       {!showIntro && (
         <div
-          className="fixed z-[5] animate-blur-fade font-mono text-[11px] font-medium uppercase tracking-wider cursor-pointer select-none rounded border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 transition-colors duration-150"
+          className="fixed z-[5] animate-blur-fade cursor-pointer select-none transition-opacity duration-150 hover:opacity-70"
           style={{
             top: windowWidth < 640 ? '10px' : '13px',
             left: windowWidth < 640 ? '10px' : '14px',
-            color: 'rgba(0,0,0,0.7)',
-            padding: '3px 10px',
           }}
           onClick={() => {
             setViewMode('carousel');
             setEasterShake(true);
             if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
             velocityRef.current = 0;
-            const target = currentIndexRef.current * CARD_SPACING;
-            const startRot = target - 360;
-            currentRotationRef.current = startRot;
+            const startRot = currentRotationRef.current;
             const startTime = performance.now();
             const animate = (now: number) => {
-              const progress = Math.min(1, (now - startTime) / 800);
-              const e = 1 - Math.pow(1 - progress, 3);
-              currentRotationRef.current = startRot + 360 * e;
+              const progress = Math.min(1, (now - startTime) / 1800);
+              // Push-and-spin: fast flick at start, long gentle wind-down
+              const k = 8;
+              const e = (1 - Math.exp(-k * progress)) / (1 - Math.exp(-k));
+              currentRotationRef.current = startRot + TOTAL_ARC * e;
               if (progress < 1) {
                 animationRef.current = requestAnimationFrame(animate);
               } else {
@@ -577,103 +712,8 @@ export default function Home() {
             setTimeout(() => setEasterShake(false), 600);
           }}
         >
-          Humanoid Index
+          <img src="/robots/logo-0.png" alt="Humanoid Index" draggable="false" className="object-contain" style={{ height: '22px' }} />
         </div>
-      )}
-
-      {/* ═══ HUD OVERLAY ═══ */}
-      {!showIntro && (
-        <>
-          {/* HUD toggle — top-right, sliding pill like view switcher */}
-          <div
-            className="fixed z-[5]"
-            style={{
-              top: windowWidth < 640 ? '10px' : '13px',
-              right: windowWidth < 640 ? '10px' : '14px',
-            }}
-          >
-            <div className="relative flex items-center gap-0 border border-neutral-200 rounded px-0.5 py-0.5 font-mono text-[11px] uppercase tracking-normal select-none">
-              {/* Sliding background */}
-              <div
-                className="absolute top-0.5 bottom-0.5 rounded-sm bg-neutral-100 transition-all duration-250 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                style={{
-                  width: 'calc(50% - 2px)',
-                  left: showHud ? 'calc(50% + 1px)' : '2px',
-                }}
-              />
-              {['Off', 'HUD'].map((label) => {
-                const isActive = label === 'HUD' ? showHud : !showHud;
-                return (
-                  <button
-                    key={label}
-                    onClick={() => setShowHud(label === 'HUD')}
-                    className="relative z-10 px-2.5 py-0.5 transition-colors duration-200"
-                    style={{ color: isActive ? '#000' : '#bbb' }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {showHud && (
-            <>
-              {/* Corner brackets */}
-              <div className="fixed inset-0 z-[1] pointer-events-none">
-                <div className="absolute top-4 left-4 w-8 h-8 border-l border-t" style={{ borderColor: 'rgba(0,0,0,0.08)' }} />
-                <div className="absolute top-4 right-4 w-8 h-8 border-r border-t" style={{ borderColor: 'rgba(0,0,0,0.08)' }} />
-                <div className="absolute bottom-4 left-4 w-8 h-8 border-l border-b" style={{ borderColor: 'rgba(0,0,0,0.08)' }} />
-                <div className="absolute bottom-4 right-4 w-8 h-8 border-r border-b" style={{ borderColor: 'rgba(0,0,0,0.08)' }} />
-              </div>
-
-              {/* Scanline overlay */}
-              <div className="fixed inset-0 z-[1] pointer-events-none hud-scanlines" />
-
-              {/* Vignette overlay */}
-              <div className="fixed inset-0 z-[1] pointer-events-none hud-vignette" />
-
-              {/* Top-left system readout */}
-              <div
-                className="fixed z-[2] pointer-events-none font-mono text-[9px] leading-relaxed flex flex-col"
-                style={{ top: '36px', left: windowWidth < 640 ? '12px' : '16px', color: 'rgba(0,0,0,0.12)' }}
-              >
-                <span>SYS.HUMANOID_INDEX</span>
-                <span>MODE: {viewMode === 'carousel' ? 'CAROUSEL' : viewMode === 'grid' ? 'GRID' : viewMode === 'select' ? 'COMPARE' : 'SMASH'}</span>
-                <span>UNITS: {humanoids.length + legends.length}</span>
-                <span className="flex items-center gap-1">
-                  <span
-                    className="inline-block rounded-full hud-blink"
-                    style={{ width: '4px', height: '4px', backgroundColor: 'rgba(0,0,0,0.4)' }}
-                  />
-                  ACTIVE
-                </span>
-              </div>
-
-              {/* Top-right coordinate readout — carousel only */}
-              {viewMode === 'carousel' && (
-                <div
-                  className="fixed z-[2] pointer-events-none font-mono text-[9px] leading-relaxed text-right flex flex-col"
-                  style={{ top: '20px', right: windowWidth < 640 ? '20px' : '24px', color: 'rgba(0,0,0,0.12)' }}
-                >
-                  <span>POS: {(currentIndex / N_CARDS * 100).toFixed(1)}%</span>
-                  <span>IDX: {String(currentIndex).padStart(3, '0')}</span>
-                  <span>FRM: {String(allRobotsCount).padStart(3, '0')}</span>
-                </div>
-              )}
-
-              {/* Center crosshair — carousel only */}
-              {viewMode === 'carousel' && (
-                <div className="fixed inset-0 z-[1] pointer-events-none flex items-center justify-center">
-                  <div className="relative" style={{ width: '24px', height: '24px' }}>
-                    <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2" style={{ width: '1px', backgroundColor: 'rgba(0,0,0,0.06)' }} />
-                    <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2" style={{ height: '1px', backgroundColor: 'rgba(0,0,0,0.06)' }} />
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </>
       )}
 
       {/* INTRO — brief splash with all humanoids */}
@@ -685,26 +725,13 @@ export default function Home() {
             transition: 'opacity 400ms ease-out',
           }}
         >
-          <div className="animate-blur-fade flex flex-col items-center gap-6">
-            <div className="flex items-end gap-[3px]">
-              {allRobots.map((humanoid, i) => (
-                <img
-                  key={humanoid.id}
-                  src={humanoid.imageUrl || "/robots/placeholder.png"}
-                  alt={humanoid.name}
-                  draggable="false"
-                  className="animate-blur-fade-stagger object-contain"
-                  style={{
-                    height: '70px',
-                    animationDelay: `${100 + i * 40}ms`,
-                  }}
-                />
-              ))}
-            </div>
-            <div className="font-mono text-[13px] text-[#999] tracking-wider uppercase animate-blur-fade-delayed">
-              Humanoid Index
-            </div>
-          </div>
+          <img
+            src="/robots/logo-0.png"
+            alt="Humanoid Index"
+            draggable="false"
+            className="animate-logo-pulse object-contain"
+            style={{ height: '60px' }}
+          />
         </section>
       )}
 
@@ -723,7 +750,7 @@ export default function Home() {
             className="flex-shrink-0 relative z-20 flex justify-center"
             style={{ padding: `${topBarInset}px ${insetX}px` }}
           >
-            <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} showHud={showHud} />
+            <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} />
           </div>
           <div className="flex-1 min-h-0">
             <CharacterSelect humanoids={allRobots} />
@@ -738,7 +765,7 @@ export default function Home() {
             className="flex-shrink-0 relative z-20 flex justify-center"
             style={{ padding: `${topBarInset}px ${insetX}px` }}
           >
-            <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} showHud={showHud} />
+            <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} />
           </div>
           <div className="flex-1 min-h-0">
             <SmashPicker humanoids={allRobots} />
@@ -754,7 +781,7 @@ export default function Home() {
           className="flex-shrink-0 relative z-20 flex justify-center"
           style={{ padding: `${topBarInset}px ${insetX}px` }}
         >
-          <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} showHud={showHud} />
+          <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} />
         </div>
 
         {/* Factory floor grid — low, flat perspective */}
@@ -873,6 +900,7 @@ export default function Home() {
                         humanoid={humanoid}
                         config={config}
                         effectClass="distortion-wave"
+                        isEnlarged={enlargedHumanoid?.id === humanoid.id}
                       />
                       )}
                     </div>
@@ -897,20 +925,11 @@ export default function Home() {
                     <div className="text-[11px] leading-none tracking-wider uppercase px-3 py-1.5 rounded-full border border-neutral-200" style={{ color: 'rgba(0,0,0,0.5)', whiteSpace: 'nowrap' }}>
                       {display.name} <span style={{ color: 'rgba(0,0,0,0.2)' }}>&middot;</span> {display.manufacturer}
                     </div>
-                    <div
-                      className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest"
-                      style={{ color: 'rgba(0,0,0,0.18)' }}
-                    >
-                      <span
-                        className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border"
-                        style={{ borderColor: 'rgba(0,0,0,0.1)', fontSize: '8px', minWidth: '42px', letterSpacing: '0.08em' }}
-                      >
-                        space
-                      </span>
-                    </div>
                   </div>
                 );
               })()}
+
+
             </main>
           ) : (
             <main>
@@ -934,11 +953,17 @@ export default function Home() {
             const MINI_RX = 60;
             const MINI_RY = Math.max(12, Math.min(35, Math.round(MINI_RX * ep.ry / ep.rx)));
             return (
-              <div className="flex-shrink-0 relative z-20 flex justify-center pt-2 pb-3 transition-opacity duration-300" style={{ opacity: enlargedHumanoid ? 0 : 1 }}>
+              <div className="flex-shrink-0 relative z-20 flex justify-center pt-2 pb-3 transition-all duration-300" style={{
+                opacity: enlargedHumanoid ? 0.3 : 1,
+              }}>
                 <div
                   ref={minimapRef}
-                  className="relative cursor-pointer select-none"
-                  style={{ width: `${MINI_RX * 2 + 16}px`, height: `${MINI_RY * 2 + 16}px` }}
+                  className="relative cursor-pointer select-none transition-transform duration-300 ease-out"
+                  style={{
+                    width: `${MINI_RX * 2 + 16}px`,
+                    height: `${MINI_RY * 2 + 16}px`,
+                    transform: spacePressed ? 'translateY(3px) scale(0.92)' : 'translateY(0) scale(1)',
+                  }}
                   onMouseDown={handleMinimapMouseDown}
                   onTouchStart={handleMinimapTouchStart}
                   onDragStart={(e) => e.preventDefault()}
@@ -984,6 +1009,31 @@ export default function Home() {
             );
           })()}
 
+          {/* Spacebar hint — under minimap */}
+          {viewMode === 'carousel' && !enlargedHumanoid && windowWidth >= 640 && (
+            <div className="flex-shrink-0 flex justify-center pointer-events-none transition-opacity duration-300" style={{ opacity: enlargedHumanoid ? 0 : 1 }}>
+              <div
+                className="flex items-center rounded border transition-all duration-100"
+                style={{
+                  borderColor: spacePressed ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.15)',
+                  backgroundColor: spacePressed ? 'rgba(0,0,0,0.04)' : 'transparent',
+                  padding: '2px 8px',
+                }}
+              >
+                <span
+                  className="text-[10px] uppercase tracking-wider transition-colors duration-100"
+                  style={{
+                    color: spacePressed ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontWeight: 500,
+                  }}
+                >
+                  space
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Bottom spacer — keeps layout stable */}
           <div className="flex-shrink-0" style={{ height: '40px' }} />
 
@@ -1003,54 +1053,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* ═══ RING SHAPE PRESETS — bottom center ═══ */}
-      {!showIntro && viewMode === 'carousel' && !enlargedHumanoid && (
-        <div
-          className="fixed z-[100] flex items-center gap-2 animate-blur-fade"
-          style={{
-            bottom: '18px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          {RING_PRESETS.map((preset) => {
-            const isActive = activePreset === preset.id;
-            const svgRx = (preset.rx / 800) * 14;
-            const svgRy = (preset.ry / 320) * 10;
-            return (
-              <button
-                key={preset.id}
-                onClick={() => applyPreset(preset.id)}
-                className="group relative flex items-center justify-center transition-all duration-200"
-                style={{
-                  width: '36px',
-                  height: '28px',
-                  borderRadius: '6px',
-                  border: `1px solid ${isActive ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.06)'}`,
-                  background: isActive ? 'rgba(0,0,0,0.04)' : 'transparent',
-                }}
-                title={preset.label}
-              >
-                <svg width="30" height="20" viewBox="0 0 30 20">
-                  <ellipse
-                    cx="15"
-                    cy="10"
-                    rx={svgRx}
-                    ry={svgRy}
-                    fill="none"
-                    stroke={isActive ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)'}
-                    strokeWidth="1"
-                    className="transition-all duration-200 group-hover:stroke-[rgba(0,0,0,0.35)]"
-                  />
-                </svg>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
-      {/* ═══ DEV CONTROLS — bottom-right corner ═══ */}
-      {!showIntro && viewMode === 'carousel' && (
+      {/* ═══ DEV CONTROLS — bottom-right corner (desktop only) ═══ */}
+      {!showIntro && viewMode === 'carousel' && windowWidth >= 640 && (
         <>
           <button
             onClick={() => setShowControls(s => !s)}

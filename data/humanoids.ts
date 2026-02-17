@@ -18,6 +18,8 @@ export interface Humanoid {
   maxSpeed?: number; // m/s
   description?: string;
   imageUrl?: string; // Primary/cover image
+  videoUrl?: string; // Looping video for enlarged/emote state
+  videoScale?: number; // Scale factor for video vs static image (default 1)
   logoUrl?: string; // Company logo
   media?: MediaItem[]; // Additional images and videos
   purchaseUrl?: string; // Link to buy/learn more about the robot
@@ -74,6 +76,8 @@ export const humanoids: Humanoid[] = [
     name: "Memo",
     manufacturer: "Sunday Robotics",
     imageUrl: "/robots/memo.png",
+    videoUrl: "/robots/memo-video.mp4",
+    videoScale: 1.25,
     year: 2025,
     cost: "$50K",
     status: "Prototype",
@@ -85,6 +89,8 @@ export const humanoids: Humanoid[] = [
     name: "Neo",
     manufacturer: "1X Technologies",
     imageUrl: "/robots/neo.png",
+    videoUrl: "/robots/neo-video_white.mp4",
+    videoScale: 1.15,
     year: 2024,
     cost: "N/A",
     status: "Prototype",
