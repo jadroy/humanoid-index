@@ -295,7 +295,7 @@ export default function Home() {
         const angle = idxDiff * CARD_SPACING;
         const absAngle = Math.abs(angle);
 
-        if (absAngle > 150 && !isEnlargedMode) {
+        if (absAngle > 45 && !isEnlargedMode) {
           el.style.visibility = 'hidden';
           continue;
         }
@@ -355,10 +355,10 @@ export default function Home() {
         if (wv) {
           const elapsed = now - wv.start;
           // Radiates both directions from center
-          const delay = steps / 20 * 1000;
-          const localT = (elapsed - delay) / 300;
+          const delay = steps / 28 * 1000;
+          const localT = (elapsed - delay) / 220;
 
-          if (elapsed < 800) {
+          if (elapsed < 600) {
             if (localT > 0 && localT < 1) {
               const wave = Math.sin(localT * Math.PI);
               // Push outward along the ring's radial direction
@@ -394,15 +394,15 @@ export default function Home() {
       if (labelRef.current) {
         if (!labelEntryRef.current) labelEntryRef.current = now;
         const labelAge = now - labelEntryRef.current;
-        const entryDuration = 700;
+        const entryDuration = 350;
         const entryProgress = Math.min(1, labelAge / entryDuration);
-        const entryEase = 1 - Math.pow(1 - entryProgress, 3); // ease-out cubic
+        const entryEase = 1 - Math.pow(1 - entryProgress, 4); // ease-out quartic — swift snap-in
 
         const centerY = flipY * ry;
         const centerScale = 1.15 * enterScale * ellipseRef.current.cardScale;
         const labelY = centerY + offsetY - (cardDimsRef.current.h * centerScale) / 2 - 40;
-        // Start 25px above final position, settle down softly
-        const entryOffset = (1 - entryEase) * -25;
+        // Start 6px above final position, settle down swiftly
+        const entryOffset = (1 - entryEase) * -6;
         labelRef.current.style.transform = `translate(-50%, ${labelY + entryOffset}px)`;
         labelRef.current.style.opacity = isEnlargedMode ? '0' : String(Math.min(entryEase, 1));
       } else {
