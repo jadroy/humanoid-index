@@ -33,7 +33,8 @@ export default function GridView({
         className="grid w-full"
         style={{
           gridTemplateColumns: `repeat(${responsiveCols}, 1fr)`,
-          rowGap: '40px',
+          rowGap: windowWidth < 480 ? '20px' : windowWidth < 768 ? '28px' : '40px',
+          columnGap: windowWidth < 480 ? '8px' : windowWidth < 768 ? '12px' : undefined,
         }}
       >
         {humanoids.map((humanoid, index) => {
@@ -119,9 +120,9 @@ export default function GridView({
                 )}
               </div>
 
-              <div className="text-center font-mono pt-3 pb-2 leading-[1.15]">
-                <div className="text-[13px] text-[#999] truncate">{humanoid.manufacturer}</div>
-                <div className="text-[13px] text-black truncate">{humanoid.name}</div>
+              <div className="text-center font-mono pt-3 pb-2 leading-[1.15]" style={{ minHeight: '52px' }}>
+                <div className={`${windowWidth < 480 ? 'text-[11px]' : 'text-[13px]'} text-[#999] truncate`}>{humanoid.manufacturer}</div>
+                <div className={`${windowWidth < 480 ? 'text-[11px]' : 'text-[13px]'} text-black truncate`}>{humanoid.name}</div>
                 {humanoid.purchaseUrl && (
                   <a
                     href={humanoid.purchaseUrl}

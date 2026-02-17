@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import type { Humanoid } from "@/data/humanoids";
 
 interface HumanoidCardProps {
@@ -17,7 +17,13 @@ export default function HumanoidCard({
   isEnlarged,
 }: HumanoidCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
   const showVideo = isEnlarged && !!humanoid.videoUrl;
+
+  // Reset ready state when leaving spotlight
+  useEffect(() => {
+    if (!isEnlarged) setVideoReady(false);
+  }, [isEnlarged]);
 
   return (
     <div className="relative w-full h-full">
@@ -31,7 +37,7 @@ export default function HumanoidCard({
             alt={humanoid.name}
             draggable="false"
             className="h-full object-contain"
-            style={{ opacity: showVideo ? 0 : 1 }}
+            style={{ opacity: showVideo && videoReady ? 0 : 1, transition: 'opacity 0.15s ease-out' }}
           />
           {showVideo && (
             <video
@@ -41,8 +47,9 @@ export default function HumanoidCard({
               loop
               muted
               playsInline
+              onCanPlay={() => setVideoReady(true)}
               className="absolute inset-0 w-full h-full object-contain"
-              style={{ transform: `scale(${humanoid.videoScale || 1})` }}
+              style={{ transform: `scale(${humanoid.videoScale || 1})`, opacity: videoReady ? 1 : 0, transition: 'opacity 0.15s ease-out' }}
             />
           )}
         </div>

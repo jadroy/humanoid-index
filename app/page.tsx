@@ -88,7 +88,7 @@ export default function Home() {
   const dragRef = useRef<{ x: number; rotation: number; prevX: number; prevTime: number } | null>(null);
   const isDraggingRef = useRef(false);
   const transitionUntilRef = useRef(0);
-  const enterAnimRef = useRef<{ start: number; startRot: number; targetRx: number; targetRy: number; startRx?: number; startRy?: number; startOffsetY?: number; targetOffsetY?: number; startCardScale?: number; targetCardScale?: number; fadeIn?: boolean } | null>(null);
+  const enterAnimRef = useRef<{ start: number; startRot: number; spinDelta: number; targetRx: number; targetRy: number; startRx?: number; startRy?: number; startOffsetY?: number; targetOffsetY?: number; startCardScale?: number; targetCardScale?: number; fadeIn?: boolean } | null>(null);
   const bumpRef = useRef<number>(0); // timestamp of spacebar bump
 
   const labelRef = useRef<HTMLDivElement>(null);
@@ -104,7 +104,7 @@ export default function Home() {
   // Keep enlargedRef in sync + set transition deadline on exit
   useEffect(() => {
     if (enlargedHumanoid === null && enlargedRef.current !== null) {
-      transitionUntilRef.current = performance.now() + 350;
+      transitionUntilRef.current = performance.now() + 500;
     }
     enlargedRef.current = enlargedHumanoid;
   }, [enlargedHumanoid]);
@@ -132,6 +132,12 @@ export default function Home() {
       ellipseRef.current.ry = active.ry;
       ellipseRef.current.offsetY = active.offsetY;
       ellipseRef.current.cardScale = active.cardScale;
+      // Mobile: center card dominates, neighbors fade harder
+      if (w < 640) {
+        fadeRef.current = { center: 1, near: 0.45, mid: 0.2, far: 0.08 };
+      } else {
+        fadeRef.current = { center: 1, near: 0.75, mid: 0.5, far: 0.25 };
+      }
     };
     apply();
     const handleResize = () => apply();
@@ -207,6 +213,7 @@ export default function Home() {
       enterAnimRef.current = {
         start: performance.now(),
         startRot,
+        spinDelta: 120,
         targetRx: wide.rx,
         targetRy: wide.ry,
         startRx: round.rx * 0.4,
@@ -250,7 +257,7 @@ export default function Home() {
       if (ea) {
         const progress = Math.min(1, (now - ea.start) / 1400);
         const e = 1 - Math.pow(1 - progress, 3);
-        currentRotationRef.current = ea.startRot + 120 * e;
+        currentRotationRef.current = ea.startRot + ea.spinDelta * e;
         ellipseRef.current.rx = (ea.startRx ?? ea.targetRx * 0.5) + (ea.targetRx - (ea.startRx ?? ea.targetRx * 0.5)) * e;
         ellipseRef.current.ry = (ea.startRy ?? ea.targetRy * 0.5) + (ea.targetRy - (ea.startRy ?? ea.targetRy * 0.5)) * e;
         if (ea.startOffsetY != null) ellipseRef.current.offsetY = ea.startOffsetY + (ea.targetOffsetY! - ea.startOffsetY) * e;
@@ -290,7 +297,8 @@ export default function Home() {
         const angle = idxDiff * CARD_SPACING;
         const absAngle = Math.abs(angle);
 
-        if (absAngle > 45 && !isEnlargedMode) {
+        const visibilityCutoff = window.innerWidth < 640 ? 45 : 60;
+        if (absAngle > visibilityCutoff) {
           el.style.visibility = 'hidden';
           continue;
         }
@@ -303,9 +311,10 @@ export default function Home() {
 
         const steps = absAngle / CARD_SPACING;
         // Scale waterfall — center card is tall "tick", neighbors cascade down sharply
-        const proximity = Math.max(0, 1 - steps / 3);  // smooth falloff over 3 steps
-        const cascade = Math.pow(proximity, 1.8);    // center peak with gentle shoulder
-        const scale = (0.3 + 0.7 * depth) * (0.82 + 0.35 * cascade);
+        const isMobileView = window.innerWidth < 640;
+        const proximity = Math.max(0, 1 - steps / (isMobileView ? 2.2 : 3));
+        const cascade = Math.pow(proximity, isMobileView ? 2.4 : 1.8);
+        const scale = (0.3 + 0.7 * depth) * ((isMobileView ? 0.75 : 0.82) + (isMobileView ? 0.45 : 0.35) * cascade);
         const f = fadeRef.current;
         const opacity = steps < 0.5 ? f.center : steps < 1.5 ? f.near : steps < 2.5 ? f.mid : f.far;
         const blur = 0;
@@ -323,7 +332,8 @@ export default function Home() {
 
             // Bump — snappy pop up then settle (spacebar entry only)
             let bumpY = 0;
-            if (bumpRef.current > 0) {
+            const isBumping = bumpRef.current > 0;
+            if (isBumping) {
               const elapsed = now - bumpRef.current;
               if (elapsed < 250) {
                 const t = elapsed / 250;
@@ -338,7 +348,10 @@ export default function Home() {
             el.style.zIndex = '1100';
             el.style.visibility = 'visible';
             el.style.pointerEvents = 'auto';
-            el.style.transition = 'none';
+            // Smooth entry into spotlight, disable during bump for rAF precision
+            el.style.transition = isBumping
+              ? 'none'
+              : 'transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease-out';
             continue;
           } else {
             // Push out — subtle horizontal spread
@@ -381,9 +394,10 @@ export default function Home() {
         el.style.visibility = 'visible';
         el.style.pointerEvents = isEnlarged ? 'auto' : 'none';
         const swapRecent = spotlightSwapRef.current && (now - spotlightSwapRef.current.start) < 100;
-        const useTransition = (isEnlargedMode || now < transitionUntilRef.current) && !swapRecent;
+        const bumpRecent = bumpRef.current > 0 && (now - bumpRef.current) < 150;
+        const useTransition = (isEnlargedMode || now < transitionUntilRef.current) && !swapRecent && !bumpRecent;
         el.style.transition = (useTransition && !wv)
-          ? 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease-out, filter 0.3s ease-out'
+          ? 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease-out, filter 0.4s ease-out'
           : 'none';
 
         // Position dot marker on the ring
@@ -477,6 +491,7 @@ export default function Home() {
     };
     const handleTouchMove = (e: TouchEvent) => {
       if (!touchStartRef.current || enlargedRef.current) return;
+      e.preventDefault(); // prevent vertical scroll while swiping carousel
       const x = e.touches[0].clientX;
       const now = performance.now();
       currentRotationRef.current = touchStartRef.current.rotation - (x - touchStartRef.current.x) * 0.25;
@@ -496,7 +511,7 @@ export default function Home() {
       // Let momentum carry via the rAF loop instead of snapping immediately
     };
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd, { passive: true });
     return () => {
       document.removeEventListener('touchstart', handleTouchStart);
@@ -642,7 +657,7 @@ export default function Home() {
   const currentHumanoid = allRobots[currentIndex];
   const isIntro = currentHumanoid?.id === '__intro__';
   const currentBg = '#fff';
-  const cardW = windowWidth < 640 ? Math.min(layoutConfig.cardSize, 100) : layoutConfig.cardSize;
+  const cardW = windowWidth < 640 ? Math.min(layoutConfig.cardSize, 120) : layoutConfig.cardSize;
   const cardH = cardW * 2.1;
   cardDimsRef.current = { w: cardW, h: cardH };
 
@@ -683,13 +698,14 @@ export default function Home() {
       if (animationRef.current !== null) { cancelAnimationFrame(animationRef.current); animationRef.current = null; }
       velocityRef.current = 0;
       const target = CARD_SPACING;
-      const startRot = target - 120;
+      const startRot = target + 120;
       currentRotationRef.current = startRot;
       // Guard against multiple ViewSwitcher instances firing simultaneously
       if (!enterAnimRef.current) {
         enterAnimRef.current = {
           start: performance.now(),
           startRot,
+          spinDelta: -120,
           targetRx: ellipseRef.current.rx,
           targetRy: ellipseRef.current.ry,
         };
@@ -770,6 +786,7 @@ export default function Home() {
       style={{
         backgroundColor: currentBg,
         animation: easterShake ? 'easter-shake 0.9s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+        overscrollBehavior: viewMode === 'carousel' ? 'none' : undefined,
       }}
     >
       {/* ═══ LOGO ═══ */}
@@ -777,8 +794,8 @@ export default function Home() {
         <div
           className="fixed z-[5] animate-slide-from-top cursor-pointer select-none transition-opacity duration-150 hover:opacity-70"
           style={{
-            top: windowWidth < 640 ? '10px' : '13px',
-            left: windowWidth < 640 ? '10px' : '14px',
+            top: windowWidth < 640 ? '12px' : '13px',
+            left: windowWidth < 640 ? '12px' : '14px',
           }}
           onClick={() => {
             setViewMode('carousel');
@@ -803,7 +820,7 @@ export default function Home() {
             setTimeout(() => setEasterShake(false), 900);
           }}
         >
-          <img src="/robots/darker logo.png" alt="Humanoid Index" draggable="false" className="object-contain" style={{ height: '22px' }} />
+          <img src="/robots/darker logo.png" alt="Humanoid Index" draggable="false" className="object-contain" style={{ height: windowWidth < 640 ? '30px' : '22px' }} />
         </div>
       )}
 
@@ -841,7 +858,7 @@ export default function Home() {
             className="flex-shrink-0 relative z-20 flex justify-center"
             style={{ padding: `${topBarInset}px ${insetX}px` }}
           >
-            <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} />
+            <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} isMobile={windowWidth < 640} />
           </div>
           <div className="flex-1 min-h-0">
             <CharacterSelect humanoids={allRobots} />
@@ -856,7 +873,7 @@ export default function Home() {
             className="flex-shrink-0 relative z-20 flex justify-center"
             style={{ padding: `${topBarInset}px ${insetX}px` }}
           >
-            <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} />
+            <ViewSwitcher viewMode={viewMode} onViewModeChange={handleViewChange} width={trackWidth} isMobile={windowWidth < 640} />
           </div>
           <div className="flex-1 min-h-0">
             <SmashPicker humanoids={allRobots} />
@@ -894,7 +911,7 @@ export default function Home() {
         {/* MAIN CONTENT */}
         <div className={`flex flex-col ${viewMode === 'carousel' ? 'flex-1 justify-center overflow-hidden' : 'overflow-visible'}`}>
           {viewMode === 'carousel' ? (
-            <main className="flex-1 relative overflow-hidden select-none" onDragStart={(e) => e.preventDefault()}>
+            <main className="flex-1 relative overflow-hidden select-none" style={{ touchAction: 'none' }} onDragStart={(e) => e.preventDefault()}>
               {/* 3D carousel container */}
               <div
                 ref={carouselRef}
@@ -914,7 +931,7 @@ export default function Home() {
                     marginTop: -DEFAULT_RY,
                     borderRadius: '50%',
                     border: '1px solid rgba(0,0,0,0.06)',
-                    transition: 'opacity 0.5s ease',
+                    transition: 'opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
                   }}
                 />
                 {/* Click-anywhere backdrop to dismiss enlarged card */}
@@ -1086,9 +1103,9 @@ export default function Home() {
                           height: isActive ? '5px' : '2px',
                           borderRadius: '50%',
                           backgroundColor: isActive
-                            ? (isSpotlight ? 'rgba(180, 140, 80, 0.85)' : '#000')
+                            ? (isSpotlight ? 'rgba(230, 190, 40, 0.9)' : '#000')
                             : `rgba(0,0,0,${0.08 + depth * 0.15})`,
-                          boxShadow: isActive && isSpotlight ? '0 0 6px 2px rgba(180, 140, 80, 0.25)' : 'none',
+                          boxShadow: isActive && isSpotlight ? '0 0 7px 2px rgba(230, 190, 40, 0.3)' : 'none',
                           transform: `translate(${dotX - (isActive ? 2.5 : 1)}px, ${dotY - (isActive ? 2.5 : 1)}px)`,
                         }}
                       />

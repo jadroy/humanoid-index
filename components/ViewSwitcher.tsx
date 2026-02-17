@@ -8,6 +8,7 @@ interface ViewSwitcherProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   width?: number;
+  isMobile?: boolean;
 }
 
 const modes: { key: ViewMode; label: string; shortcut: string }[] = [
@@ -16,7 +17,7 @@ const modes: { key: ViewMode; label: string; shortcut: string }[] = [
   { key: 'select', label: 'Compare', shortcut: '3' },
 ];
 
-export default function ViewSwitcher({ viewMode, onViewModeChange, width }: ViewSwitcherProps) {
+export default function ViewSwitcher({ viewMode, onViewModeChange, width, isMobile }: ViewSwitcherProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0 });
 
@@ -44,12 +45,12 @@ export default function ViewSwitcher({ viewMode, onViewModeChange, width }: View
 
   return (
     <div
-      className="flex items-center justify-center font-mono text-[11px] uppercase tracking-normal select-none"
+      className={`flex items-center justify-center font-mono uppercase tracking-normal select-none ${isMobile ? 'text-[13px]' : 'text-[11px]'}`}
       style={width ? { width: `${width}px` } : undefined}
     >
       <div
         ref={containerRef}
-        className="relative flex items-center gap-0 border border-neutral-200 rounded px-0.5 py-0.5"
+        className={`relative flex items-center gap-0 border border-neutral-200 rounded ${isMobile ? 'px-1 py-1' : 'px-0.5 py-0.5'}`}
       >
         {/* Sliding background */}
         <div
@@ -61,16 +62,18 @@ export default function ViewSwitcher({ viewMode, onViewModeChange, width }: View
             key={mode.key}
             data-mode={mode.key}
             onClick={() => onViewModeChange(mode.key)}
-            className="relative z-10 px-2.5 py-0.5 transition-colors duration-150 flex items-center gap-1.5"
+            className={`relative z-10 transition-colors duration-150 flex items-center gap-1.5 ${isMobile ? 'px-3.5 py-1.5' : 'px-2.5 py-0.5'}`}
             style={{ color: viewMode === mode.key ? '#000' : '#bbb' }}
           >
             {mode.label}
-            <span
-              className="text-[9px] opacity-30"
-              style={{ color: viewMode === mode.key ? '#000' : '#999' }}
-            >
-              {mode.shortcut}
-            </span>
+            {!isMobile && (
+              <span
+                className="text-[9px] opacity-30"
+                style={{ color: viewMode === mode.key ? '#000' : '#999' }}
+              >
+                {mode.shortcut}
+              </span>
+            )}
           </button>
         ))}
       </div>

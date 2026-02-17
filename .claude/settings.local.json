@@ -32,7 +32,14 @@
       "WebFetch(domain:www.npmjs.com)",
       "Bash(npm info:*)",
       "Bash(npm install:*)",
-      "Bash(dig:*)"
+      "Bash(dig:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(npx next:*)",
+      "Bash(sips:*)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(xargs kill -9:*)"
     ],
     "deny": [],
     "ask": []

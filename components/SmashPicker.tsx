@@ -13,9 +13,18 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
   const [flashActive, setFlashActive] = useState(false);
   const [announceText, setAnnounceText] = useState("");
   const [shakeCard, setShakeCard] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(1200);
 
-  // Wide grid like Smash — fill the width, ~9 columns
-  const columns = 9;
+  useEffect(() => {
+    setWindowWidth(window.innerWidth);
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Responsive columns
+  const columns = windowWidth < 480 ? 4 : windowWidth < 768 ? 6 : 9;
+  const isMobile = windowWidth < 640;
   const selected = humanoids[selectedIndex];
 
   const handleKeyDown = useCallback(
@@ -98,7 +107,7 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
       {/* ══════════════════════════════════════
           ROSTER GRID — hero element, like Smash
           ══════════════════════════════════════ */}
-      <div className="flex-1 flex items-center justify-center px-6 pt-2 pb-2 min-h-0">
+      <div className={`flex-1 flex items-center justify-center ${isMobile ? 'px-3' : 'px-6'} pt-2 pb-2 min-h-0`}>
         <div
           className="grid"
           style={{
@@ -106,7 +115,7 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
             border: "1px solid #e5e5e5",
             gap: 0,
             width: "100%",
-            maxWidth: `${columns * 90}px`,
+            maxWidth: `${columns * (isMobile ? 85 : 90)}px`,
           }}
         >
           {humanoids.map((humanoid, index) => {
@@ -158,7 +167,7 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
                 {/* Name label */}
                 {isSelected && !isConfirmed && (
                   <div
-                    className="absolute bottom-0 left-0 right-0 font-mono text-[7px] tracking-[0.08em] uppercase text-center py-0.5 truncate px-1 text-[#999]"
+                    className={`absolute bottom-0 left-0 right-0 font-mono ${isMobile ? 'text-[9px]' : 'text-[7px]'} tracking-[0.08em] uppercase text-center py-0.5 truncate px-1 text-[#999]`}
                     style={{ background: "linear-gradient(transparent, rgba(255,255,255,0.95))" }}
                   >
                     {humanoid.name}
@@ -208,10 +217,10 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
           ══════════════════════════════════════ */}
       <div
         className="flex-shrink-0 flex items-stretch gap-0"
-        style={{ borderTop: "1px solid #e5e5e5", height: "160px" }}
+        style={{ borderTop: "1px solid #e5e5e5", height: isMobile ? "80px" : "160px" }}
       >
         {/* P1 Panel */}
-        <div className="flex-1 flex items-center gap-5 px-6 relative">
+        <div className={`flex-1 flex items-center ${isMobile ? 'gap-3 px-3' : 'gap-5 px-6'} relative`}>
           {/* Player tag */}
           <div
             className="absolute top-0 left-0 font-mono text-[9px] tracking-[0.15em] uppercase px-3 py-1 bg-black text-white"
@@ -220,7 +229,7 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
           </div>
 
           {/* Character render */}
-          <div className="h-full w-[120px] flex-shrink-0 flex items-center justify-center py-3">
+          <div className={`h-full ${isMobile ? 'w-[60px]' : 'w-[120px]'} flex-shrink-0 flex items-center justify-center py-2`}>
             <img
               key={selected.id}
               src={selected.imageUrl || "/robots/placeholder.png"}
@@ -245,7 +254,7 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
                 className="font-mono"
                 style={{ animation: "smash-name-in 0.4s cubic-bezier(0.16, 1, 0.3, 1)" }}
               >
-                <div className="text-[18px] font-medium tracking-[0.08em] uppercase text-black">
+                <div className={`${isMobile ? 'text-[14px]' : 'text-[18px]'} font-medium tracking-[0.08em] uppercase text-black`}>
                   {announceText}
                 </div>
                 <div className="text-[9px] font-normal tracking-[0.2em] uppercase mt-1 text-[#999]">
@@ -257,18 +266,20 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
                 <div className="font-mono text-[10px] tracking-[0.15em] uppercase text-[#999]">
                   {selected.manufacturer}
                 </div>
-                <div className="font-mono text-[15px] font-medium tracking-[0.04em] uppercase text-black mt-0.5">
+                <div className={`font-mono ${isMobile ? 'text-[13px]' : 'text-[15px]'} font-medium tracking-[0.04em] uppercase text-black mt-0.5`}>
                   {selected.name}
                 </div>
-                <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-[#ccc] mt-1">
-                  {selected.year || "—"} &middot; {selected.status || "—"}
-                </div>
+                {!isMobile && (
+                  <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-[#ccc] mt-1">
+                    {selected.year || "—"} &middot; {selected.status || "—"}
+                  </div>
+                )}
               </>
             )}
           </div>
 
-          {/* Stat bars */}
-          <div className="w-[160px] flex-shrink-0 space-y-1.5 py-1">
+          {/* Stat bars — inline on mobile */}
+          <div className={`${isMobile ? 'w-[100px]' : 'w-[160px]'} flex-shrink-0 space-y-1.5 py-1`}>
             {getStats(selected).map((stat) => (
               <div key={stat.label} className="flex items-center gap-1.5">
                 <span className="font-mono text-[8px] tracking-[0.08em] w-6 text-right text-[#bbb]">
@@ -294,32 +305,34 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
           </div>
         </div>
 
-        {/* Divider */}
-        <div style={{ width: "1px", background: "#e5e5e5" }} />
-
-        {/* Empty P2-P4 slots */}
-        {[2, 3, 4].map((p) => (
-          <div
-            key={p}
-            className="flex-1 flex items-center justify-center relative"
-            style={{ background: "#fafafa" }}
-          >
-            <div
-              className="absolute top-0 left-0 font-mono text-[9px] tracking-[0.15em] uppercase px-3 py-1 text-[#ccc]"
-              style={{ background: "#f0f0f0" }}
-            >
-              {p}P
-            </div>
-            <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-[#ccc]">
-              Press Start
-            </span>
-          </div>
-        ))}
+        {/* Divider + P2-P4 slots — hidden on mobile */}
+        {!isMobile && (
+          <>
+            <div style={{ width: "1px", background: "#e5e5e5" }} />
+            {[2, 3, 4].map((p) => (
+              <div
+                key={p}
+                className="flex-1 flex items-center justify-center relative"
+                style={{ background: "#fafafa" }}
+              >
+                <div
+                  className="absolute top-0 left-0 font-mono text-[9px] tracking-[0.15em] uppercase px-3 py-1 text-[#ccc]"
+                  style={{ background: "#f0f0f0" }}
+                >
+                  {p}P
+                </div>
+                <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-[#ccc]">
+                  Press Start
+                </span>
+              </div>
+            ))}
+          </>
+        )}
       </div>
 
       {/* STATUS BAR */}
       <div
-        className="flex-shrink-0 flex items-center justify-center py-2 font-mono text-[9px] tracking-[0.1em] uppercase"
+        className={`flex-shrink-0 flex items-center justify-center py-2 font-mono ${isMobile ? 'text-[10px]' : 'text-[9px]'} tracking-[0.1em] uppercase`}
         style={{ borderTop: "1px solid #e5e5e5" }}
       >
         <span className={confirmed ? "text-black" : "text-[#999]"}>
