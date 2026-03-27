@@ -1,882 +1,1090 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { ViewConfig, defaultConfig } from "@/components/Sidebar";
-import HumanoidCard from "@/components/HumanoidCard";
-import ComparePanel from "@/components/ComparePanel";
-import BottomBar, { LayoutConfig, defaultLayoutConfig } from "@/components/BottomBar";
-import ChatBot from "@/components/ChatBot";
-import ViewSwitcher, { ViewMode } from "@/components/ViewSwitcher";
-import GridView from "@/components/GridView";
-import HumanoidDetailSection from "@/components/HumanoidDetailSection";
-import { humanoids, legends, Humanoid } from "@/data/humanoids";
+import { humanoids, Humanoid } from "@/data/humanoids";
+import Image from "next/image";
 
-export default function Home() {
-  const router = useRouter();
-  const [config, setConfig] = useState<ViewConfig>(defaultConfig);
-  const [layoutConfig, setLayoutConfig] = useState<LayoutConfig>(defaultLayoutConfig);
-  const [compareMode, setCompareMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [showComparePanel, setShowComparePanel] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(2); // Start on Memo
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [viewportRatio, setViewportRatio] = useState(0.2);
-  const [isInActiveZone, setIsInActiveZone] = useState(true); // Start on Memo
-  const [viewMode, setViewMode] = useState<ViewMode>('carousel');
-  const [hoveredHumanoid, setHoveredHumanoid] = useState<Humanoid | null>(null);
-  const [isInDetailView, setIsInDetailView] = useState(false);
-  const [showControls, setShowControls] = useState(false);
-  const [minimapStyle, setMinimapStyle] = useState<'thumbnails' | 'dots'>('dots');
-  const [hideUI, setHideUI] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(1200);
+type Layout = "A" | "B" | "C" | "D" | "E" | "F" | "G";
 
-  const pageScrollRef = useRef<HTMLDivElement>(null);
+const layoutLabels: Record<Layout, string> = {
+  A: "Full Bleed",
+  B: "Rolodex",
+  C: "Split",
+  D: "Filmstrip",
+  E: "Arc",
+  F: "Spread",
+  G: "Orbit",
+};
+
+// ─── Layout Switcher Pill ───────────────────────────────────────
+function LayoutSwitcher({
+  active,
+  onChange,
+}: {
+  active: Layout;
+  onChange: (l: Layout) => void;
+}) {
+  return (
+    <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-0.5 bg-white/80 backdrop-blur-xl rounded-full border border-neutral-200/60 p-1 shadow-sm">
+      {(["A", "B", "C", "D", "E", "F", "G"] as Layout[]).map((l) => (
+        <button
+          key={l}
+          onClick={() => onChange(l)}
+          className={`relative px-3.5 py-1.5 rounded-full text-[11px] tracking-wide font-medium transition-all duration-200 ${
+            active === l
+              ? "bg-neutral-900 text-white"
+              : "text-neutral-400 hover:text-neutral-600"
+          }`}
+        >
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Counter / Position ─────────────────────────────────────────
+function Counter({
+  current,
+  total,
+  className = "",
+}: {
+  current: number;
+  total: number;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`text-[11px] tracking-widest uppercase text-neutral-400 tabular-nums ${className}`}
+    >
+      {String(current).padStart(2, "0")} / {String(total).padStart(2, "0")}
+    </span>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LAYOUT A — Full Bleed
+// ═══════════════════════════════════════════════════════════════
+function FullBleed({
+  onIndexChange,
+}: {
+  onIndexChange?: (i: number) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const idx = Number(
+              (entry.target as HTMLElement).dataset.index
+            );
+            if (!isNaN(idx)) {
+              setActiveIndex(idx);
+              onIndexChange?.(idx);
+            }
+          }
+        });
+      },
+      { root: el, threshold: 0.6 }
+    );
+
+    el.querySelectorAll("[data-index]").forEach((child) =>
+      observer.observe(child)
+    );
+    return () => observer.disconnect();
+  }, [onIndexChange]);
+
+  // Keyboard nav
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const el = containerRef.current;
+      if (!el) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        e.preventDefault();
+        const next = Math.min(activeIndex + 1, humanoids.length - 1);
+        el.children[next]?.scrollIntoView({ behavior: "smooth" });
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        const prev = Math.max(activeIndex - 1, 0);
+        el.children[prev]?.scrollIntoView({ behavior: "smooth" });
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [activeIndex]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="h-screen overflow-y-auto snap-y snap-mandatory scrollbar-hide"
+    >
+      {humanoids.map((h, i) => (
+        <div
+          key={h.id}
+          data-index={i}
+          className="h-screen snap-start snap-always relative flex items-center justify-center"
+        >
+          {/* Image */}
+          <div className="relative w-full h-[62vh] flex items-center justify-center">
+            <Image
+              src={h.imageUrl || "/robots/placeholder.png"}
+              alt={h.name}
+              fill
+              className="object-contain"
+              sizes="100vw"
+              priority={i < 3}
+            />
+          </div>
+
+          {/* Info overlay — bottom left */}
+          <div className="absolute bottom-12 left-10 md:left-16">
+            <h2
+              className="text-[22px] font-medium text-neutral-800"
+              style={{ letterSpacing: "-0.04em" }}
+            >
+              {h.name}
+            </h2>
+            <p className="text-[13px] text-neutral-400 mt-0.5 tracking-tight">
+              {h.manufacturer}
+              {h.year ? ` · ${h.year}` : ""}
+            </p>
+          </div>
+
+          {/* Counter — bottom right */}
+          <div className="absolute bottom-12 right-10 md:right-16">
+            <Counter current={i + 1} total={humanoids.length} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LAYOUT B — Rolodex
+// ═══════════════════════════════════════════════════════════════
+function Rolodex() {
+  const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState<"up" | "down">("down");
+  const [isAnimating, setIsAnimating] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const go = useCallback(
+    (dir: "up" | "down") => {
+      if (isAnimating) return;
+      const next =
+        dir === "down"
+          ? Math.min(index + 1, humanoids.length - 1)
+          : Math.max(index - 1, 0);
+      if (next === index) return;
+      setDirection(dir);
+      setIsAnimating(true);
+      setIndex(next);
+      timeoutRef.current = setTimeout(() => setIsAnimating(false), 400);
+    },
+    [index, isAnimating]
+  );
+
+  // Wheel / keyboard
+  useEffect(() => {
+    let wheelAccum = 0;
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      wheelAccum += e.deltaY;
+      if (Math.abs(wheelAccum) > 50) {
+        go(wheelAccum > 0 ? "down" : "up");
+        wheelAccum = 0;
+      }
+    };
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        e.preventDefault();
+        go("down");
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        go("up");
+      }
+    };
+    window.addEventListener("wheel", wheelHandler, { passive: false });
+    window.addEventListener("keydown", keyHandler);
+    return () => {
+      window.removeEventListener("wheel", wheelHandler);
+      window.removeEventListener("keydown", keyHandler);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [go]);
+
+  const current = humanoids[index];
+  const prev = index > 0 ? humanoids[index - 1] : null;
+  const next = index < humanoids.length - 1 ? humanoids[index + 1] : null;
+
+  return (
+    <div className="h-screen flex flex-col items-center justify-center overflow-hidden select-none">
+      {/* Previous peek */}
+      <button
+        onClick={() => go("up")}
+        className="mb-6 h-8 flex items-center gap-2 opacity-30 hover:opacity-60 transition-opacity cursor-pointer"
+      >
+        {prev && (
+          <span className="text-[13px] tracking-tight text-neutral-500">
+            {prev.name}
+          </span>
+        )}
+      </button>
+
+      {/* Main card */}
+      <div
+        key={index}
+        className={`flex flex-col items-center ${
+          direction === "down"
+            ? "animate-rolodex-down"
+            : "animate-rolodex-up"
+        }`}
+      >
+        <div className="relative w-[280px] h-[380px] md:w-[340px] md:h-[460px] flex items-center justify-center">
+          <Image
+            src={current.imageUrl || "/robots/placeholder.png"}
+            alt={current.name}
+            fill
+            className="object-contain"
+            sizes="340px"
+          />
+        </div>
+        <div className="mt-6 text-center">
+          <h2
+            className="text-[24px] font-medium text-neutral-800"
+            style={{ letterSpacing: "-0.04em" }}
+          >
+            {current.name}
+          </h2>
+          <p className="text-[13px] text-neutral-400 mt-1 tracking-tight">
+            {current.manufacturer}
+            {current.year ? ` · ${current.year}` : ""}
+          </p>
+        </div>
+      </div>
+
+      {/* Next peek */}
+      <button
+        onClick={() => go("down")}
+        className="mt-6 h-8 flex items-center gap-2 opacity-30 hover:opacity-60 transition-opacity cursor-pointer"
+      >
+        {next && (
+          <span className="text-[13px] tracking-tight text-neutral-500">
+            {next.name}
+          </span>
+        )}
+      </button>
+
+      {/* Counter */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
+        <Counter current={index + 1} total={humanoids.length} />
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LAYOUT C — Split Pane
+// ═══════════════════════════════════════════════════════════════
+function SplitPane() {
+  const [index, setIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const go = useCallback(
+    (dir: "up" | "down") => {
+      if (isAnimating) return;
+      const next =
+        dir === "down"
+          ? Math.min(index + 1, humanoids.length - 1)
+          : Math.max(index - 1, 0);
+      if (next === index) return;
+      setIsAnimating(true);
+      setIndex(next);
+      timeoutRef.current = setTimeout(() => setIsAnimating(false), 450);
+    },
+    [index, isAnimating]
+  );
+
+  useEffect(() => {
+    let wheelAccum = 0;
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      wheelAccum += e.deltaY;
+      if (Math.abs(wheelAccum) > 50) {
+        go(wheelAccum > 0 ? "down" : "up");
+        wheelAccum = 0;
+      }
+    };
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        e.preventDefault();
+        go("down");
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        go("up");
+      }
+    };
+    window.addEventListener("wheel", wheelHandler, { passive: false });
+    window.addEventListener("keydown", keyHandler);
+    return () => {
+      window.removeEventListener("wheel", wheelHandler);
+      window.removeEventListener("keydown", keyHandler);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [go]);
+
+  const h = humanoids[index];
+
+  const stats = [
+    h.height && { label: "Height", value: `${h.height} cm` },
+    h.weight && { label: "Weight", value: `${h.weight} kg` },
+    h.dof && { label: "DOF", value: `${h.dof}` },
+    h.maxSpeed && { label: "Speed", value: `${h.maxSpeed} m/s` },
+    h.cost && h.cost !== "N/A" && { label: "Cost", value: h.cost },
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  return (
+    <div className="h-screen flex overflow-hidden select-none">
+      {/* Left — Image */}
+      <div className="w-[55%] h-full flex items-center justify-center relative">
+        <div
+          key={index}
+          className="relative w-full h-[70vh] animate-split-image"
+        >
+          <Image
+            src={h.imageUrl || "/robots/placeholder.png"}
+            alt={h.name}
+            fill
+            className="object-contain"
+            sizes="55vw"
+          />
+        </div>
+      </div>
+
+      {/* Right — Info */}
+      <div className="w-[45%] h-full flex items-center">
+        <div key={index} className="px-12 md:px-16 animate-split-text">
+          <p className="text-[11px] tracking-widest uppercase text-neutral-400 mb-4">
+            {h.manufacturer}
+          </p>
+          <h2
+            className="text-[32px] font-medium text-neutral-800 leading-tight"
+            style={{ letterSpacing: "-0.04em" }}
+          >
+            {h.name}
+          </h2>
+          <div className="flex items-center gap-3 mt-3">
+            {h.year && (
+              <span className="text-[13px] text-neutral-500">{h.year}</span>
+            )}
+            {h.status && (
+              <span className="text-[11px] tracking-wide uppercase px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500">
+                {h.status}
+              </span>
+            )}
+          </div>
+
+          {/* Stats */}
+          {stats.length > 0 && (
+            <div className="mt-10 space-y-4">
+              {stats.slice(0, 4).map((s) => (
+                <div key={s.label} className="flex items-baseline justify-between max-w-[200px]">
+                  <span className="text-[11px] tracking-widest uppercase text-neutral-400">
+                    {s.label}
+                  </span>
+                  <span className="text-[14px] text-neutral-700 font-medium tabular-nums">
+                    {s.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Counter */}
+          <div className="mt-14">
+            <Counter current={index + 1} total={humanoids.length} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LAYOUT D — Filmstrip
+// ═══════════════════════════════════════════════════════════════
+function Filmstrip() {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const minimapRef = useRef<HTMLDivElement>(null);
-  const scrollPositionRef = useRef(2); // Start on Memo
-  const isDraggingMinimapRef = useRef(false);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  // Window width tracking
-  useEffect(() => {
-    setWindowWidth(window.innerWidth);
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Responsive inset margins
-  const insetX = windowWidth < 640 ? 16 : windowWidth < 768 ? 48 : windowWidth < 1024 ? 120 : 252;
-  const insetY = windowWidth < 640 ? 60 : windowWidth < 768 ? 80 : 120;
-  const topBarInset = windowWidth < 640 ? 12 : 24;
-
-  // Scale - smooth interpolation, center is larger
-  const getScale = useCallback((index: number) => {
-    const distance = Math.abs(index - scrollPositionRef.current);
-    const t = Math.min(1, distance);
-    return layoutConfig.activeScale - t * (layoutConfig.activeScale - layoutConfig.inactiveScale);
-  }, [layoutConfig.activeScale, layoutConfig.inactiveScale]);
-
-  // Overlay: 0 = no overlay (current), higher = more white overlay
-  const getOverlay = useCallback((index: number) => {
-    const distance = Math.abs(index - scrollPositionRef.current);
-    if (distance <= 0.3) return 0; // center card - no overlay
-    if (distance <= 1.2) return 0.35; // immediate neighbors - subtle overlay
-    if (distance <= 2.2) return 0.5; // 2 away - moderate overlay
-    // 3+ away - noticeable overlay
-    return 0.6;
-  }, []);
-
-  // Vertical offset: curved arc like an orbit (flattened semi-circle)
-  const getVerticalOffset = useCallback((index: number) => {
-    const distance = index - scrollPositionRef.current;
-    // Use a parabolic curve for the orbital effect
-    // Cards at center are at the "front" (bottom), sides curve up and back
-    const curveIntensity = layoutConfig.orbitCurve / 100; // 0-0.2
-    return distance * distance * curveIntensity * layoutConfig.orbitMaxOffset;
-  }, [layoutConfig.orbitCurve, layoutConfig.orbitMaxOffset]);
-
-  // Horizontal depth offset: subtle push toward center for orbital feel
-  const getHorizontalOffset = useCallback((index: number) => {
-    const distance = index - scrollPositionRef.current;
-    // Positive values push right, negative push left (toward center)
-    const depthFactor = layoutConfig.orbitDepth / 100; // 0-0.5
-    return -distance * Math.abs(distance) * depthFactor * 10;
-  }, [layoutConfig.orbitDepth]);
-
-  // Bottom fade: cards on edges fade in from bottom
-  const getBottomFade = useCallback((index: number) => {
-    const distance = Math.abs(index - scrollPositionRef.current);
-    if (distance <= 1.5) return 0; // center and immediate neighbors - no fade
-    if (distance <= 2.5) return 0.3; // 2 away - subtle fade
-    if (distance <= 3.5) return 0.6; // 3 away - moderate fade
-    return 0.85; // 4+ away - strong fade
-  }, []);
-
-  // Track target index for keyboard navigation
-  const targetIndexRef = useRef(2); // Start on Memo
-
-  // Scroll to specific card
-  const scrollToCard = useCallback((index: number) => {
-    const container = scrollRef.current;
-    if (!container) return;
-
-    const targetEl = container.querySelector(`[data-card-index="${index}"]`) as HTMLElement;
-    if (!targetEl) return;
-
-    targetEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-  }, []);
-
-  // Scroll to detail view
-  const scrollToDetail = useCallback(() => {
-    const el = pageScrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
-  }, []);
-
-  // Scroll back to carousel
-  const scrollToCarousel = useCallback(() => {
-    const el = pageScrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  // Sync target index with current index
-  useEffect(() => {
-    targetIndexRef.current = currentIndex;
-  }, [currentIndex]);
-
-  // Scroll to initial position (Memo) on mount
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
-
-    // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(() => {
-      const targetEl = container.querySelector('[data-card-index="2"]') as HTMLElement;
-      if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'instant', inline: 'center', block: 'nearest' });
-      }
-    });
-  }, []);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (showComparePanel) return;
-
-      const totalItems = humanoids.length + legends.length;
-
-      switch (e.key) {
-        case 'ArrowLeft':
-          if (!isInDetailView && viewMode === 'carousel') {
-            e.preventDefault();
-            // Use targetIndexRef for held keys to queue up destinations
-            const newIndex = Math.max(0, targetIndexRef.current - 1);
-            targetIndexRef.current = newIndex;
-            scrollToCard(newIndex);
-          }
-          break;
-        case 'ArrowRight':
-          if (!isInDetailView && viewMode === 'carousel') {
-            e.preventDefault();
-            const newIndex = Math.min(totalItems - 1, targetIndexRef.current + 1);
-            targetIndexRef.current = newIndex;
-            scrollToCard(newIndex);
-          }
-          break;
-        case 'ArrowDown':
-          if (!isInDetailView && isInActiveZone && viewMode === 'carousel') {
-            e.preventDefault();
-            scrollToDetail();
-          }
-          break;
-        case 'ArrowUp':
-          if (isInDetailView) {
-            e.preventDefault();
-            scrollToCarousel();
-          }
-          break;
-        case 'Escape':
-          if (isInDetailView) {
-            e.preventDefault();
-            scrollToCarousel();
-          }
-          break;
-        case 'Enter':
-          if (!compareMode && !isInDetailView) {
-            router.push(`/robot/${humanoids[currentIndex].id}`);
-          }
-          break;
-        case 'H':
-        case 'h':
-          if (e.shiftKey) {
-            e.preventDefault();
-            setHideUI(prev => !prev);
-          }
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, compareMode, showComparePanel, scrollToCard, scrollToDetail, scrollToCarousel, isInDetailView, isInActiveZone, viewMode, router]);
-
-  // Content area width
-  const contentWidth = windowWidth - 2 * insetX;
-  const leadingSpace = Math.max(0, (contentWidth - layoutConfig.cardSize) / 2 - layoutConfig.gap);
-  const trailingSpace = Math.max(0, (contentWidth - layoutConfig.cardSize) / 2 - layoutConfig.gap);
-
-  // Page vertical scroll tracking
-  useEffect(() => {
-    const el = pageScrollRef.current;
-    if (!el) return;
-
-    const handlePageScroll = () => {
-      const scrollTop = el.scrollTop;
-      const viewportHeight = window.innerHeight;
-      setIsInDetailView(scrollTop > viewportHeight * 0.5);
-    };
-
-    el.addEventListener('scroll', handlePageScroll, { passive: true });
-    return () => el.removeEventListener('scroll', handlePageScroll);
-  }, []);
-
-  // Horizontal scroll handling
+  // Snap scroll observer
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
 
-    let rafId: number | null = null;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+            const idx = Number(
+              (entry.target as HTMLElement).dataset.filmIndex
+            );
+            if (!isNaN(idx)) setActiveIndex(idx);
+          }
+        });
+      },
+      { root: el, threshold: 0.6 }
+    );
 
-    const handleWheel = (e: WheelEvent) => {
-      if (isInDetailView) return;
-
-      // Scroll down to detail view
-      if (e.deltaY > 30 && isInActiveZone && viewMode === 'carousel') {
-        e.preventDefault();
-        scrollToDetail();
-        return;
-      }
-
-      if (e.deltaX !== 0) return;
-
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-      }
-    };
-
-    const handleScroll = () => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        const scrollLeft = el.scrollLeft;
-        const cardTotalWidth = layoutConfig.cardSize + layoutConfig.gap;
-        let fractionalIndex = scrollLeft / cardTotalWidth - 1;
-
-        const separatorWidth = (layoutConfig.cardSize * 0.6 + layoutConfig.gap) / cardTotalWidth;
-        if (fractionalIndex > humanoids.length + separatorWidth * 0.5) {
-          fractionalIndex -= separatorWidth;
-        }
-
-        const index = Math.round(fractionalIndex);
-        scrollPositionRef.current = fractionalIndex;
-        const totalRobots = humanoids.length + legends.length;
-        setCurrentIndex(Math.max(0, Math.min(index, totalRobots - 1)));
-
-        const rawFractionalIndex = scrollLeft / cardTotalWidth - 1;
-        const inActiveZone = rawFractionalIndex >= -0.3 && rawFractionalIndex <= totalRobots + separatorWidth - 0.7;
-        setIsInActiveZone(inActiveZone);
-
-        const maxScroll = el.scrollWidth - el.clientWidth;
-        setScrollProgress(maxScroll > 0 ? scrollLeft / maxScroll : 0);
-        setViewportRatio(el.scrollWidth > 0 ? el.clientWidth / el.scrollWidth : 0.2);
-      });
-    };
-
-    el.addEventListener('wheel', handleWheel, { passive: false });
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-
-    return () => {
-      el.removeEventListener('wheel', handleWheel);
-      el.removeEventListener('scroll', handleScroll);
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, [layoutConfig.cardSize, layoutConfig.gap, isInDetailView, isInActiveZone, viewMode, scrollToDetail]);
-
-  const handleToggleSelect = (id: string) => {
-    setSelectedIds(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(i => i !== id);
-      }
-      if (prev.length >= 4) return prev;
-      return [...prev, id];
-    });
-  };
-
-  const handleExitCompareMode = () => {
-    setCompareMode(false);
-    setSelectedIds([]);
-    setShowComparePanel(false);
-  };
-
-  // Combined list
-  const allRobots = [...humanoids, ...legends];
-  const currentHumanoid = allRobots[currentIndex];
-  const activeHumanoid = viewMode === 'grid' ? hoveredHumanoid : currentHumanoid;
-  const showActiveInfo = viewMode === 'grid' ? hoveredHumanoid !== null : isInActiveZone;
-  const isInLegendZone = currentIndex >= humanoids.length;
-
-  // Background colors - only legends get colored backgrounds
-  const legendBackgroundColors: Record<string, string> = {
-    "legend-1": "#faf8f5",
-    "legend-2": "#f9f8fa",
-  };
-  const bgColor = viewMode === 'grid'
-    ? '#ffffff'
-    : isInActiveZone && activeHumanoid && activeHumanoid.id.startsWith('legend-')
-      ? legendBackgroundColors[activeHumanoid.id] || '#fafafa'
-      : '#ffffff';
-
-  const handleMinimapMouseMove = useCallback((clientX: number) => {
-    const minimap = minimapRef.current;
-    const scrollEl = scrollRef.current;
-    if (!minimap || !scrollEl) return;
-
-    const rect = minimap.getBoundingClientRect();
-    const relativeX = clientX - rect.left;
-    const progress = Math.max(0, Math.min(1, relativeX / rect.width));
-    const maxScroll = scrollEl.scrollWidth - scrollEl.clientWidth;
-    scrollEl.scrollLeft = progress * maxScroll;
+    el.querySelectorAll("[data-film-index]").forEach((child) =>
+      observer.observe(child)
+    );
+    return () => observer.disconnect();
   }, []);
 
-  const handleMinimapMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    isDraggingMinimapRef.current = true;
-    handleMinimapMouseMove(e.clientX);
-  };
+  const scrollTo = useCallback((idx: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const target = el.querySelector(
+      `[data-film-index="${idx}"]`
+    ) as HTMLElement;
+    target?.scrollIntoView({ behavior: "smooth", inline: "center" });
+  }, []);
 
-  // Touch handlers for minimap
-  const handleMinimapTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    isDraggingMinimapRef.current = true;
-    handleMinimapMouseMove(e.touches[0].clientX);
-  };
-
+  // Keyboard
   useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      if (!isDraggingMinimapRef.current) return;
-      handleMinimapMouseMove(e.clientX);
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = Math.min(activeIndex + 1, humanoids.length - 1);
+        scrollTo(next);
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const prev = Math.max(activeIndex - 1, 0);
+        scrollTo(prev);
+      }
     };
-
-    const handleGlobalMouseUp = () => {
-      isDraggingMinimapRef.current = false;
-    };
-
-    const handleGlobalTouchMove = (e: TouchEvent) => {
-      if (!isDraggingMinimapRef.current) return;
-      handleMinimapMouseMove(e.touches[0].clientX);
-    };
-
-    const handleGlobalTouchEnd = () => {
-      isDraggingMinimapRef.current = false;
-    };
-
-    window.addEventListener('mousemove', handleGlobalMouseMove);
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    window.addEventListener('touchmove', handleGlobalTouchMove);
-    window.addEventListener('touchend', handleGlobalTouchEnd);
-
-    return () => {
-      window.removeEventListener('mousemove', handleGlobalMouseMove);
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
-      window.removeEventListener('touchmove', handleGlobalTouchMove);
-      window.removeEventListener('touchend', handleGlobalTouchEnd);
-    };
-  }, [handleMinimapMouseMove]);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [activeIndex, scrollTo]);
 
   return (
-    <div
-      ref={pageScrollRef}
-      className="h-screen overflow-y-auto overflow-x-hidden snap-y snap-mandatory scrollbar-hide transition-colors duration-700 ease-out"
-      style={{ backgroundColor: bgColor }}
-    >
-      {/* CAROUSEL SECTION */}
-      <section className={`flex-shrink-0 snap-start flex flex-col relative ${viewMode === 'grid' ? 'min-h-screen bg-white' : 'h-screen overflow-x-hidden'}`}>
-        {/* TOP BAR - View Switcher Only (always visible) */}
-        <div
-          className="flex-shrink-0 relative z-20 flex justify-center"
-          style={{ padding: `${topBarInset}px ${insetX}px` }}
-        >
-          <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} />
-        </div>
-
-        {/* MAIN CONTENT WRAPPER */}
-        <div className={`flex-1 flex flex-col ${viewMode === 'carousel' ? 'overflow-x-hidden' : 'overflow-visible'}`} style={viewMode === 'carousel' ? { padding: `0 ${insetX}px`, paddingBottom: '8vh' } : undefined}>
-          {viewMode === 'carousel' ? (
-            <main
-              ref={scrollRef}
-              className="flex-1 horizontal-scroll overflow-x-auto overflow-y-hidden flex items-center select-none snap-x snap-mandatory"
+    <div className="h-screen flex flex-col justify-center overflow-hidden select-none">
+      {/* Filmstrip */}
+      <div
+        ref={scrollRef}
+        className="flex items-center gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-[calc(50vw-160px)] md:px-[calc(50vw-190px)]"
+      >
+        {humanoids.map((h, i) => {
+          const isActive = i === activeIndex;
+          return (
+            <div
+              key={h.id}
+              data-film-index={i}
+              className="flex-shrink-0 snap-center flex flex-col items-center cursor-pointer"
               style={{
-                marginLeft: -insetX,
-                marginRight: -insetX,
-                paddingLeft: insetX,
-                paddingRight: insetX,
-                scrollPaddingInline: insetX,
+                transform: isActive ? "scale(1)" : "scale(0.85)",
+                opacity: isActive ? 1 : 0.35,
+                transition:
+                  "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
               }}
-              onDragStart={(e) => e.preventDefault()}
+              onClick={() => scrollTo(i)}
+            >
+              <div className="relative w-[320px] h-[420px] md:w-[380px] md:h-[500px] flex items-center justify-center">
+                <Image
+                  src={h.imageUrl || "/robots/placeholder.png"}
+                  alt={h.name}
+                  fill
+                  className="object-contain"
+                  sizes="380px"
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Bottom info bar */}
+      <div className="flex flex-col items-center mt-8">
+        <h2
+          key={activeIndex}
+          className="text-[20px] font-medium text-neutral-800 animate-blur-fade"
+          style={{ letterSpacing: "-0.04em" }}
+        >
+          {humanoids[activeIndex].name}
+        </h2>
+        <p className="text-[13px] text-neutral-400 mt-1 tracking-tight">
+          {humanoids[activeIndex].manufacturer}
+        </p>
+
+        {/* Dot indicators */}
+        <div className="flex items-center gap-1.5 mt-6">
+          {humanoids.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => scrollTo(i)}
+              className="p-0.5 cursor-pointer"
             >
               <div
-                className="flex items-end relative"
-                style={{ gap: `${layoutConfig.gap}px` }}
-              >
-                {leadingSpace > 0 && <div className="flex-shrink-0" style={{ width: leadingSpace }} />}
-
-                {/* Placeholder */}
-                <div
-                  data-card-index={-1}
-                  className="flex-shrink-0 gpu-accelerated flex items-center justify-center snap-center relative"
-                  style={{
-                    width: `${layoutConfig.cardSize}px`,
-                    height: `${layoutConfig.cardSize * 2.1}px`,
-                    transform: `translateX(${getHorizontalOffset(-1)}px) translateY(${getVerticalOffset(-1)}px)`,
-                    transition: 'transform 150ms linear',
-                  }}
-                >
-                  <img
-                    src="/robots/placeholder.png"
-                    alt="Humanoid Index"
-                    draggable={false}
-                    className="h-full object-contain"
-                    style={{
-                      transform: `scale(${getScale(-1)})`,
-                      transition: 'transform 150ms linear',
-                    }}
-                  />
-                  {getOverlay(-1) > 0 && (
-                    <div
-                      className="absolute inset-0 bg-white pointer-events-none"
-                      style={{
-                        opacity: getOverlay(-1),
-                        transition: 'opacity 150ms linear',
-                      }}
-                    />
-                  )}
-                </div>
-
-                {humanoids.map((humanoid, index) => (
-                  <div
-                    key={humanoid.id}
-                    data-card-index={index}
-                    className="flex-shrink-0 gpu-accelerated snap-center"
-                    style={{
-                      width: `${layoutConfig.cardSize}px`,
-                      height: `${layoutConfig.cardSize * 2.1}px`,
-                      transform: `translateX(${getHorizontalOffset(index)}px) translateY(${getVerticalOffset(index)}px)`,
-                      transition: 'transform 150ms linear',
-                    }}
-                  >
-                    <HumanoidCard
-                      humanoid={humanoid}
-                      config={config}
-                      scale={getScale(index)}
-                      overlay={getOverlay(index)}
-                      bottomFade={getBottomFade(index)}
-                      compareMode={compareMode}
-                      isSelected={selectedIds.includes(humanoid.id)}
-                      onToggleSelect={handleToggleSelect}
-                    />
-                  </div>
-                ))}
-
-                {/* Hall of Fame Separator */}
-                <div
-                  className="flex-shrink-0 flex items-center justify-center snap-center"
-                  style={{
-                    width: `${layoutConfig.cardSize * 0.6}px`,
-                    height: `${layoutConfig.cardSize * 2.1}px`,
-                  }}
-                >
-                  <div className="text-center">
-                    <div className="text-[11px] uppercase tracking-widest text-neutral-400 mb-1">Hall of</div>
-                    <div className="text-[15px] font-medium text-neutral-600">Fame</div>
-                  </div>
-                </div>
-
-                {/* Legends */}
-                {legends.map((legend, index) => (
-                  <div
-                    key={legend.id}
-                    data-card-index={humanoids.length + index}
-                    className="flex-shrink-0 gpu-accelerated snap-center"
-                    style={{
-                      width: `${layoutConfig.cardSize}px`,
-                      height: `${layoutConfig.cardSize * 2.1}px`,
-                      transform: `translateX(${getHorizontalOffset(humanoids.length + index)}px) translateY(${getVerticalOffset(humanoids.length + index)}px)`,
-                      transition: 'transform 150ms linear',
-                    }}
-                  >
-                    <HumanoidCard
-                      humanoid={legend}
-                      config={config}
-                      scale={getScale(humanoids.length + index)}
-                      overlay={getOverlay(humanoids.length + index)}
-                      bottomFade={getBottomFade(humanoids.length + index)}
-                      compareMode={compareMode}
-                      isSelected={selectedIds.includes(legend.id)}
-                      onToggleSelect={handleToggleSelect}
-                    />
-                  </div>
-                ))}
-
-                <div
-                  className="flex-shrink-0 flex items-center justify-center"
-                  style={{ width: trailingSpace }}
-                >
-                  <div className="text-neutral-300 text-[13px]">
-                    created by roy
-                  </div>
-                </div>
-              </div>
-            </main>
-          ) : (
-            <main className="flex-1 bg-white">
-              <GridView
-                humanoids={humanoids}
-                layoutConfig={layoutConfig}
-                compareMode={compareMode}
-                selectedIds={selectedIds}
-                onToggleSelect={handleToggleSelect}
-                onHoverChange={setHoveredHumanoid}
+                className={`rounded-full transition-all duration-300 ${
+                  i === activeIndex
+                    ? "w-2 h-2 bg-neutral-800 scale-110"
+                    : "w-1.5 h-1.5 bg-neutral-300"
+                }`}
               />
-            </main>
-          )}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
+// ═══════════════════════════════════════════════════════════════
+// LAYOUT E — Arc
+// ═══════════════════════════════════════════════════════════════
+function Arc() {
+  const [index, setIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
-          {/* BUY BUTTON */}
-          {viewMode === 'carousel' && (
-            <div className="flex-shrink-0 relative z-20 flex justify-center h-8">
-              {activeHumanoid?.purchaseUrl && showActiveInfo && (
-                <a
-                  key={`buy-${activeHumanoid.id}`}
-                  href={activeHumanoid.purchaseUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="animate-blur-fade buy-button-glass"
+  const go = useCallback(
+    (dir: "up" | "down") => {
+      if (isAnimating) return;
+      const next =
+        dir === "down"
+          ? Math.min(index + 1, humanoids.length - 1)
+          : Math.max(index - 1, 0);
+      if (next === index) return;
+      setIsAnimating(true);
+      setIndex(next);
+      timeoutRef.current = setTimeout(() => setIsAnimating(false), 400);
+    },
+    [index, isAnimating]
+  );
+
+  useEffect(() => {
+    let wheelAccum = 0;
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      wheelAccum += e.deltaY;
+      if (Math.abs(wheelAccum) > 50) {
+        go(wheelAccum > 0 ? "down" : "up");
+        wheelAccum = 0;
+      }
+    };
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        e.preventDefault();
+        go("down");
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        go("up");
+      }
+    };
+    window.addEventListener("wheel", wheelHandler, { passive: false });
+    window.addEventListener("keydown", keyHandler);
+    return () => {
+      window.removeEventListener("wheel", wheelHandler);
+      window.removeEventListener("keydown", keyHandler);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [go]);
+
+  // Arc geometry: items sit along a large circle anchored off-screen left
+  // The circle center is at (-arcRadius + arcLeftOffset, 50vh)
+  const arcRadius = 600;
+  const arcLeftOffset = 80; // how far the arc peeks into the viewport
+  const visibleSlots = 5; // show 2 above, active, 2 below
+
+  const getArcPosition = (slotOffset: number) => {
+    // slotOffset: -2, -1, 0, +1, +2 from center
+    const angleSpacing = 12; // degrees between items
+    const angleDeg = slotOffset * angleSpacing;
+    const angleRad = (angleDeg * Math.PI) / 180;
+
+    // Circle center is off-screen left
+    const cx = -arcRadius + arcLeftOffset;
+    const cy = 0; // relative to viewport center
+
+    const x = cx + arcRadius * Math.cos(angleRad);
+    const y = cy + arcRadius * Math.sin(angleRad);
+
+    return { x, y };
+  };
+
+  // Which items to show (centered around current index)
+  const halfSlots = Math.floor(visibleSlots / 2);
+  const slots: { itemIndex: number; slotOffset: number }[] = [];
+  for (let offset = -halfSlots; offset <= halfSlots; offset++) {
+    const itemIndex = index + offset;
+    if (itemIndex >= 0 && itemIndex < humanoids.length) {
+      slots.push({ itemIndex, slotOffset: offset });
+    }
+  }
+
+  return (
+    <div className="h-screen overflow-hidden select-none relative">
+      {/* Arc line (SVG) */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ zIndex: 0 }}
+      >
+        <circle
+          cx={-arcRadius + arcLeftOffset}
+          cy="50%"
+          r={arcRadius}
+          fill="none"
+          stroke="currentColor"
+          className="text-neutral-200"
+          strokeWidth="1"
+        />
+      </svg>
+
+      {/* Items along the arc */}
+      <div className="relative w-full h-full" style={{ zIndex: 1 }}>
+        {slots.map(({ itemIndex, slotOffset }) => {
+          const pos = getArcPosition(slotOffset);
+          const isActive = slotOffset === 0;
+          const distance = Math.abs(slotOffset);
+
+          return (
+            <div
+              key={itemIndex}
+              className="absolute flex items-center gap-5 cursor-pointer"
+              style={{
+                left: `${pos.x}px`,
+                top: `calc(50% + ${pos.y}px)`,
+                transform: "translateY(-50%)",
+                opacity: isActive ? 1 : 0.25 - distance * 0.05,
+                transition:
+                  "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+              }}
+              onClick={() => {
+                if (slotOffset < 0) go("up");
+                if (slotOffset > 0) go("down");
+              }}
+            >
+              {/* Dot on arc */}
+              <div
+                className={`rounded-full flex-shrink-0 transition-all duration-400 ${
+                  isActive
+                    ? "w-2.5 h-2.5 bg-neutral-800"
+                    : "w-1.5 h-1.5 bg-neutral-400"
+                }`}
+              />
+
+              {/* Number */}
+              <span
+                className={`tabular-nums font-medium transition-all duration-400 ${
+                  isActive
+                    ? "text-[56px] text-neutral-800"
+                    : "text-[40px] text-neutral-300"
+                }`}
+                style={{
+                  letterSpacing: "-0.04em",
+                  lineHeight: 1,
+                  fontStyle: isActive ? "normal" : "italic",
+                }}
+              >
+                {String(itemIndex).padStart(2, "0")}
+              </span>
+
+              {/* Name + info (only on active) */}
+              {isActive && (
+                <div
+                  key={itemIndex}
+                  className="ml-1 animate-arc-text"
                 >
-                  Buy
-                </a>
+                  <h2
+                    className="text-[18px] font-medium text-neutral-800"
+                    style={{ letterSpacing: "-0.03em" }}
+                  >
+                    {humanoids[itemIndex].name}
+                  </h2>
+                  <p className="text-[13px] text-neutral-400 mt-0.5 tracking-tight max-w-[280px]">
+                    {humanoids[itemIndex].manufacturer}
+                    {humanoids[itemIndex].year
+                      ? ` · ${humanoids[itemIndex].year}`
+                      : ""}
+                  </p>
+                </div>
               )}
             </div>
-          )}
+          );
+        })}
+      </div>
 
-          {/* LABEL */}
-          <div className="flex-shrink-0 relative z-20 flex items-center justify-center py-4">
-            {!showActiveInfo || !activeHumanoid ? (
-              <div key="index-label" className="animate-blur-fade text-center">
-                <div className="text-[13px] text-neutral-400 tracking-tight">Index</div>
-                <div className="text-[16px] font-medium text-neutral-800 tracking-tight">Humanoid</div>
-              </div>
-            ) : (
-              <div key={`humanoid-${activeHumanoid.id}`} className="animate-blur-fade text-center">
-                <div className="text-[13px] text-neutral-400 tracking-tight">{activeHumanoid.manufacturer}</div>
-                <div className="text-[16px] font-medium text-neutral-800 tracking-tight">{activeHumanoid.name}</div>
-              </div>
-            )}
-          </div>
-
-          {/* MINIMAP */}
-          {viewMode === 'carousel' && (
-            <div className="flex-shrink-0 relative z-20 flex justify-center pb-4">
-              <div
-                ref={minimapRef}
-                className="relative cursor-pointer select-none transition-all duration-300"
-                style={{
-                  width: windowWidth < 640
-                    ? `${Math.max(140, (humanoids.length + legends.length) * 14 + 40)}px`
-                    : minimapStyle === 'thumbnails'
-                      ? `${Math.max(220, (humanoids.length + legends.length) * 26 + 56)}px`
-                      : `${Math.max(140, (humanoids.length + legends.length) * 14 + 40)}px`,
-                  height: windowWidth < 640 ? '40px' : minimapStyle === 'thumbnails' ? '48px' : '36px'
-                }}
-                onMouseDown={handleMinimapMouseDown}
-                onTouchStart={handleMinimapTouchStart}
-                onDragStart={(e) => e.preventDefault()}
-              >
-                {(windowWidth < 640 || minimapStyle === 'dots') ? (
-                  /* Dots style - orbital arc arrangement */
-                  <div className="absolute inset-0 pointer-events-none">
-                    {(() => {
-                      const totalItems = 1 + humanoids.length + legends.length; // +1 for placeholder
-                      const arcHeight = windowWidth < 640 ? 8 : 6; // vertical arc amplitude
-                      return (
-                        <>
-                          {/* Placeholder dot */}
-                          {(() => {
-                            const normalizedPos = 0 / (totalItems - 1); // 0 to 1
-                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
-                            return (
-                              <div
-                                key="placeholder"
-                                className={`absolute w-3 h-3 sm:w-2 sm:h-2 rounded-full transition-all duration-200 ${
-                                  !isInActiveZone
-                                    ? 'bg-neutral-800 scale-125'
-                                    : 'bg-neutral-300 scale-100'
-                                }`}
-                                style={{
-                                  left: `${8 + normalizedPos * 84}%`,
-                                  top: `50%`,
-                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
-                                }}
-                              />
-                            );
-                          })()}
-                          {/* Humanoid dots */}
-                          {humanoids.map((_, i) => {
-                            const itemIndex = i + 1; // +1 for placeholder
-                            const normalizedPos = itemIndex / (totalItems - 1);
-                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
-                            return (
-                              <div
-                                key={i}
-                                className={`absolute w-3 h-3 sm:w-2 sm:h-2 rounded-full transition-all duration-200 ${
-                                  i === currentIndex && isInActiveZone
-                                    ? 'bg-neutral-800 scale-125'
-                                    : 'bg-neutral-300 scale-100'
-                                }`}
-                                style={{
-                                  left: `${8 + normalizedPos * 84}%`,
-                                  top: `50%`,
-                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
-                                }}
-                              />
-                            );
-                          })}
-                          {/* Legend dots */}
-                          {legends.map((_, i) => {
-                            const itemIndex = humanoids.length + 1 + i; // +1 for placeholder
-                            const normalizedPos = itemIndex / (totalItems - 1);
-                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
-                            return (
-                              <div
-                                key={`legend-${i}`}
-                                className={`absolute w-3 h-3 sm:w-2 sm:h-2 rounded-full transition-all duration-200 ${
-                                  humanoids.length + i === currentIndex && isInActiveZone
-                                    ? 'bg-amber-500 scale-125'
-                                    : 'bg-amber-200 scale-100'
-                                }`}
-                                style={{
-                                  left: `${8 + normalizedPos * 84}%`,
-                                  top: `50%`,
-                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
-                                }}
-                              />
-                            );
-                          })}
-                        </>
-                      );
-                    })()}
-                  </div>
-                ) : (
-                  /* Thumbnail style (desktop only) - orbital arc arrangement */
-                  <div className="absolute inset-0 pointer-events-none">
-                    {(() => {
-                      const totalItems = 1 + humanoids.length + legends.length;
-                      const arcHeight = 8; // vertical arc amplitude
-                      return (
-                        <>
-                          {/* Placeholder thumbnail */}
-                          {(() => {
-                            const normalizedPos = 0 / (totalItems - 1);
-                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
-                            return (
-                              <div
-                                key="placeholder"
-                                className={`absolute w-5 h-5 rounded-full transition-all duration-200 overflow-hidden border-2 ${
-                                  !isInActiveZone ? 'border-neutral-400 scale-110' : 'border-transparent scale-100 opacity-50'
-                                }`}
-                                style={{
-                                  left: `${6 + normalizedPos * 88}%`,
-                                  top: `50%`,
-                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
-                                }}
-                              >
-                                <img
-                                  src="/robots/placeholder.png"
-                                  alt="Index"
-                                  draggable={false}
-                                  className="w-full h-full object-contain"
-                                />
-                              </div>
-                            );
-                          })()}
-                          {/* Humanoid thumbnails */}
-                          {humanoids.map((h, i) => {
-                            const itemIndex = i + 1;
-                            const normalizedPos = itemIndex / (totalItems - 1);
-                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
-                            return (
-                              <div
-                                key={h.id}
-                                className={`absolute w-5 h-5 rounded-full transition-all duration-200 overflow-hidden border-2 ${
-                                  i === currentIndex && isInActiveZone
-                                    ? 'border-neutral-400 scale-110'
-                                    : 'border-transparent scale-100 opacity-60'
-                                }`}
-                                style={{
-                                  left: `${6 + normalizedPos * 88}%`,
-                                  top: `50%`,
-                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
-                                }}
-                              >
-                                <img
-                                  src={h.imageUrl || '/robots/placeholder.png'}
-                                  alt={h.name}
-                                  draggable={false}
-                                  className="w-full h-full object-contain"
-                                />
-                              </div>
-                            );
-                          })}
-                          {/* Legend thumbnails */}
-                          {legends.map((h, i) => {
-                            const itemIndex = humanoids.length + 1 + i;
-                            const normalizedPos = itemIndex / (totalItems - 1);
-                            const arcY = Math.sin(normalizedPos * Math.PI) * arcHeight;
-                            return (
-                              <div
-                                key={h.id}
-                                className={`absolute w-5 h-5 rounded-full transition-all duration-200 overflow-hidden border-2 ${
-                                  humanoids.length + i === currentIndex && isInActiveZone
-                                    ? 'border-amber-400 scale-110'
-                                    : 'border-transparent scale-100 opacity-60'
-                                }`}
-                                style={{
-                                  left: `${6 + normalizedPos * 88}%`,
-                                  top: `50%`,
-                                  transform: `translate(-50%, -50%) translateY(${-arcY}px)`,
-                                }}
-                              >
-                                <img
-                                  src={h.imageUrl || '/robots/placeholder.png'}
-                                  alt={h.name}
-                                  draggable={false}
-                                  className="w-full h-full object-contain"
-                                />
-                              </div>
-                            );
-                          })}
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
+      {/* Robot image — right side */}
+      <div
+        className="absolute right-8 md:right-16 top-1/2 -translate-y-1/2"
+        style={{ zIndex: 1 }}
+      >
+        <div
+          key={index}
+          className="relative w-[240px] h-[360px] md:w-[320px] md:h-[460px] animate-split-image"
+        >
+          <Image
+            src={humanoids[index].imageUrl || "/robots/placeholder.png"}
+            alt={humanoids[index].name}
+            fill
+            className="object-contain"
+            sizes="320px"
+          />
         </div>
+      </div>
 
-        {/* Scroll down indicator - positioned at bottom */}
-        {viewMode === 'carousel' && (
+      {/* Counter — bottom right */}
+      <div className="absolute bottom-8 right-10 md:right-16" style={{ zIndex: 2 }}>
+        <Counter current={index + 1} total={humanoids.length} />
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LAYOUT F — Spread
+// ═══════════════════════════════════════════════════════════════
+function Spread() {
+  const [index, setIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const go = useCallback(
+    (dir: "left" | "right") => {
+      if (isAnimating) return;
+      const next =
+        dir === "right"
+          ? Math.min(index + 1, humanoids.length - 1)
+          : Math.max(index - 1, 0);
+      if (next === index) return;
+      setIsAnimating(true);
+      setIndex(next);
+      timeoutRef.current = setTimeout(() => setIsAnimating(false), 500);
+    },
+    [index, isAnimating]
+  );
+
+  useEffect(() => {
+    let wheelAccum = 0;
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      wheelAccum += e.deltaY + e.deltaX;
+      if (Math.abs(wheelAccum) > 50) {
+        go(wheelAccum > 0 ? "right" : "left");
+        wheelAccum = 0;
+      }
+    };
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        go("right");
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        go("left");
+      }
+    };
+    window.addEventListener("wheel", wheelHandler, { passive: false });
+    window.addEventListener("keydown", keyHandler);
+    return () => {
+      window.removeEventListener("wheel", wheelHandler);
+      window.removeEventListener("keydown", keyHandler);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [go]);
+
+  // Fan geometry — cards arranged along a bowl-shaped curve
+  const visibleCount = 7;
+  const half = Math.floor(visibleCount / 2);
+
+  // Build visible slots relative to current index
+  const slots: { itemIndex: number; offset: number }[] = [];
+  for (let off = -half; off <= half; off++) {
+    const idx = index + off;
+    if (idx >= 0 && idx < humanoids.length) {
+      slots.push({ itemIndex: idx, offset: off });
+    }
+  }
+
+  const getCardStyle = (offset: number): React.CSSProperties => {
+    const absOffset = Math.abs(offset);
+
+    // Horizontal spacing — increases toward edges
+    const xSpacing = 180;
+    const x = offset * xSpacing;
+
+    // Vertical — parabolic curve (bowl shape, cards at edges drop down)
+    const yDrop = offset * offset * 18;
+
+    // Rotation — cards tilt outward from center
+    const rotation = offset * -6;
+
+    // Scale — center is largest
+    const scale = 1 - absOffset * 0.06;
+
+    // Opacity
+    const opacity = absOffset === 0 ? 1 : Math.max(0.3, 1 - absOffset * 0.2);
+
+    // Z-index — center on top
+    const zIndex = visibleCount - absOffset;
+
+    return {
+      transform: `translateX(${x}px) translateY(${yDrop}px) rotate(${rotation}deg) scale(${scale})`,
+      opacity,
+      zIndex,
+      transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+    };
+  };
+
+  return (
+    <div className="h-screen overflow-hidden select-none relative flex flex-col items-center justify-center">
+      {/* Card fan */}
+      <div className="relative flex items-center justify-center" style={{ height: 380 }}>
+        {slots.map(({ itemIndex, offset }) => (
           <div
-            className="absolute bottom-4 left-0 right-0 flex justify-center transition-all duration-300 ease-out pointer-events-none"
-            style={{
-              opacity: isInActiveZone && !isInDetailView ? 1 : 0,
+            key={itemIndex}
+            className="absolute cursor-pointer"
+            style={getCardStyle(offset)}
+            onClick={() => {
+              if (offset < 0) go("left");
+              else if (offset > 0) go("right");
             }}
           >
-            <button
-              onClick={scrollToDetail}
-              className="flex flex-col items-center gap-1 text-neutral-400 hover:text-neutral-600 transition-colors animate-pulse pointer-events-auto"
+            <div
+              className="w-[180px] h-[240px] md:w-[200px] md:h-[280px] rounded-2xl overflow-hidden bg-white shadow-lg border border-neutral-100/80"
+              style={{
+                transformOrigin: "center bottom",
+              }}
             >
-              <span className="text-[11px] uppercase tracking-wider">More details</span>
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 5v14M5 12l7 7 7-7" />
-              </svg>
-            </button>
+              <div className="relative w-full h-full">
+                <Image
+                  src={humanoids[itemIndex].imageUrl || "/robots/placeholder.png"}
+                  alt={humanoids[itemIndex].name}
+                  fill
+                  className="object-contain p-3"
+                  sizes="200px"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Label below */}
+      <div className="mt-12 text-center">
+        <p className="text-[13px] text-neutral-400 tracking-tight">
+          {humanoids[index].manufacturer}
+          {humanoids[index].year ? ` · ${humanoids[index].year}` : ""}
+        </p>
+        <h2
+          key={index}
+          className="text-[22px] font-medium text-neutral-800 mt-1 animate-blur-fade"
+          style={{ letterSpacing: "-0.04em" }}
+        >
+          {humanoids[index].name}
+        </h2>
+      </div>
+
+      {/* Counter */}
+      <div className="absolute bottom-8">
+        <Counter current={index + 1} total={humanoids.length} />
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LAYOUT G — Orbit
+// ═══════════════════════════════════════════════════════════════
+
+// Deterministic pseudo-random based on index (consistent across renders)
+function seededRandom(seed: number) {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function Orbit() {
+  const [selected, setSelected] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
+
+  // Keyboard nav
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelected(null);
+        return;
+      }
+      const dir =
+        e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 :
+        e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+      if (!dir) return;
+      e.preventDefault();
+      setSelected((prev) => {
+        if (prev === null) return 0;
+        const next = prev + dir;
+        if (next < 0 || next >= humanoids.length) return prev;
+        return next;
+      });
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // Position each robot along an ellipse around the viewport edges
+  // with slight random offsets for an organic, scattered feel
+  const getItemPosition = (i: number, total: number) => {
+    const angle = (i / total) * Math.PI * 2 - Math.PI / 2;
+
+    // Ellipse radii as percentage of viewport
+    const rx = 42; // horizontal radius (% of vw)
+    const ry = 40; // vertical radius (% of vh)
+
+    // Base position on ellipse
+    const baseX = 50 + rx * Math.cos(angle);
+    const baseY = 50 + ry * Math.sin(angle);
+
+    // Deterministic scatter offset
+    const offsetX = (seededRandom(i * 3) - 0.5) * 6;
+    const offsetY = (seededRandom(i * 7) - 0.5) * 6;
+
+    // Deterministic rotation
+    const rotation = (seededRandom(i * 13) - 0.5) * 30;
+
+    // Scale variation
+    const scale = 0.7 + seededRandom(i * 17) * 0.35;
+
+    return {
+      x: baseX + offsetX,
+      y: baseY + offsetY,
+      rotation,
+      scale,
+    };
+  };
+
+  const activeIndex = selected ?? hovered;
+  const activeBot = activeIndex !== null ? humanoids[activeIndex] : null;
+
+  return (
+    <div className="h-screen overflow-hidden select-none relative bg-neutral-50">
+      {/* Scattered items around the edge */}
+      {humanoids.map((h, i) => {
+        const pos = getItemPosition(i, humanoids.length);
+        const isSelected = selected === i;
+        const isHovered = hovered === i;
+        const isHighlighted = isSelected || isHovered;
+
+        return (
+          <div
+            key={h.id}
+            className="absolute cursor-pointer"
+            style={{
+              left: `${pos.x}%`,
+              top: `${pos.y}%`,
+              transform: `translate(-50%, -50%) rotate(${isHighlighted ? 0 : pos.rotation}deg) scale(${isHighlighted ? 1.15 : pos.scale})`,
+              opacity: selected !== null && !isSelected ? 0.25 : isHighlighted ? 1 : 0.7,
+              zIndex: isHighlighted ? 20 : 1,
+              transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+            onClick={() => setSelected(isSelected ? null : i)}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+          >
+            <div className="relative w-[70px] h-[90px] md:w-[90px] md:h-[115px]">
+              <Image
+                src={h.imageUrl || "/robots/placeholder.png"}
+                alt={h.name}
+                fill
+                className="object-contain"
+                sizes="90px"
+              />
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Center content */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {activeBot ? (
+          <div key={activeIndex} className="text-center animate-blur-fade pointer-events-auto">
+            <p className="text-[11px] tracking-widest uppercase text-neutral-400">
+              {activeBot.manufacturer}
+            </p>
+            <h2
+              className="text-[28px] md:text-[36px] font-medium text-neutral-800 mt-1"
+              style={{ letterSpacing: "-0.04em" }}
+            >
+              {activeBot.name}
+            </h2>
+            <div className="flex items-center justify-center gap-3 mt-2">
+              {activeBot.year && (
+                <span className="text-[13px] text-neutral-500">{activeBot.year}</span>
+              )}
+              {activeBot.status && (
+                <span className="text-[11px] tracking-wide uppercase px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500">
+                  {activeBot.status}
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center">
+            <h1
+              className="text-[32px] md:text-[42px] font-medium text-neutral-800"
+              style={{ letterSpacing: "-0.04em", lineHeight: 1.15 }}
+            >
+              Humanoid
+              <br />
+              Index
+            </h1>
+            <p className="text-[13px] text-neutral-400 mt-4 tracking-tight">
+              {humanoids.length} robots · click to explore
+            </p>
           </div>
         )}
+      </div>
 
-      </section>
-
-      {/* DETAIL SECTION */}
-      {viewMode === 'carousel' && (
-        <section className="min-h-screen flex-shrink-0 snap-start bg-white">
-          {activeHumanoid && (
-            <HumanoidDetailSection
-              humanoid={activeHumanoid}
-              isActive={true}
-              onScrollUp={scrollToCarousel}
-            />
-          )}
-        </section>
-      )}
-
-      {/* Compare panel modal */}
-      {showComparePanel && (
-        <ComparePanel
-          selectedIds={selectedIds}
-          onRemove={(id) => setSelectedIds(prev => prev.filter(i => i !== id))}
-          onClear={() => setSelectedIds([])}
-          onClose={() => setShowComparePanel(false)}
-        />
-      )}
-
-      {/* AI Chatbot */}
-      {!hideUI && <ChatBot />}
-
-      {/* Minimap style toggle - bottom right, hidden on mobile */}
-      {!hideUI && viewMode === 'carousel' && (
-        <button
-          onClick={() => setMinimapStyle(minimapStyle === 'thumbnails' ? 'dots' : 'thumbnails')}
-          className="hidden sm:block fixed bottom-6 right-6 z-30 p-2.5 rounded-full bg-white text-neutral-500 shadow-md hover:shadow-lg hover:bg-neutral-50 transition-all"
-          title={minimapStyle === 'thumbnails' ? 'Switch to dots' : 'Switch to thumbnails'}
-        >
-          {minimapStyle === 'thumbnails' ? (
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="6" cy="12" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="18" cy="12" r="2" />
-            </svg>
-          ) : (
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="7" height="7" rx="1" />
-            </svg>
-          )}
-        </button>
-      )}
-
-      {/* Bottom Left Buttons */}
-      {!hideUI && (
-        <div className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-30 flex items-center gap-2">
-          <button
-            onClick={() => setShowControls(!showControls)}
-            className={`p-2.5 rounded-full text-[13px] font-medium transition-all ${
-              showControls
-                ? 'bg-neutral-900 text-white'
-                : 'bg-white text-neutral-600 shadow-md hover:shadow-lg'
-            }`}
-            title="Toggle controls"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </button>
-          <button
-            onClick={() => compareMode ? handleExitCompareMode() : setCompareMode(true)}
-            className={`px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
-              compareMode
-                ? 'bg-neutral-900 text-white'
-                : 'bg-white text-neutral-600 shadow-md hover:shadow-lg'
-            }`}
-          >
-            {compareMode ? 'Exit Compare' : 'Compare'}
-          </button>
-        </div>
-      )}
-
-      {/* Controls Panel */}
-      {!hideUI && showControls && (
-        <div className="fixed bottom-20 left-4 sm:left-6 z-30">
-          <BottomBar
-            config={config}
-            onConfigChange={setConfig}
-            layoutConfig={layoutConfig}
-            onLayoutConfigChange={setLayoutConfig}
-            viewMode={viewMode}
-            compareMode={compareMode}
-            selectedCount={selectedIds.length}
-            onClearSelection={() => setSelectedIds([])}
-            onCompare={() => setShowComparePanel(true)}
-          />
+      {/* Counter */}
+      {selected !== null && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+          <Counter current={selected + 1} total={humanoids.length} />
         </div>
       )}
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PAGE
+// ═══════════════════════════════════════════════════════════════
+export default function Home() {
+  const [layout, setLayout] = useState<Layout>("A");
+
+  return (
+    <main className="bg-neutral-50 min-h-screen">
+      <LayoutSwitcher active={layout} onChange={setLayout} />
+
+      {layout === "A" && <FullBleed />}
+      {layout === "B" && <Rolodex />}
+      {layout === "C" && <SplitPane />}
+      {layout === "D" && <Filmstrip />}
+      {layout === "E" && <Arc />}
+      {layout === "F" && <Spread />}
+      {layout === "G" && <Orbit />}
+
+      {/* Layout label */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50">
+        <span className="text-[11px] tracking-widest uppercase text-neutral-300">
+          {layoutLabels[layout]}
+        </span>
+      </div>
+    </main>
   );
 }
