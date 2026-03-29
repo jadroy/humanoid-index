@@ -18,7 +18,13 @@
       "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index diff)",
       "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index log --oneline -5)",
       "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index add .claude/settings.local.json app/layout.tsx)",
-      "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index commit -m \"$\\(cat <<''EOF''\nUpdate background color to neutral-50 and add local CLI permissions\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index commit -m \"$\\(cat <<''EOF''\nUpdate background color to neutral-50 and add local CLI permissions\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "WebSearch",
+      "WebFetch(domain:www.sunday.ai)",
+      "Bash(npx next:*)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:family.co)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

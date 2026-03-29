@@ -33,8 +33,9 @@
   --color-surface-cream: #faf9f8;
   --color-surface-blush: #faf8f9;
 
-  /* Accent - used sparingly */
+  /* Accent — restrained, dark-first */
   --color-accent: #171717;
+  --color-accent-hover: #262626;
   --color-accent-muted: #525252;
   --color-accent-subtle: #a3a3a3;
 

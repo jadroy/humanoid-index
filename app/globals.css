@@ -206,7 +206,43 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .animate-arc-text {
-  animation: arc-text 350ms cubic-bezier(0.16, 1, 0.3, 1) 60ms forwards;
+  animation: arc-text 280ms cubic-bezier(0.16, 1, 0.3, 1) 40ms forwards;
+  opacity: 0;
+}
+
+/* Arc — image entrance */
+@keyframes arc-image {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-arc-image {
+  animation: arc-image 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Arc — stats staggered fade */
+@keyframes arc-stats {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-arc-stats {
+  animation: arc-stats 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-fill-mode: both;
   opacity: 0;
 }
 
