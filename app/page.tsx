@@ -51,12 +51,6 @@ function LayoutSwitcher({
   );
 }
 
-// ─── Deterministic pseudo-random ────────────────────────────────
-function seededRandom(seed: number) {
-  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
-  return x - Math.floor(x);
-}
-
 // ═══════════════════════════════════════════════════════════════
 // Scroll presets + tuning
 // ═══════════════════════════════════════════════════════════════
@@ -105,7 +99,6 @@ function Browse() {
   const posRef = useRef(0);
   const velRef = useRef(0);
   const [pos, setPos] = useState(0);
-  const [settled, setSettled] = useState(true);
   const rafRef = useRef<number>(0);
 
   const index = Math.max(0, Math.min(humanoids.length - 1, Math.round(pos)));
@@ -120,13 +113,13 @@ function Browse() {
       posRef.current = target;
       velRef.current = 0;
       setPos(target);
-      setSettled(true);
+
       rafRef.current = 0;
       return;
     }
 
     setPos(posRef.current);
-    setSettled(false);
+
     rafRef.current = requestAnimationFrame(tick);
   }, []);
 
@@ -139,7 +132,7 @@ function Browse() {
     const next = Math.max(0, Math.min(humanoids.length - 1, targetRef.current + delta));
     if (next === targetRef.current) return;
     targetRef.current = next;
-    setSettled(false);
+
     startSpring();
   }, [startSpring]);
 
@@ -248,7 +241,7 @@ function Browse() {
               }}
               onClick={() => {
                 targetRef.current = itemIndex;
-                setSettled(false);
+            
                 if (!rafRef.current) rafRef.current = requestAnimationFrame(tick);
               }}
             >
@@ -418,8 +411,9 @@ function Grid() {
           return (
             <div
               key={h.id}
-              className="group relative rounded-3xl overflow-hidden cursor-pointer aspect-square"
+              className="group relative overflow-hidden cursor-pointer aspect-square"
               style={{
+                borderRadius: 32,
                 background: "#F7F7F7",
                 opacity: selected !== null && !isSelected ? 0.4 : 1,
                 transition: "opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
@@ -460,10 +454,15 @@ function Grid() {
 // ═══════════════════════════════════════════════════════════════
 function TextIndex() {
   const [hovered, setHovered] = useState<number | null>(null);
-  const [mouseY, setMouseY] = useState(0);
+  const floatingRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="min-h-screen overflow-y-auto scrollbar-hide select-none relative" onMouseMove={(e) => setMouseY(e.clientY)}>
+    <div
+      className="min-h-screen overflow-y-auto scrollbar-hide select-none relative"
+      onMouseMove={(e) => {
+        if (floatingRef.current) floatingRef.current.style.top = `${e.clientY - 140}px`;
+      }}
+    >
       <div className="max-w-[640px] mx-auto pt-24 pb-16 px-6 md:px-10">
         <p className="text-[12px] text-neutral-400 mb-10">
           {humanoids.length} humanoids
@@ -486,9 +485,8 @@ function TextIndex() {
           </div>
         ))}
       </div>
-      {/* Floating image */}
       {hovered !== null && (
-        <div className="fixed pointer-events-none z-50 animate-blur-fade" style={{ right: "10%", top: mouseY - 140 }}>
+        <div ref={floatingRef} className="fixed pointer-events-none z-50 animate-blur-fade" style={{ right: "10%" }}>
           <div className="relative w-[200px] h-[280px]">
             <Image src={humanoids[hovered].imageUrl || "/robots/placeholder.png"} alt={humanoids[hovered].name} fill className="object-contain" sizes="200px" />
           </div>

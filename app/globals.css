@@ -29,62 +29,9 @@ h1, h2, h3, h4, h5, h6 {
   display: none;
 }
 
-/* Smooth horizontal scroll */
-.horizontal-scroll {
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.horizontal-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-/* GPU acceleration utilities */
-.gpu-accelerated {
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Subtle zone separation gradients */
-.fade-to-top {
-  background: linear-gradient(to top, white, transparent);
-}
-
-.fade-to-bottom {
-  background: linear-gradient(to bottom, white, transparent);
-}
-
 /* ═══════════════════════════════════════
    ANIMATIONS
-   Using design system tokens
    ═══════════════════════════════════════ */
-
-@keyframes slide-in-from-top {
-  from {
-    opacity: 0;
-    transform: translateY(-12px);
-    filter: blur(var(--blur-sm));
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-}
-
-@keyframes slide-in-from-bottom {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-    filter: blur(var(--blur-sm));
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-}
 
 @keyframes blur-fade-in {
   from {
@@ -97,100 +44,8 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.animate-slide-from-top {
-  animation: slide-in-from-top var(--duration-normal) var(--ease-out-expo) forwards;
-}
-
-.animate-slide-from-bottom {
-  animation: slide-in-from-bottom var(--duration-normal) var(--ease-out-expo) forwards;
-}
-
 .animate-blur-fade {
   animation: blur-fade-in var(--duration-normal) var(--ease-out-expo) forwards;
-}
-
-.animate-fade-in-up {
-  animation: fade-in-up 300ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-/* ═══════════════════════════════════════
-   LAYOUT ANIMATIONS
-   ═══════════════════════════════════════ */
-
-/* Rolodex — card enters from direction */
-@keyframes rolodex-down {
-  from {
-    opacity: 0;
-    transform: translateY(40px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes rolodex-up {
-  from {
-    opacity: 0;
-    transform: translateY(-40px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.animate-rolodex-down {
-  animation: rolodex-down 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-rolodex-up {
-  animation: rolodex-up 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Split Pane — staggered entrance */
-@keyframes split-image {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-    filter: blur(4px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-    filter: blur(0);
-  }
-}
-
-@keyframes split-text {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-split-image {
-  animation: split-image 450ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-split-text {
-  animation: split-text 400ms cubic-bezier(0.16, 1, 0.3, 1) 80ms forwards;
-  opacity: 0;
 }
 
 /* Arc — text fade in */
@@ -210,59 +65,3 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0;
 }
 
-/* Arc — image entrance */
-@keyframes arc-image {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-    filter: blur(3px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-    filter: blur(0);
-  }
-}
-
-.animate-arc-image {
-  animation: arc-image 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Arc — stats staggered fade */
-@keyframes arc-stats {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-arc-stats {
-  animation: arc-stats 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-fill-mode: both;
-  opacity: 0;
-}
-
-/* Buy button */
-.buy-button-glass {
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1px 12px;
-  font-size: 13px;
-  line-height: 1;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  background: rgba(0, 0, 0, 0.72);
-  color: rgba(255, 255, 255, 0.9);
-  border-radius: 9999px;
-  transition: background 0.15s ease;
-}
-
-.buy-button-glass:hover {
-  background: rgba(0, 0, 0, 0.85);
-}
