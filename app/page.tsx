@@ -32,8 +32,8 @@ function LayoutSwitcher({
   chatOpen: boolean;
 }) {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-6 pointer-events-none">
-      <div className="flex items-center gap-4 pointer-events-auto">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
+      <div className="flex items-center gap-4 pointer-events-auto px-5 py-2.5 rounded-2xl border border-neutral-200/60 bg-white">
         {/* Mark — abstract humanoid form */}
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.25 }}>
           <circle cx="10" cy="5" r="3" fill="#343433" />
@@ -151,26 +151,24 @@ function useSpring(s: number, d: number) {
 // Arc styles
 // ═══════════════════════════════════════════════════════════════
 const ARC_STYLES = [
-  "pills", "labeled", "hybrid", "classic", "ticks",
-  "dots", "dash", "diamond", "outline", "glow",
-  "minimal", "blade", "binary", "rings", "arrows",
-  "blocks", "gradient", "rail", "morse", "scatter",
-  "cross", "needle", "roman", "braille", "orbit",
+  // core
+  "pills", "classic", "ticks", "minimal",
+  // pill + number hybrids
+  "h-clean", "h-stacked", "h-reveal", "h-flush", "h-mono",
+  "h-light", "h-bold", "h-spaced", "h-underline", "h-tag",
 ] as const;
 type ArcStyle = (typeof ARC_STYLES)[number];
 const arcStyleLabels: Record<ArcStyle, string> = {
-  pills: "Pills", labeled: "Labeled", hybrid: "Hybrid", classic: "Classic+", ticks: "Ticks",
-  dots: "Dots", dash: "Dash", diamond: "Diamond", outline: "Outline", glow: "Glow",
-  minimal: "Minimal", blade: "Blade", binary: "Binary", rings: "Rings", arrows: "Arrows",
-  blocks: "Blocks", gradient: "Gradient", rail: "Rail", morse: "Morse", scatter: "Scatter",
-  cross: "Cross", needle: "Needle", roman: "Roman", braille: "Braille", orbit: "Orbit",
+  pills: "Pills", classic: "Classic", ticks: "Ticks", minimal: "Minimal",
+  "h-clean": "Clean", "h-stacked": "Stacked", "h-reveal": "Reveal", "h-flush": "Flush", "h-mono": "Mono",
+  "h-light": "Light", "h-bold": "Bold", "h-spaced": "Spaced", "h-underline": "Underline", "h-tag": "Tag",
 };
 
 // ═══════════════════════════════════════════════════════════════
 // Arc renderer — multiple visual styles along a translucent curved track
 // ═══════════════════════════════════════════════════════════════
 function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { pos: number; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle }) {
-  const R = 480, off = 50, range = 3;
+  const R = 360, off = 40, range = 3;
   const cx = -R + off;
   const getP = (o: number) => {
     const a = (o * 10 * Math.PI) / 180;
@@ -181,9 +179,7 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { po
   for (let n = f - range; n <= f + range + 1; n++) if (n >= 0 && n < humanoids.length) items.push({ i: n, o: n - pos });
 
   const sid = mirrored ? "r" : "l";
-  const noTrack = new Set<ArcStyle>(["classic", "minimal", "needle"]);
-  const wideTrack = new Set<ArcStyle>(["ticks", "blocks", "rail", "dash"]);
-  const trackW = wideTrack.has(variant) ? 44 : 38;
+  const noTrack = variant === "classic" || variant === "minimal";
 
   const track = (
     <svg className="absolute inset-0 w-full h-full pointer-events-none">
@@ -192,21 +188,13 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { po
           <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="#000" floodOpacity="0.04" />
         </filter>
       </defs>
-      {noTrack.has(variant) ? (
+      {noTrack ? (
         variant !== "minimal" && <circle cx={cx} cy="50%" r={R} fill="none" stroke="#e8e8e8" strokeWidth="1" style={{ opacity: dimmed ? 0.3 : 1 }} />
-      ) : variant === "rail" ? (<>
-        <circle cx={cx} cy="50%" r={R - 10} fill="none" stroke="rgba(230,230,230,0.7)" strokeWidth="2" style={{ opacity: dimmed ? 0.3 : 1 }} />
-        <circle cx={cx} cy="50%" r={R + 10} fill="none" stroke="rgba(230,230,230,0.7)" strokeWidth="2" style={{ opacity: dimmed ? 0.3 : 1 }} />
-      </>) : (
-        <circle cx={cx} cy="50%" r={R} fill="none" stroke="rgba(243,243,243,0.85)" strokeWidth={trackW} filter={`url(#ts-${sid})`} style={{ opacity: dimmed ? 0.3 : 1 }} />
+      ) : (
+        <circle cx={cx} cy="50%" r={R} fill="none" stroke="rgba(243,243,243,0.85)" strokeWidth={variant === "ticks" ? 44 : 38} filter={`url(#ts-${sid})`} style={{ opacity: dimmed ? 0.3 : 1 }} />
       )}
     </svg>
   );
-
-  const toRoman = (n: number): string => {
-    const v = [10,9,5,4,1], s = ["X","IX","V","IV","I"];
-    let r = ""; for (let j = 0; j < v.length; j++) while (n >= v[j]) { r += s[j]; n -= v[j]; } return r || "0";
-  };
 
   const renderItem = (i: number, o: number) => {
     const abs = Math.abs(o), p = getP(o), t = Math.min(abs, 1);
@@ -216,86 +204,30 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { po
     const ap = { left: `${p.x}px`, top: `calc(50% + ${p.y}px)` };
     const cr = { ...ap, transform: `translate(-50%, -50%) rotate(${angleDeg}deg)` };
     const co = { ...ap, transform: "translateY(-50%)" };
+    const num = String(i).padStart(2, "0");
+    const flip = mirrored ? "scaleX(-1)" : undefined;
 
-    // ── pills ──
+    // ── pills (no text) ──
     if (variant === "pills") {
       const op = (isActive ? 1 : Math.max(0.3, 0.65 - abs * 0.12)) * bOp;
       return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
         <div style={{ width: isActive ? 6 : 4, height: isActive ? 24 : 12 + (1 - t) * 4, borderRadius: 99, background: isActive ? "#222" : "#aaa" }} />
       </div>);
     }
-    // ── labeled ──
-    if (variant === "labeled") {
-      const op = (isActive ? 1 : Math.max(0.3, 0.65 - abs * 0.12)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: "translate(-50%,-50%)", opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ transform: `rotate(${angleDeg}deg)` }}>
-          <div style={{ width: isActive ? 6 : 4, height: isActive ? 24 : 12 + (1 - t) * 4, borderRadius: 99, background: isActive ? "#222" : "#aaa" }} />
-        </div>
-        {isActive && <span className="absolute left-5 top-1/2 -translate-y-1/2 tabular-nums font-semibold" style={{ fontSize: 28, letterSpacing: "-0.04em", color: "#222", transform: mirrored ? "scaleX(-1)" : undefined, whiteSpace: "nowrap" }}>{String(i).padStart(2, "0")}</span>}
-      </div>);
-    }
-    // ── hybrid ──
-    if (variant === "hybrid") {
-      const op = (isActive ? 1 : Math.max(0.15, 0.45 - abs * 0.1)) * bOp;
-      const fs = isActive ? 30 : 18 + (1 - t) * 6;
-      return (<div key={i} className="absolute flex items-center gap-3 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: isActive ? 5 : 3.5, height: isActive ? 22 : 10 + (1 - t) * 4, borderRadius: 99, background: isActive ? "#222" : "#bbb", transform: `rotate(${angleDeg}deg)` }} />
-        <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.04em", lineHeight: 1, color: isActive ? "#222" : "#bbb", fontWeight: isActive ? 600 : 400, transform: mirrored ? "scaleX(-1)" : undefined }}>{String(i).padStart(2, "0")}</span>
-      </div>);
-    }
-    // ── classic+ ──
+    // ── classic (original dot + italic number) ──
     if (variant === "classic") {
       const dot = 3 + (1 - t) * 3, fs = 24 + (1 - t) * 10;
       const op = (abs < 0.1 ? 1 : Math.max(0, 0.4 - abs * 0.1)) * bOp;
       return (<div key={i} className="absolute flex items-center gap-2.5 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
         <div className="rounded-full flex-shrink-0" style={{ width: dot, height: dot, opacity: 0.2 + (1 - t) * 0.8, background: "#343433" }} />
-        <span className="tabular-nums font-medium" style={{ fontSize: fs, letterSpacing: "-0.04em", lineHeight: 1, fontStyle: t > 0.5 ? "italic" : "normal", opacity: 0.2 + (1 - t) * 0.8, color: "#343433", transform: mirrored ? "scaleX(-1)" : undefined }}>{String(i).padStart(2, "0")}</span>
+        <span className="tabular-nums font-medium" style={{ fontSize: fs, letterSpacing: "-0.04em", lineHeight: 1, fontStyle: t > 0.5 ? "italic" : "normal", opacity: 0.2 + (1 - t) * 0.8, color: "#343433", transform: flip }}>{num}</span>
       </div>);
     }
-    // ── ticks ──
+    // ── ticks (gauge notches, no text) ──
     if (variant === "ticks") {
       const op = (isActive ? 1 : Math.max(0.25, 0.6 - abs * 0.12)) * bOp;
       return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
         <div style={{ width: isActive ? 20 : 10 + (1 - t) * 4, height: isActive ? 5 : 3, borderRadius: 99, background: isActive ? "#222" : "#aaa" }} />
-      </div>);
-    }
-    // ── dots (round dots, active larger) ──
-    if (variant === "dots") {
-      const sz = isActive ? 10 : 4 + (1 - t) * 2;
-      const op = (isActive ? 1 : Math.max(0.3, 0.6 - abs * 0.12)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: "translate(-50%,-50%)", opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: sz, height: sz, borderRadius: "50%", background: isActive ? "#222" : "#aaa" }} />
-      </div>);
-    }
-    // ── dash (horizontal dashes) ──
-    if (variant === "dash") {
-      const op = (isActive ? 1 : Math.max(0.25, 0.6 - abs * 0.12)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: isActive ? 22 : 12 + (1 - t) * 4, height: isActive ? 3 : 2, borderRadius: 1, background: isActive ? "#222" : "#aaa" }} />
-      </div>);
-    }
-    // ── diamond (rotated squares) ──
-    if (variant === "diamond") {
-      const sz = isActive ? 10 : 5 + (1 - t) * 2;
-      const op = (isActive ? 1 : Math.max(0.25, 0.6 - abs * 0.12)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: `translate(-50%,-50%) rotate(${angleDeg + 45}deg)`, opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: sz, height: sz, borderRadius: 1.5, background: isActive ? "#222" : "#aaa" }} />
-      </div>);
-    }
-    // ── outline (hollow pills) ──
-    if (variant === "outline") {
-      const h = isActive ? 24 : 12 + (1 - t) * 4, w = isActive ? 8 : 5;
-      const op = (isActive ? 1 : Math.max(0.3, 0.6 - abs * 0.12)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: w, height: h, borderRadius: 99, border: `${isActive ? 2 : 1.5}px solid ${isActive ? "#222" : "#bbb"}` }} />
-      </div>);
-    }
-    // ── glow (soft glowing orbs) ──
-    if (variant === "glow") {
-      const sz = isActive ? 12 : 5 + (1 - t) * 2;
-      const op = (isActive ? 1 : Math.max(0.3, 0.55 - abs * 0.1)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: "translate(-50%,-50%)", opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: sz, height: sz, borderRadius: "50%", background: isActive ? "#333" : "#bbb", boxShadow: isActive ? "0 0 12px 4px rgba(0,0,0,0.15)" : "0 0 6px 2px rgba(0,0,0,0.06)" }} />
       </div>);
     }
     // ── minimal (single dot, no track) ──
@@ -305,128 +237,106 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { po
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#222" }} />
       </div>);
     }
-    // ── blade (very thin, very tall) ──
-    if (variant === "blade") {
-      const op = (isActive ? 1 : Math.max(0.2, 0.55 - abs * 0.1)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: isActive ? 3 : 1.5, height: isActive ? 40 : 18 + (1 - t) * 8, borderRadius: 99, background: isActive ? "#222" : "#aaa" }} />
+
+    // ════════════════════════════════════════════════════════════
+    // PILL + NUMBER HYBRIDS
+    // ════════════════════════════════════════════════════════════
+
+    // ── h-clean: pill left, number right, uniform weight, gentle fade ──
+    if (variant === "h-clean") {
+      const op = (isActive ? 1 : Math.max(0.08, 0.5 - abs * 0.14)) * bOp;
+      const fs = isActive ? 26 : 14 + (1 - t) * 4;
+      return (<div key={i} className="absolute flex items-center gap-3 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 5 : 3, height: isActive ? 20 : 10 + (1 - t) * 4, borderRadius: 99, background: isActive ? "#333" : "#c0c0c0", transform: `rotate(${angleDeg}deg)` }} />
+        <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.03em", lineHeight: 1, color: isActive ? "#333" : "#c0c0c0", fontWeight: isActive ? 500 : 400, transform: flip }}>{num}</span>
       </div>);
     }
-    // ── binary ──
-    if (variant === "binary") {
-      const fs = isActive ? 16 : 10 + (1 - t) * 3;
-      const op = (isActive ? 1 : Math.max(0.15, 0.45 - abs * 0.1)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
-        <span className="font-mono" style={{ fontSize: fs, color: isActive ? "#222" : "#bbb", fontWeight: isActive ? 700 : 400, letterSpacing: "0.05em", transform: mirrored ? "scaleX(-1)" : undefined, display: "inline-block" }}>{i.toString(2).padStart(5, "0")}</span>
-      </div>);
-    }
-    // ── rings (hollow circles) ──
-    if (variant === "rings") {
-      const sz = isActive ? 14 : 7 + (1 - t) * 3;
-      const op = (isActive ? 1 : Math.max(0.3, 0.6 - abs * 0.12)) * bOp;
+    // ── h-stacked: number above pill, vertically centered ──
+    if (variant === "h-stacked") {
+      const op = (isActive ? 1 : Math.max(0.08, 0.45 - abs * 0.12)) * bOp;
+      const fs = isActive ? 18 : 10 + (1 - t) * 3;
       return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: "translate(-50%,-50%)", opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: sz, height: sz, borderRadius: "50%", border: `${isActive ? 2.5 : 1.5}px solid ${isActive ? "#222" : "#aaa"}` }} />
-      </div>);
-    }
-    // ── arrows (triangular pointers) ──
-    if (variant === "arrows") {
-      const sz = isActive ? 10 : 5 + (1 - t) * 2;
-      const op = (isActive ? 1 : Math.max(0.25, 0.55 - abs * 0.1)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: `translate(-50%,-50%) rotate(${angleDeg - 90}deg)`, opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: 0, height: 0, borderLeft: `${sz / 2}px solid transparent`, borderRight: `${sz / 2}px solid transparent`, borderBottom: `${sz}px solid ${isActive ? "#222" : "#aaa"}` }} />
-      </div>);
-    }
-    // ── blocks (square blocks) ──
-    if (variant === "blocks") {
-      const sz = isActive ? 12 : 6 + (1 - t) * 2;
-      const op = (isActive ? 1 : Math.max(0.25, 0.6 - abs * 0.12)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: sz, height: sz, borderRadius: 2, background: isActive ? "#222" : "#aaa" }} />
-      </div>);
-    }
-    // ── gradient (hue-shifting pills) ──
-    if (variant === "gradient") {
-      const hue = (i / humanoids.length) * 240;
-      const op = (isActive ? 1 : Math.max(0.3, 0.65 - abs * 0.12)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: isActive ? 6 : 4, height: isActive ? 24 : 12 + (1 - t) * 4, borderRadius: 99, background: isActive ? `hsl(${hue},60%,40%)` : `hsl(${hue},25%,72%)` }} />
-      </div>);
-    }
-    // ── rail (crossbar ties) ──
-    if (variant === "rail") {
-      const op = (isActive ? 1 : Math.max(0.3, 0.55 - abs * 0.1)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: isActive ? 24 : 16 + (1 - t) * 4, height: isActive ? 4 : 2.5, borderRadius: 1, background: isActive ? "#444" : "#bbb" }} />
-      </div>);
-    }
-    // ── morse (dot-dash encoding) ──
-    if (variant === "morse") {
-      const mm: Record<string, string> = { "0":"−−−−−","1":"·−−−−","2":"··−−−","3":"···−−","4":"····−","5":"·····","6":"−····","7":"−−···","8":"−−−··","9":"−−−−·" };
-      const code = String(i).split("").map(d => mm[d] || "").join(" ");
-      const fs = isActive ? 14 : 9 + (1 - t) * 2;
-      const op = (isActive ? 1 : Math.max(0.15, 0.4 - abs * 0.08)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
-        <span className="font-mono" style={{ fontSize: fs, color: isActive ? "#222" : "#bbb", fontWeight: isActive ? 700 : 400, letterSpacing: "0.1em", whiteSpace: "nowrap", transform: mirrored ? "scaleX(-1)" : undefined, display: "inline-block" }}>{code}</span>
-      </div>);
-    }
-    // ── scatter (cluster of tiny dots) ──
-    if (variant === "scatter") {
-      const count = isActive ? 7 : 3 + Math.round((1 - t) * 2);
-      const spread = isActive ? 10 : 5 + (1 - t) * 3;
-      const op = (isActive ? 1 : Math.max(0.3, 0.6 - abs * 0.12)) * bOp;
-      const seed = i * 7;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: "translate(-50%,-50%)", opacity: op }} onClick={() => onClickItem(i)}>
-        {Array.from({ length: count }, (_, j) => {
-          const ang = ((seed + j * 137.5) % 360) * Math.PI / 180;
-          const r = ((seed + j * 73) % 100) / 100 * spread;
-          return <div key={j} style={{ position: "absolute", left: Math.cos(ang) * r, top: Math.sin(ang) * r, width: isActive ? 3 : 2, height: isActive ? 3 : 2, borderRadius: "50%", background: isActive ? "#333" : "#aaa" }} />;
-        })}
-      </div>);
-    }
-    // ── cross (plus-shaped) ──
-    if (variant === "cross") {
-      const sz = isActive ? 12 : 6 + (1 - t) * 2, th = isActive ? 2.5 : 1.5;
-      const op = (isActive ? 1 : Math.max(0.25, 0.55 - abs * 0.1)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ position: "relative", width: sz, height: sz }}>
-          <div style={{ position: "absolute", left: "50%", top: 0, width: th, height: sz, marginLeft: -th / 2, borderRadius: 1, background: isActive ? "#222" : "#aaa" }} />
-          <div style={{ position: "absolute", top: "50%", left: 0, width: sz, height: th, marginTop: -th / 2, borderRadius: 1, background: isActive ? "#222" : "#aaa" }} />
+        <div className="flex flex-col items-center gap-1.5">
+          <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.02em", lineHeight: 1, color: isActive ? "#333" : "#bbb", fontWeight: isActive ? 600 : 400, transform: flip, display: "inline-block" }}>{num}</span>
+          <div style={{ width: isActive ? 5 : 3, height: isActive ? 14 : 6 + (1 - t) * 3, borderRadius: 99, background: isActive ? "#333" : "#c5c5c5", transform: `rotate(${angleDeg}deg)` }} />
         </div>
       </div>);
     }
-    // ── needle (long active indicator, dots for rest) ──
-    if (variant === "needle") {
-      const op = (isActive ? 1 : Math.max(0.2, 0.5 - abs * 0.1)) * bOp;
-      if (isActive) return (<div key={i} className="absolute" style={{ ...cr, opacity: op }}>
-        <div style={{ width: 2, height: 60, borderRadius: 99, background: "#222" }} />
-      </div>);
+    // ── h-reveal: pills only, number fades in near active ──
+    if (variant === "h-reveal") {
+      const op = (isActive ? 1 : Math.max(0.25, 0.6 - abs * 0.12)) * bOp;
+      const showNum = abs < 0.6;
+      const numOp = showNum ? Math.max(0, 1 - abs * 2.5) : 0;
       return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: "translate(-50%,-50%)", opacity: op }} onClick={() => onClickItem(i)}>
-        <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#bbb" }} />
+        <div className="flex items-center gap-2.5">
+          <div style={{ width: isActive ? 6 : 4, height: isActive ? 22 : 10 + (1 - t) * 4, borderRadius: 99, background: isActive ? "#222" : "#aaa", transform: `rotate(${angleDeg}deg)` }} />
+          {showNum && <span className="tabular-nums" style={{ fontSize: isActive ? 24 : 16, letterSpacing: "-0.04em", lineHeight: 1, color: "#333", fontWeight: 500, opacity: numOp, transform: flip, display: "inline-block", whiteSpace: "nowrap" }}>{num}</span>}
+        </div>
       </div>);
     }
-    // ── roman (roman numeral labels) ──
-    if (variant === "roman") {
+    // ── h-flush: number flush against pill, tight spacing ──
+    if (variant === "h-flush") {
+      const op = (isActive ? 1 : Math.max(0.06, 0.4 - abs * 0.1)) * bOp;
       const fs = isActive ? 22 : 12 + (1 - t) * 4;
-      const op = (isActive ? 1 : Math.max(0.12, 0.4 - abs * 0.08)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
-        <span style={{ fontSize: fs, fontWeight: isActive ? 600 : 400, letterSpacing: "0.06em", color: isActive ? "#222" : "#bbb", fontVariant: "small-caps", transform: mirrored ? "scaleX(-1)" : undefined, display: "inline-block" }}>{toRoman(i + 1)}</span>
+      return (<div key={i} className="absolute flex items-center cursor-pointer" style={{ ...co, opacity: op, gap: isActive ? 6 : 4 }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 4 : 2.5, height: isActive ? 18 : 8 + (1 - t) * 4, borderRadius: 99, background: isActive ? "#222" : "#ccc", transform: `rotate(${angleDeg}deg)` }} />
+        <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.06em", lineHeight: 1, color: isActive ? "#222" : "#ccc", fontWeight: isActive ? 600 : 300, transform: flip }}>{num}</span>
       </div>);
     }
-    // ── braille (braille unicode patterns) ──
-    if (variant === "braille") {
-      const fs = isActive ? 28 : 16 + (1 - t) * 4;
-      const op = (isActive ? 1 : Math.max(0.2, 0.5 - abs * 0.1)) * bOp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
-        <span style={{ fontSize: fs, color: isActive ? "#222" : "#bbb", transform: mirrored ? "scaleX(-1)" : undefined, display: "inline-block" }}>{String.fromCharCode(0x2800 + Math.min(i + 1, 255))}</span>
+    // ── h-mono: monospace font, pill as cursor/caret ──
+    if (variant === "h-mono") {
+      const op = (isActive ? 1 : Math.max(0.08, 0.45 - abs * 0.1)) * bOp;
+      const fs = isActive ? 20 : 12 + (1 - t) * 3;
+      return (<div key={i} className="absolute flex items-center gap-2 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 3 : 2, height: isActive ? 20 : 10 + (1 - t) * 3, borderRadius: 1, background: isActive ? "#222" : "#ccc" }} />
+        <span className="font-mono tabular-nums" style={{ fontSize: fs, lineHeight: 1, color: isActive ? "#222" : "#bbb", fontWeight: isActive ? 600 : 400, letterSpacing: "0.02em", transform: flip }}>{num}</span>
       </div>);
     }
-    // ── orbit (spinning dot around a ring) ──
-    const sz = isActive ? 16 : 8 + (1 - t) * 3;
-    const op = (isActive ? 1 : Math.max(0.25, 0.55 - abs * 0.1)) * bOp;
-    return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: "translate(-50%,-50%)", opacity: op }} onClick={() => onClickItem(i)}>
-      <div style={{ width: sz, height: sz, borderRadius: "50%", border: `${isActive ? 1.5 : 1}px solid ${isActive ? "#222" : "#bbb"}`, position: "relative" }}>
-        {isActive && <div className="animate-spin" style={{ position: "absolute", width: 4, height: 4, borderRadius: "50%", background: "#222", top: -2, left: "50%", marginLeft: -2, animationDuration: "2s" }} />}
-      </div>
+    // ── h-light: ultra-thin pill, light font weight, airy ──
+    if (variant === "h-light") {
+      const op = (isActive ? 1 : Math.max(0.1, 0.5 - abs * 0.13)) * bOp;
+      const fs = isActive ? 28 : 16 + (1 - t) * 5;
+      return (<div key={i} className="absolute flex items-center gap-3.5 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 2 : 1.5, height: isActive ? 26 : 12 + (1 - t) * 5, borderRadius: 99, background: isActive ? "#555" : "#d0d0d0", transform: `rotate(${angleDeg}deg)` }} />
+        <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.03em", lineHeight: 1, color: isActive ? "#555" : "#d0d0d0", fontWeight: isActive ? 300 : 200, transform: flip }}>{num}</span>
+      </div>);
+    }
+    // ── h-bold: heavy pill, heavy number, high contrast ──
+    if (variant === "h-bold") {
+      const op = (isActive ? 1 : Math.max(0.1, 0.5 - abs * 0.12)) * bOp;
+      const fs = isActive ? 32 : 16 + (1 - t) * 6;
+      return (<div key={i} className="absolute flex items-center gap-2.5 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 7 : 4, height: isActive ? 26 : 12 + (1 - t) * 5, borderRadius: 99, background: isActive ? "#111" : "#999", transform: `rotate(${angleDeg}deg)` }} />
+        <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.05em", lineHeight: 1, color: isActive ? "#111" : "#999", fontWeight: isActive ? 800 : 500, transform: flip }}>{num}</span>
+      </div>);
+    }
+    // ── h-spaced: wide letter-spacing, editorial feel ──
+    if (variant === "h-spaced") {
+      const op = (isActive ? 1 : Math.max(0.06, 0.42 - abs * 0.1)) * bOp;
+      const fs = isActive ? 16 : 9 + (1 - t) * 3;
+      return (<div key={i} className="absolute flex items-center gap-2 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 4 : 3, height: isActive ? 16 : 8 + (1 - t) * 3, borderRadius: 99, background: isActive ? "#333" : "#c5c5c5", transform: `rotate(${angleDeg}deg)` }} />
+        <span className="tabular-nums uppercase" style={{ fontSize: fs, letterSpacing: "0.2em", lineHeight: 1, color: isActive ? "#333" : "#c5c5c5", fontWeight: isActive ? 500 : 400, transform: flip }}>{num}</span>
+      </div>);
+    }
+    // ── h-underline: number with thin line underneath ──
+    if (variant === "h-underline") {
+      const op = (isActive ? 1 : Math.max(0.06, 0.42 - abs * 0.1)) * bOp;
+      const fs = isActive ? 24 : 13 + (1 - t) * 4;
+      return (<div key={i} className="absolute flex items-center gap-3 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 4 : 2.5, height: isActive ? 18 : 8 + (1 - t) * 3, borderRadius: 99, background: isActive ? "#333" : "#ccc", transform: `rotate(${angleDeg}deg)` }} />
+        <div className="flex flex-col" style={{ gap: isActive ? 3 : 2 }}>
+          <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.03em", lineHeight: 1, color: isActive ? "#333" : "#ccc", fontWeight: isActive ? 500 : 400, transform: flip, display: "inline-block" }}>{num}</span>
+          <div style={{ height: isActive ? 1.5 : 1, width: "100%", background: isActive ? "#333" : "#d5d5d5", borderRadius: 1 }} />
+        </div>
+      </div>);
+    }
+    // ── h-tag: number in a rounded tag/badge ──
+    const op = (isActive ? 1 : Math.max(0.08, 0.45 - abs * 0.12)) * bOp;
+    const fs = isActive ? 14 : 9 + (1 - t) * 2;
+    return (<div key={i} className="absolute flex items-center gap-2 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+      <div style={{ width: isActive ? 4 : 2.5, height: isActive ? 16 : 8 + (1 - t) * 3, borderRadius: 99, background: isActive ? "#333" : "#ccc", transform: `rotate(${angleDeg}deg)` }} />
+      <span className="tabular-nums" style={{ fontSize: fs, lineHeight: 1, color: isActive ? "#333" : "#c0c0c0", fontWeight: isActive ? 500 : 400, padding: isActive ? "4px 8px" : "2px 5px", borderRadius: 6, background: isActive ? "rgba(0,0,0,0.05)" : "rgba(0,0,0,0.02)", transform: flip, display: "inline-block", whiteSpace: "nowrap" }}>{num}</span>
     </div>);
   };
 
@@ -485,6 +395,7 @@ function Browse() {
   const [comparing, setComparing] = useState(false);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("pills");
+  const [nameStyle, setNameStyle] = useState<"top" | "bottom" | "left">("left");
 
   const stiffness = isCustom ? customStiffness : SCROLL_PRESETS[presetKey].stiffness;
   const damping = isCustom ? customDamping : SCROLL_PRESETS[presetKey].damping;
@@ -505,7 +416,7 @@ function Browse() {
     return (e: React.WheelEvent) => {
       e.preventDefault();
       acc.current += e.deltaY;
-      clearTimeout(decay.current);
+      if (decay.current) clearTimeout(decay.current);
       decay.current = setTimeout(() => { acc.current = 0; }, 150);
       if (Math.abs(acc.current) > thresholdRef.current) {
         go(acc.current > 0 ? 1 : -1);
@@ -550,6 +461,7 @@ function Browse() {
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
       if (e.key === "s") { setArcStyle((s) => ARC_STYLES[(ARC_STYLES.indexOf(s) + 1) % ARC_STYLES.length]); return; }
+      if (e.key === "n") { setNameStyle((s) => s === "top" ? "bottom" : s === "bottom" ? "left" : "top"); return; }
       if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); activeGo(1); }
       else if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); activeGo(-1); }
     };
@@ -576,7 +488,7 @@ function Browse() {
   const dur = "0.55s";
 
   return (
-    <div className="h-screen overflow-hidden select-none relative" style={{ background: "radial-gradient(ellipse 130% 80% at 50% 45%, #ffffff 0%, #f5f5f4 55%, #eaeae8 100%)" }}>
+    <div className="h-screen overflow-hidden select-none relative bg-white">
       {/* Stage floor */}
       <div className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ height: "38%", background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.015) 35%, rgba(0,0,0,0.04) 100%)" }} />
 
@@ -643,17 +555,22 @@ function Browse() {
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
         <div
           key={springL.index}
-          className="relative"
+          className="relative overflow-hidden"
           style={{
-            width: comparing ? "22vw" : "40vw",
-            height: comparing ? "55vh" : "65vh",
-            maxWidth: comparing ? 280 : 460,
+            width: comparing ? "24vw" : "32vw",
+            height: comparing ? "50vh" : "60vh",
+            maxWidth: comparing ? 320 : 420,
+            borderRadius: 28,
+            background: "#F7F7F7",
             transform: `translateX(${comparing ? "-14vw" : "0"}) scale(${1 - distL * robotSquish})`,
-            opacity: Math.max(0.5, 1 - distL * robotFade),
             transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}, transform ${dur} ${ease}`,
           }}
         >
-          <Image src={hL.imageUrl || "/robots/placeholder.png"} alt={hL.name} fill className="object-contain" sizes={comparing ? "22vw" : "40vw"} priority />
+          <div className="absolute inset-0 flex items-center justify-center p-6" style={{ opacity: Math.max(0.5, 1 - distL * robotFade) }}>
+            <div className="relative w-full h-full">
+              <Image src={hL.imageUrl || "/robots/placeholder.png"} alt={hL.name} fill className="object-contain" sizes={comparing ? "24vw" : "32vw"} priority />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -661,36 +578,76 @@ function Browse() {
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
         <div
           key={springR.index}
-          className="relative"
+          className="relative overflow-hidden"
           style={{
-            width: "22vw", height: "55vh", maxWidth: 280,
+            width: "24vw", height: "50vh", maxWidth: 320,
+            borderRadius: 28,
+            background: "#F7F7F7",
             transform: `translateX(${comparing ? "14vw" : "10vw"}) scale(${comparing ? 1 - distR * robotSquish : 0.9})`,
-            opacity: comparing ? Math.max(0.5, 1 - distR * robotFade) : 0,
+            opacity: comparing ? 1 : 0,
             transition: `transform ${dur} ${ease}, opacity ${dur} ${ease}`,
             pointerEvents: "none",
           }}
         >
-          <Image src={hR.imageUrl || "/robots/placeholder.png"} alt={hR.name} fill className="object-contain" sizes="22vw" />
-        </div>
-      </div>
-
-      {/* ── Stats above names — single mode left-aligned, compare mode centered ── */}
-      <div className="absolute left-8" style={{
-        bottom: comparing ? 80 : 70, zIndex: 2,
-        opacity: statsL.length > 0 && !comparing ? 1 : 0,
-        transition: `opacity 0.3s ${ease}`,
-      }}>
-        <div key={springL.index} className="animate-arc-stats space-y-1">
-          {statsL.map((s) => (
-            <div key={s.label} className="flex items-baseline gap-2">
-              <span className="text-[10px] tracking-widest uppercase" style={{ color: "#b4b4b4" }}>{s.label}</span>
-              <span className="text-[13px] font-medium tabular-nums" style={{ color: "#494440" }}>{s.value}</span>
+          <div className="absolute inset-0 flex items-center justify-center p-6" style={{ opacity: comparing ? Math.max(0.5, 1 - distR * robotFade) : 0 }}>
+            <div className="relative w-full h-full">
+              <Image src={hR.imageUrl || "/robots/placeholder.png"} alt={hR.name} fill className="object-contain" sizes="24vw" />
             </div>
-          ))}
+          </div>
         </div>
       </div>
 
-      {/* ── Compare stats — centered above names ── */}
+      {/* ── Stat cards — stacked to the left of robot card (single mode) ── */}
+      {!comparing && (
+        <div className="absolute pointer-events-none" style={{
+          zIndex: 2,
+          right: "calc(50% + 16vw + 8px)",
+          top: "calc(50% - 30vh)",
+        }}>
+          <div key={springL.index} className="animate-arc-stats flex flex-col gap-2" style={{ width: 160 }}>
+            {/* Name */}
+            <div style={{ borderRadius: 16, background: "#F7F7F7", padding: "14px 16px" }}>
+              <p className="text-[15px] font-semibold" style={{ color: "#343433", letterSpacing: "-0.02em" }}>{hL.name}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hL.manufacturer}{hL.year ? ` · ${hL.year}` : ""}</p>
+            </div>
+            {/* Overview */}
+            {(hL.height || hL.weight) && (
+              <div style={{ borderRadius: 16, background: "#F7F7F7", padding: "14px 16px" }}>
+                <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Overview</p>
+                <div className="space-y-1">
+                  {hL.height && <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.height} cm</span> height</p>}
+                  {hL.weight && <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.weight} kg</span> weight</p>}
+                  {hL.year && <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.year}</span> year</p>}
+                </div>
+              </div>
+            )}
+            {/* DOF */}
+            {hL.dof && (
+              <div style={{ borderRadius: 16, background: "#F7F7F7", padding: "14px 16px" }}>
+                <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Degrees of Freedom</p>
+                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.dof}</span> DOF</p>
+              </div>
+            )}
+            {/* Speed */}
+            {hL.maxSpeed && (
+              <div style={{ borderRadius: 16, background: "#F7F7F7", padding: "14px 16px" }}>
+                <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Speed</p>
+                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.maxSpeed} m/s</span> max</p>
+              </div>
+            )}
+            {/* Status */}
+            {hL.status && (
+              <div style={{ borderRadius: 16, background: "#F7F7F7", padding: "14px 16px" }}>
+                <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Status</p>
+                <p className="text-[12px]" style={{ color: "#494440", fontWeight: 500 }}>{hL.status}</p>
+                {hL.cost && hL.cost !== "N/A" && <p className="text-[12px] mt-0.5" style={{ color: "#747484" }}>{hL.cost}</p>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Compare stats — centered (compare mode) ── */}
       <div className="absolute left-1/2 -translate-x-1/2" style={{
         bottom: 80, zIndex: 3,
         opacity: comparing ? 1 : 0,
@@ -699,24 +656,23 @@ function Browse() {
         <StatCompare left={hL} right={hR} />
       </div>
 
-      {/* ── Left name — bottom-left, always ── */}
-      <div className="absolute bottom-8 left-8" style={{ zIndex: 2 }}>
-        <div key={springL.index} className="animate-arc-text">
-          <h2 className="text-[16px] font-semibold" style={{ letterSpacing: "-0.02em", color: "#343433" }}>{hL.name}</h2>
-          <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hL.manufacturer}{hL.year ? ` · ${hL.year}` : ""}</p>
-        </div>
-      </div>
-
-      {/* ── Right name — bottom-right, compare only ── */}
-      <div className="absolute bottom-8 right-8 text-right" style={{
-        zIndex: 2, opacity: comparing ? 1 : 0,
-        transition: `opacity 0.4s ${ease}`,
-      }}>
-        <div key={springR.index}>
-          <h2 className="text-[16px] font-semibold" style={{ letterSpacing: "-0.02em", color: "#343433" }}>{hR.name}</h2>
-          <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hR.manufacturer}{hR.year ? ` · ${hR.year}` : ""}</p>
-        </div>
-      </div>
+      {/* Compare names — bottom corners */}
+      {comparing && (
+        <>
+          <div className="absolute bottom-8 left-8" style={{ zIndex: 2 }}>
+            <div key={springL.index}>
+              <h2 className="text-[20px] font-semibold" style={{ letterSpacing: "-0.03em", color: "#343433" }}>{hL.name}</h2>
+              <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hL.manufacturer}</p>
+            </div>
+          </div>
+          <div className="absolute bottom-8 right-8 text-right" style={{ zIndex: 2 }}>
+            <div key={springR.index}>
+              <h2 className="text-[20px] font-semibold" style={{ letterSpacing: "-0.03em", color: "#343433" }}>{hR.name}</h2>
+              <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hR.manufacturer}</p>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Tuner ── */}
       <button className="absolute top-20 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowTuner(!showTuner)}>{showTuner ? "Close" : "Tune"}</button>
