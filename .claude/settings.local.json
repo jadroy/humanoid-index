@@ -24,7 +24,10 @@
       "Bash(npx next:*)",
       "Bash(npx tsc:*)",
       "WebFetch(domain:family.co)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index add app/globals.css app/page.tsx)",
+      "Bash(git -C:*)",
+      "Bash(wait:*)"
     ],
     "deny": [],
     "ask": []

@@ -498,10 +498,10 @@ function Browse() {
   // Wheel accumulators for each side
   const accL = useRef(0);
   const accR = useRef(0);
-  const decayL = useRef<ReturnType<typeof setTimeout>>();
-  const decayR = useRef<ReturnType<typeof setTimeout>>();
+  const decayL = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const decayR = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const makeWheelHandler = useCallback((go: (d: number) => void, acc: React.MutableRefObject<number>, decay: React.MutableRefObject<ReturnType<typeof setTimeout> | undefined>) => {
+  const makeWheelHandler = useCallback((go: (d: number) => void, acc: React.MutableRefObject<number>, decay: React.MutableRefObject<ReturnType<typeof setTimeout> | null>) => {
     return (e: React.WheelEvent) => {
       e.preventDefault();
       acc.current += e.deltaY;
@@ -576,7 +576,9 @@ function Browse() {
   const dur = "0.55s";
 
   return (
-    <div className="h-screen overflow-hidden select-none relative bg-white">
+    <div className="h-screen overflow-hidden select-none relative" style={{ background: "radial-gradient(ellipse 130% 80% at 50% 45%, #ffffff 0%, #f5f5f4 55%, #eaeae8 100%)" }}>
+      {/* Stage floor */}
+      <div className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ height: "38%", background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.015) 35%, rgba(0,0,0,0.04) 100%)" }} />
 
       {/* ── Left arc ── */}
       <div className="absolute top-0 bottom-0 left-0" style={{ width: "50%", zIndex: 2, opacity: comparing && activeSide !== "left" ? 0.35 : 1, transition: `opacity 0.3s ${ease}` }}
@@ -603,8 +605,8 @@ function Browse() {
       {/* ── Add compare button — large hover zone, button appears on hover ── */}
       {!comparing && (
         <div
-          className="absolute top-0 bottom-0 right-0 flex items-center justify-center group cursor-pointer"
-          style={{ width: "20%", zIndex: 3 }}
+          className="absolute top-0 bottom-0 right-0 flex items-center group cursor-pointer"
+          style={{ width: "45%", zIndex: 3, justifyContent: "center", paddingRight: "12%" }}
           onClick={enterCompare}
         >
           <div
@@ -613,6 +615,24 @@ function Browse() {
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
               <line x1="8" y1="3" x2="8" y2="13" />
+              <line x1="3" y1="8" x2="13" y2="8" />
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {/* ── Remove compare button — shows between the two robots on hover ── */}
+      {comparing && (
+        <div
+          className="absolute top-0 bottom-0 flex items-center justify-center group cursor-pointer"
+          style={{ left: "40%", width: "20%", zIndex: 3 }}
+          onClick={exitCompare}
+        >
+          <div
+            className="rounded-full flex items-center justify-center transition-all duration-300 opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100"
+            style={{ width: 40, height: 40, background: "#ebebeb" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
               <line x1="3" y1="8" x2="13" y2="8" />
             </svg>
           </div>
@@ -654,73 +674,48 @@ function Browse() {
         </div>
       </div>
 
-      {/* ── Info panel (single mode) — between arc and robot ── */}
-      <div className="absolute top-1/2 -translate-y-1/2" style={{
-        left: "8%", zIndex: 2, opacity: comparing ? 0 : 1, pointerEvents: comparing ? "none" : "auto",
+      {/* ── Stats above names — single mode left-aligned, compare mode centered ── */}
+      <div className="absolute left-8" style={{
+        bottom: comparing ? 80 : 70, zIndex: 2,
+        opacity: statsL.length > 0 && !comparing ? 1 : 0,
         transition: `opacity 0.3s ${ease}`,
       }}>
-        <div key={springL.index} className="animate-arc-text">
-          <h2 className="text-[20px] font-semibold" style={{ letterSpacing: "-0.02em", color: "#343433" }}>{hL.name}</h2>
-          <p className="text-[12px] mt-1" style={{ color: "#747484" }}>{hL.manufacturer}{hL.year ? ` · ${hL.year}` : ""}</p>
-          {statsL.length > 0 && (
-            <div className="mt-4 space-y-1.5">
-              {statsL.map((s) => (
-                <div key={s.label} className="flex items-baseline gap-2.5">
-                  <span className="text-[10px] tracking-widest uppercase" style={{ color: "#b4b4b4" }}>{s.label}</span>
-                  <span className="text-[13px] font-medium tabular-nums" style={{ color: "#494440" }}>{s.value}</span>
-                </div>
-              ))}
+        <div key={springL.index} className="animate-arc-stats space-y-1">
+          {statsL.map((s) => (
+            <div key={s.label} className="flex items-baseline gap-2">
+              <span className="text-[10px] tracking-widest uppercase" style={{ color: "#b4b4b4" }}>{s.label}</span>
+              <span className="text-[13px] font-medium tabular-nums" style={{ color: "#494440" }}>{s.value}</span>
             </div>
-          )}
+          ))}
         </div>
       </div>
 
-      {/* ── Names under each robot (compare mode) ── */}
-      <div className="absolute inset-0 flex items-end justify-center pointer-events-none" style={{
-        zIndex: 2, opacity: comparing ? 1 : 0, paddingBottom: "18vh",
+      {/* ── Compare stats — centered above names ── */}
+      <div className="absolute left-1/2 -translate-x-1/2" style={{
+        bottom: 80, zIndex: 3,
+        opacity: comparing ? 1 : 0,
         transition: `opacity 0.4s ${ease}`,
-      }}>
-        <div className="text-center" style={{ transform: `translateX(${comparing ? "-14vw" : "0"})`, transition: `transform ${dur} ${ease}` }}>
-          <h3 className="text-[15px] font-semibold" style={{ color: "#343433" }}>{hL.name}</h3>
-          <p className="text-[11px]" style={{ color: "#747484" }}>{hL.manufacturer}</p>
-        </div>
-        <div style={{ width: "6vw" }} />
-        <div className="text-center" style={{ transform: `translateX(${comparing ? "14vw" : "0"})`, transition: `transform ${dur} ${ease}` }}>
-          <h3 className="text-[15px] font-semibold" style={{ color: "#343433" }}>{hR.name}</h3>
-          <p className="text-[11px]" style={{ color: "#747484" }}>{hR.manufacturer}</p>
-        </div>
-      </div>
-
-      {/* ── Stats centered between robots (compare mode) ── */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2" style={{
-        zIndex: 3, opacity: comparing ? 1 : 0, pointerEvents: comparing ? "auto" : "none",
-        transform: `translateX(-50%) translateY(${comparing ? "0" : "12px"})`,
-        transition: `opacity 0.4s ${ease}, transform 0.4s ${ease}`,
       }}>
         <StatCompare left={hL} right={hR} />
       </div>
 
-      {/* ── Bottom bar — adapts between modes ── */}
-      <div className="absolute bottom-8 right-8 flex items-center gap-4" style={{ zIndex: 4 }}>
-        {comparing && (
-          <>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px]" style={{ color: activeSide === "left" ? "#343433" : "#c4c4c4" }}>L</span>
-              <span className="text-[9px]" style={{ color: "#ddd" }}>tab</span>
-              <span className="text-[10px]" style={{ color: activeSide === "right" ? "#343433" : "#c4c4c4" }}>R</span>
-            </div>
-            <button className="text-[11px] cursor-pointer" style={{ color: "#c4c4c4" }} onClick={exitCompare}>esc</button>
-          </>
-        )}
-        {!comparing && (
-          <>
-            <button className="text-[10px] tracking-widest uppercase cursor-pointer transition-colors hover:text-neutral-500" style={{ color: "#c4c4c4" }}
-              onClick={() => setArcStyle((s) => ARC_STYLES[(ARC_STYLES.indexOf(s) + 1) % ARC_STYLES.length])}>
-              {arcStyleLabels[arcStyle]} <span className="text-[9px] normal-case" style={{ color: "#ddd" }}>s</span>
-            </button>
-            <span className="text-[11px] tracking-widest tabular-nums" style={{ color: "#c4c4c4" }}>{String(springL.index + 1).padStart(2, "0")} / {String(humanoids.length).padStart(2, "0")}</span>
-          </>
-        )}
+      {/* ── Left name — bottom-left, always ── */}
+      <div className="absolute bottom-8 left-8" style={{ zIndex: 2 }}>
+        <div key={springL.index} className="animate-arc-text">
+          <h2 className="text-[16px] font-semibold" style={{ letterSpacing: "-0.02em", color: "#343433" }}>{hL.name}</h2>
+          <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hL.manufacturer}{hL.year ? ` · ${hL.year}` : ""}</p>
+        </div>
+      </div>
+
+      {/* ── Right name — bottom-right, compare only ── */}
+      <div className="absolute bottom-8 right-8 text-right" style={{
+        zIndex: 2, opacity: comparing ? 1 : 0,
+        transition: `opacity 0.4s ${ease}`,
+      }}>
+        <div key={springR.index}>
+          <h2 className="text-[16px] font-semibold" style={{ letterSpacing: "-0.02em", color: "#343433" }}>{hR.name}</h2>
+          <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hR.manufacturer}{hR.year ? ` · ${hR.year}` : ""}</p>
+        </div>
       </div>
 
       {/* ── Tuner ── */}
