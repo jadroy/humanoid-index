@@ -593,7 +593,12 @@ function Browse() {
         const cardMorph = "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.45s cubic-bezier(0.16, 1, 0.3, 1)";
 
         const renderCards = (cards: ReturnType<typeof makeCards>) => (
-          <div className="flex flex-col gap-2 flex-shrink-0" style={{ width: 150 }}>
+          <div className="flex flex-col gap-2 flex-shrink-0 overflow-hidden" style={{
+            width: 150,
+            height: comparing ? "50vh" : "60vh",
+            maxHeight: comparing ? "50vh" : "60vh",
+            transition: `height ${dur} ${ease}, max-height ${dur} ${ease}`,
+          }}>
             {cards.map((c) => (
               <div key={c.key} className="overflow-hidden" style={{
                 borderRadius: 16, background: "#F7F7F7",
