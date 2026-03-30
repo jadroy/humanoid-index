@@ -597,55 +597,68 @@ function Browse() {
         </div>
       </div>
 
-      {/* ── Stat cards — stacked to the left of robot card (single mode) ── */}
-      {!comparing && (
-        <div className="absolute pointer-events-none" style={{
-          zIndex: 2,
-          right: "calc(50% + 16vw + 8px)",
-          top: "calc(50% - 30vh)",
-        }}>
-          <div key={springL.index} className="animate-arc-stats flex flex-col gap-2" style={{ width: 160 }}>
-            {/* Name */}
-            <div style={{ borderRadius: 16, background: "#F7F7F7", padding: "14px 16px" }}>
+      {/* ── Stat cards — always rendered, morph with transitions ── */}
+      {!comparing && (() => {
+        const cards = [
+          { key: "name", show: true, content: (
+            <>
               <p className="text-[15px] font-semibold" style={{ color: "#343433", letterSpacing: "-0.02em" }}>{hL.name}</p>
               <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hL.manufacturer}{hL.year ? ` · ${hL.year}` : ""}</p>
-            </div>
-            {/* Overview */}
-            {(hL.height || hL.weight) && (
-              <div style={{ borderRadius: 16, background: "#F7F7F7", padding: "14px 16px" }}>
-                <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Overview</p>
-                <div className="space-y-1">
-                  {hL.height && <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.height} cm</span> height</p>}
-                  {hL.weight && <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.weight} kg</span> weight</p>}
-                  {hL.year && <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.year}</span> year</p>}
+            </>
+          )},
+          { key: "overview", show: !!(hL.height || hL.weight), content: (
+            <>
+              <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Overview</p>
+              <div className="space-y-1">
+                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.height || "—"} cm</span> height</p>
+                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.weight || "—"} kg</span> weight</p>
+              </div>
+            </>
+          )},
+          { key: "dof", show: !!hL.dof, content: (
+            <>
+              <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Degrees of Freedom</p>
+              <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.dof || "—"}</span> DOF</p>
+            </>
+          )},
+          { key: "speed", show: !!hL.maxSpeed, content: (
+            <>
+              <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Speed</p>
+              <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.maxSpeed || "—"} m/s</span> max</p>
+            </>
+          )},
+          { key: "status", show: !!hL.status, content: (
+            <>
+              <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Status</p>
+              <p className="text-[12px]" style={{ color: "#494440", fontWeight: 500 }}>{hL.status || "—"}</p>
+              {hL.cost && hL.cost !== "N/A" && <p className="text-[12px] mt-0.5" style={{ color: "#747484" }}>{hL.cost}</p>}
+            </>
+          )},
+        ];
+        return (
+          <div className="absolute pointer-events-none" style={{
+            zIndex: 2,
+            right: "calc(50% + 16vw + 8px)",
+            top: "calc(50% - 30vh)",
+          }}>
+            <div className="flex flex-col gap-2" style={{ width: 160 }}>
+              {cards.map((c) => (
+                <div key={c.key} className="overflow-hidden" style={{
+                  borderRadius: 16,
+                  background: "#F7F7F7",
+                  maxHeight: c.show ? 120 : 0,
+                  padding: c.show ? "14px 16px" : "0 16px",
+                  opacity: c.show ? 1 : 0,
+                  marginBottom: c.show ? 0 : -8,
+                  transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}>
+                  {c.content}
                 </div>
-              </div>
-            )}
-            {/* DOF */}
-            {hL.dof && (
-              <div style={{ borderRadius: 16, background: "#F7F7F7", padding: "14px 16px" }}>
-                <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Degrees of Freedom</p>
-                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.dof}</span> DOF</p>
-              </div>
-            )}
-            {/* Speed */}
-            {hL.maxSpeed && (
-              <div style={{ borderRadius: 16, background: "#F7F7F7", padding: "14px 16px" }}>
-                <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Speed</p>
-                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.maxSpeed} m/s</span> max</p>
-              </div>
-            )}
-            {/* Status */}
-            {hL.status && (
-              <div style={{ borderRadius: 16, background: "#F7F7F7", padding: "14px 16px" }}>
-                <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Status</p>
-                <p className="text-[12px]" style={{ color: "#494440", fontWeight: 500 }}>{hL.status}</p>
-                {hL.cost && hL.cost !== "N/A" && <p className="text-[12px] mt-0.5" style={{ color: "#747484" }}>{hL.cost}</p>}
-              </div>
-            )}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Compare stats — centered (compare mode) ── */}
       <div className="absolute left-1/2 -translate-x-1/2" style={{
