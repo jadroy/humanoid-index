@@ -168,10 +168,10 @@ const arcStyleLabels: Record<ArcStyle, string> = {
 // Arc renderer — multiple visual styles along a translucent curved track
 // ═══════════════════════════════════════════════════════════════
 function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { pos: number; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle }) {
-  const R = 360, off = 40, range = 3;
+  const R = 300, off = 30, range = 2;
   const cx = -R + off;
   const getP = (o: number) => {
-    const a = (o * 10 * Math.PI) / 180;
+    const a = (o * 8 * Math.PI) / 180;
     return { x: cx + R * Math.cos(a), y: R * Math.sin(a) };
   };
   const items: { i: number; o: number }[] = [];
@@ -179,7 +179,7 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { po
   for (let n = f - range; n <= f + range + 1; n++) if (n >= 0 && n < humanoids.length) items.push({ i: n, o: n - pos });
 
   const sid = mirrored ? "r" : "l";
-  const noTrack = variant === "classic" || variant === "minimal";
+  const noTrack = true;
 
   const track = (
     <svg className="absolute inset-0 w-full h-full pointer-events-none">
@@ -551,141 +551,104 @@ function Browse() {
         </div>
       )}
 
-      {/* ── Left robot — centered in single, slides left in compare ── */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
-        <div
-          key={springL.index}
-          className="relative overflow-hidden"
-          style={{
-            width: comparing ? "24vw" : "32vw",
-            height: comparing ? "50vh" : "60vh",
-            maxWidth: comparing ? 320 : 420,
-            borderRadius: 28,
-            background: "#F7F7F7",
-            transform: `translateX(${comparing ? "-14vw" : "0"}) scale(${1 - distL * robotSquish})`,
-            transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}, transform ${dur} ${ease}`,
-          }}
-        >
-          <div className="absolute inset-0 flex items-center justify-center p-6" style={{ opacity: Math.max(0.5, 1 - distL * robotFade) }}>
-            <div className="relative w-full h-full">
-              <Image src={hL.imageUrl || "/robots/placeholder.png"} alt={hL.name} fill className="object-contain" sizes={comparing ? "24vw" : "32vw"} priority />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Right robot — hidden in single, fades in for compare ── */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
-        <div
-          key={springR.index}
-          className="relative overflow-hidden"
-          style={{
-            width: "24vw", height: "50vh", maxWidth: 320,
-            borderRadius: 28,
-            background: "#F7F7F7",
-            transform: `translateX(${comparing ? "14vw" : "10vw"}) scale(${comparing ? 1 - distR * robotSquish : 0.9})`,
-            opacity: comparing ? 1 : 0,
-            transition: `transform ${dur} ${ease}, opacity ${dur} ${ease}`,
-            pointerEvents: "none",
-          }}
-        >
-          <div className="absolute inset-0 flex items-center justify-center p-6" style={{ opacity: comparing ? Math.max(0.5, 1 - distR * robotFade) : 0 }}>
-            <div className="relative w-full h-full">
-              <Image src={hR.imageUrl || "/robots/placeholder.png"} alt={hR.name} fill className="object-contain" sizes="24vw" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Stat cards — always rendered, morph with transitions ── */}
-      {!comparing && (() => {
-        const cards = [
+      {/* ── Humanoid groups: [stats | robot] per side ── */}
+      {(() => {
+        const makeCards = (h: typeof humanoids[0]) => [
           { key: "name", show: true, content: (
             <>
-              <p className="text-[15px] font-semibold" style={{ color: "#343433", letterSpacing: "-0.02em" }}>{hL.name}</p>
-              <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hL.manufacturer}{hL.year ? ` · ${hL.year}` : ""}</p>
+              <p className="text-[15px] font-semibold" style={{ color: "#343433", letterSpacing: "-0.02em" }}>{h.name}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{h.manufacturer}{h.year ? ` · ${h.year}` : ""}</p>
             </>
           )},
-          { key: "overview", show: !!(hL.height || hL.weight), content: (
+          { key: "overview", show: !!(h.height || h.weight), content: (
             <>
               <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Overview</p>
               <div className="space-y-1">
-                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.height || "—"} cm</span> height</p>
-                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.weight || "—"} kg</span> weight</p>
+                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{h.height || "—"} cm</span> height</p>
+                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{h.weight || "—"} kg</span> weight</p>
               </div>
             </>
           )},
-          { key: "dof", show: !!hL.dof, content: (
+          { key: "dof", show: !!h.dof, content: (
             <>
               <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Degrees of Freedom</p>
-              <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.dof || "—"}</span> DOF</p>
+              <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{h.dof || "—"}</span> DOF</p>
             </>
           )},
-          { key: "speed", show: !!hL.maxSpeed, content: (
+          { key: "speed", show: !!h.maxSpeed, content: (
             <>
               <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Speed</p>
-              <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{hL.maxSpeed || "—"} m/s</span> max</p>
+              <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{h.maxSpeed || "—"} m/s</span> max</p>
             </>
           )},
-          { key: "status", show: !!hL.status, content: (
+          { key: "status", show: !!h.status, content: (
             <>
               <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Status</p>
-              <p className="text-[12px]" style={{ color: "#494440", fontWeight: 500 }}>{hL.status || "—"}</p>
-              {hL.cost && hL.cost !== "N/A" && <p className="text-[12px] mt-0.5" style={{ color: "#747484" }}>{hL.cost}</p>}
+              <p className="text-[12px]" style={{ color: "#494440", fontWeight: 500 }}>{h.status || "—"}</p>
+              {h.cost && h.cost !== "N/A" && <p className="text-[12px] mt-0.5" style={{ color: "#747484" }}>{h.cost}</p>}
             </>
           )},
         ];
-        return (
-          <div className="absolute pointer-events-none" style={{
-            zIndex: 2,
-            right: "calc(50% + 16vw + 8px)",
-            top: "calc(50% - 30vh)",
+
+        const cardMorph = "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.45s cubic-bezier(0.16, 1, 0.3, 1)";
+
+        const renderCards = (cards: ReturnType<typeof makeCards>) => (
+          <div className="flex flex-col gap-2 flex-shrink-0" style={{ width: 150 }}>
+            {cards.map((c) => (
+              <div key={c.key} className="overflow-hidden" style={{
+                borderRadius: 16, background: "#F7F7F7",
+                maxHeight: c.show ? 120 : 0,
+                padding: c.show ? "14px 16px" : "0 16px",
+                opacity: c.show ? 1 : 0,
+                marginBottom: c.show ? 0 : -8,
+                transition: cardMorph,
+              }}>{c.content}</div>
+            ))}
+          </div>
+        );
+
+        const renderRobot = (h: typeof humanoids[0], dist: number, idx: number) => (
+          <div className="relative overflow-hidden flex-shrink-0" style={{
+            width: comparing ? "22vw" : "30vw",
+            height: comparing ? "50vh" : "60vh",
+            maxWidth: comparing ? 300 : 400,
+            borderRadius: 28,
+            background: "#F7F7F7",
+            transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
           }}>
-            <div className="flex flex-col gap-2" style={{ width: 160 }}>
-              {cards.map((c) => (
-                <div key={c.key} className="overflow-hidden" style={{
-                  borderRadius: 16,
-                  background: "#F7F7F7",
-                  maxHeight: c.show ? 120 : 0,
-                  padding: c.show ? "14px 16px" : "0 16px",
-                  opacity: c.show ? 1 : 0,
-                  marginBottom: c.show ? 0 : -8,
-                  transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
-                }}>
-                  {c.content}
-                </div>
-              ))}
+            <div className="absolute inset-0 flex items-center justify-center p-6" style={{ opacity: Math.max(0.5, 1 - dist * robotFade) }}>
+              <div className="relative w-full h-full">
+                <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes={comparing ? "22vw" : "30vw"} priority={idx === 0} />
+              </div>
+            </div>
+          </div>
+        );
+
+        return (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1, gap: comparing ? "4vw" : 0, transition: `gap ${dur} ${ease}` }}>
+            {/* Left group: stats + robot */}
+            <div className="flex items-start gap-2" style={{
+              transform: `translateX(${comparing ? "0" : "0"})`,
+              transition: `transform ${dur} ${ease}`,
+            }}>
+              {renderCards(makeCards(hL))}
+              {renderRobot(hL, distL, 0)}
+            </div>
+
+            {/* Right group: robot + stats */}
+            <div className="flex items-start gap-2" style={{
+              opacity: comparing ? 1 : 0,
+              transform: `scale(${comparing ? 1 : 0.95})`,
+              width: comparing ? "auto" : 0,
+              overflow: "hidden",
+              transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}`,
+            }}>
+              {renderRobot(hR, distR, 1)}
+              {renderCards(makeCards(hR))}
             </div>
           </div>
         );
       })()}
-
-      {/* ── Compare stats — centered (compare mode) ── */}
-      <div className="absolute left-1/2 -translate-x-1/2" style={{
-        bottom: 80, zIndex: 3,
-        opacity: comparing ? 1 : 0,
-        transition: `opacity 0.4s ${ease}`,
-      }}>
-        <StatCompare left={hL} right={hR} />
-      </div>
-
-      {/* Compare names — bottom corners */}
-      {comparing && (
-        <>
-          <div className="absolute bottom-8 left-8" style={{ zIndex: 2 }}>
-            <div key={springL.index}>
-              <h2 className="text-[20px] font-semibold" style={{ letterSpacing: "-0.03em", color: "#343433" }}>{hL.name}</h2>
-              <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hL.manufacturer}</p>
-            </div>
-          </div>
-          <div className="absolute bottom-8 right-8 text-right" style={{ zIndex: 2 }}>
-            <div key={springR.index}>
-              <h2 className="text-[20px] font-semibold" style={{ letterSpacing: "-0.03em", color: "#343433" }}>{hR.name}</h2>
-              <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{hR.manufacturer}</p>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* ── Tuner ── */}
       <button className="absolute top-20 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowTuner(!showTuner)}>{showTuner ? "Close" : "Tune"}</button>
