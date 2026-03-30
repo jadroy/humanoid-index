@@ -21,15 +21,11 @@ function LayoutSwitcher({
   onChange,
   indexSubView,
   onIndexSubViewChange,
-  onToggleChat,
-  chatOpen,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
   indexSubView: IndexSubView;
   onIndexSubViewChange: (v: IndexSubView) => void;
-  onToggleChat: () => void;
-  chatOpen: boolean;
 }) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
@@ -77,14 +73,6 @@ function LayoutSwitcher({
           )}
         </div>
 
-        {/* Guide */}
-        <button
-          onClick={onToggleChat}
-          className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
-          style={{ background: chatOpen ? "#343433" : "transparent", color: chatOpen ? "white" : "#c4c4c4" }}
-        >
-          <span className="text-[12px] font-medium">{chatOpen ? "×" : "?"}</span>
-        </button>
       </div>
     </nav>
   );
@@ -383,7 +371,7 @@ function StatCompare({ left, right }: { left: typeof humanoids[0]; right: typeof
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse() {
+function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -394,7 +382,7 @@ function Browse() {
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
-  const [arcStyle, setArcStyle] = useState<ArcStyle>("pills");
+  const [arcStyle, setArcStyle] = useState<ArcStyle>("classic");
   const [nameStyle, setNameStyle] = useState<"top" | "bottom" | "left">("left");
 
   const stiffness = isCustom ? customStiffness : SCROLL_PRESETS[presetKey].stiffness;
@@ -405,6 +393,11 @@ function Browse() {
   const springL = useSpring(stiffness, damping);
   const springR = useSpring(stiffness, damping);
   const activeGo = comparing ? (activeSide === "left" ? springL.go : springR.go) : springL.go;
+
+  // External navigation from chat
+  useEffect(() => {
+    if (goToIndex != null) springL.jumpTo(goToIndex);
+  }, [goToIndex, springL.jumpTo]);
 
   // Wheel accumulators for each side
   const accL = useRef(0);
@@ -489,9 +482,6 @@ function Browse() {
 
   return (
     <div className="h-screen overflow-hidden select-none relative bg-white">
-      {/* Stage floor */}
-      <div className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ height: "38%", background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.015) 35%, rgba(0,0,0,0.04) 100%)" }} />
-
       {/* ── Left arc ── */}
       <div className="absolute top-0 bottom-0 left-0" style={{ width: "50%", zIndex: 2, opacity: comparing && activeSide !== "left" ? 0.35 : 1, transition: `opacity 0.3s ${ease}` }}
         onMouseEnter={() => comparing && setActiveSide("left")}
@@ -587,6 +577,21 @@ function Browse() {
               <p className="text-[12px]" style={{ color: "#494440", fontWeight: 500 }}>{h.status || "—"}</p>
               {h.cost && h.cost !== "N/A" && <p className="text-[12px] mt-0.5" style={{ color: "#747484" }}>{h.cost}</p>}
             </>
+          )},
+          { key: "buy", show: !!(h.purchaseUrl || (h.cost && h.cost !== "N/A")), content: (
+            h.purchaseUrl ? (
+              <a href={h.purchaseUrl} target="_blank" rel="noopener noreferrer"
+                className="pointer-events-auto block rounded-2xl"
+                style={{ textDecoration: "none", background: "#2563eb", margin: "-14px -16px", padding: "14px 16px" }}>
+                <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.7)" }}>From {h.cost && h.cost !== "N/A" ? h.cost : ""}</p>
+                <p className="text-[13px] font-medium mt-1" style={{ color: "#fff" }}>Buy &rarr;</p>
+              </a>
+            ) : (
+              <div className="pointer-events-auto">
+                <p className="text-[11px]" style={{ color: "#999" }}>{h.status === "In Production" ? "Starting at" : "Est."}</p>
+                <p className="text-[14px] font-semibold mt-0.5" style={{ color: "#343433", letterSpacing: "-0.02em" }}>{h.cost}</p>
+              </div>
+            )
           )},
         ];
 
@@ -902,7 +907,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
 // ═══════════════════════════════════════════════════════════════
 // Guide chat — keyword matching to help find the right humanoid
 // ═══════════════════════════════════════════════════════════════
-function GuideChat({ onClose }: { onClose: () => void }) {
+function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<{ role: "user" | "guide"; text: string; suggestions?: typeof humanoids }[]>([
     { role: "guide", text: "What kind of humanoid are you looking for? I can help you narrow it down." },
@@ -951,8 +956,8 @@ function GuideChat({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-6 px-4 pointer-events-none">
-      <div className="w-full max-w-[420px] rounded-2xl overflow-hidden pointer-events-auto" style={{ background: "white", border: "1px solid #e8e8e8", boxShadow: "0 8px 32px rgba(0,0,0,0.08)" }}>
+    <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-16 px-4 pointer-events-none">
+      <div className="w-full max-w-[420px] rounded-2xl overflow-hidden pointer-events-auto animate-slide-from-bottom" style={{ background: "white", border: "1px solid #e8e8e8", boxShadow: "0 8px 32px rgba(0,0,0,0.08)" }}>
         {/* Messages */}
         <div ref={scrollRef} className="max-h-[300px] overflow-y-auto p-4 space-y-3 scrollbar-hide">
           {messages.map((m, i) => (
@@ -965,17 +970,21 @@ function GuideChat({ onClose }: { onClose: () => void }) {
               </div>
               {m.suggestions && (
                 <div className="flex gap-2 mt-2 ml-1">
-                  {m.suggestions.map((h) => (
-                    <div key={h.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl" style={{ background: "#f5f5f5" }}>
-                      <div className="relative w-6 h-8 flex-shrink-0">
-                        <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes="24px" />
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-medium" style={{ color: "#343433" }}>{h.name}</p>
-                        <p className="text-[9px]" style={{ color: "#747484" }}>{h.manufacturer}</p>
-                      </div>
-                    </div>
-                  ))}
+                  {m.suggestions.map((h) => {
+                    const idx = humanoids.findIndex((x) => x.id === h.id);
+                    return (
+                      <button key={h.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl cursor-pointer transition-all hover:scale-105" style={{ background: "#f5f5f5" }}
+                        onClick={() => onSelect(idx)}>
+                        <div className="relative w-6 h-8 flex-shrink-0">
+                          <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes="24px" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-[11px] font-medium" style={{ color: "#343433" }}>{h.name}</p>
+                          <p className="text-[9px]" style={{ color: "#747484" }}>{h.manufacturer}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1005,6 +1014,15 @@ export default function Home() {
   const [layout, setLayout] = useState<Layout>("E");
   const [indexSubView, setIndexSubView] = useState<IndexSubView>("list");
   const [chatOpen, setChatOpen] = useState(false);
+  const [goToIndex, setGoToIndex] = useState<number | null>(null);
+
+  const handleSelectHumanoid = (idx: number) => {
+    setLayout("E");
+    setGoToIndex(idx);
+    setChatOpen(false);
+    // Reset so the same index can be selected again
+    setTimeout(() => setGoToIndex(null), 100);
+  };
 
   return (
     <main className="min-h-screen bg-white">
@@ -1013,15 +1031,23 @@ export default function Home() {
         onChange={setLayout}
         indexSubView={indexSubView}
         onIndexSubViewChange={setIndexSubView}
-        onToggleChat={() => setChatOpen(!chatOpen)}
-        chatOpen={chatOpen}
       />
 
-      {layout === "E" && <Browse />}
+      {layout === "E" && <Browse goToIndex={goToIndex} />}
       {layout === "V" && <Grid />}
       {layout === "Z" && <TextIndex subView={indexSubView} />}
 
-      {chatOpen && <GuideChat onClose={() => setChatOpen(false)} />}
+      {/* Bottom ? button */}
+      <button
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
+        style={{ background: chatOpen ? "#343433" : "#F7F7F7", color: chatOpen ? "white" : "#999" }}
+        onClick={() => setChatOpen(!chatOpen)}
+      >
+        <span className="text-[14px] font-medium">{chatOpen ? "×" : "?"}</span>
+      </button>
+
+      {/* Chat panel — slides up from bottom */}
+      {chatOpen && <GuideChat onSelect={handleSelectHumanoid} />}
     </main>
   );
 }
