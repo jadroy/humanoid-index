@@ -484,9 +484,9 @@ function StatCompare({ left, right }: { left: typeof humanoids[0]; right: typeof
         const w = lv > rv ? "left" : rv > lv ? "right" : "tie";
         return (
           <div key={k.key} className="flex items-baseline justify-between gap-6" style={{ minWidth: 200 }}>
-            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "left" ? "var(--c-ink)" : "#c4c4c4" }}>{lv ? `${lv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
-            <span className="text-[9px] tracking-widest uppercase" style={{ color: "#b4b4b4" }}>{k.label}</span>
-            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "right" ? "var(--c-ink)" : "#c4c4c4" }}>{rv ? `${rv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
+            <span className="text-[12px] font-medium tabular-nums" style={{ color: w === "left" ? "var(--c-ink)" : "#c4c4c4" }}>{lv ? `${lv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
+            <span className="text-[10px] tracking-widest uppercase" style={{ color: "#b4b4b4" }}>{k.label}</span>
+            <span className="text-[12px] font-medium tabular-nums" style={{ color: w === "right" ? "var(--c-ink)" : "#c4c4c4" }}>{rv ? `${rv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
           </div>
         );
       })}
@@ -585,7 +585,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
               <p className="text-[10px] tracking-widest uppercase font-medium mb-3" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
                 {h.manufacturer}
               </p>
-              <h2 className="text-[32px] font-semibold leading-none" style={{ color: "#171717", letterSpacing: "-0.04em" }}>
+              <h2 className="text-[32px] font-medium leading-none" style={{ color: "#171717", letterSpacing: "-0.04em" }}>
                 {h.name}
               </h2>
               {h.year && (
@@ -603,7 +603,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
 
             <div className="animate-expand-content" style={{ animationDelay: "0.25s" }}>
               {h.cost && h.cost !== "N/A" && (
-                <p className="text-[18px] font-semibold mt-8" style={{ color: "#171717", letterSpacing: "-0.03em" }}>
+                <p className="text-[18px] font-medium mt-8" style={{ color: "#171717", letterSpacing: "-0.03em" }}>
                   {h.cost}
                 </p>
               )}
@@ -628,7 +628,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
                   <p className="text-[9px] tracking-widest uppercase" style={{ color: "#a3a3a3", letterSpacing: "0.1em" }}>
                     {s.label}
                   </p>
-                  <p className="text-[13px] font-medium mt-1" style={{ color: "#262626" }}>
+                  <p className="text-[12px] font-medium mt-1" style={{ color: "#262626" }}>
                     {s.value}
                   </p>
                 </div>
@@ -673,8 +673,15 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [comparing, setComparing] = useState(false);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("classic");
-  const [nameStyle, setNameStyle] = useState<"top" | "bottom" | "left">("left");
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+
+  // Layout dimensions
+  const [robotW, setRobotW] = useState(30);       // vw
+  const [robotH, setRobotH] = useState(60);       // vh
+  const [robotMaxW, setRobotMaxW] = useState(400); // px
+  const [statsW, setStatsW] = useState(150);       // px
+  const [cardGap, setCardGap] = useState(8);       // px
+  const [cardRadius, setCardRadius] = useState(6);  // px
 
   const stiffness = isCustom ? customStiffness : SCROLL_PRESETS[presetKey].stiffness;
   const damping = isCustom ? customDamping : SCROLL_PRESETS[presetKey].damping;
@@ -748,7 +755,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
       if (e.key === "s") { setArcStyle((s) => ARC_STYLES[(ARC_STYLES.indexOf(s) + 1) % ARC_STYLES.length]); return; }
-      if (e.key === "n") { setNameStyle((s) => s === "top" ? "bottom" : s === "bottom" ? "left" : "top"); return; }
       if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); activeGo(1); }
       else if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); activeGo(-1); }
     };
@@ -837,17 +843,11 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
       {/* ── Humanoid groups: [stats | robot] per side ── */}
       {(() => {
-        const makeCards = (h: typeof humanoids[0]) => [
-          { key: "name", show: true, content: (
-            <>
-              <p className="text-[15px] font-semibold" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>{h.name}</p>
-              <p className="text-[11px] mt-0.5" style={{ color: "var(--c-ink-body)" }}>{h.manufacturer}{h.year ? ` · ${h.year}` : ""}</p>
-            </>
-          )},
+        const statSections = (h: typeof humanoids[0]) => [
           { key: "overview", show: !!(h.height || h.weight), content: (
             <>
-              <p className="text-[11px] font-semibold mb-2" style={{ color: "var(--c-ink)" }}>Overview</p>
-              <div className="space-y-1">
+              <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Overview</p>
+              <div className="mt-3" style={{ lineHeight: 1.15 }}>
                 <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.height || "—"} cm</span> height</p>
                 <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.weight || "—"} kg</span> weight</p>
               </div>
@@ -855,72 +855,80 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           )},
           { key: "dof", show: !!h.dof, content: (
             <>
-              <p className="text-[11px] font-semibold mb-2" style={{ color: "var(--c-ink)" }}>Degrees of Freedom</p>
-              <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.dof || "—"}</span> DOF</p>
+              <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Degrees of Freedom</p>
+              <div className="mt-3" style={{ lineHeight: 1.15 }}>
+                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.dof}</span> DOF</p>
+              </div>
             </>
           )},
           { key: "speed", show: !!h.maxSpeed, content: (
             <>
-              <p className="text-[11px] font-semibold mb-2" style={{ color: "var(--c-ink)" }}>Speed</p>
-              <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.maxSpeed || "—"} m/s</span> max</p>
+              <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Speed</p>
+              <div className="mt-3" style={{ lineHeight: 1.15 }}>
+                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.maxSpeed} m/s</span> max</p>
+              </div>
             </>
           )},
           { key: "status", show: !!h.status, content: (
             <>
-              <p className="text-[11px] font-semibold mb-2" style={{ color: "var(--c-ink)" }}>Status</p>
-              <p className="text-[12px]" style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.status || "—"}</p>
-              {h.cost && h.cost !== "N/A" && <p className="text-[12px] mt-0.5" style={{ color: "var(--c-ink-body)" }}>{h.cost}</p>}
+              <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Status</p>
+              <div className="mt-3" style={{ lineHeight: 1.15 }}>
+                <p className="text-[12px]" style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.status}</p>
+                {h.cost && h.cost !== "N/A" && <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>{h.cost}</p>}
+              </div>
             </>
           )},
           { key: "buy", show: !!(h.purchaseUrl || (h.cost && h.cost !== "N/A")), content: (
             h.purchaseUrl ? (
               <a href={h.purchaseUrl} target="_blank" rel="noopener noreferrer"
-                className="pointer-events-auto block rounded-2xl"
-                style={{ textDecoration: "none", background: "#2563eb", margin: "-14px -16px", padding: "14px 16px" }}>
-                <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.7)" }}>From {h.cost && h.cost !== "N/A" ? h.cost : ""}</p>
-                <p className="text-[13px] font-medium mt-1" style={{ color: "#fff" }}>Buy &rarr;</p>
+                className="pointer-events-auto block"
+                style={{ textDecoration: "none", background: "#2563eb", margin: "-12px", padding: "12px", borderRadius: cardRadius }}>
+                <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.7)" }}>From {h.cost && h.cost !== "N/A" ? h.cost : ""}</p>
+                <p className="text-[12px] font-medium mt-1" style={{ color: "#fff" }}>Buy &rarr;</p>
               </a>
             ) : (
-              <div className="pointer-events-auto">
-                <p className="text-[11px]" style={{ color: "#999" }}>{h.status === "In Production" ? "Starting at" : "Est."}</p>
-                <p className="text-[14px] font-semibold mt-0.5" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>{h.cost}</p>
-              </div>
+              <>
+                <p className="text-[12px]" style={{ color: "#999" }}>{h.status === "In Production" ? "Starting at" : "Est."}</p>
+                <p className="text-[12px] font-medium mt-1" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>{h.cost}</p>
+              </>
             )
           )},
         ];
 
         const cardMorph = "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.45s cubic-bezier(0.16, 1, 0.3, 1)";
 
-        const renderCards = (cards: ReturnType<typeof makeCards>) => (
-          <div className="flex flex-col gap-2 flex-shrink-0 overflow-hidden" style={{
-            width: 150,
-            height: comparing ? "50vh" : "60vh",
-            maxHeight: comparing ? "50vh" : "60vh",
-            transition: `height ${dur} ${ease}, max-height ${dur} ${ease}`,
-          }}>
-            {cards.map((c) => (
-              <div key={c.key} className="overflow-hidden" style={{
-                borderRadius: 6, background: "#FAFAFA",
-                maxHeight: c.show ? 120 : 0,
-                padding: c.show ? "14px 16px" : "0 16px",
-                opacity: c.show ? 1 : 0,
-                marginBottom: c.show ? 0 : -8,
-                transition: cardMorph,
-              }}>{c.content}</div>
-            ))}
-          </div>
-        );
-
-        const renderRobot = (h: typeof humanoids[0], dist: number, idx: number) => {
-          const hIdx = humanoids.findIndex((x) => x.id === h.id);
+        const renderStats = (h: typeof humanoids[0]) => {
+          const sections = statSections(h);
           return (
+            <div className="flex flex-col gap-2 flex-shrink-0 overflow-hidden" style={{
+              width: statsW,
+              height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
+              maxHeight: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
+              transition: `height ${dur} ${ease}, max-height ${dur} ${ease}, width ${dur} ${ease}`,
+            }}>
+              {sections.map((s) => (
+                <div key={s.key} className="overflow-hidden" style={{
+                  borderRadius: cardRadius,
+                  background: "#FAFAFA",
+                  maxHeight: s.show ? 200 : 0,
+                  padding: s.show ? "12px" : "0 12px",
+                  opacity: s.show ? 1 : 0,
+                  marginBottom: s.show ? 0 : -8,
+                  transition: cardMorph,
+                }}>{s.content}</div>
+              ))}
+            </div>
+          );
+        };
+
+        const renderRobot = (h: typeof humanoids[0], dist: number, hIdx: number, isFirst: boolean) => (
           <div
             className="relative overflow-hidden flex-shrink-0 group/card"
             style={{
-              width: comparing ? "22vw" : "30vw",
-              height: comparing ? "50vh" : "60vh",
-              maxWidth: comparing ? 300 : 400,
-              borderRadius: 6,
+              width: comparing ? `${robotW - 8}vw` : `${robotW}vw`,
+              height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
+              maxWidth: comparing ? robotMaxW - 100 : robotMaxW,
+              borderRadius: cardRadius,
               background: "#FAFAFA",
               transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
               pointerEvents: "auto",
@@ -928,13 +936,12 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           >
             <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none" style={{ opacity: Math.max(0.5, 1 - dist * robotFade) }}>
               <div className="relative w-full h-full">
-                <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes={comparing ? "22vw" : "30vw"} priority={idx === 0} />
+                <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst} />
               </div>
             </div>
-            {/* Expand icon — top-right corner, appears on hover */}
             <button
               className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center cursor-pointer opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
-              style={{ background: "rgba(245,245,244,0.9)", borderRadius: 6, pointerEvents: "auto", zIndex: 2 }}
+              style={{ background: "rgba(245,245,244,0.9)", borderRadius: cardRadius, pointerEvents: "auto", zIndex: 2 }}
               onClick={(e) => { e.stopPropagation(); setExpandedIdx(hIdx); }}
             >
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -945,25 +952,20 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               </svg>
             </button>
           </div>
-          );
-        };
+        );
 
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 4 }}>
-            <div className="flex items-start" style={{ gap: 8 }}>
-              {/* Left robot */}
-              {renderRobot(hL, distL, 0)}
+            <div className="flex items-start" style={{ gap: cardGap }}>
+              {renderRobot(hL, distL, springL.index, true)}
+              {renderStats(hL)}
 
-              {/* Left stats (always visible) */}
-              {renderCards(makeCards(hL))}
-
-              {/* Right stats — slides in during compare */}
               <div className="flex-shrink-0 overflow-hidden" style={{
-                width: comparing ? 150 : 0,
+                width: comparing ? statsW : 0,
                 opacity: comparing ? 1 : 0,
                 transition: `width ${dur} ${ease}, opacity 0.3s ${ease} ${comparing ? "0.1s" : "0s"}`,
               }}>
-                {renderCards(makeCards(hR))}
+                {renderStats(hR)}
               </div>
 
               {/* Right robot — appears in compare mode */}
@@ -973,7 +975,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 width: comparing ? "auto" : 0,
                 transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}`,
               }}>
-                {renderRobot(hR, distR, 1)}
+                {renderRobot(hR, distR, springR.index, false)}
               </div>
             </div>
           </div>
@@ -983,12 +985,20 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
       {/* ── Tuner ── */}
       <button className="absolute top-20 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowTuner(!showTuner)}>{showTuner ? "Close" : "Tune"}</button>
       {showTuner && (
-        <div className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5">
+        <div className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide">
           <div><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Presets</p><div className="flex flex-wrap gap-1.5">{(Object.keys(SCROLL_PRESETS) as PresetKey[]).map((key) => (<button key={key} onClick={() => applyPreset(key)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${presetKey === key && !isCustom ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{SCROLL_PRESETS[key].label}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Fine Tune</p>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Stiffness <span className="tabular-nums text-neutral-400">{stiffness.toFixed(2)}</span></label><input type="range" min={2} max={40} value={Math.round(stiffness * 100)} onChange={(e) => { setCustomStiffness(Number(e.target.value) / 100); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Damping <span className="tabular-nums text-neutral-400">{damping.toFixed(2)}</span></label><input type="range" min={40} max={95} value={Math.round(damping * 100)} onChange={(e) => { setCustomDamping(Number(e.target.value) / 100); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Sensitivity <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={60} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
+          </div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Layout</p>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Robot width <span className="tabular-nums text-neutral-400">{robotW}vw</span></label><input type="range" min={15} max={50} value={robotW} onChange={(e) => setRobotW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Robot height <span className="tabular-nums text-neutral-400">{robotH}vh</span></label><input type="range" min={30} max={90} value={robotH} onChange={(e) => setRobotH(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Max width <span className="tabular-nums text-neutral-400">{robotMaxW}px</span></label><input type="range" min={200} max={800} step={10} value={robotMaxW} onChange={(e) => setRobotMaxW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Stats width <span className="tabular-nums text-neutral-400">{statsW}px</span></label><input type="range" min={0} max={300} step={5} value={statsW} onChange={(e) => setStatsW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{cardGap}px</span></label><input type="range" min={0} max={32} value={cardGap} onChange={(e) => setCardGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{cardRadius}px</span></label><input type="range" min={0} max={32} value={cardRadius} onChange={(e) => setCardRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Microinteractions</p>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Squish <span className="tabular-nums text-neutral-400">{robotSquish.toFixed(2)}</span></label><input type="range" min={0} max={15} value={Math.round(robotSquish * 100)} onChange={(e) => setRobotSquish(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
@@ -1059,7 +1069,7 @@ function Grid() {
               <div
                 className="absolute bottom-5 left-0 right-0 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out text-center"
               >
-                <p className="text-[14px] font-medium text-neutral-800" style={{ letterSpacing: "-0.02em" }}>{h.name}</p>
+                <p className="text-[12px] font-medium text-neutral-800" style={{ letterSpacing: "-0.02em" }}>{h.name}</p>
                 <p className="text-[12px] text-neutral-400 mt-0.5">{h.manufacturer}</p>
               </div>
             </div>
@@ -1123,7 +1133,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
             >
               <span className="text-[11px] tabular-nums text-neutral-300 w-5">{String(i + 1).padStart(2, "0")}</span>
               <span
-                className={`text-[15px] transition-colors duration-200 ${hovered === i ? "text-neutral-900 font-medium" : "text-neutral-500"}`}
+                className={`text-[12px] transition-colors duration-200 ${hovered === i ? "text-neutral-900 font-medium" : "text-neutral-500"}`}
                 style={{ letterSpacing: "-0.02em" }}
               >
                 {h.name}
@@ -1158,7 +1168,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
             <div className="relative w-[180px] h-[240px]">
               <Image src={humanoids[hovered].imageUrl || "/robots/placeholder.png"} alt={humanoids[hovered].name} fill className="object-contain" sizes="180px" />
             </div>
-            <p className="text-[14px] font-medium mt-3" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>
+            <p className="text-[12px] font-medium mt-3" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>
               {humanoids[hovered].name}
             </p>
             <p className="text-[11px] text-neutral-400 mt-0.5">
@@ -1198,7 +1208,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
 
                 {/* Year label — below the line */}
                 <div className="absolute" style={{ top: "calc(50% + 16px)", left: 0, transform: "translateX(-50%)" }}>
-                  <span className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>
+                  <span className="text-[18px] font-medium tabular-nums" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>
                     {year}
                   </span>
                 </div>
@@ -1293,7 +1303,7 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
           {messages.map((m, i) => (
             <div key={i}>
               <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <p className={`text-[13px] leading-relaxed max-w-[85%] px-3 py-2 rounded-2xl ${m.role === "user" ? "text-white" : ""}`}
+                <p className={`text-[12px] leading-relaxed max-w-[85%] px-3 py-2 rounded-2xl ${m.role === "user" ? "text-white" : ""}`}
                   style={m.role === "user" ? { background: "var(--c-ink)", color: "white" } : { background: "#f5f5f5", color: "var(--c-ink-medium)" }}>
                   {m.text}
                 </p>
@@ -1328,7 +1338,7 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             placeholder="e.g. fastest, cheapest, for warehouse..."
-            className="flex-1 text-[13px] outline-none bg-transparent"
+            className="flex-1 text-[12px] outline-none bg-transparent"
             style={{ color: "var(--c-ink)" }}
           />
           <button onClick={handleSubmit} className="text-[12px] font-medium cursor-pointer" style={{ color: query ? "var(--c-ink)" : "#c4c4c4" }}>
