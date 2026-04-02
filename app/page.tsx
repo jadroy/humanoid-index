@@ -15,64 +15,190 @@ const layoutLabels: Record<Layout, string> = {
 
 const INDEX_SUB_VIEWS = ["list", "timeline"] as const;
 
+// ─── Nav Styles ─────────────────────────────────────────────────
+const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid"] as const;
+type NavStyle = (typeof NAV_STYLES)[number];
+
 // ─── Layout Switcher ────────────────────────────────────────────
 function LayoutSwitcher({
   active,
   onChange,
   indexSubView,
   onIndexSubViewChange,
+  navStyle,
+  onNavStyleChange,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
   indexSubView: IndexSubView;
   onIndexSubViewChange: (v: IndexSubView) => void;
+  navStyle: NavStyle;
+  onNavStyleChange: (s: NavStyle) => void;
 }) {
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex items-center gap-4 pointer-events-auto px-5 py-2.5 rounded-2xl border border-neutral-200/60 bg-white">
-        {/* Mark — abstract humanoid form */}
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.25 }}>
-          <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
-          <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
-        </svg>
+  const cycleNavStyle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const idx = NAV_STYLES.indexOf(navStyle);
+    onNavStyleChange(NAV_STYLES[(idx + 1) % NAV_STYLES.length]);
+  };
 
-        {/* View toggles — understated */}
+  // ── Sub-view buttons (shared across all styles) ──
+  const subViewButtons = active === "Z" && (
+    <>
+      <span className="text-[11px] text-neutral-200 mx-1">/</span>
+      {INDEX_SUB_VIEWS.map((v) => (
+        <button
+          key={v}
+          onClick={() => onIndexSubViewChange(v)}
+          className="px-1.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer capitalize"
+          style={{
+            color: indexSubView === v ? "var(--c-ink)" : "#c4c4c4",
+            fontWeight: indexSubView === v ? 500 : 400,
+          }}
+        >
+          {v}
+        </button>
+      ))}
+    </>
+  );
+
+  // ── Mark logo (shared) ──
+  const mark = (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.25 }} className="cursor-pointer" onContextMenu={cycleNavStyle}>
+      <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+      <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+    </svg>
+  );
+
+  // ── Style: floating (original — island with border) ──
+  if (navStyle === "floating") return (
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
+      <div className="flex items-center gap-4 pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 bg-white">
+        {mark}
         <div className="flex items-center gap-0.5">
           {ALL_LAYOUTS.map((l) => (
-            <button
-              key={l}
-              onClick={() => onChange(l)}
+            <button key={l} onClick={() => onChange(l)}
               className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
-              style={{
-                color: active === l ? "var(--c-ink)" : "#c4c4c4",
-                fontWeight: active === l ? 500 : 400,
-              }}
-            >
+              style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
               {layoutLabels[l]}
             </button>
           ))}
+          {subViewButtons}
+        </div>
+      </div>
+    </nav>
+  );
 
-          {/* Index sub-view options — appear inline when Index is active */}
+  // ── Style: pill — rounded capsule, tinted active state ──
+  if (navStyle === "pill") return (
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
+      <div className="flex items-center gap-2 pointer-events-auto px-2 py-1.5 rounded-full bg-neutral-100/80 backdrop-blur-sm">
+        <div className="pl-2">{mark}</div>
+        <div className="flex items-center gap-1">
+          {ALL_LAYOUTS.map((l) => (
+            <button key={l} onClick={() => onChange(l)}
+              className="px-3 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer rounded-full"
+              style={{
+                color: active === l ? "#fff" : "#999",
+                background: active === l ? "var(--c-ink)" : "transparent",
+                fontWeight: active === l ? 500 : 400,
+              }}>
+              {layoutLabels[l]}
+            </button>
+          ))}
+          {subViewButtons}
+        </div>
+      </div>
+    </nav>
+  );
+
+  // ── Style: underline — clean text with active underline ──
+  if (navStyle === "underline") return (
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
+      <div className="flex items-center gap-6 pointer-events-auto px-4 py-2">
+        {mark}
+        <div className="flex items-center gap-4">
+          {ALL_LAYOUTS.map((l) => (
+            <button key={l} onClick={() => onChange(l)}
+              className="relative px-1 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+              style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
+              {layoutLabels[l]}
+              {active === l && <div className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-neutral-800 rounded-full" />}
+            </button>
+          ))}
+          {subViewButtons}
+        </div>
+      </div>
+    </nav>
+  );
+
+  // ── Style: bordered — full-width top bar with bottom border ──
+  if (navStyle === "bordered") return (
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 bg-white/90 backdrop-blur-sm pointer-events-auto">
+      <div className="flex items-center justify-between max-w-[1100px] mx-auto px-6 py-3">
+        {mark}
+        <div className="flex items-center gap-1">
+          {ALL_LAYOUTS.map((l) => (
+            <button key={l} onClick={() => onChange(l)}
+              className="px-3 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+              style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
+              {layoutLabels[l]}
+            </button>
+          ))}
+          {subViewButtons}
+        </div>
+        <div className="w-5" /> {/* balance spacer */}
+      </div>
+    </nav>
+  );
+
+  // ── Style: minimal — just text, no container, no border ──
+  if (navStyle === "minimal") return (
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-6 pointer-events-none">
+      <div className="flex items-center gap-5 pointer-events-auto">
+        {mark}
+        <div className="flex items-center gap-3">
+          {ALL_LAYOUTS.map((l) => (
+            <button key={l} onClick={() => onChange(l)}
+              className="px-1 py-0.5 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+              style={{ color: active === l ? "var(--c-ink)" : "#d4d4d4", fontWeight: active === l ? 600 : 400 }}>
+              {layoutLabels[l]}
+            </button>
+          ))}
+          {subViewButtons}
+        </div>
+      </div>
+    </nav>
+  );
+
+  // ── Style: solid — dark bar, inverted text ──
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
+      <div className="flex items-center gap-4 pointer-events-auto px-5 py-2 rounded-sm bg-neutral-900">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.4 }} className="cursor-pointer" onContextMenu={cycleNavStyle}>
+          <circle cx="10" cy="5" r="3" fill="#fff" />
+          <rect x="7" y="9.5" width="6" height="8" rx="3" fill="#fff" />
+        </svg>
+        <div className="flex items-center gap-0.5">
+          {ALL_LAYOUTS.map((l) => (
+            <button key={l} onClick={() => onChange(l)}
+              className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+              style={{ color: active === l ? "#fff" : "#666", fontWeight: active === l ? 500 : 400 }}>
+              {layoutLabels[l]}
+            </button>
+          ))}
           {active === "Z" && (
             <>
-              <span className="text-[11px] text-neutral-200 mx-1">/</span>
+              <span className="text-[11px] text-neutral-600 mx-1">/</span>
               {INDEX_SUB_VIEWS.map((v) => (
-                <button
-                  key={v}
-                  onClick={() => onIndexSubViewChange(v)}
+                <button key={v} onClick={() => onIndexSubViewChange(v)}
                   className="px-1.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer capitalize"
-                  style={{
-                    color: indexSubView === v ? "var(--c-ink)" : "#c4c4c4",
-                    fontWeight: indexSubView === v ? 500 : 400,
-                  }}
-                >
+                  style={{ color: indexSubView === v ? "#fff" : "#666", fontWeight: indexSubView === v ? 500 : 400 }}>
                   {v}
                 </button>
               ))}
             </>
           )}
         </div>
-
       </div>
     </nav>
   );
@@ -369,6 +495,170 @@ function StatCompare({ left, right }: { left: typeof humanoids[0]; right: typeof
 }
 
 // ═══════════════════════════════════════════════════════════════
+// EXPANDED VIEW — Editorial detail popover
+// ═══════════════════════════════════════════════════════════════
+function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
+  humanoid: typeof humanoids[0];
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const h = humanoid;
+  const idx = humanoids.findIndex((x) => x.id === h.id);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); onPrev(); }
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); onNext(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, onPrev, onNext]);
+
+  const specs = [
+    h.status && { label: "Status", value: h.status },
+    h.height && { label: "Height", value: `${h.height} cm` },
+    h.weight && { label: "Weight", value: `${h.weight} kg` },
+    h.dof && { label: "DOF", value: `${h.dof}` },
+    h.maxSpeed && { label: "Speed", value: `${h.maxSpeed} m/s` },
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(23,23,23,0.5)", backdropFilter: "blur(16px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="animate-expand-in flex relative overflow-hidden"
+        style={{
+          width: "calc(100vw - 96px)",
+          height: "calc(100vh - 96px)",
+          maxWidth: 1200,
+          maxHeight: 760,
+          borderRadius: 10,
+          background: "#f5f5f4",
+          boxShadow: "0 40px 100px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.06)",
+        }}
+      >
+        {/* Left — text content */}
+        <div className="flex flex-col justify-between py-10 px-10" style={{ width: "42%", minWidth: 360 }}>
+          <div className="flex items-center justify-between mb-10">
+            <button
+              onClick={onClose}
+              className="w-7 h-7 flex items-center justify-center cursor-pointer transition-colors hover:bg-neutral-200"
+              style={{ borderRadius: 6, background: "#ebebeb" }}
+            >
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#525252" strokeWidth="1.5" strokeLinecap="round">
+                <line x1="1.5" y1="1.5" x2="9.5" y2="9.5" />
+                <line x1="9.5" y1="1.5" x2="1.5" y2="9.5" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={(e) => { e.stopPropagation(); onPrev(); }}
+                className="w-7 h-7 flex items-center justify-center cursor-pointer transition-colors hover:bg-neutral-200"
+                style={{ borderRadius: 6, background: "#ebebeb" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="7.5,2 3.5,6 7.5,10" />
+                </svg>
+              </button>
+              <span className="text-[10px] tabular-nums mx-1" style={{ color: "#a3a3a3" }}>
+                {String(idx + 1).padStart(2, "0")}<span style={{ color: "#d4d4d4" }}>/</span>{String(humanoids.length).padStart(2, "0")}
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); onNext(); }}
+                className="w-7 h-7 flex items-center justify-center cursor-pointer transition-colors hover:bg-neutral-200"
+                style={{ borderRadius: 6, background: "#ebebeb" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="4.5,2 8.5,6 4.5,10" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="animate-expand-content" style={{ animationDelay: "0.1s" }}>
+              <p className="text-[10px] tracking-widest uppercase font-medium mb-3" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                {h.manufacturer}
+              </p>
+              <h2 className="text-[32px] font-semibold leading-none" style={{ color: "#171717", letterSpacing: "-0.04em" }}>
+                {h.name}
+              </h2>
+              {h.year && (
+                <p className="text-[12px] mt-2.5" style={{ color: "#a3a3a3" }}>{h.year}</p>
+              )}
+            </div>
+
+            <div className="animate-expand-content" style={{ animationDelay: "0.18s" }}>
+              {h.description && (
+                <p className="text-[12px] leading-relaxed mt-6" style={{ color: "#737373", maxWidth: 340 }}>
+                  {h.description}
+                </p>
+              )}
+            </div>
+
+            <div className="animate-expand-content" style={{ animationDelay: "0.25s" }}>
+              {h.cost && h.cost !== "N/A" && (
+                <p className="text-[18px] font-semibold mt-8" style={{ color: "#171717", letterSpacing: "-0.03em" }}>
+                  {h.cost}
+                </p>
+              )}
+              {h.purchaseUrl && (
+                <a
+                  href={h.purchaseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center mt-4 px-5 py-2 text-[11px] font-medium tracking-wide transition-colors hover:bg-neutral-800"
+                  style={{ background: "#171717", color: "#fff", borderRadius: 6 }}
+                >
+                  Buy
+                </a>
+              )}
+            </div>
+          </div>
+
+          <div className="animate-expand-content" style={{ animationDelay: "0.3s" }}>
+            <div className="flex items-start gap-8 pt-6" style={{ borderTop: "1px solid #e5e5e5" }}>
+              {specs.map((s) => (
+                <div key={s.label}>
+                  <p className="text-[9px] tracking-widest uppercase" style={{ color: "#a3a3a3", letterSpacing: "0.1em" }}>
+                    {s.label}
+                  </p>
+                  <p className="text-[13px] font-medium mt-1" style={{ color: "#262626" }}>
+                    {s.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right — robot image on slate surface */}
+        <div
+          className="flex-1 flex items-center justify-center relative"
+          style={{ background: "#ececea", borderLeft: "1px solid #e5e5e5" }}
+        >
+          <div className="animate-expand-content relative" style={{ width: "75%", height: "75%", animationDelay: "0.08s" }}>
+            <Image
+              src={h.imageUrl || "/robots/placeholder.png"}
+              alt={h.name}
+              fill
+              className="object-contain"
+              sizes="50vw"
+              priority
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
 function Browse({ goToIndex }: { goToIndex?: number | null }) {
@@ -384,6 +674,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("classic");
   const [nameStyle, setNameStyle] = useState<"top" | "bottom" | "left">("left");
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   const stiffness = isCustom ? customStiffness : SCROLL_PRESETS[presetKey].stiffness;
   const damping = isCustom ? customDamping : SCROLL_PRESETS[presetKey].damping;
@@ -429,6 +720,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
     let decay: ReturnType<typeof setTimeout>;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      if (expandedIdxRef.current !== null) return;
       acc += e.deltaY;
       clearTimeout(decay);
       decay = setTimeout(() => { acc = 0; }, 150);
@@ -449,8 +741,10 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   }, [springL.go, springR.go]);
 
   // Keyboard — arrows control active side, tab switches, esc exits
+  const expandedIdxRef = useRef(expandedIdx); expandedIdxRef.current = expandedIdx;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (expandedIdxRef.current !== null) return;
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
       if (e.key === "s") { setArcStyle((s) => ARC_STYLES[(ARC_STYLES.indexOf(s) + 1) % ARC_STYLES.length]); return; }
@@ -606,7 +900,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           }}>
             {cards.map((c) => (
               <div key={c.key} className="overflow-hidden" style={{
-                borderRadius: 16, background: "#F7F7F7",
+                borderRadius: 6, background: "#FAFAFA",
                 maxHeight: c.show ? 120 : 0,
                 padding: c.show ? "14px 16px" : "0 16px",
                 opacity: c.show ? 1 : 0,
@@ -617,25 +911,45 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           </div>
         );
 
-        const renderRobot = (h: typeof humanoids[0], dist: number, idx: number) => (
-          <div className="relative overflow-hidden flex-shrink-0" style={{
-            width: comparing ? "22vw" : "30vw",
-            height: comparing ? "50vh" : "60vh",
-            maxWidth: comparing ? 300 : 400,
-            borderRadius: 28,
-            background: "#F7F7F7",
-            transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
-          }}>
-            <div className="absolute inset-0 flex items-center justify-center p-6" style={{ opacity: Math.max(0.5, 1 - dist * robotFade) }}>
+        const renderRobot = (h: typeof humanoids[0], dist: number, idx: number) => {
+          const hIdx = humanoids.findIndex((x) => x.id === h.id);
+          return (
+          <div
+            className="relative overflow-hidden flex-shrink-0 group/card"
+            style={{
+              width: comparing ? "22vw" : "30vw",
+              height: comparing ? "50vh" : "60vh",
+              maxWidth: comparing ? 300 : 400,
+              borderRadius: 6,
+              background: "#FAFAFA",
+              transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
+              pointerEvents: "auto",
+            }}
+          >
+            <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none" style={{ opacity: Math.max(0.5, 1 - dist * robotFade) }}>
               <div className="relative w-full h-full">
                 <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes={comparing ? "22vw" : "30vw"} priority={idx === 0} />
               </div>
             </div>
+            {/* Expand icon — top-right corner, appears on hover */}
+            <button
+              className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center cursor-pointer opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
+              style={{ background: "rgba(245,245,244,0.9)", borderRadius: 6, pointerEvents: "auto", zIndex: 2 }}
+              onClick={(e) => { e.stopPropagation(); setExpandedIdx(hIdx); }}
+            >
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="8.5,1.5 12.5,1.5 12.5,5.5" />
+                <line x1="12.5" y1="1.5" x2="8" y2="6" />
+                <polyline points="5.5,12.5 1.5,12.5 1.5,8.5" />
+                <line x1="1.5" y1="12.5" x2="6" y2="8" />
+              </svg>
+            </button>
           </div>
-        );
+          );
+        };
 
         return (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 4 }}>
             <div className="flex items-start" style={{ gap: 8 }}>
               {/* Left robot */}
               {renderRobot(hL, distL, 0)}
@@ -682,6 +996,16 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           </div>
         </div>
       )}
+
+      {/* ── Expanded view overlay ── */}
+      {expandedIdx !== null && (
+        <ExpandedView
+          humanoid={humanoids[expandedIdx]}
+          onClose={() => setExpandedIdx(null)}
+          onPrev={() => setExpandedIdx((prev) => prev !== null && prev > 0 ? prev - 1 : humanoids.length - 1)}
+          onNext={() => setExpandedIdx((prev) => prev !== null && prev < humanoids.length - 1 ? prev + 1 : 0)}
+        />
+      )}
     </div>
   );
 }
@@ -710,8 +1034,8 @@ function Grid() {
               key={h.id}
               className="group relative overflow-hidden cursor-pointer aspect-square"
               style={{
-                borderRadius: 32,
-                background: "#F7F7F7",
+                borderRadius: 6,
+                background: "#FAFAFA",
                 opacity: selected !== null && !isSelected ? 0.4 : 1,
                 transition: "opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
               }}
@@ -1033,6 +1357,7 @@ const FONTS = [
 export default function Home() {
   const [layout, setLayout] = useState<Layout>("E");
   const [indexSubView, setIndexSubView] = useState<IndexSubView>("list");
+  const [navStyle, setNavStyle] = useState<NavStyle>("floating");
   const [chatOpen, setChatOpen] = useState(false);
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
   const [fontIdx, setFontIdx] = useState(0);
@@ -1075,6 +1400,8 @@ export default function Home() {
         onChange={setLayout}
         indexSubView={indexSubView}
         onIndexSubViewChange={setIndexSubView}
+        navStyle={navStyle}
+        onNavStyleChange={setNavStyle}
       />
 
       {layout === "E" && <Browse goToIndex={goToIndex} />}
