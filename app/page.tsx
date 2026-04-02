@@ -228,6 +228,7 @@ function useSpring(s: number, d: number) {
   const targetRef = useRef(0);
   const posRef = useRef(0);
   const velRef = useRef(0);
+  const nudgeRef = useRef(0);
   const [pos, setPos] = useState(0);
   const rafRef = useRef<number>(0);
 
@@ -235,10 +236,17 @@ function useSpring(s: number, d: number) {
     const force = (targetRef.current - posRef.current) * sRef.current;
     velRef.current = (velRef.current + force) * dRef.current;
     posRef.current += velRef.current;
-    if (Math.abs(posRef.current - targetRef.current) < 0.001 && Math.abs(velRef.current) < 0.001) {
-      posRef.current = targetRef.current; velRef.current = 0; setPos(targetRef.current); rafRef.current = 0; return;
+
+    // Decay elastic nudge
+    nudgeRef.current *= 0.85;
+    if (Math.abs(nudgeRef.current) < 0.001) nudgeRef.current = 0;
+
+    const settled = Math.abs(posRef.current - targetRef.current) < 0.001 && Math.abs(velRef.current) < 0.001;
+    if (settled && nudgeRef.current === 0) {
+      posRef.current = targetRef.current; velRef.current = 0;
+      setPos(targetRef.current); rafRef.current = 0; return;
     }
-    setPos(posRef.current);
+    setPos(posRef.current + nudgeRef.current);
     rafRef.current = requestAnimationFrame(tick);
   }, []);
 
@@ -250,15 +258,21 @@ function useSpring(s: number, d: number) {
     targetRef.current = next; start();
   }, [start]);
 
+  const nudge = useCallback((amount: number) => {
+    nudgeRef.current = Math.max(-0.15, Math.min(0.15, nudgeRef.current + amount));
+    start();
+  }, [start]);
+
   const jumpTo = useCallback((idx: number) => { targetRef.current = Math.max(0, Math.min(humanoids.length - 1, idx)); start(); }, [start]);
 
   useEffect(() => {
-    posRef.current = targetRef.current; velRef.current = 0; setPos(targetRef.current); rafRef.current = 0;
+    posRef.current = targetRef.current; velRef.current = 0; nudgeRef.current = 0;
+    setPos(targetRef.current); rafRef.current = 0;
     return () => { if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; } };
   }, []);
 
   const index = Math.max(0, Math.min(humanoids.length - 1, Math.round(pos)));
-  return { pos, index, go, jumpTo, targetRef };
+  return { pos, index, go, nudge, jumpTo, targetRef };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -719,33 +733,71 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const onWheelLeft = makeWheelHandler(springL.go, accL, decayL);
   const onWheelRight = makeWheelHandler(springR.go, accR, decayR);
 
-  // Global wheel — always prevent default scroll, route to correct side
+  // Global wheel — velocity-aware stepping + elastic pre-threshold feedback
   const activeSideRef = useRef(activeSide); activeSideRef.current = activeSide;
   const comparingRef = useRef(comparing); comparingRef.current = comparing;
   useEffect(() => {
     let acc = 0;
+    let lastTime = 0;
+    let velocity = 0;
     let decay: ReturnType<typeof setTimeout>;
+
+    const route = (delta: number, nudgeAmt?: number) => {
+      if (!comparingRef.current) {
+        if (nudgeAmt !== undefined) springL.nudge(nudgeAmt);
+        else springL.go(delta);
+      } else {
+        // handled per-side below
+      }
+    };
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       if (expandedIdxRef.current !== null) return;
+
+      const now = performance.now();
+      const dt = now - lastTime;
+      lastTime = now;
+
       acc += e.deltaY;
-      clearTimeout(decay);
-      decay = setTimeout(() => { acc = 0; }, 150);
-      if (Math.abs(acc) > thresholdRef.current) {
-        const delta = acc > 0 ? 1 : -1;
-        if (!comparingRef.current) {
-          springL.go(delta);
-        } else {
-          // Route based on mouse position — left half vs right half
-          const side = e.clientX < window.innerWidth / 2 ? "left" : "right";
-          if (side === "left") springL.go(delta); else springR.go(delta);
-        }
-        acc = 0;
+      // Track velocity (pixels per ms, smoothed)
+      if (dt > 0 && dt < 200) {
+        velocity = velocity * 0.6 + (Math.abs(e.deltaY) / dt) * 0.4;
       }
+
+      clearTimeout(decay);
+      decay = setTimeout(() => { acc = 0; velocity = 0; }, 150);
+
+      const thresh = thresholdRef.current;
+      const ratio = Math.abs(acc) / thresh;
+
+      if (ratio < 1) {
+        // Pre-threshold: elastic nudge proportional to accumulation
+        const nudgeAmt = (acc > 0 ? 1 : -1) * ratio * 0.02;
+        if (!comparingRef.current) {
+          springL.nudge(nudgeAmt);
+        } else {
+          const side = e.clientX < window.innerWidth / 2 ? "left" : "right";
+          if (side === "left") springL.nudge(nudgeAmt); else springR.nudge(nudgeAmt);
+        }
+        return;
+      }
+
+      // Threshold crossed — velocity determines step size
+      const dir = acc > 0 ? 1 : -1;
+      const steps = velocity > 3 ? 3 : velocity > 1.5 ? 2 : 1;
+      if (!comparingRef.current) {
+        springL.go(dir * steps);
+      } else {
+        const side = e.clientX < window.innerWidth / 2 ? "left" : "right";
+        if (side === "left") springL.go(dir * steps); else springR.go(dir * steps);
+      }
+      acc = 0;
+      velocity = 0;
     };
     window.addEventListener("wheel", onWheel, { passive: false });
     return () => { window.removeEventListener("wheel", onWheel); clearTimeout(decay); };
-  }, [springL.go, springR.go]);
+  }, [springL.go, springL.nudge, springR.go, springR.nudge]);
 
   // Keyboard — arrows control active side, tab switches, esc exits
   const expandedIdxRef = useRef(expandedIdx); expandedIdxRef.current = expandedIdx;
@@ -847,33 +899,33 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           { key: "overview", show: !!(h.height || h.weight), content: (
             <>
               <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Overview</p>
-              <div className="mt-3" style={{ lineHeight: 1.15 }}>
-                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.height || "—"} cm</span> height</p>
-                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.weight || "—"} kg</span> weight</p>
+              <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
+                {h.height ? <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>Height: {h.height} cm</p> : null}
+                {h.weight ? <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>Weight: {h.weight} kg</p> : null}
               </div>
             </>
           )},
           { key: "dof", show: !!h.dof, content: (
             <>
               <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Degrees of Freedom</p>
-              <div className="mt-3" style={{ lineHeight: 1.15 }}>
-                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.dof}</span> DOF</p>
+              <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
+                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>DOF: {h.dof}</p>
               </div>
             </>
           )},
           { key: "speed", show: !!h.maxSpeed, content: (
             <>
               <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Speed</p>
-              <div className="mt-3" style={{ lineHeight: 1.15 }}>
-                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.maxSpeed} m/s</span> max</p>
+              <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
+                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>Max: {h.maxSpeed} m/s</p>
               </div>
             </>
           )},
           { key: "status", show: !!h.status, content: (
             <>
               <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Status</p>
-              <div className="mt-3" style={{ lineHeight: 1.15 }}>
-                <p className="text-[12px]" style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.status}</p>
+              <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
+                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>{h.status}</p>
                 {h.cost && h.cost !== "N/A" && <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>{h.cost}</p>}
               </div>
             </>
@@ -928,9 +980,9 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               width: comparing ? `${robotW - 8}vw` : `${robotW}vw`,
               height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
               maxWidth: comparing ? robotMaxW - 100 : robotMaxW,
+              transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
               borderRadius: cardRadius,
               background: "#FAFAFA",
-              transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
               pointerEvents: "auto",
             }}
           >
@@ -1362,6 +1414,27 @@ const FONTS = [
   { name: "Sora", family: "var(--font-sora)" },
   { name: "Albert Sans", family: "var(--font-albert-sans)" },
   { name: "Instrument Sans", family: "var(--font-instrument-sans)" },
+  { name: "Rubik", family: "var(--font-rubik)" },
+  { name: "Nunito Sans", family: "var(--font-nunito-sans)" },
+  { name: "Work Sans", family: "var(--font-work-sans)" },
+  { name: "Poppins", family: "var(--font-poppins)" },
+  { name: "Raleway", family: "var(--font-raleway)" },
+  { name: "Figtree", family: "var(--font-figtree)" },
+  { name: "Karla", family: "var(--font-karla)" },
+  { name: "Lexend", family: "var(--font-lexend)" },
+  { name: "Red Hat Display", family: "var(--font-red-hat-display)" },
+  { name: "Archivo", family: "var(--font-archivo)" },
+  { name: "Be Vietnam Pro", family: "var(--font-be-vietnam-pro)" },
+  { name: "Urbanist", family: "var(--font-urbanist)" },
+  { name: "Jost", family: "var(--font-jost)" },
+  { name: "Quicksand", family: "var(--font-quicksand)" },
+  { name: "Cabin", family: "var(--font-cabin)" },
+  { name: "Bricolage Grotesque", family: "var(--font-bricolage-grotesque)" },
+  { name: "Onest", family: "var(--font-onest)" },
+  { name: "Wix Madefor", family: "var(--font-wix-madefor)" },
+  { name: "Gabarito", family: "var(--font-gabarito)" },
+  { name: "Noto Sans", family: "var(--font-noto-sans)" },
+  { name: "Schibsted Grotesk", family: "var(--font-schibsted-grotesk)" },
 ] as const;
 
 export default function Home() {
