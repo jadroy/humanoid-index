@@ -32,8 +32,8 @@ function LayoutSwitcher({
       <div className="flex items-center gap-4 pointer-events-auto px-5 py-2.5 rounded-2xl border border-neutral-200/60 bg-white">
         {/* Mark — abstract humanoid form */}
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.25 }}>
-          <circle cx="10" cy="5" r="3" fill="#343433" />
-          <rect x="7" y="9.5" width="6" height="8" rx="3" fill="#343433" />
+          <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+          <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
         </svg>
 
         {/* View toggles — understated */}
@@ -44,7 +44,7 @@ function LayoutSwitcher({
               onClick={() => onChange(l)}
               className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
               style={{
-                color: active === l ? "#343433" : "#c4c4c4",
+                color: active === l ? "var(--c-ink)" : "#c4c4c4",
                 fontWeight: active === l ? 500 : 400,
               }}
             >
@@ -62,7 +62,7 @@ function LayoutSwitcher({
                   onClick={() => onIndexSubViewChange(v)}
                   className="px-1.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer capitalize"
                   style={{
-                    color: indexSubView === v ? "#343433" : "#c4c4c4",
+                    color: indexSubView === v ? "var(--c-ink)" : "#c4c4c4",
                     fontWeight: indexSubView === v ? 500 : 400,
                   }}
                 >
@@ -207,8 +207,8 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { po
       const dot = 3 + (1 - t) * 3, fs = 24 + (1 - t) * 10;
       const op = (abs < 0.1 ? 1 : Math.max(0, 0.4 - abs * 0.1)) * bOp;
       return (<div key={i} className="absolute flex items-center gap-2.5 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
-        <div className="rounded-full flex-shrink-0" style={{ width: dot, height: dot, opacity: 0.2 + (1 - t) * 0.8, background: "#343433" }} />
-        <span className="tabular-nums font-medium" style={{ fontSize: fs, letterSpacing: "-0.04em", lineHeight: 1, fontStyle: t > 0.5 ? "italic" : "normal", opacity: 0.2 + (1 - t) * 0.8, color: "#343433", transform: flip }}>{num}</span>
+        <div className="rounded-full flex-shrink-0" style={{ width: dot, height: dot, opacity: 0.2 + (1 - t) * 0.8, background: "var(--c-ink)" }} />
+        <span className="tabular-nums font-medium" style={{ fontSize: fs, letterSpacing: "-0.04em", lineHeight: 1, fontStyle: t > 0.5 ? "italic" : "normal", opacity: 0.2 + (1 - t) * 0.8, color: "var(--c-ink)", transform: flip }}>{num}</span>
       </div>);
     }
     // ── ticks (gauge notches, no text) ──
@@ -358,9 +358,9 @@ function StatCompare({ left, right }: { left: typeof humanoids[0]; right: typeof
         const w = lv > rv ? "left" : rv > lv ? "right" : "tie";
         return (
           <div key={k.key} className="flex items-baseline justify-between gap-6" style={{ minWidth: 200 }}>
-            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "left" ? "#343433" : "#c4c4c4" }}>{lv ? `${lv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
+            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "left" ? "var(--c-ink)" : "#c4c4c4" }}>{lv ? `${lv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
             <span className="text-[9px] tracking-widest uppercase" style={{ color: "#b4b4b4" }}>{k.label}</span>
-            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "right" ? "#343433" : "#c4c4c4" }}>{rv ? `${rv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
+            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "right" ? "var(--c-ink)" : "#c4c4c4" }}>{rv ? `${rv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
           </div>
         );
       })}
@@ -546,36 +546,36 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         const makeCards = (h: typeof humanoids[0]) => [
           { key: "name", show: true, content: (
             <>
-              <p className="text-[15px] font-semibold" style={{ color: "#343433", letterSpacing: "-0.02em" }}>{h.name}</p>
-              <p className="text-[11px] mt-0.5" style={{ color: "#747484" }}>{h.manufacturer}{h.year ? ` · ${h.year}` : ""}</p>
+              <p className="text-[15px] font-semibold" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>{h.name}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: "var(--c-ink-body)" }}>{h.manufacturer}{h.year ? ` · ${h.year}` : ""}</p>
             </>
           )},
           { key: "overview", show: !!(h.height || h.weight), content: (
             <>
-              <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Overview</p>
+              <p className="text-[11px] font-semibold mb-2" style={{ color: "var(--c-ink)" }}>Overview</p>
               <div className="space-y-1">
-                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{h.height || "—"} cm</span> height</p>
-                <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{h.weight || "—"} kg</span> weight</p>
+                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.height || "—"} cm</span> height</p>
+                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.weight || "—"} kg</span> weight</p>
               </div>
             </>
           )},
           { key: "dof", show: !!h.dof, content: (
             <>
-              <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Degrees of Freedom</p>
-              <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{h.dof || "—"}</span> DOF</p>
+              <p className="text-[11px] font-semibold mb-2" style={{ color: "var(--c-ink)" }}>Degrees of Freedom</p>
+              <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.dof || "—"}</span> DOF</p>
             </>
           )},
           { key: "speed", show: !!h.maxSpeed, content: (
             <>
-              <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Speed</p>
-              <p className="text-[12px]" style={{ color: "#747484" }}><span style={{ color: "#494440", fontWeight: 500 }}>{h.maxSpeed || "—"} m/s</span> max</p>
+              <p className="text-[11px] font-semibold mb-2" style={{ color: "var(--c-ink)" }}>Speed</p>
+              <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}><span style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.maxSpeed || "—"} m/s</span> max</p>
             </>
           )},
           { key: "status", show: !!h.status, content: (
             <>
-              <p className="text-[11px] font-semibold mb-2" style={{ color: "#343433" }}>Status</p>
-              <p className="text-[12px]" style={{ color: "#494440", fontWeight: 500 }}>{h.status || "—"}</p>
-              {h.cost && h.cost !== "N/A" && <p className="text-[12px] mt-0.5" style={{ color: "#747484" }}>{h.cost}</p>}
+              <p className="text-[11px] font-semibold mb-2" style={{ color: "var(--c-ink)" }}>Status</p>
+              <p className="text-[12px]" style={{ color: "var(--c-ink-medium)", fontWeight: 500 }}>{h.status || "—"}</p>
+              {h.cost && h.cost !== "N/A" && <p className="text-[12px] mt-0.5" style={{ color: "var(--c-ink-body)" }}>{h.cost}</p>}
             </>
           )},
           { key: "buy", show: !!(h.purchaseUrl || (h.cost && h.cost !== "N/A")), content: (
@@ -589,7 +589,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             ) : (
               <div className="pointer-events-auto">
                 <p className="text-[11px]" style={{ color: "#999" }}>{h.status === "In Production" ? "Starting at" : "Est."}</p>
-                <p className="text-[14px] font-semibold mt-0.5" style={{ color: "#343433", letterSpacing: "-0.02em" }}>{h.cost}</p>
+                <p className="text-[14px] font-semibold mt-0.5" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>{h.cost}</p>
               </div>
             )
           )},
@@ -635,26 +635,32 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         );
 
         return (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1, gap: comparing ? "4vw" : 0, transition: `gap ${dur} ${ease}` }}>
-            {/* Left group: stats + robot */}
-            <div className="flex items-start gap-2" style={{
-              transform: `translateX(${comparing ? "0" : "0"})`,
-              transition: `transform ${dur} ${ease}`,
-            }}>
-              {renderCards(makeCards(hL))}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 1 }}>
+            <div className="flex items-start" style={{ gap: 8 }}>
+              {/* Left robot */}
               {renderRobot(hL, distL, 0)}
-            </div>
 
-            {/* Right group: robot + stats */}
-            <div className="flex items-start gap-2" style={{
-              opacity: comparing ? 1 : 0,
-              transform: `scale(${comparing ? 1 : 0.95})`,
-              width: comparing ? "auto" : 0,
-              overflow: "hidden",
-              transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}`,
-            }}>
-              {renderRobot(hR, distR, 1)}
-              {renderCards(makeCards(hR))}
+              {/* Left stats (always visible) */}
+              {renderCards(makeCards(hL))}
+
+              {/* Right stats — slides in during compare */}
+              <div className="flex-shrink-0 overflow-hidden" style={{
+                width: comparing ? 150 : 0,
+                opacity: comparing ? 1 : 0,
+                transition: `width ${dur} ${ease}, opacity 0.3s ${ease} ${comparing ? "0.1s" : "0s"}`,
+              }}>
+                {renderCards(makeCards(hR))}
+              </div>
+
+              {/* Right robot — appears in compare mode */}
+              <div className="flex-shrink-0 overflow-hidden" style={{
+                opacity: comparing ? 1 : 0,
+                transform: `scale(${comparing ? 1 : 0.95})`,
+                width: comparing ? "auto" : 0,
+                transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}`,
+              }}>
+                {renderRobot(hR, distR, 1)}
+              </div>
             </div>
           </div>
         );
@@ -828,7 +834,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
             <div className="relative w-[180px] h-[240px]">
               <Image src={humanoids[hovered].imageUrl || "/robots/placeholder.png"} alt={humanoids[hovered].name} fill className="object-contain" sizes="180px" />
             </div>
-            <p className="text-[14px] font-medium mt-3" style={{ color: "#343433", letterSpacing: "-0.02em" }}>
+            <p className="text-[14px] font-medium mt-3" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>
               {humanoids[hovered].name}
             </p>
             <p className="text-[11px] text-neutral-400 mt-0.5">
@@ -868,7 +874,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
 
                 {/* Year label — below the line */}
                 <div className="absolute" style={{ top: "calc(50% + 16px)", left: 0, transform: "translateX(-50%)" }}>
-                  <span className="text-[18px] font-semibold tabular-nums" style={{ color: "#343433", letterSpacing: "-0.03em" }}>
+                  <span className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>
                     {year}
                   </span>
                 </div>
@@ -964,7 +970,7 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
             <div key={i}>
               <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 <p className={`text-[13px] leading-relaxed max-w-[85%] px-3 py-2 rounded-2xl ${m.role === "user" ? "text-white" : ""}`}
-                  style={m.role === "user" ? { background: "#343433", color: "white" } : { background: "#f5f5f5", color: "#494440" }}>
+                  style={m.role === "user" ? { background: "var(--c-ink)", color: "white" } : { background: "#f5f5f5", color: "var(--c-ink-medium)" }}>
                   {m.text}
                 </p>
               </div>
@@ -979,8 +985,8 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
                           <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes="24px" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[11px] font-medium" style={{ color: "#343433" }}>{h.name}</p>
-                          <p className="text-[9px]" style={{ color: "#747484" }}>{h.manufacturer}</p>
+                          <p className="text-[11px] font-medium" style={{ color: "var(--c-ink)" }}>{h.name}</p>
+                          <p className="text-[9px]" style={{ color: "var(--c-ink-body)" }}>{h.manufacturer}</p>
                         </div>
                       </button>
                     );
@@ -999,9 +1005,9 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             placeholder="e.g. fastest, cheapest, for warehouse..."
             className="flex-1 text-[13px] outline-none bg-transparent"
-            style={{ color: "#343433" }}
+            style={{ color: "var(--c-ink)" }}
           />
-          <button onClick={handleSubmit} className="text-[12px] font-medium cursor-pointer" style={{ color: query ? "#343433" : "#c4c4c4" }}>
+          <button onClick={handleSubmit} className="text-[12px] font-medium cursor-pointer" style={{ color: query ? "var(--c-ink)" : "#c4c4c4" }}>
             Send
           </button>
         </div>
@@ -1010,22 +1016,60 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
   );
 }
 
+// ─── Fonts ─────────────────────────────────────────────────────
+const FONTS = [
+  { name: "Geist Sans", family: "var(--font-geist-sans)" },
+  { name: "Inter", family: "var(--font-inter)" },
+  { name: "DM Sans", family: "var(--font-dm-sans)" },
+  { name: "Plus Jakarta Sans", family: "var(--font-jakarta)" },
+  { name: "Space Grotesk", family: "var(--font-space-grotesk)" },
+  { name: "Manrope", family: "var(--font-manrope)" },
+  { name: "Outfit", family: "var(--font-outfit)" },
+  { name: "Sora", family: "var(--font-sora)" },
+  { name: "Albert Sans", family: "var(--font-albert-sans)" },
+  { name: "Instrument Sans", family: "var(--font-instrument-sans)" },
+] as const;
+
 export default function Home() {
   const [layout, setLayout] = useState<Layout>("E");
   const [indexSubView, setIndexSubView] = useState<IndexSubView>("list");
   const [chatOpen, setChatOpen] = useState(false);
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
+  const [fontIdx, setFontIdx] = useState(0);
+  const [textDim, setTextDim] = useState(0);
+  const [showFontToast, setShowFontToast] = useState(false);
+  const [showDimSlider, setShowDimSlider] = useState(false);
+  const toastTimeout = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "f" && !e.metaKey && !e.ctrlKey) {
+        setFontIdx((i) => (i + 1) % FONTS.length);
+        setShowFontToast(true);
+        if (toastTimeout.current) clearTimeout(toastTimeout.current);
+        toastTimeout.current = setTimeout(() => setShowFontToast(false), 1800);
+      }
+      if (e.key === "d" && !e.metaKey && !e.ctrlKey) {
+        setShowDimSlider((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const handleSelectHumanoid = (idx: number) => {
     setLayout("E");
     setGoToIndex(idx);
     setChatOpen(false);
-    // Reset so the same index can be selected again
     setTimeout(() => setGoToIndex(null), 100);
   };
 
   return (
-    <main className="min-h-screen bg-white">
+    <main
+      className="min-h-screen bg-white"
+      style={{ fontFamily: FONTS[fontIdx].family, "--text-dim": textDim } as React.CSSProperties}
+    >
       <LayoutSwitcher
         active={layout}
         onChange={setLayout}
@@ -1037,16 +1081,49 @@ export default function Home() {
       {layout === "V" && <Grid />}
       {layout === "Z" && <TextIndex subView={indexSubView} />}
 
+      {/* Font toast */}
+      {showFontToast && (
+        <div
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg animate-blur-fade"
+          style={{ background: "rgba(0,0,0,0.06)", backdropFilter: "blur(12px)" }}
+        >
+          <p className="text-[11px] tracking-wide" style={{ color: "#999" }}>
+            <span style={{ color: "#737373", fontWeight: 500 }}>{FONTS[fontIdx].name}</span>
+            <span className="ml-2 tabular-nums" style={{ color: "#c4c4c4" }}>{fontIdx + 1}/{FONTS.length}</span>
+          </p>
+        </div>
+      )}
+
+      {/* Text dim slider */}
+      {showDimSlider && (
+        <div
+          className="fixed bottom-16 right-5 z-[60] px-4 py-3 rounded-xl"
+          style={{ background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", border: "1px solid #e8e8e8", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}
+        >
+          <p className="text-[10px] tracking-widest uppercase mb-2" style={{ color: "#b4b4b4" }}>Text lightness</p>
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={0}
+              max={70}
+              value={textDim}
+              onChange={(e) => setTextDim(Number(e.target.value))}
+              className="w-28 h-1 accent-neutral-800 cursor-pointer"
+            />
+            <span className="text-[11px] tabular-nums w-6 text-right" style={{ color: "#999" }}>{textDim}</span>
+          </div>
+        </div>
+      )}
+
       {/* Bottom ? button */}
       <button
         className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
-        style={{ background: chatOpen ? "#343433" : "#F7F7F7", color: chatOpen ? "white" : "#999" }}
+        style={{ background: chatOpen ? "var(--c-ink)" : "#F7F7F7", color: chatOpen ? "white" : "#999" }}
         onClick={() => setChatOpen(!chatOpen)}
       >
         <span className="text-[14px] font-medium">{chatOpen ? "×" : "?"}</span>
       </button>
 
-      {/* Chat panel — slides up from bottom */}
       {chatOpen && <GuideChat onSelect={handleSelectHumanoid} />}
     </main>
   );

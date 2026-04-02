@@ -27,43 +27,43 @@ export default function HumanoidDetailSection({ humanoid, isActive, onScrollUp }
         {/* Stats grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-6 mb-20">
           {humanoid.year && (
-            <div className="bg-neutral-50 rounded-2xl p-6">
+            <div className="bg-neutral-50/70 rounded-sm p-6">
               <div className="text-3xl font-light text-neutral-900">{humanoid.year}</div>
               <div className="text-sm text-neutral-400 mt-1">Year</div>
             </div>
           )}
           {humanoid.status && (
-            <div className="bg-neutral-50 rounded-2xl p-6">
+            <div className="bg-neutral-50/70 rounded-sm p-6">
               <div className="text-lg font-medium text-neutral-900">{humanoid.status}</div>
               <div className="text-sm text-neutral-400 mt-1">Status</div>
             </div>
           )}
           {humanoid.cost && (
-            <div className="bg-neutral-50 rounded-2xl p-6">
+            <div className="bg-neutral-50/70 rounded-sm p-6">
               <div className="text-2xl font-light text-neutral-900">{humanoid.cost}</div>
               <div className="text-sm text-neutral-400 mt-1">Price</div>
             </div>
           )}
           {humanoid.height && (
-            <div className="bg-neutral-50 rounded-2xl p-6">
+            <div className="bg-neutral-50/70 rounded-sm p-6">
               <div className="text-3xl font-light text-neutral-900">{humanoid.height}</div>
               <div className="text-sm text-neutral-400 mt-1">Height (cm)</div>
             </div>
           )}
           {humanoid.weight && (
-            <div className="bg-neutral-50 rounded-2xl p-6">
+            <div className="bg-neutral-50/70 rounded-sm p-6">
               <div className="text-3xl font-light text-neutral-900">{humanoid.weight}</div>
               <div className="text-sm text-neutral-400 mt-1">Weight (kg)</div>
             </div>
           )}
           {humanoid.dof && (
-            <div className="bg-neutral-50 rounded-2xl p-6">
+            <div className="bg-neutral-50/70 rounded-sm p-6">
               <div className="text-3xl font-light text-neutral-900">{humanoid.dof}</div>
               <div className="text-sm text-neutral-400 mt-1">DOF</div>
             </div>
           )}
           {humanoid.maxSpeed && (
-            <div className="bg-neutral-50 rounded-2xl p-6">
+            <div className="bg-neutral-50/70 rounded-sm p-6">
               <div className="text-3xl font-light text-neutral-900">{humanoid.maxSpeed}</div>
               <div className="text-sm text-neutral-400 mt-1">m/s</div>
             </div>
@@ -78,7 +78,7 @@ export default function HumanoidDetailSection({ humanoid, isActive, onScrollUp }
               {humanoid.media.map((item, idx) => (
                 <div
                   key={idx}
-                  className="aspect-square rounded-2xl overflow-hidden bg-neutral-100 relative group"
+                  className="aspect-square rounded-sm overflow-hidden bg-neutral-100 relative group"
                 >
                   {item.type === 'image' ? (
                     <img

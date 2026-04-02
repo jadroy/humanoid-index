@@ -27,7 +27,12 @@
       "Bash(ls:*)",
       "Bash(git -C /Users/royjad/Documents/WWORK/humanoid-index add app/globals.css app/page.tsx)",
       "Bash(git -C:*)",
-      "Bash(wait:*)"
+      "Bash(wait:*)",
+      "Bash(xargs cat:*)",
+      "Bash(md5:*)",
+      "Bash(git stash:*)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": []
