@@ -4,12 +4,11 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 
-const ALL_LAYOUTS = ["E", "V", "Z"] as const;
+const ALL_LAYOUTS = ["E", "Z"] as const;
 type Layout = (typeof ALL_LAYOUTS)[number];
 
 const layoutLabels: Record<Layout, string> = {
   E: "Scroll",
-  V: "Grid",
   Z: "Index",
 };
 
@@ -280,14 +279,14 @@ function useSpring(s: number, d: number) {
 // ═══════════════════════════════════════════════════════════════
 const ARC_STYLES = [
   // core
-  "pills", "classic", "ticks", "minimal",
+  "crown", "pills", "classic", "ticks", "minimal",
   // pill + number hybrids
   "h-clean", "h-stacked", "h-reveal", "h-flush", "h-mono",
   "h-light", "h-bold", "h-spaced", "h-underline", "h-tag",
 ] as const;
 type ArcStyle = (typeof ARC_STYLES)[number];
 const arcStyleLabels: Record<ArcStyle, string> = {
-  pills: "Pills", classic: "Classic", ticks: "Ticks", minimal: "Minimal",
+  crown: "Crown", pills: "Pills", classic: "Classic", ticks: "Ticks", minimal: "Minimal",
   "h-clean": "Clean", "h-stacked": "Stacked", "h-reveal": "Reveal", "h-flush": "Flush", "h-mono": "Mono",
   "h-light": "Light", "h-bold": "Bold", "h-spaced": "Spaced", "h-underline": "Underline", "h-tag": "Tag",
 };
@@ -498,9 +497,9 @@ function StatCompare({ left, right }: { left: typeof humanoids[0]; right: typeof
         const w = lv > rv ? "left" : rv > lv ? "right" : "tie";
         return (
           <div key={k.key} className="flex items-baseline justify-between gap-6" style={{ minWidth: 200 }}>
-            <span className="text-[12px] font-medium tabular-nums" style={{ color: w === "left" ? "var(--c-ink)" : "#c4c4c4" }}>{lv ? `${lv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
+            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "left" ? "var(--c-ink)" : "#c4c4c4" }}>{lv ? `${lv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
             <span className="text-[10px] tracking-widest uppercase" style={{ color: "#b4b4b4" }}>{k.label}</span>
-            <span className="text-[12px] font-medium tabular-nums" style={{ color: w === "right" ? "var(--c-ink)" : "#c4c4c4" }}>{rv ? `${rv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
+            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "right" ? "var(--c-ink)" : "#c4c4c4" }}>{rv ? `${rv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
           </div>
         );
       })}
@@ -603,13 +602,13 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
                 {h.name}
               </h2>
               {h.year && (
-                <p className="text-[12px] mt-2.5" style={{ color: "#a3a3a3" }}>{h.year}</p>
+                <p className="text-[13px] mt-2.5" style={{ color: "#a3a3a3" }}>{h.year}</p>
               )}
             </div>
 
             <div className="animate-expand-content" style={{ animationDelay: "0.18s" }}>
               {h.description && (
-                <p className="text-[12px] leading-relaxed mt-6" style={{ color: "#737373", maxWidth: 340 }}>
+                <p className="text-[13px] leading-relaxed mt-6" style={{ color: "#737373", maxWidth: 340 }}>
                   {h.description}
                 </p>
               )}
@@ -642,7 +641,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
                   <p className="text-[9px] tracking-widest uppercase" style={{ color: "#a3a3a3", letterSpacing: "0.1em" }}>
                     {s.label}
                   </p>
-                  <p className="text-[12px] font-medium mt-1" style={{ color: "#262626" }}>
+                  <p className="text-[13px] font-medium mt-1" style={{ color: "#262626" }}>
                     {s.value}
                   </p>
                 </div>
@@ -693,7 +692,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [robotW, setRobotW] = useState(30);       // vw
   const [robotH, setRobotH] = useState(60);       // vh
   const [robotMaxW, setRobotMaxW] = useState(400); // px
-  const [statsW, setStatsW] = useState(150);       // px
+  const [statsW, setStatsW] = useState(260);       // px
   const [cardGap, setCardGap] = useState(8);       // px
   const [cardRadius, setCardRadius] = useState(6);  // px
 
@@ -814,6 +813,18 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [activeGo, comparing]);
 
+  // Keyboard for expanded view
+  useEffect(() => {
+    if (expandedIdx === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setExpandedIdx(null); }
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); setExpandedIdx((p) => p !== null && p > 0 ? p - 1 : humanoids.length - 1); }
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); setExpandedIdx((p) => p !== null && p < humanoids.length - 1 ? p + 1 : 0); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expandedIdx]);
+
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
   const enterCompare = () => { springR.jumpTo(springL.index < humanoids.length - 1 ? springL.index + 1 : 0); setComparing(true); setActiveSide("right"); };
   const exitCompare = () => { setComparing(false); setActiveSide("left"); };
@@ -895,39 +906,43 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
       {/* ── Humanoid groups: [stats | robot] per side ── */}
       {(() => {
+        const bodyStyle = { color: "#999", lineHeight: 1.4 } as const;
         const statSections = (h: typeof humanoids[0]) => [
           { key: "overview", show: !!(h.height || h.weight), content: (
             <>
-              <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Overview</p>
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink)" }}>Overview</p>
               <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
-                {h.height ? <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>Height: {h.height} cm</p> : null}
-                {h.weight ? <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>Weight: {h.weight} kg</p> : null}
+                {h.height ? <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Height: {h.height} cm</p> : null}
+                {h.weight ? <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Weight: {h.weight} kg</p> : null}
               </div>
+              {h.description && <p className="text-[11px] mt-3" style={bodyStyle}>{h.description}</p>}
             </>
           )},
           { key: "dof", show: !!h.dof, content: (
             <>
-              <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Degrees of Freedom</p>
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink)" }}>Degrees of Freedom</p>
               <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
-                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>DOF: {h.dof}</p>
+                <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>{h.dof}</p>
               </div>
+              <p className="text-[11px] mt-3" style={bodyStyle}>{(h.dof ?? 0) >= 40 ? "High dexterity — suited for complex manipulation tasks." : (h.dof ?? 0) >= 25 ? "Moderate articulation for general-purpose mobility." : "Streamlined design with fewer active joints."}</p>
             </>
           )},
           { key: "speed", show: !!h.maxSpeed, content: (
             <>
-              <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Speed</p>
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink)" }}>Speed</p>
               <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
-                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>Max: {h.maxSpeed} m/s</p>
+                <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Max: {h.maxSpeed} m/s</p>
               </div>
+              <p className="text-[11px] mt-3" style={bodyStyle}>{(h.maxSpeed ?? 0) >= 3.0 ? "Among the fastest humanoids — exceeds typical human walking speed." : (h.maxSpeed ?? 0) >= 2.0 ? "Comparable to average human walking pace." : "Designed for precision over speed."}</p>
             </>
           )},
           { key: "status", show: !!h.status, content: (
             <>
-              <p className="text-[12px] font-medium" style={{ color: "var(--c-ink)" }}>Status</p>
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink)" }}>Status</p>
               <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
-                <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>{h.status}</p>
-                {h.cost && h.cost !== "N/A" && <p className="text-[12px]" style={{ color: "var(--c-ink-body)" }}>{h.cost}</p>}
+                <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>{h.status}</p>
               </div>
+              <p className="text-[11px] mt-3" style={bodyStyle}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : "No longer in active production."}</p>
             </>
           )},
           { key: "buy", show: !!(h.purchaseUrl || (h.cost && h.cost !== "N/A")), content: (
@@ -935,13 +950,13 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               <a href={h.purchaseUrl} target="_blank" rel="noopener noreferrer"
                 className="pointer-events-auto block"
                 style={{ textDecoration: "none", background: "#2563eb", margin: "-12px", padding: "12px", borderRadius: cardRadius }}>
-                <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.7)" }}>From {h.cost && h.cost !== "N/A" ? h.cost : ""}</p>
-                <p className="text-[12px] font-medium mt-1" style={{ color: "#fff" }}>Buy &rarr;</p>
+                <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.7)" }}>From {h.cost && h.cost !== "N/A" ? h.cost : ""}</p>
+                <p className="text-[13px] font-medium mt-1" style={{ color: "#fff" }}>Buy &rarr;</p>
               </a>
             ) : (
               <>
-                <p className="text-[12px]" style={{ color: "#999" }}>{h.status === "In Production" ? "Starting at" : "Est."}</p>
-                <p className="text-[12px] font-medium mt-1" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>{h.cost}</p>
+                <p className="text-[13px]" style={{ color: "#999" }}>{h.status === "In Production" ? "Starting at" : "Est."}</p>
+                <p className="text-[13px] font-medium mt-1" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>{h.cost}</p>
               </>
             )
           )},
@@ -953,10 +968,11 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           const sections = statSections(h);
           return (
             <div className="flex flex-col gap-2 flex-shrink-0 overflow-hidden" style={{
-              width: statsW,
+              width: expandedIdx !== null ? 0 : statsW,
+              opacity: expandedIdx !== null ? 0 : 1,
               height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
               maxHeight: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
-              transition: `height ${dur} ${ease}, max-height ${dur} ${ease}, width ${dur} ${ease}`,
+              transition: `all ${dur} ${ease}`,
             }}>
               {sections.map((s) => (
                 <div key={s.key} className="overflow-hidden" style={{
@@ -973,38 +989,108 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           );
         };
 
-        const renderRobot = (h: typeof humanoids[0], dist: number, hIdx: number, isFirst: boolean) => (
-          <div
-            className="relative overflow-hidden flex-shrink-0 group/card"
-            style={{
-              width: comparing ? `${robotW - 8}vw` : `${robotW}vw`,
-              height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
-              maxWidth: comparing ? robotMaxW - 100 : robotMaxW,
-              transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
-              borderRadius: cardRadius,
-              background: "#FAFAFA",
-              pointerEvents: "auto",
-            }}
-          >
-            <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none" style={{ opacity: Math.max(0.5, 1 - dist * robotFade) }}>
-              <div className="relative w-full h-full">
-                <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst} />
-              </div>
-            </div>
-            <button
-              className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center cursor-pointer opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
-              style={{ background: "rgba(245,245,244,0.9)", borderRadius: cardRadius, pointerEvents: "auto", zIndex: 2 }}
-              onClick={(e) => { e.stopPropagation(); setExpandedIdx(hIdx); }}
+        const expandEase = "0.5s cubic-bezier(0.16, 1, 0.3, 1)";
+        const renderRobot = (h: typeof humanoids[0], dist: number, hIdx: number, isFirst: boolean) => {
+          const isExpanded = expandedIdx === hIdx;
+          const specs = isExpanded ? [
+            h.height && { label: "Height", value: `${h.height} cm` },
+            h.weight && { label: "Weight", value: `${h.weight} kg` },
+            h.dof && { label: "DOF", value: `${h.dof}` },
+            h.maxSpeed && { label: "Speed", value: `${h.maxSpeed} m/s` },
+            h.status && { label: "Status", value: h.status },
+          ].filter(Boolean) as { label: string; value: string }[] : [];
+
+          return (
+            <div
+              className="relative overflow-hidden flex-shrink-0 group/card"
+              style={{
+                width: isExpanded ? "70vw" : comparing ? `${robotW - 8}vw` : `${robotW}vw`,
+                height: isExpanded ? "82vh" : comparing ? `${robotH - 10}vh` : `${robotH}vh`,
+                maxWidth: isExpanded ? 1100 : comparing ? robotMaxW - 100 : robotMaxW,
+                transition: `all ${expandEase}`,
+                borderRadius: cardRadius,
+                background: "#FAFAFA",
+                pointerEvents: "auto",
+                zIndex: isExpanded ? 20 : 1,
+                display: "flex",
+              }}
             >
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="8.5,1.5 12.5,1.5 12.5,5.5" />
-                <line x1="12.5" y1="1.5" x2="8" y2="6" />
-                <polyline points="5.5,12.5 1.5,12.5 1.5,8.5" />
-                <line x1="1.5" y1="12.5" x2="6" y2="8" />
-              </svg>
-            </button>
-          </div>
-        );
+              {/* Robot image */}
+              <div className="relative flex-1 flex items-center justify-center p-6 pointer-events-none" style={{
+                opacity: isExpanded ? 1 : Math.max(0.5, 1 - dist * robotFade),
+                transition: `opacity ${expandEase}`,
+              }}>
+                <div className="relative w-full h-full">
+                  <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes={isExpanded ? "50vw" : comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst} />
+                </div>
+              </div>
+
+              {/* Detail panel — grows from 0 width when expanded */}
+              <div style={{
+                width: isExpanded ? "42%" : 0,
+                minWidth: isExpanded ? 300 : 0,
+                opacity: isExpanded ? 1 : 0,
+                overflow: "hidden",
+                transition: `width ${expandEase}, min-width ${expandEase}, opacity 0.3s ease ${isExpanded ? "0.15s" : "0s"}`,
+              }}>
+                <div className="flex flex-col justify-between h-full py-8 px-8" style={{ minWidth: 300 }}>
+                  <div className="flex items-center justify-between">
+                    <button onClick={() => setExpandedIdx(null)} className="w-7 h-7 flex items-center justify-center cursor-pointer hover:bg-neutral-200" style={{ borderRadius: 6, background: "#ebebeb" }}>
+                      <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#525252" strokeWidth="1.5" strokeLinecap="round"><line x1="1.5" y1="1.5" x2="9.5" y2="9.5" /><line x1="9.5" y1="1.5" x2="1.5" y2="9.5" /></svg>
+                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setExpandedIdx(hIdx > 0 ? hIdx - 1 : humanoids.length - 1)} className="w-7 h-7 flex items-center justify-center cursor-pointer hover:bg-neutral-200" style={{ borderRadius: 6, background: "#ebebeb" }}>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="7.5,2 3.5,6 7.5,10" /></svg>
+                      </button>
+                      <span className="text-[10px] tabular-nums mx-1" style={{ color: "#a3a3a3" }}>{String(hIdx + 1).padStart(2, "0")}<span style={{ color: "#d4d4d4" }}>/</span>{String(humanoids.length).padStart(2, "0")}</span>
+                      <button onClick={() => setExpandedIdx(hIdx < humanoids.length - 1 ? hIdx + 1 : 0)} className="w-7 h-7 flex items-center justify-center cursor-pointer hover:bg-neutral-200" style={{ borderRadius: 6, background: "#ebebeb" }}>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="4.5,2 8.5,6 4.5,10" /></svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 flex flex-col justify-center">
+                    <p className="text-[10px] tracking-widest uppercase font-medium mb-3" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
+                    <h2 className="text-[28px] font-medium leading-none" style={{ color: "var(--c-ink)", letterSpacing: "-0.04em" }}>{h.name}</h2>
+                    {h.year && <p className="text-[13px] mt-2" style={{ color: "#a3a3a3" }}>{h.year}</p>}
+                    {h.description && <p className="text-[13px] leading-relaxed mt-5" style={{ color: "#737373", maxWidth: 320 }}>{h.description}</p>}
+                    {h.cost && h.cost !== "N/A" && <p className="text-[18px] font-medium mt-6" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>{h.cost}</p>}
+                    {h.purchaseUrl && (
+                      <a href={h.purchaseUrl} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center mt-4 px-5 py-2 text-[11px] font-medium tracking-wide hover:bg-neutral-800"
+                        style={{ background: "#171717", color: "#fff", borderRadius: 6 }}>Buy</a>
+                    )}
+                  </div>
+
+                  <div className="flex items-start gap-6 pt-5" style={{ borderTop: "1px solid #e5e5e5" }}>
+                    {specs.map((s) => (
+                      <div key={s.label}>
+                        <p className="text-[9px] tracking-widest uppercase" style={{ color: "#a3a3a3", letterSpacing: "0.1em" }}>{s.label}</p>
+                        <p className="text-[13px] font-medium mt-1" style={{ color: "var(--c-ink)" }}>{s.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Expand button — hidden when expanded */}
+              {!isExpanded && (
+                <button
+                  className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center cursor-pointer opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
+                  style={{ background: "rgba(245,245,244,0.9)", borderRadius: cardRadius, pointerEvents: "auto", zIndex: 2 }}
+                  onClick={(e) => { e.stopPropagation(); setExpandedIdx(hIdx); }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="8.5,1.5 12.5,1.5 12.5,5.5" />
+                    <line x1="12.5" y1="1.5" x2="8" y2="6" />
+                    <polyline points="5.5,12.5 1.5,12.5 1.5,8.5" />
+                    <line x1="1.5" y1="12.5" x2="6" y2="8" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          );
+        };
 
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 4 }}>
@@ -1059,75 +1145,10 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         </div>
       )}
 
-      {/* ── Expanded view overlay ── */}
+      {/* Click-away to close expanded */}
       {expandedIdx !== null && (
-        <ExpandedView
-          humanoid={humanoids[expandedIdx]}
-          onClose={() => setExpandedIdx(null)}
-          onPrev={() => setExpandedIdx((prev) => prev !== null && prev > 0 ? prev - 1 : humanoids.length - 1)}
-          onNext={() => setExpandedIdx((prev) => prev !== null && prev < humanoids.length - 1 ? prev + 1 : 0)}
-        />
+        <div className="fixed inset-0 z-[3]" onClick={() => setExpandedIdx(null)} />
       )}
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════
-// GRID — Clean cards on neutral backgrounds
-// ═══════════════════════════════════════════════════════════════
-function Grid() {
-  const [selected, setSelected] = useState<number | null>(null);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelected(null);
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
-  return (
-    <div className="min-h-screen overflow-y-auto scrollbar-hide select-none">
-      <div className="grid grid-cols-2 md:grid-cols-3 p-4 max-w-[1400px] mx-auto pt-16" style={{ gap: 15 }}>
-        {humanoids.map((h, idx) => {
-          const isSelected = selected === idx;
-          return (
-            <div
-              key={h.id}
-              className="group relative overflow-hidden cursor-pointer aspect-square"
-              style={{
-                borderRadius: 6,
-                background: "#FAFAFA",
-                opacity: selected !== null && !isSelected ? 0.4 : 1,
-                transition: "opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-              }}
-              onClick={() => setSelected(isSelected ? null : idx)}
-            >
-              {/* Robot image — centered */}
-              <div className="absolute inset-0 flex items-center justify-center p-10 md:p-14">
-                <div className="relative w-full h-full">
-                  <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes="(max-width: 768px) 50vw, 33vw" />
-                </div>
-              </div>
-
-              {/* Index number — swoops in from top */}
-              <div
-                className="absolute top-5 left-0 right-0 -translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out text-center"
-              >
-                <span className="text-[11px] tabular-nums text-neutral-400">{String(idx + 1).padStart(2, "0")}</span>
-              </div>
-
-              {/* Name + manufacturer — swoops in from bottom */}
-              <div
-                className="absolute bottom-5 left-0 right-0 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out text-center"
-              >
-                <p className="text-[12px] font-medium text-neutral-800" style={{ letterSpacing: "-0.02em" }}>{h.name}</p>
-                <p className="text-[12px] text-neutral-400 mt-0.5">{h.manufacturer}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -1175,7 +1196,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
         }}
       >
         <div className="max-w-[640px] mx-auto pt-24 pb-16 px-6 md:px-10">
-          <p className="text-[12px] text-neutral-400 mb-10">{humanoids.length} humanoids</p>
+          <p className="text-[13px] text-neutral-400 mb-10">{humanoids.length} humanoids</p>
           {humanoids.map((h, i) => (
             <div
               key={h.id}
@@ -1185,7 +1206,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
             >
               <span className="text-[11px] tabular-nums text-neutral-300 w-5">{String(i + 1).padStart(2, "0")}</span>
               <span
-                className={`text-[12px] transition-colors duration-200 ${hovered === i ? "text-neutral-900 font-medium" : "text-neutral-500"}`}
+                className={`text-[13px] transition-colors duration-200 ${hovered === i ? "text-neutral-900 font-medium" : "text-neutral-500"}`}
                 style={{ letterSpacing: "-0.02em" }}
               >
                 {h.name}
@@ -1220,7 +1241,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
             <div className="relative w-[180px] h-[240px]">
               <Image src={humanoids[hovered].imageUrl || "/robots/placeholder.png"} alt={humanoids[hovered].name} fill className="object-contain" sizes="180px" />
             </div>
-            <p className="text-[12px] font-medium mt-3" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>
+            <p className="text-[13px] font-medium mt-3" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>
               {humanoids[hovered].name}
             </p>
             <p className="text-[11px] text-neutral-400 mt-0.5">
@@ -1273,7 +1294,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
                   {entries.map(({ h, idx }) => (
                     <span
                       key={h.id}
-                      className={`text-[12px] whitespace-nowrap cursor-pointer transition-colors duration-150 leading-relaxed ${
+                      className={`text-[13px] whitespace-nowrap cursor-pointer transition-colors duration-150 leading-relaxed ${
                         hovered === idx ? "text-neutral-900 font-medium" : "text-neutral-400"
                       }`}
                       style={{ letterSpacing: "-0.01em" }}
@@ -1355,7 +1376,7 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
           {messages.map((m, i) => (
             <div key={i}>
               <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <p className={`text-[12px] leading-relaxed max-w-[85%] px-3 py-2 rounded-2xl ${m.role === "user" ? "text-white" : ""}`}
+                <p className={`text-[13px] leading-relaxed max-w-[85%] px-3 py-2 rounded-2xl ${m.role === "user" ? "text-white" : ""}`}
                   style={m.role === "user" ? { background: "var(--c-ink)", color: "white" } : { background: "#f5f5f5", color: "var(--c-ink-medium)" }}>
                   {m.text}
                 </p>
@@ -1390,10 +1411,10 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             placeholder="e.g. fastest, cheapest, for warehouse..."
-            className="flex-1 text-[12px] outline-none bg-transparent"
+            className="flex-1 text-[13px] outline-none bg-transparent"
             style={{ color: "var(--c-ink)" }}
           />
-          <button onClick={handleSubmit} className="text-[12px] font-medium cursor-pointer" style={{ color: query ? "var(--c-ink)" : "#c4c4c4" }}>
+          <button onClick={handleSubmit} className="text-[13px] font-medium cursor-pointer" style={{ color: query ? "var(--c-ink)" : "#c4c4c4" }}>
             Send
           </button>
         </div>
@@ -1488,7 +1509,6 @@ export default function Home() {
       />
 
       {layout === "E" && <Browse goToIndex={goToIndex} />}
-      {layout === "V" && <Grid />}
       {layout === "Z" && <TextIndex subView={indexSubView} />}
 
       {/* Font toast */}
