@@ -7,7 +7,7 @@ import Image from "next/image";
 function PlaceholderLogo({ className }: { className?: string }) {
   return (
     <div className={`absolute inset-0 flex items-center justify-center ${className ?? ""}`}>
-      <svg width="32" height="32" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.1 }}>
+      <svg width="280" height="280" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.045 }}>
         <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
         <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
       </svg>
@@ -1175,7 +1175,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         const renderRobot = (h: typeof humanoids[0], dist: number, hIdx: number, isFirst: boolean) => {
           const isExpanded = expandedIdx === hIdx;
           const gallery = h.media?.filter((m) => m.type === "image") || [];
-          const allImages = [h.imageUrl || "/robots/placeholder.png", ...gallery.map((m) => m.url)];
+          const allImages = [h.imageUrl, ...gallery.map((m) => m.url)].filter(Boolean) as string[];
 
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: isExpanded ? 20 : 1 }}>
@@ -1237,25 +1237,26 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
             </div>
 
-              {/* Mini crown — outside left edge of card, appears on hover */}
+              {/* Mini crown — outside edge of card */}
               {!isExpanded && (() => {
-                const crownSpring = comparing && activeSide === "right" && !isFirst ? springR : springL;
+                const crownSpring = isFirst ? springL : springR;
+                const crownSide = isFirst ? "left" : "right";
                 const crownItems: { idx: number; o: number }[] = [];
                 const cf = Math.floor(crownSpring.pos);
                 for (let n = cf - 3; n <= cf + 4; n++) if (n >= 0 && n < humanoids.length) crownItems.push({ idx: n, o: n - crownSpring.pos });
                 return (
-                  <div className="absolute top-3 pointer-events-auto z-[3]" style={{ right: "100%", marginRight: 6, height: 110, width: 30 }}>
+                  <div className="absolute top-3 pointer-events-auto z-[3]" style={{ ...(crownSide === "left" ? { right: "100%", marginRight: 6 } : { left: "100%", marginLeft: 6 }), height: 110, width: 30 }}>
                     {/* Static dashes */}
                     {Array.from({ length: 11 }, (_, j) => {
                       const y = (j - 5) * 9;
                       const isMajor = j % 3 === 0;
                       const dfc = Math.abs(j - 5);
-                      return <div key={j} className="absolute" style={{ left: 0, top: `calc(50% + ${y}px)`, width: isMajor ? 8 : 5, height: 1, background: `rgba(0,0,0,${isMajor ? 0.1 : 0.05})`, borderRadius: 1, opacity: Math.max(0, 1 - dfc * 0.14), transform: "translateY(-50%)" }} />;
+                      return <div key={j} className="absolute" style={{ [crownSide === "left" ? "left" : "right"]: 0, top: `calc(50% + ${y}px)`, width: isMajor ? 8 : 5, height: 1, background: `rgba(0,0,0,${isMajor ? 0.1 : 0.05})`, borderRadius: 1, opacity: Math.max(0, 1 - dfc * 0.14), transform: "translateY(-50%)" }} />;
                     })}
                     {/* Rail */}
-                    <div className="absolute" style={{ left: 0, top: "10%", bottom: "10%", width: 1, background: "rgba(0,0,0,0.05)" }} />
+                    <div className="absolute" style={{ [crownSide === "left" ? "left" : "right"]: 0, top: "10%", bottom: "10%", width: 1, background: "rgba(0,0,0,0.05)" }} />
                     {/* Brass marker */}
-                    <div className="absolute" style={{ left: -4, top: "50%", transform: "translateY(-50%)" }}>
+                    <div className="absolute" style={{ [crownSide === "left" ? "left" : "right"]: -4, top: "50%", transform: `translateY(-50%)${crownSide === "right" ? " scaleX(-1)" : ""}` }}>
                       <svg width="5" height="7" viewBox="0 0 5 7" fill="#8a7245" opacity="0.45"><polygon points="0,1.5 5,3.5 0,5.5" /></svg>
                     </div>
                     {/* Scrolling numbers */}
@@ -1267,7 +1268,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                       const cfs = 7 + cz * 3.5;
                       const cop = Math.pow(cz, 3);
                       const cAct = Math.abs(co) < 0.15;
-                      return <div key={ci} className="absolute cursor-pointer" style={{ left: 10, top: `calc(50% + ${cy}px)`, transform: `translateY(-50%) scaleY(${0.6 + cz * 0.4})`, opacity: cop }} onClick={() => { (comparing && activeSide === "right" && !isFirst ? springR : springL).jumpTo(ci); }}>
+                      return <div key={ci} className="absolute cursor-pointer" style={{ [crownSide === "left" ? "left" : "right"]: 10, top: `calc(50% + ${cy}px)`, transform: `translateY(-50%) scaleY(${0.6 + cz * 0.4})`, opacity: cop }} onClick={() => crownSpring.jumpTo(ci)}>
                         <span className="tabular-nums" style={{ fontSize: cfs, fontWeight: cAct ? 600 : 400, lineHeight: 1, color: cAct ? "#1d1d1f" : `rgba(0,0,0,${0.15 + cz * 0.25})`, letterSpacing: "0.02em" }}>{String(ci).padStart(2, "0")}</span>
                       </div>;
                     })}
@@ -1279,7 +1280,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               {!isExpanded && (
                 <button
                   className="absolute bottom-3 w-5 h-5 flex items-center justify-center cursor-pointer opacity-50 hover:opacity-80 transition-opacity duration-200 z-[3]"
-                  style={{ right: "100%", marginRight: 8, borderRadius: 4, pointerEvents: "auto" }}
+                  style={{ ...(isFirst ? { right: "100%", marginRight: 8 } : { left: "100%", marginLeft: 8 }), borderRadius: 4, pointerEvents: "auto" }}
                   onClick={() => setShowStats((s) => !s)}
                   title={showStats ? "Hide stats (i)" : "Show stats (i)"}
                 >
@@ -1351,10 +1352,11 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                   {renderStats(hR)}
                 </div>
 
-                <div className="flex-shrink-0 overflow-hidden" style={{
+                <div className="flex-shrink-0" style={{
                   opacity: comparing ? 1 : 0,
                   transform: `scale(${comparing ? 1 : 0.95})`,
                   width: comparing ? "auto" : 0,
+                  overflow: comparing ? "visible" : "hidden",
                   transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}`,
                 }}>
                   {renderRobot(hR, distR, springR.index, false)}
@@ -1500,7 +1502,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
         {hovered !== null ? (
           <div className="animate-blur-fade flex flex-col items-center">
             <div className="relative w-[180px] h-[240px]">
-              <Image src={humanoids[hovered].imageUrl || "/robots/placeholder.png"} alt={humanoids[hovered].name} fill className="object-contain" sizes="180px" />
+              {humanoids[hovered].imageUrl ? <Image src={humanoids[hovered].imageUrl} alt={humanoids[hovered].name} fill className="object-contain" sizes="180px" /> : <PlaceholderLogo />}
             </div>
             <p className="text-[13px] font-medium mt-3" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>
               {humanoids[hovered].name}
@@ -1650,7 +1652,7 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
                       <button key={h.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl cursor-pointer transition-all hover:scale-105" style={{ background: "#f5f5f5" }}
                         onClick={() => onSelect(idx)}>
                         <div className="relative w-6 h-8 flex-shrink-0">
-                          <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes="24px" />
+                          {h.imageUrl ? <Image src={h.imageUrl} alt={h.name} fill className="object-contain" sizes="24px" /> : <PlaceholderLogo />}
                         </div>
                         <div className="text-left">
                           <p className="text-[11px] font-medium" style={{ color: "var(--c-ink)" }}>{h.name}</p>

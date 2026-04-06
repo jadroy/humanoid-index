@@ -32,7 +32,8 @@
       "Bash(md5:*)",
       "Bash(git stash:*)",
       "Bash(lsof -ti:3000)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []
