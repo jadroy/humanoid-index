@@ -497,18 +497,41 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
 
   const drumMask = variant === "crown" ? { maskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 20}%, black 70%, transparent 90%)`, WebkitMaskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 20}%, black 70%, transparent 90%)` } as React.CSSProperties : {};
 
-  // Faint vertical rail for crown
-  const rail = variant === "crown" ? (
-    <div className="absolute pointer-events-none" style={{
-      left: dXOff, top: "20%", bottom: "20%", width: 1,
-      background: "rgba(0,0,0,0.06)", borderRadius: 1,
-    }} />
+  // Crown physical elements
+  const crownElements = variant === "crown" ? (
+    <>
+      {/* Knurled edge — fine horizontal ridges suggesting grip texture */}
+      <div className="absolute pointer-events-none" style={{
+        left: dXOff - 10, top: "15%", bottom: "15%", width: 6,
+        backgroundImage: "repeating-linear-gradient(to bottom, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 3px)",
+        borderRadius: 2,
+      }} />
+      {/* Rail line */}
+      <div className="absolute pointer-events-none" style={{
+        left: dXOff, top: "15%", bottom: "15%", width: 1,
+        background: "rgba(0,0,0,0.07)", borderRadius: 1,
+      }} />
+      {/* Fixed reading marker — hairline triangle at center */}
+      <div className="absolute pointer-events-none" style={{ left: dXOff - 14, top: "50%", transform: "translateY(-50%)" }}>
+        <svg width="8" height="12" viewBox="0 0 8 12" fill="rgba(0,0,0,0.2)">
+          <polygon points="0,3 8,6 0,9" />
+        </svg>
+      </div>
+    </>
   ) : null;
 
+  // Enhanced depth mask for crown — stronger curve shading
+  const crownDepth = variant === "crown" ? {
+    maskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 15}%, black 65%, transparent 88%)`,
+    WebkitMaskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 15}%, black 65%, transparent 88%)`,
+  } as React.CSSProperties : drumMask;
+
+  const finalMask = variant === "crown" ? crownDepth : drumMask;
+
   if (mirrored) {
-    return <div className="absolute inset-0" style={{ transform: "scaleX(-1)", ...drumMask }}>{rail}{content}</div>;
+    return <div className="absolute inset-0" style={{ transform: "scaleX(-1)", ...finalMask }}>{crownElements}{content}</div>;
   }
-  return <div className="absolute inset-0" style={drumMask}>{rail}{content}</div>;
+  return <div className="absolute inset-0" style={finalMask}>{crownElements}{content}</div>;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -721,16 +744,16 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [arcStyle, setArcStyle] = useState<ArcStyle>("crown");
 
   // Crown drum config
-  const [drumAngle, setDrumAngle] = useState(18);
-  const [drumRadius, setDrumRadius] = useState(152);
+  const [drumAngle, setDrumAngle] = useState(14);
+  const [drumRadius, setDrumRadius] = useState(168);
   const [drumFsMax, setDrumFsMax] = useState(20);
   const [drumFsMin, setDrumFsMin] = useState(8);
   const [drumFwMax, setDrumFwMax] = useState(500);
-  const [drumCompression, setDrumCompression] = useState(0.59);
-  const [drumOpPower, setDrumOpPower] = useState(4.0);
+  const [drumCompression, setDrumCompression] = useState(0.62);
+  const [drumOpPower, setDrumOpPower] = useState(3.5);
   const [drumXOffset, setDrumXOffset] = useState(120);
-  const [drumMaskFade, setDrumMaskFade] = useState(35);
-  const [drumRange, setDrumRange] = useState(2);
+  const [drumMaskFade, setDrumMaskFade] = useState(30);
+  const [drumRange, setDrumRange] = useState(3);
   const [drumTracking, setDrumTracking] = useState(0.04);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [showStats, setShowStats] = useState(true);
@@ -1016,7 +1039,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 </svg>
               </button>
               {/* Fixed-width inner to prevent text reflow during width transition */}
-              <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW }}>
+              <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
               {/* Info header */}
               <div className="flex flex-col" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px" }}>
                 <div className="flex items-start justify-between gap-2">
@@ -1033,8 +1056,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 </div>
                 {h.description && <p className="text-[11px] mt-4 leading-relaxed" style={{ color: "#999" }}>{h.description}</p>}
               </div>
-              {/* Stats — spaced out to fill remaining height */}
-              <div className="flex flex-col justify-evenly" style={{ padding: "0 12px", flex: 1 }}>
+              {/* Stats — lighter container, spaced out */}
+              <div className="flex flex-col justify-evenly" style={{ padding: "10px 12px", flex: 1, borderRadius: cardRadius, background: "#FCFCFC" }}>
                 {sections.filter((s) => s.show).map((s) => (
                   <div key={s.key}>{s.content}</div>
                 ))}
