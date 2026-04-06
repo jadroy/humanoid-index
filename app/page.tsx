@@ -70,7 +70,7 @@ function LayoutSwitcher({
 
   // ── Style: floating (original — island with border) ──
   if (navStyle === "floating") return (
-    <nav className="fixed top-0 left-0 right-0 z-50 pt-5 pointer-events-none px-6">
+    <nav className="pt-5 px-6">
       <div className="flex items-center justify-between pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 bg-white mx-auto" style={{ maxWidth: 1052 }}>
         {mark}
         <div className="flex items-center gap-0.5">
@@ -347,7 +347,11 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
       const op = Math.pow(Math.max(0, drumZ), dOpPow) * bOp;
       const color = drumZ > 0.94 ? "#1d1d1f" : `rgba(29,29,31,${0.15 + drumZ * 0.35})`;
       const compMin = dComp;
-      return (<div key={i} className="absolute cursor-pointer" style={{ left: dXOff, top: `calc(50% + ${drumY}px)`, transform: `translateY(-50%) scaleY(${compMin + drumZ * (1 - compMin)})`, opacity: op }} onClick={() => onClickItem(i)}>
+      const tickW = 4 + drumZ * 14;
+      const tickH = 1 + (drumZ > 0.94 ? 0.5 : 0);
+      const tickColor = drumZ > 0.94 ? "rgba(0,0,0,0.18)" : `rgba(0,0,0,${0.04 + drumZ * 0.06})`;
+      return (<div key={i} className="absolute cursor-pointer flex items-center" style={{ left: dXOff, top: `calc(50% + ${drumY}px)`, transform: `translateY(-50%) scaleY(${compMin + drumZ * (1 - compMin)})`, opacity: op, gap: 8 }} onClick={() => onClickItem(i)}>
+        <div style={{ width: tickW, height: tickH, borderRadius: 1, background: tickColor, flexShrink: 0 }} />
         <span className="tabular-nums" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1, color, letterSpacing: `${dTrack}em` }}>{num}</span>
       </div>);
     }
@@ -493,10 +497,18 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
 
   const drumMask = variant === "crown" ? { maskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 20}%, black 70%, transparent 90%)`, WebkitMaskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 20}%, black 70%, transparent 90%)` } as React.CSSProperties : {};
 
+  // Faint vertical rail for crown
+  const rail = variant === "crown" ? (
+    <div className="absolute pointer-events-none" style={{
+      left: dXOff, top: "20%", bottom: "20%", width: 1,
+      background: "rgba(0,0,0,0.06)", borderRadius: 1,
+    }} />
+  ) : null;
+
   if (mirrored) {
-    return <div className="absolute inset-0" style={{ transform: "scaleX(-1)", ...drumMask }}>{content}</div>;
+    return <div className="absolute inset-0" style={{ transform: "scaleX(-1)", ...drumMask }}>{rail}{content}</div>;
   }
-  return <div className="absolute inset-0" style={drumMask}>{content}</div>;
+  return <div className="absolute inset-0" style={drumMask}>{rail}{content}</div>;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -884,11 +896,11 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
     <div className="h-screen overflow-hidden select-none relative bg-white">
       {/* Arc dots are rendered inside their respective section groups below */}
 
-      {/* ── Add compare button — hover zone on far right edge ── */}
+      {/* ── Add compare button — hover zone right of center ── */}
       {!comparing && (
         <div
           className="absolute top-0 bottom-0 right-0 flex items-center justify-center group cursor-pointer"
-          style={{ width: "22%", zIndex: 10 }}
+          style={{ width: "38%", zIndex: 10 }}
           onClick={() => { setAddHover(false); enterCompare(); }}
           onMouseEnter={() => setAddHover(true)}
           onMouseLeave={() => setAddHover(false)}
@@ -909,7 +921,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
       {comparing && (
         <div
           className="absolute top-0 bottom-0 flex items-center justify-center group/split cursor-pointer"
-          style={{ left: "50%", width: 60, marginLeft: -30, zIndex: 10 }}
+          style={{ left: "50%", width: 120, marginLeft: -60, zIndex: 10 }}
           onClick={exitCompare}
           onMouseEnter={() => setSplitHover(true)}
           onMouseLeave={() => setSplitHover(false)}
@@ -937,30 +949,30 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
         const statSections = (h: typeof humanoids[0]) => [
           { key: "overview", show: !!(h.height || h.weight), content: (
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2.5">
+              {icoRuler}
               <div className="font-medium" style={{ lineHeight: 1.15 }}>
                 {h.height ? <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Height: {h.height} cm</p> : null}
                 {h.weight ? <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Weight: {h.weight} kg</p> : null}
               </div>
-              {icoRuler}
             </div>
           )},
           { key: "dof", show: !!h.dof, content: (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom: {h.dof}</p>
+            <div className="flex items-center gap-2.5">
               {icoDof}
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom: {h.dof}</p>
             </div>
           )},
           { key: "speed", show: !!h.maxSpeed, content: (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Max Speed: {h.maxSpeed} m/s</p>
+            <div className="flex items-center gap-2.5">
               {icoSpeed}
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Max Speed: {h.maxSpeed} m/s</p>
             </div>
           )},
           { key: "status", show: !!h.status, content: (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status: {h.status}</p>
+            <div className="flex items-center gap-2.5">
               {icoStatus}
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status: {h.status}</p>
             </div>
           )},
           { key: "buy", show: !!(h.purchaseUrl || (h.cost && h.cost !== "N/A")), content: (
@@ -1004,9 +1016,9 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 </svg>
               </button>
               {/* Fixed-width inner to prevent text reflow during width transition */}
-              <div className="flex flex-col gap-2" style={{ width: statsW, minWidth: statsW }}>
+              <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW }}>
               {/* Info header */}
-              <div className="flex flex-col" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px", flex: 1, minHeight: 0 }}>
+              <div className="flex flex-col" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px" }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
@@ -1021,17 +1033,12 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 </div>
                 {h.description && <p className="text-[11px] mt-4 leading-relaxed" style={{ color: "#999" }}>{h.description}</p>}
               </div>
-              {sections.map((s) => (
-                <div key={s.key} className="overflow-hidden" style={{
-                  borderRadius: cardRadius,
-                  background: "#FAFAFA",
-                  maxHeight: s.show ? 200 : 0,
-                  padding: s.show ? "12px" : "0 12px",
-                  opacity: s.show ? 1 : 0,
-                  marginBottom: s.show ? 0 : -8,
-                  transition: cardMorph,
-                }}>{s.content}</div>
-              ))}
+              {/* Stats — spaced out to fill remaining height */}
+              <div className="flex flex-col justify-evenly" style={{ padding: "0 12px", flex: 1 }}>
+                {sections.filter((s) => s.show).map((s) => (
+                  <div key={s.key}>{s.content}</div>
+                ))}
+              </div>
               </div>
             </div>
           );
@@ -1158,7 +1165,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               <div className="relative flex items-start" style={{
                 gap: cardGap,
                 transform: splitHover ? "translateX(-12px)" : addHover ? "translateX(-16px)" : "translateX(0)",
-                transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+                transition: "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
               }}>
                 {/* Left arc — positioned to the left of the robot */}
                 <div className="absolute top-0 bottom-0 right-full" style={{
@@ -1176,7 +1183,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               <div className="relative flex items-start" style={{
                 gap: cardGap,
                 transform: splitHover ? "translateX(12px)" : "translateX(0)",
-                transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+                transition: "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
               }}>
                 <div className="flex-shrink-0 overflow-hidden" style={{
                   width: comparing ? statsW : 0,
@@ -1655,16 +1662,18 @@ export default function Home() {
       )}
 
       {/* ── Nav ── */}
-      <div className={introDone ? "intro-nav" : "opacity-0"}>
-        <LayoutSwitcher
-          active={layout}
-          onChange={setLayout}
-          indexSubView={indexSubView}
-          onIndexSubViewChange={setIndexSubView}
-          navStyle={navStyle}
-          onNavStyleChange={setNavStyle}
-        />
-      </div>
+      {introDone && (
+        <div className="intro-nav fixed inset-0 z-[999] pointer-events-none">
+          <LayoutSwitcher
+            active={layout}
+            onChange={setLayout}
+            indexSubView={indexSubView}
+            onIndexSubViewChange={setIndexSubView}
+            navStyle={navStyle}
+            onNavStyleChange={setNavStyle}
+          />
+        </div>
+      )}
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
