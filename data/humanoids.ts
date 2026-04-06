@@ -37,7 +37,7 @@ export const humanoids: Humanoid[] = [
     weight: 56,
     dof: 28,
     maxSpeed: 2.5,
-    description: "Tesla's second-generation humanoid robot featuring improved hands with 22 degrees of freedom and enhanced balance capabilities.",
+    description: "Tesla's second-gen humanoid with improved hands and enhanced balance capabilities.",
     media: [
       { type: 'image', url: '/robots/optimus-torso.png', caption: 'Torso detail' },
       { type: 'image', url: '/robots/optimus-upper-half.png', caption: 'Upper body' },
@@ -59,7 +59,7 @@ export const humanoids: Humanoid[] = [
     weight: 89,
     dof: 28,
     maxSpeed: 2.5,
-    description: "Boston Dynamics' fully electric humanoid robot, succeeding the hydraulic Atlas. Built for real-world industrial applications.",
+    description: "Fully electric successor to hydraulic Atlas for industrial applications.",
     media: [
       { type: 'image', url: '/robots/atlas.png', caption: 'Full body view' },
       { type: 'image', url: '/robots/placeholder.png', caption: 'Industrial setting' },
@@ -74,7 +74,7 @@ export const humanoids: Humanoid[] = [
     cost: "$50K",
     status: "Prototype",
     height: 122, // ~4 feet typical working height (can extend to 7 feet)
-    description: "Domestic robot designed for household chores like loading dishwashers, making espresso, and folding laundry. Features wheeled base with adjustable height, dexterous dual-arm system, and AI trained on data from over 500 homes. Founded Family Beta program launching late 2026.",
+    description: "Domestic robot for household chores with a wheeled base and dual-arm system.",
   },
   {
     id: "4",
@@ -87,7 +87,7 @@ export const humanoids: Humanoid[] = [
     height: 165,
     weight: 30,
     maxSpeed: 4.0,
-    description: "Lightweight bipedal humanoid designed for safe human interaction and home assistance applications.",
+    description: "Lightweight bipedal humanoid for safe human interaction and home assistance.",
     purchaseUrl: "https://www.1x.tech/order",
   },
   {
@@ -102,7 +102,7 @@ export const humanoids: Humanoid[] = [
     weight: 65,
     dof: 30,
     maxSpeed: 1.5,
-    description: "A production-ready humanoid designed for logistics and warehouse automation. Currently deployed in Amazon facilities.",
+    description: "Production-ready humanoid for logistics. Deployed in Amazon facilities.",
   },
   {
     id: "7",
@@ -115,7 +115,7 @@ export const humanoids: Humanoid[] = [
     height: 167,
     weight: 70,
     dof: 40,
-    description: "Second-generation humanoid from Figure AI with advanced AI integration and dexterous manipulation capabilities.",
+    description: "Second-gen humanoid from Figure AI with advanced AI and dexterous manipulation.",
   },
   {
     id: "8",
@@ -128,7 +128,7 @@ export const humanoids: Humanoid[] = [
     height: 170,
     weight: 70,
     dof: 20,
-    description: "General-purpose humanoid powered by Carbon, Sanctuary AI's proprietary AI system for human-like cognition.",
+    description: "General-purpose humanoid powered by Sanctuary AI's Carbon cognition system.",
   },
   {
     id: "9",
@@ -142,7 +142,7 @@ export const humanoids: Humanoid[] = [
     weight: 63,
     dof: 41,
     maxSpeed: 3.0,
-    description: "Large-scale humanoid from Ubtech with 41 degrees of freedom, capable of navigating uneven terrain and performing manipulation tasks in industrial settings.",
+    description: "Large-scale humanoid for uneven terrain and industrial manipulation.",
   },
   {
     id: "10",
@@ -155,7 +155,7 @@ export const humanoids: Humanoid[] = [
     height: 173,
     weight: 73,
     dof: 34,
-    description: "Modular humanoid platform designed for manufacturing and logistics with swappable battery packs.",
+    description: "Modular humanoid for manufacturing and logistics with swappable battery packs.",
   },
   {
     id: "11",
@@ -169,7 +169,7 @@ export const humanoids: Humanoid[] = [
     weight: 35,
     dof: 23,
     maxSpeed: 2.0,
-    description: "Compact and affordable humanoid robot with advanced mobility and AI capabilities. Designed for research and early commercial applications.",
+    description: "Compact, affordable humanoid with advanced mobility for research and commercial use.",
     purchaseUrl: "https://shop.unitree.com/",
     media: [
       { type: 'image', url: '/robots/g1.png', caption: 'Front view' },
@@ -189,7 +189,7 @@ export const humanoids: Humanoid[] = [
     weight: 47,
     dof: 19,
     maxSpeed: 3.3,
-    description: "Full-size humanoid robot designed for industrial applications with high-speed locomotion capabilities.",
+    description: "Full-size humanoid for industrial applications with high-speed locomotion.",
   },
   {
     id: "13",
@@ -203,7 +203,7 @@ export const humanoids: Humanoid[] = [
     weight: 55,
     dof: 40,
     maxSpeed: 1.5,
-    description: "General-purpose humanoid robot platform designed for research and rehabilitation applications.",
+    description: "General-purpose humanoid platform for research and rehabilitation.",
   },
   {
     id: "14",
@@ -217,7 +217,7 @@ export const humanoids: Humanoid[] = [
     weight: 50,
     dof: 30,
     maxSpeed: 1.2,
-    description: "Bipedal humanoid with advanced dynamic locomotion capabilities for challenging terrain.",
+    description: "Bipedal humanoid with advanced dynamic locomotion for challenging terrain.",
   },
   {
     id: "15",
@@ -230,7 +230,7 @@ export const humanoids: Humanoid[] = [
     height: 170,
     weight: 60,
     dof: 32,
-    description: "Highly dexterous humanoid robot capable of complex manipulation tasks like cooking and pouring drinks.",
+    description: "Highly dexterous humanoid capable of complex tasks like cooking and pouring drinks.",
   },
   {
     id: "16",
@@ -243,7 +243,7 @@ export const humanoids: Humanoid[] = [
     height: 178,
     weight: 85,
     dof: 40,
-    description: "Affordable general-purpose humanoid designed for manufacturing and logistics applications in China.",
+    description: "Affordable general-purpose humanoid for manufacturing and logistics.",
   },
   {
     id: "17",
@@ -257,7 +257,7 @@ export const humanoids: Humanoid[] = [
     weight: 43,
     dof: 42,
     maxSpeed: 2.0,
-    description: "China's national humanoid robot project featuring advanced whole-body motion control.",
+    description: "China's national humanoid project with advanced whole-body motion control.",
   },
   {
     id: "18",
@@ -269,7 +269,7 @@ export const humanoids: Humanoid[] = [
     status: "Prototype",
     height: 160,
     weight: 45,
-    description: "AI-native humanoid robot designed for natural language interaction and household tasks.",
+    description: "AI-native humanoid for natural language interaction and household tasks.",
   },
   {
     id: "19",
@@ -282,7 +282,7 @@ export const humanoids: Humanoid[] = [
     height: 186,
     weight: 86,
     maxSpeed: 1.4,
-    description: "Wheeled humanoid designed for security and commercial applications. Currently deployed at various facilities.",
+    description: "Wheeled humanoid for security and commercial applications.",
   },
   {
     id: "20",
@@ -294,7 +294,7 @@ export const humanoids: Humanoid[] = [
     status: "In Production",
     height: 180,
     dof: 52,
-    description: "The world's most advanced human-shaped robot designed for human-robot interaction research and entertainment.",
+    description: "Advanced human-shaped robot for interaction research and entertainment.",
   },
   {
     id: "21",
@@ -307,7 +307,7 @@ export const humanoids: Humanoid[] = [
     height: 120,
     weight: 28,
     dof: 20,
-    description: "Emotional humanoid robot designed for customer service and companionship applications.",
+    description: "Emotional humanoid for customer service and companionship.",
   },
   {
     id: "22",
@@ -317,7 +317,7 @@ export const humanoids: Humanoid[] = [
     year: 2013,
     status: "Prototype",
     height: 170,
-    description: "Lifelike social robot with realistic skin, hair, and facial expressions for research in human-robot interaction.",
+    description: "Lifelike social robot with realistic skin and expressions for HRI research.",
   },
   {
     id: "23",
@@ -329,7 +329,7 @@ export const humanoids: Humanoid[] = [
     height: 175,
     weight: 68,
     dof: 63,
-    description: "Collaborative humanoid robot designed to assist humans in industrial maintenance tasks.",
+    description: "Collaborative humanoid for industrial maintenance tasks.",
   },
   {
     id: "24",
@@ -343,7 +343,7 @@ export const humanoids: Humanoid[] = [
     weight: 95,
     dof: 32,
     maxSpeed: 1.5,
-    description: "Fully electric humanoid designed for industrial and research applications with torque-controlled joints.",
+    description: "Electric humanoid for industrial and research use with torque-controlled joints.",
   },
   {
     id: "25",
@@ -355,7 +355,7 @@ export const humanoids: Humanoid[] = [
     height: 140,
     weight: 30,
     dof: 48,
-    description: "Tendon-driven humanoid robot that mimics human musculoskeletal system for biomechanics research.",
+    description: "Tendon-driven humanoid mimicking the musculoskeletal system for biomechanics research.",
   },
 ];
 
@@ -372,7 +372,7 @@ export const legends: Humanoid[] = [
     weight: 54,
     dof: 57,
     maxSpeed: 2.7,
-    description: "Honda's pioneering bipedal humanoid robot, developed over 20 years. ASIMO could run, climb stairs, and interact with humans. Retired in 2022 after inspiring a generation of humanoid robotics.",
+    description: "Honda's pioneering bipedal humanoid. Retired in 2022 after 20 years of development.",
     media: [
       { type: 'image', url: '/robots/asimo.png', caption: 'Full body' },
       { type: 'image', url: '/robots/asimo-head.png', caption: 'Head detail' },
@@ -386,6 +386,6 @@ export const legends: Humanoid[] = [
     year: 2016,
     status: "In Production",
     height: 167,
-    description: "The world's most famous social humanoid robot. Sophia was granted Saudi Arabian citizenship in 2017, becoming the first robot to receive citizenship. Known for remarkably human-like facial expressions and AI-powered conversations.",
+    description: "Famous social humanoid and first robot granted citizenship. Known for lifelike expressions.",
   },
 ];

@@ -4,6 +4,17 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 
+function PlaceholderLogo({ className }: { className?: string }) {
+  return (
+    <div className={`absolute inset-0 flex items-center justify-center ${className ?? ""}`}>
+      <svg width="32" height="32" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.1 }}>
+        <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+        <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+      </svg>
+    </div>
+  );
+}
+
 const ALL_LAYOUTS = ["E", "Z"] as const;
 type Layout = (typeof ALL_LAYOUTS)[number];
 
@@ -719,14 +730,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
           style={{ background: "#ececea", borderLeft: "1px solid #e5e5e5" }}
         >
           <div className="animate-expand-content relative" style={{ width: "75%", height: "75%", animationDelay: "0.08s" }}>
-            <Image
-              src={h.imageUrl || "/robots/placeholder.png"}
-              alt={h.name}
-              fill
-              className="object-contain"
-              sizes="50vw"
-              priority
-            />
+            {h.imageUrl ? <Image src={h.imageUrl} alt={h.name} fill className="object-contain" sizes="50vw" priority /> : <PlaceholderLogo />}
           </div>
         </div>
       </div>
@@ -1113,8 +1117,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             }}>
               {/* Fixed-width inner to prevent text reflow during width transition */}
               <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
-              {/* Info header */}
-              <div className="flex flex-col" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px" }}>
+              {/* Info header — fixed height */}
+              <div className="flex flex-col" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px", height: 150, flexShrink: 0 }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
@@ -1127,7 +1131,14 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                     </div>
                   )}
                 </div>
-                {h.description && <p className="text-[12.5px] mt-4 leading-relaxed" style={{ color: "#999" }}>{h.description}</p>}
+                {h.description && (
+                  <p className="text-[12.5px] mt-4 leading-relaxed overflow-hidden" style={{
+                    color: "#999",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical" as const,
+                  }}>{h.description}</p>
+                )}
               </div>
               {/* Stats — lighter container, spaced out */}
               <div className="flex flex-col pointer-events-auto" style={{ padding: "6px 12px", borderRadius: cardRadius, background: "#FCFCFC", position: "relative", zIndex: 11 }}>
@@ -1167,8 +1178,10 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           const allImages = [h.imageUrl || "/robots/placeholder.png", ...gallery.map((m) => m.url)];
 
           return (
+            <div className="relative flex-shrink-0 group/card" style={{ zIndex: isExpanded ? 20 : 1 }}>
+            {/* Inner card with overflow hidden for image clipping */}
             <div
-              className="relative overflow-hidden flex-shrink-0 group/card flex"
+              className="relative overflow-hidden flex"
               style={{
                 width: isExpanded ? `${robotW + 14}vw` : comparing ? `${robotW - 8}vw` : `${robotW}vw`,
                 height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
@@ -1177,7 +1190,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 borderRadius: cardRadius,
                 background: "#FAFAFA",
                 pointerEvents: "auto",
-                zIndex: isExpanded ? 20 : 1,
               }}
             >
               {/* Main image area */}
@@ -1186,7 +1198,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 transition: `opacity ${expandEase}`,
               }}>
                 <div className="relative w-full h-full">
-                  <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes={isExpanded ? "40vw" : comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst} />
+                  {h.imageUrl ? <Image src={h.imageUrl} alt={h.name} fill className="object-contain" sizes={isExpanded ? "40vw" : comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst} /> : <PlaceholderLogo />}
                 </div>
               </div>
 
@@ -1223,14 +1235,16 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 </div>
               </div>
 
-              {/* Mini crown — top-left edge of card, appears on hover */}
+            </div>
+
+              {/* Mini crown — outside left edge of card, appears on hover */}
               {!isExpanded && (() => {
                 const crownSpring = comparing && activeSide === "right" && !isFirst ? springR : springL;
                 const crownItems: { idx: number; o: number }[] = [];
                 const cf = Math.floor(crownSpring.pos);
                 for (let n = cf - 3; n <= cf + 4; n++) if (n >= 0 && n < humanoids.length) crownItems.push({ idx: n, o: n - crownSpring.pos });
                 return (
-                  <div className="absolute left-2 top-3 pointer-events-auto z-[3] opacity-0 group-hover/card:opacity-100 transition-opacity duration-300" style={{ height: 110, width: 30 }}>
+                  <div className="absolute top-3 pointer-events-auto z-[3]" style={{ right: "100%", marginRight: 6, height: 110, width: 30 }}>
                     {/* Static dashes */}
                     {Array.from({ length: 11 }, (_, j) => {
                       const y = (j - 5) * 9;
@@ -1261,11 +1275,11 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 );
               })()}
 
-              {/* Stats toggle — bottom-left of card */}
+              {/* Stats toggle — outside bottom-left of card */}
               {!isExpanded && (
                 <button
-                  className="absolute bottom-3 left-2 w-5 h-5 flex items-center justify-center cursor-pointer opacity-0 group-hover/card:opacity-50 transition-opacity duration-200 z-[3]"
-                  style={{ borderRadius: 4, pointerEvents: "auto" }}
+                  className="absolute bottom-3 w-5 h-5 flex items-center justify-center cursor-pointer opacity-50 hover:opacity-80 transition-opacity duration-200 z-[3]"
+                  style={{ right: "100%", marginRight: 8, borderRadius: 4, pointerEvents: "auto" }}
                   onClick={() => setShowStats((s) => !s)}
                   title={showStats ? "Hide stats (i)" : "Show stats (i)"}
                 >
@@ -1465,7 +1479,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
         {hovered !== null && (
           <div ref={floatingRef} className="fixed pointer-events-none z-50 animate-blur-fade" style={{ right: "10%" }}>
             <div className="relative w-[200px] h-[280px]">
-              <Image src={humanoids[hovered].imageUrl || "/robots/placeholder.png"} alt={humanoids[hovered].name} fill className="object-contain" sizes="200px" />
+              {humanoids[hovered].imageUrl ? <Image src={humanoids[hovered].imageUrl} alt={humanoids[hovered].name} fill className="object-contain" sizes="200px" /> : <PlaceholderLogo />}
             </div>
           </div>
         )}
