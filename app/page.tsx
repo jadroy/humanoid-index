@@ -347,11 +347,7 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
       const op = Math.pow(Math.max(0, drumZ), dOpPow) * bOp;
       const color = drumZ > 0.94 ? "#1d1d1f" : `rgba(29,29,31,${0.15 + drumZ * 0.35})`;
       const compMin = dComp;
-      const tickW = 4 + drumZ * 14;
-      const tickH = 1 + (drumZ > 0.94 ? 0.5 : 0);
-      const tickColor = drumZ > 0.94 ? "rgba(0,0,0,0.18)" : `rgba(0,0,0,${0.04 + drumZ * 0.06})`;
-      return (<div key={i} className="absolute cursor-pointer flex items-center" style={{ left: dXOff, top: `calc(50% + ${drumY}px)`, transform: `translateY(-50%) scaleY(${compMin + drumZ * (1 - compMin)})`, opacity: op, gap: 8 }} onClick={() => onClickItem(i)}>
-        <div style={{ width: tickW, height: tickH, borderRadius: 1, background: tickColor, flexShrink: 0 }} />
+      return (<div key={i} className="absolute cursor-pointer" style={{ left: dXOff + 14, top: `calc(50% + ${drumY}px)`, transform: `translateY(-50%) scaleY(${compMin + drumZ * (1 - compMin)})`, opacity: op }} onClick={() => onClickItem(i)}>
         <span className="tabular-nums" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1, color, letterSpacing: `${dTrack}em` }}>{num}</span>
       </div>);
     }
@@ -497,24 +493,37 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
 
   const drumMask = variant === "crown" ? { maskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 20}%, black 70%, transparent 90%)`, WebkitMaskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 20}%, black 70%, transparent 90%)` } as React.CSSProperties : {};
 
-  // Crown physical elements
+  // Crown physical elements — static dashes + blued marker
   const crownElements = variant === "crown" ? (
     <>
-      {/* Knurled edge — fine horizontal ridges suggesting grip texture */}
-      <div className="absolute pointer-events-none" style={{
-        left: dXOff - 10, top: "15%", bottom: "15%", width: 6,
-        backgroundImage: "repeating-linear-gradient(to bottom, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 3px)",
-        borderRadius: 2,
-      }} />
+      {/* Static dashed lines — fixed ruler markings */}
+      {Array.from({ length: 21 }, (_, j) => {
+        const y = (j - 10) * 12;
+        const distFromCenter = Math.abs(j - 10);
+        const isMajor = j % 5 === 0;
+        const op = Math.max(0, 1 - distFromCenter * 0.09);
+        return (
+          <div key={j} className="absolute pointer-events-none" style={{
+            left: dXOff,
+            top: `calc(50% + ${y}px)`,
+            width: isMajor ? 12 : 7,
+            height: 1,
+            background: `rgba(0,0,0,${isMajor ? 0.12 : 0.06})`,
+            borderRadius: 1,
+            opacity: op,
+            transform: "translateY(-50%)",
+          }} />
+        );
+      })}
       {/* Rail line */}
       <div className="absolute pointer-events-none" style={{
         left: dXOff, top: "15%", bottom: "15%", width: 1,
-        background: "rgba(0,0,0,0.07)", borderRadius: 1,
+        background: "rgba(0,0,0,0.06)", borderRadius: 1,
       }} />
-      {/* Fixed reading marker — hairline triangle at center */}
-      <div className="absolute pointer-events-none" style={{ left: dXOff - 14, top: "50%", transform: "translateY(-50%)" }}>
-        <svg width="8" height="12" viewBox="0 0 8 12" fill="rgba(0,0,0,0.2)">
-          <polygon points="0,3 8,6 0,9" />
+      {/* Fixed reading marker — warm brass triangle */}
+      <div className="absolute pointer-events-none" style={{ left: dXOff - 12, top: "50%", transform: "translateY(-50%)" }}>
+        <svg width="8" height="10" viewBox="0 0 8 10" fill="#8a7245" opacity="0.45">
+          <polygon points="0,2.5 8,5 0,7.5" />
         </svg>
       </div>
     </>
@@ -970,6 +979,13 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         const icoSpeed = ico("M12 12l4-8M19.07 4.93A10 10 0 1 0 20.45 13");
         const icoStatus = ico("M22 12h-4l-3 9L9 3l-3 9H2");
 
+        const infoBtn = (tip: string) => (
+          <span className="relative group/info flex-shrink-0 pointer-events-auto cursor-default" style={{ marginLeft: "auto" }}>
+            <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#EFEFEF", color: "#aaa" }}>i</span>
+            <span className="absolute bottom-full right-0 mb-1.5 px-2.5 py-1.5 rounded text-[11px] leading-snug whitespace-normal opacity-0 scale-95 group-hover/info:opacity-100 group-hover/info:scale-100 transition-all duration-150 pointer-events-none" style={{ background: "#333", color: "#e5e5e5", width: 200, zIndex: 50 }}>{tip}</span>
+          </span>
+        );
+
         const statSections = (h: typeof humanoids[0]) => [
           { key: "overview", show: !!(h.height || h.weight), content: (
             <div className="flex items-start gap-2.5">
@@ -978,24 +994,28 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 {h.height ? <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Height: {h.height} cm</p> : null}
                 {h.weight ? <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Weight: {h.weight} kg</p> : null}
               </div>
+              {infoBtn("Physical dimensions measured without additional payload or tooling attached.")}
             </div>
           )},
           { key: "dof", show: !!h.dof, content: (
             <div className="flex items-center gap-2.5">
               {icoDof}
               <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom: {h.dof}</p>
+              {infoBtn((h.dof ?? 0) >= 40 ? "High dexterity — suited for complex manipulation tasks." : (h.dof ?? 0) >= 25 ? "Moderate articulation for general-purpose mobility." : "Streamlined design with fewer active joints.")}
             </div>
           )},
           { key: "speed", show: !!h.maxSpeed, content: (
             <div className="flex items-center gap-2.5">
               {icoSpeed}
               <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Max Speed: {h.maxSpeed} m/s</p>
+              {infoBtn((h.maxSpeed ?? 0) >= 3.0 ? "Among the fastest humanoids — exceeds typical human walking speed." : (h.maxSpeed ?? 0) >= 2.0 ? "Comparable to average human walking pace." : "Designed for precision over speed.")}
             </div>
           )},
           { key: "status", show: !!h.status, content: (
             <div className="flex items-center gap-2.5">
               {icoStatus}
               <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status: {h.status}</p>
+              {infoBtn(h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : "No longer in active production.")}
             </div>
           )},
           { key: "buy", show: !!(h.purchaseUrl || (h.cost && h.cost !== "N/A")), content: (
@@ -1020,7 +1040,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         const renderStats = (h: typeof humanoids[0]) => {
           const sections = statSections(h);
           return (
-            <div className="flex-shrink-0 overflow-hidden relative group/stats" style={{
+            <div className="flex-shrink-0 relative group/stats" style={{
+              overflowX: "hidden", overflowY: "visible",
               width: expandedIdx !== null || !showStats ? 0 : statsW,
               opacity: expandedIdx !== null || !showStats ? 0 : 1,
               height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
@@ -1054,10 +1075,10 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                     </div>
                   )}
                 </div>
-                {h.description && <p className="text-[11px] mt-4 leading-relaxed" style={{ color: "#999" }}>{h.description}</p>}
+                {h.description && <p className="text-[12.5px] mt-4 leading-relaxed" style={{ color: "#999" }}>{h.description}</p>}
               </div>
               {/* Stats — lighter container, spaced out */}
-              <div className="flex flex-col justify-evenly" style={{ padding: "10px 12px", flex: 1, borderRadius: cardRadius, background: "#FCFCFC" }}>
+              <div className="flex flex-col gap-3 pointer-events-auto" style={{ padding: "10px 12px", borderRadius: cardRadius, background: "#FCFCFC", position: "relative", zIndex: 11 }}>
                 {sections.filter((s) => s.show).map((s) => (
                   <div key={s.key}>{s.content}</div>
                 ))}
@@ -1182,7 +1203,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         const arcProps = { drumAngle, drumRadius, drumFsMax, drumFsMin, drumFwMax, drumCompression, drumOpPower, drumXOffset, drumTracking, drumRange, drumMaskFade };
 
         return (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 4 }}>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 11 }}>
             <div className="flex items-start" style={{ gap: cardGap }}>
               {/* Left group — arc + robot + stats */}
               <div className="relative flex items-start" style={{
