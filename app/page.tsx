@@ -766,6 +766,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [drumTracking, setDrumTracking] = useState(0.04);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [showStats, setShowStats] = useState(true);
+  const [openStat, setOpenStat] = useState<string | null>(null);
 
   // Layout dimensions
   const [robotW, setRobotW] = useState(30);       // vw
@@ -979,45 +980,106 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         const icoSpeed = ico("M12 12l4-8M19.07 4.93A10 10 0 1 0 20.45 13");
         const icoStatus = ico("M22 12h-4l-3 9L9 3l-3 9H2");
 
-        const infoBtn = (tip: string) => (
-          <span className="relative group/info flex-shrink-0 pointer-events-auto cursor-default" style={{ marginLeft: "auto" }}>
-            <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#EFEFEF", color: "#aaa" }}>i</span>
-            <span className="absolute bottom-full right-0 mb-1.5 px-2.5 py-1.5 rounded text-[11px] leading-snug whitespace-normal opacity-0 scale-95 group-hover/info:opacity-100 group-hover/info:scale-100 transition-all duration-150 pointer-events-none" style={{ background: "#333", color: "#e5e5e5", width: 200, zIndex: 50 }}>{tip}</span>
-          </span>
+        const chevron = (open: boolean) => (
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform 0.2s ease", transform: open ? "rotate(180deg)" : "rotate(0)" }}>
+            <polyline points="2,3.5 5,6.5 8,3.5" />
+          </svg>
         );
 
-        const statSections = (h: typeof humanoids[0]) => [
-          { key: "overview", show: !!(h.height || h.weight), content: (
-            <div className="flex items-start gap-2.5">
-              {icoRuler}
-              <div className="font-medium" style={{ lineHeight: 1.15 }}>
-                {h.height ? <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Height: {h.height} cm</p> : null}
-                {h.weight ? <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Weight: {h.weight} kg</p> : null}
-              </div>
-              {infoBtn("Physical dimensions measured without additional payload or tooling attached.")}
+        const statSections = (h: typeof humanoids[0]) => {
+        const heightPct = Math.min(((h.height ?? 0) / 200) * 100, 100);
+        const weightPct = Math.min(((h.weight ?? 0) / 120) * 100, 100);
+        const dofPct = Math.min(((h.dof ?? 0) / 50) * 100, 100);
+        const speedPct = Math.min(((h.maxSpeed ?? 0) / 5) * 100, 100);
+        const statusColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : "#a3a3a3";
+
+        const barViz = (label: string, value: string, pct: number, delay: number) => (
+          <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
+            <p className="text-[10px] w-[32px] text-right flex-shrink-0" style={{ color: "#aaa" }}>{label}</p>
+            <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "#EFEFEF" }}>
+              <div className="h-full rounded-full" style={{
+                width: openStat === "overview" ? `${pct}%` : "0%",
+                background: "#c4c4c4",
+                transition: `width 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
+              }} />
             </div>
-          )},
-          { key: "dof", show: !!h.dof, content: (
+            <p className="text-[10px] flex-shrink-0 tabular-nums" style={{ color: "var(--c-ink-body)", minWidth: 42 }}>{value}</p>
+          </div>
+        );
+
+        return [
+          { key: "overview", show: !!(h.height || h.weight), label: (
+            <div className="flex items-center gap-2.5">
+              {icoRuler}
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Overview</p>
+            </div>
+          ), detail: (
+            <div>
+              {h.height ? barViz("Height", `${h.height} cm`, heightPct, 0.05) : null}
+              {h.weight ? barViz("Weight", `${h.weight} kg`, weightPct, 0.12) : null}
+            </div>
+          ) },
+          { key: "dof", show: !!h.dof, label: (
             <div className="flex items-center gap-2.5">
               {icoDof}
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom: {h.dof}</p>
-              {infoBtn((h.dof ?? 0) >= 40 ? "High dexterity — suited for complex manipulation tasks." : (h.dof ?? 0) >= 25 ? "Moderate articulation for general-purpose mobility." : "Streamlined design with fewer active joints.")}
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
             </div>
-          )},
-          { key: "speed", show: !!h.maxSpeed, content: (
+          ), detail: (
+            <div>
+              <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
+                <div className="flex gap-[3px]">
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <div key={i} className="rounded-full" style={{
+                      width: 6, height: 6,
+                      background: i < Math.round((h.dof ?? 0) / 5) ? "#c4c4c4" : "#EFEFEF",
+                      transform: openStat === "dof" ? "scale(1)" : "scale(0)",
+                      transition: `transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) ${0.03 * i}s`,
+                    }} />
+                  ))}
+                </div>
+                <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.dof}</p>
+              </div>
+              <p className="text-[11px] mt-2" style={{ color: "#999" }}>{(h.dof ?? 0) >= 40 ? "High dexterity — suited for complex manipulation." : (h.dof ?? 0) >= 25 ? "Moderate articulation for general mobility." : "Streamlined with fewer active joints."}</p>
+            </div>
+          ) },
+          { key: "speed", show: !!h.maxSpeed, label: (
             <div className="flex items-center gap-2.5">
               {icoSpeed}
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Max Speed: {h.maxSpeed} m/s</p>
-              {infoBtn((h.maxSpeed ?? 0) >= 3.0 ? "Among the fastest humanoids — exceeds typical human walking speed." : (h.maxSpeed ?? 0) >= 2.0 ? "Comparable to average human walking pace." : "Designed for precision over speed.")}
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Speed</p>
             </div>
-          )},
-          { key: "status", show: !!h.status, content: (
+          ), detail: (
+            <div>
+              <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
+                <svg width="40" height="24" viewBox="0 0 40 24">
+                  <path d="M4 20 A16 16 0 0 1 36 20" fill="none" stroke="#EFEFEF" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M4 20 A16 16 0 0 1 36 20" fill="none" stroke="#c4c4c4" strokeWidth="2.5" strokeLinecap="round"
+                    strokeDasharray="50.3"
+                    strokeDashoffset={openStat === "speed" ? 50.3 * (1 - speedPct / 100) : 50.3}
+                    style={{ transition: `stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s` }}
+                  />
+                </svg>
+                <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.maxSpeed} m/s</p>
+              </div>
+              <p className="text-[11px] mt-2" style={{ color: "#999" }}>{(h.maxSpeed ?? 0) >= 3.0 ? "Exceeds typical human walking speed." : (h.maxSpeed ?? 0) >= 2.0 ? "Comparable to human walking pace." : "Designed for precision over speed."}</p>
+            </div>
+          ) },
+          { key: "status", show: !!h.status, label: (
             <div className="flex items-center gap-2.5">
               {icoStatus}
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status: {h.status}</p>
-              {infoBtn(h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : "No longer in active production.")}
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status</p>
             </div>
-          )},
+          ), detail: (
+            <div>
+              <div className="flex items-center gap-2.5" style={{ marginTop: 4 }}>
+                <span className="relative flex h-2.5 w-2.5">
+                  {h.status === "In Production" && <span className="absolute inline-flex h-full w-full rounded-full animate-ping" style={{ background: statusColor, opacity: 0.4 }} />}
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: statusColor }} />
+                </span>
+                <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.status}</p>
+              </div>
+              <p className="text-[11px] mt-2" style={{ color: "#999" }}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : "No longer in active production."}</p>
+            </div>
+          ) },
           { key: "buy", show: !!(h.purchaseUrl || (h.cost && h.cost !== "N/A")), content: (
             h.purchaseUrl ? (
               <a href={h.purchaseUrl} target="_blank" rel="noopener noreferrer"
@@ -1034,6 +1096,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             )
           )},
         ];
+        };
 
         const cardMorph = "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.45s cubic-bezier(0.16, 1, 0.3, 1)";
 
@@ -1048,17 +1111,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               maxHeight: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
               transition: `width ${dur} ${ease}, opacity 0.25s ${ease}`,
             }}>
-              {/* Hide toggle — appears on hover */}
-              <button
-                className="absolute top-1 right-1 z-10 w-5 h-5 flex items-center justify-center cursor-pointer opacity-0 group-hover/stats:opacity-60 transition-opacity duration-200"
-                style={{ borderRadius: 4, pointerEvents: "auto" }}
-                onClick={() => setShowStats(false)}
-                title="Hide stats (i)"
-              >
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#999" strokeWidth="1.2" strokeLinecap="round">
-                  <line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" />
-                </svg>
-              </button>
               {/* Fixed-width inner to prevent text reflow during width transition */}
               <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
               {/* Info header */}
@@ -1078,10 +1130,30 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 {h.description && <p className="text-[12.5px] mt-4 leading-relaxed" style={{ color: "#999" }}>{h.description}</p>}
               </div>
               {/* Stats — lighter container, spaced out */}
-              <div className="flex flex-col gap-3 pointer-events-auto" style={{ padding: "10px 12px", borderRadius: cardRadius, background: "#FCFCFC", position: "relative", zIndex: 11 }}>
-                {sections.filter((s) => s.show).map((s) => (
-                  <div key={s.key}>{s.content}</div>
-                ))}
+              <div className="flex flex-col pointer-events-auto" style={{ padding: "6px 12px", borderRadius: cardRadius, background: "#FCFCFC", position: "relative", zIndex: 11 }}>
+                {sections.filter((s) => s.show).map((s) => {
+                  const isOpen = openStat === s.key;
+                  return (
+                    <div key={s.key}>
+                      <button
+                        className="w-full flex items-center justify-between cursor-pointer py-2"
+                        style={{ background: "none", border: "none", padding: "8px 0" }}
+                        onClick={() => setOpenStat(isOpen ? null : s.key)}
+                      >
+                        {s.label}
+                        {chevron(isOpen)}
+                      </button>
+                      <div style={{
+                        maxHeight: isOpen ? 120 : 0,
+                        opacity: isOpen ? 1 : 0,
+                        overflow: "hidden",
+                        transition: "max-height 0.25s ease, opacity 0.2s ease",
+                      }}>
+                        <div className="pb-2 pl-[22.5px]">{s.detail}</div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               </div>
             </div>
@@ -1151,6 +1223,61 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 </div>
               </div>
 
+              {/* Mini crown — top-left edge of card, appears on hover */}
+              {!isExpanded && (() => {
+                const crownSpring = comparing && activeSide === "right" && !isFirst ? springR : springL;
+                const crownItems: { idx: number; o: number }[] = [];
+                const cf = Math.floor(crownSpring.pos);
+                for (let n = cf - 3; n <= cf + 4; n++) if (n >= 0 && n < humanoids.length) crownItems.push({ idx: n, o: n - crownSpring.pos });
+                return (
+                  <div className="absolute left-2 top-3 pointer-events-auto z-[3] opacity-0 group-hover/card:opacity-100 transition-opacity duration-300" style={{ height: 110, width: 30 }}>
+                    {/* Static dashes */}
+                    {Array.from({ length: 11 }, (_, j) => {
+                      const y = (j - 5) * 9;
+                      const isMajor = j % 3 === 0;
+                      const dfc = Math.abs(j - 5);
+                      return <div key={j} className="absolute" style={{ left: 0, top: `calc(50% + ${y}px)`, width: isMajor ? 8 : 5, height: 1, background: `rgba(0,0,0,${isMajor ? 0.1 : 0.05})`, borderRadius: 1, opacity: Math.max(0, 1 - dfc * 0.14), transform: "translateY(-50%)" }} />;
+                    })}
+                    {/* Rail */}
+                    <div className="absolute" style={{ left: 0, top: "10%", bottom: "10%", width: 1, background: "rgba(0,0,0,0.05)" }} />
+                    {/* Brass marker */}
+                    <div className="absolute" style={{ left: -4, top: "50%", transform: "translateY(-50%)" }}>
+                      <svg width="5" height="7" viewBox="0 0 5 7" fill="#8a7245" opacity="0.45"><polygon points="0,1.5 5,3.5 0,5.5" /></svg>
+                    </div>
+                    {/* Scrolling numbers */}
+                    {crownItems.map(({ idx: ci, o: co }) => {
+                      const rad = (co * 14 * Math.PI) / 180;
+                      const cy = Math.sin(rad) * 72;
+                      const cz = Math.cos(rad);
+                      if (cz <= 0.01) return null;
+                      const cfs = 7 + cz * 3.5;
+                      const cop = Math.pow(cz, 3);
+                      const cAct = Math.abs(co) < 0.15;
+                      return <div key={ci} className="absolute cursor-pointer" style={{ left: 10, top: `calc(50% + ${cy}px)`, transform: `translateY(-50%) scaleY(${0.6 + cz * 0.4})`, opacity: cop }} onClick={() => { (comparing && activeSide === "right" && !isFirst ? springR : springL).jumpTo(ci); }}>
+                        <span className="tabular-nums" style={{ fontSize: cfs, fontWeight: cAct ? 600 : 400, lineHeight: 1, color: cAct ? "#1d1d1f" : `rgba(0,0,0,${0.15 + cz * 0.25})`, letterSpacing: "0.02em" }}>{String(ci).padStart(2, "0")}</span>
+                      </div>;
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* Stats toggle — bottom-left of card */}
+              {!isExpanded && (
+                <button
+                  className="absolute bottom-3 left-2 w-5 h-5 flex items-center justify-center cursor-pointer opacity-0 group-hover/card:opacity-50 transition-opacity duration-200 z-[3]"
+                  style={{ borderRadius: 4, pointerEvents: "auto" }}
+                  onClick={() => setShowStats((s) => !s)}
+                  title={showStats ? "Hide stats (i)" : "Show stats (i)"}
+                >
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.2" strokeLinecap="round">
+                    <rect x="1.5" y="2" width="4" height="10" rx="1" />
+                    <line x1="8.5" y1="4" x2="12.5" y2="4" />
+                    <line x1="8.5" y1="7" x2="12.5" y2="7" />
+                    <line x1="8.5" y1="10" x2="11" y2="10" />
+                  </svg>
+                </button>
+              )}
+
               {/* Close button — shown when expanded */}
               {isExpanded && (
                 <button
@@ -1179,52 +1306,25 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                   </svg>
                 </button>
               )}
-
-              {/* Show stats button — visible on robot card when stats hidden */}
-              {!showStats && !isExpanded && (
-                <button
-                  className="absolute bottom-3 right-3 w-7 h-7 flex items-center justify-center cursor-pointer opacity-0 group-hover/card:opacity-60 transition-opacity duration-200"
-                  style={{ borderRadius: cardRadius, pointerEvents: "auto" }}
-                  onClick={() => setShowStats(true)}
-                  title="Show stats (i)"
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.3" strokeLinecap="round">
-                    <rect x="1.5" y="2" width="4" height="10" rx="1" />
-                    <line x1="8.5" y1="4" x2="12.5" y2="4" />
-                    <line x1="8.5" y1="7" x2="12.5" y2="7" />
-                    <line x1="8.5" y1="10" x2="11" y2="10" />
-                  </svg>
-                </button>
-              )}
             </div>
           );
         };
 
-        const arcProps = { drumAngle, drumRadius, drumFsMax, drumFsMin, drumFwMax, drumCompression, drumOpPower, drumXOffset, drumTracking, drumRange, drumMaskFade };
-
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 11 }}>
             <div className="flex items-start" style={{ gap: cardGap }}>
-              {/* Left group — arc + robot + stats */}
-              <div className="relative flex items-start" style={{
+              {/* Left group */}
+              <div className="flex items-start" style={{
                 gap: cardGap,
                 transform: splitHover ? "translateX(-12px)" : addHover ? "translateX(-16px)" : "translateX(0)",
                 transition: "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
               }}>
-                {/* Left arc — positioned to the left of the robot */}
-                <div className="absolute top-0 bottom-0 right-full" style={{
-                  width: 200, zIndex: 2,
-                  opacity: comparing && activeSide !== "left" ? 0.35 : 1,
-                  transition: `opacity 0.3s ${ease}`,
-                }}>
-                  <ArcDots pos={springL.pos} onClickItem={(i) => { springL.jumpTo(i); if (comparing) setActiveSide("left"); }} dimmed={comparing && activeSide !== "left"} variant={arcStyle} {...arcProps} />
-                </div>
                 {renderRobot(hL, distL, springL.index, true)}
                 {renderStats(hL)}
               </div>
 
-              {/* Right group — stats + robot + arc */}
-              <div className="relative flex items-start" style={{
+              {/* Right group */}
+              <div className="flex items-start" style={{
                 gap: cardGap,
                 transform: splitHover ? "translateX(12px)" : "translateX(0)",
                 transition: "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
@@ -1237,7 +1337,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                   {renderStats(hR)}
                 </div>
 
-                {/* Right robot — appears in compare mode */}
                 <div className="flex-shrink-0 overflow-hidden" style={{
                   opacity: comparing ? 1 : 0,
                   transform: `scale(${comparing ? 1 : 0.95})`,
@@ -1245,16 +1344,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                   transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}`,
                 }}>
                   {renderRobot(hR, distR, springR.index, false)}
-                </div>
-
-                {/* Right arc — positioned to the right of the robot */}
-                <div className="absolute top-0 bottom-0 left-full" style={{
-                  width: 200, zIndex: 2,
-                  opacity: comparing ? (activeSide === "right" ? 1 : 0.35) : 0,
-                  pointerEvents: comparing ? "auto" : "none",
-                  transition: `opacity ${dur} ${ease}`,
-                }}>
-                  <ArcDots pos={springR.pos} mirrored onClickItem={(i) => { if (comparing) { springR.jumpTo(i); setActiveSide("right"); } }} dimmed={comparing && activeSide !== "right"} variant={arcStyle} {...arcProps} />
                 </div>
               </div>
             </div>
