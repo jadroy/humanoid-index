@@ -70,8 +70,8 @@ function LayoutSwitcher({
 
   // ── Style: floating (original — island with border) ──
   if (navStyle === "floating") return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex items-center gap-4 pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 bg-white">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-5 pointer-events-none">
+      <div className="w-full mx-6 flex items-center justify-between pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 bg-white" style={{ maxWidth: 1100 - 48 }}>
         {mark}
         <div className="flex items-center gap-0.5">
           {ALL_LAYOUTS.map((l) => (
@@ -294,8 +294,8 @@ const arcStyleLabels: Record<ArcStyle, string> = {
 // ═══════════════════════════════════════════════════════════════
 // Arc renderer — multiple visual styles along a translucent curved track
 // ═══════════════════════════════════════════════════════════════
-function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { pos: number; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle }) {
-  const R = 300, off = 30, range = 2;
+function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35 }: { pos: number; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number }) {
+  const R = 300, off = 30, range = variant === "crown" ? dRange : 2;
   const cx = -R + off;
   const getP = (o: number) => {
     const a = (o * 8 * Math.PI) / 180;
@@ -316,7 +316,7 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { po
         </filter>
       </defs>
       {noTrack ? (
-        variant !== "minimal" && <circle cx={cx} cy="50%" r={R} fill="none" stroke="#e8e8e8" strokeWidth="1" style={{ opacity: dimmed ? 0.3 : 1 }} />
+        variant !== "minimal" && variant !== "crown" && <circle cx={cx} cy="50%" r={R} fill="none" stroke="#e8e8e8" strokeWidth="1" style={{ opacity: dimmed ? 0.3 : 1 }} />
       ) : (
         <circle cx={cx} cy="50%" r={R} fill="none" stroke="rgba(243,243,243,0.85)" strokeWidth={variant === "ticks" ? 44 : 38} filter={`url(#ts-${sid})`} style={{ opacity: dimmed ? 0.3 : 1 }} />
       )}
@@ -334,6 +334,23 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { po
     const num = String(i).padStart(2, "0");
     const flip = mirrored ? "scaleX(-1)" : undefined;
 
+    // ── crown: physical drum wheel ──
+    if (variant === "crown") {
+      const drumDeg = o * dAngle;
+      const drumRad = drumDeg * Math.PI / 180;
+      const drumY = Math.sin(drumRad) * dRadius;
+      const drumZ = Math.cos(drumRad);
+      if (drumZ <= 0.01) return <div key={i} />;
+      const fsRange = dFsMax - dFsMin;
+      const fs = dFsMin + drumZ * fsRange;
+      const fw = drumZ > 0.94 ? dFwMax : drumZ > 0.7 ? Math.min(dFwMax, 500) : 400;
+      const op = Math.pow(Math.max(0, drumZ), dOpPow) * bOp;
+      const color = drumZ > 0.94 ? "#1d1d1f" : `rgba(29,29,31,${0.15 + drumZ * 0.35})`;
+      const compMin = dComp;
+      return (<div key={i} className="absolute cursor-pointer" style={{ left: dXOff, top: `calc(50% + ${drumY}px)`, transform: `translateY(-50%) scaleY(${compMin + drumZ * (1 - compMin)})`, opacity: op }} onClick={() => onClickItem(i)}>
+        <span className="tabular-nums" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1, color, letterSpacing: `${dTrack}em` }}>{num}</span>
+      </div>);
+    }
     // ── pills (no text) ──
     if (variant === "pills") {
       const op = (isActive ? 1 : Math.max(0.3, 0.65 - abs * 0.12)) * bOp;
@@ -474,10 +491,12 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills" }: { po
     </>
   );
 
+  const drumMask = variant === "crown" ? { maskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 20}%, black 70%, transparent 90%)`, WebkitMaskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 20}%, black 70%, transparent 90%)` } as React.CSSProperties : {};
+
   if (mirrored) {
-    return <div className="absolute inset-0" style={{ transform: "scaleX(-1)" }}>{content}</div>;
+    return <div className="absolute inset-0" style={{ transform: "scaleX(-1)", ...drumMask }}>{content}</div>;
   }
-  return <div className="absolute inset-0">{content}</div>;
+  return <div className="absolute inset-0" style={drumMask}>{content}</div>;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -685,8 +704,22 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
-  const [arcStyle, setArcStyle] = useState<ArcStyle>("classic");
+  const [arcStyle, setArcStyle] = useState<ArcStyle>("crown");
+
+  // Crown drum config
+  const [drumAngle, setDrumAngle] = useState(18);
+  const [drumRadius, setDrumRadius] = useState(152);
+  const [drumFsMax, setDrumFsMax] = useState(20);
+  const [drumFsMin, setDrumFsMin] = useState(8);
+  const [drumFwMax, setDrumFwMax] = useState(500);
+  const [drumCompression, setDrumCompression] = useState(0.59);
+  const [drumOpPower, setDrumOpPower] = useState(4.0);
+  const [drumXOffset, setDrumXOffset] = useState(120);
+  const [drumMaskFade, setDrumMaskFade] = useState(35);
+  const [drumRange, setDrumRange] = useState(2);
+  const [drumTracking, setDrumTracking] = useState(0.04);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [showStats, setShowStats] = useState(true);
 
   // Layout dimensions
   const [robotW, setRobotW] = useState(30);       // vw
@@ -751,6 +784,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
     };
 
     const onWheel = (e: WheelEvent) => {
+      if ((e.target as HTMLElement)?.closest?.("[data-tuner]")) return;
       e.preventDefault();
       if (expandedIdxRef.current !== null) return;
 
@@ -806,6 +840,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
       if (e.key === "s") { setArcStyle((s) => ARC_STYLES[(ARC_STYLES.indexOf(s) + 1) % ARC_STYLES.length]); return; }
+      if (e.key === "i") { setShowStats((s) => !s); return; }
       if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); activeGo(1); }
       else if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); activeGo(-1); }
     };
@@ -849,7 +884,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
       <div className="absolute top-0 bottom-0 left-0" style={{ width: "50%", zIndex: 2, opacity: comparing && activeSide !== "left" ? 0.35 : 1, transition: `opacity 0.3s ${ease}` }}
         onMouseEnter={() => comparing && setActiveSide("left")}
       >
-        <ArcDots pos={springL.pos} onClickItem={(i) => { springL.jumpTo(i); if (comparing) setActiveSide("left"); }} dimmed={comparing && activeSide !== "left"} variant={arcStyle} />
+        <ArcDots pos={springL.pos} onClickItem={(i) => { springL.jumpTo(i); if (comparing) setActiveSide("left"); }} dimmed={comparing && activeSide !== "left"} variant={arcStyle} drumAngle={drumAngle} drumRadius={drumRadius} drumFsMax={drumFsMax} drumFsMin={drumFsMin} drumFwMax={drumFwMax} drumCompression={drumCompression} drumOpPower={drumOpPower} drumXOffset={drumXOffset} drumTracking={drumTracking} drumRange={drumRange} drumMaskFade={drumMaskFade} />
       </div>
 
       {/* ── Right arc — only visible in compare ── */}
@@ -864,7 +899,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         }}
         onMouseEnter={() => comparing && setActiveSide("right")}
       >
-        <ArcDots pos={springR.pos} mirrored onClickItem={(i) => { if (comparing) { springR.jumpTo(i); setActiveSide("right"); } }} dimmed={comparing && activeSide !== "right"} variant={arcStyle} />
+        <ArcDots pos={springR.pos} mirrored onClickItem={(i) => { if (comparing) { springR.jumpTo(i); setActiveSide("right"); } }} dimmed={comparing && activeSide !== "right"} variant={arcStyle} drumAngle={drumAngle} drumRadius={drumRadius} drumFsMax={drumFsMax} drumFsMin={drumFsMin} drumFwMax={drumFwMax} drumCompression={drumCompression} drumOpPower={drumOpPower} drumXOffset={drumXOffset} drumTracking={drumTracking} drumRange={drumRange} drumMaskFade={drumMaskFade} />
       </div>
 
       {/* ── Add compare button — large hover zone, button appears on hover ── */}
@@ -907,43 +942,39 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
       {/* ── Humanoid groups: [stats | robot] per side ── */}
       {(() => {
         const bodyStyle = { color: "#999", lineHeight: 1.4 } as const;
+        const ico = (d: string) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.45 }}><path d={d} /></svg>;
+        const icoRuler = ico("M6 3v18 M6 9h4 M6 15h4 M18 3v18 M18 9h-4 M18 15h-4");
+        const icoDof = ico("M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83");
+        const icoSpeed = ico("M12 12l4-8M19.07 4.93A10 10 0 1 0 20.45 13");
+        const icoStatus = ico("M22 12h-4l-3 9L9 3l-3 9H2");
+
         const statSections = (h: typeof humanoids[0]) => [
           { key: "overview", show: !!(h.height || h.weight), content: (
-            <>
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink)" }}>Overview</p>
-              <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="font-medium" style={{ lineHeight: 1.15 }}>
                 {h.height ? <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Height: {h.height} cm</p> : null}
                 {h.weight ? <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Weight: {h.weight} kg</p> : null}
               </div>
-              {h.description && <p className="text-[11px] mt-3" style={bodyStyle}>{h.description}</p>}
-            </>
+              {icoRuler}
+            </div>
           )},
           { key: "dof", show: !!h.dof, content: (
-            <>
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink)" }}>Degrees of Freedom</p>
-              <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
-                <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>{h.dof}</p>
-              </div>
-              <p className="text-[11px] mt-3" style={bodyStyle}>{(h.dof ?? 0) >= 40 ? "High dexterity — suited for complex manipulation tasks." : (h.dof ?? 0) >= 25 ? "Moderate articulation for general-purpose mobility." : "Streamlined design with fewer active joints."}</p>
-            </>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom: {h.dof}</p>
+              {icoDof}
+            </div>
           )},
           { key: "speed", show: !!h.maxSpeed, content: (
-            <>
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink)" }}>Speed</p>
-              <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
-                <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>Max: {h.maxSpeed} m/s</p>
-              </div>
-              <p className="text-[11px] mt-3" style={bodyStyle}>{(h.maxSpeed ?? 0) >= 3.0 ? "Among the fastest humanoids — exceeds typical human walking speed." : (h.maxSpeed ?? 0) >= 2.0 ? "Comparable to average human walking pace." : "Designed for precision over speed."}</p>
-            </>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Max Speed: {h.maxSpeed} m/s</p>
+              {icoSpeed}
+            </div>
           )},
           { key: "status", show: !!h.status, content: (
-            <>
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink)" }}>Status</p>
-              <div className="mt-3 font-medium" style={{ lineHeight: 1.15 }}>
-                <p className="text-[13px]" style={{ color: "var(--c-ink-body)" }}>{h.status}</p>
-              </div>
-              <p className="text-[11px] mt-3" style={bodyStyle}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : "No longer in active production."}</p>
-            </>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status: {h.status}</p>
+              {icoStatus}
+            </div>
           )},
           { key: "buy", show: !!(h.purchaseUrl || (h.cost && h.cost !== "N/A")), content: (
             h.purchaseUrl ? (
@@ -967,13 +998,42 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         const renderStats = (h: typeof humanoids[0]) => {
           const sections = statSections(h);
           return (
-            <div className="flex flex-col gap-2 flex-shrink-0 overflow-hidden" style={{
-              width: expandedIdx !== null ? 0 : statsW,
-              opacity: expandedIdx !== null ? 0 : 1,
+            <div className="flex-shrink-0 overflow-hidden relative group/stats" style={{
+              width: expandedIdx !== null || !showStats ? 0 : statsW,
+              opacity: expandedIdx !== null || !showStats ? 0 : 1,
               height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
               maxHeight: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
-              transition: `all ${dur} ${ease}`,
+              transition: `width ${dur} ${ease}, opacity 0.25s ${ease}`,
             }}>
+              {/* Hide toggle — appears on hover */}
+              <button
+                className="absolute top-1 right-1 z-10 w-5 h-5 flex items-center justify-center cursor-pointer opacity-0 group-hover/stats:opacity-60 transition-opacity duration-200"
+                style={{ borderRadius: 4, pointerEvents: "auto" }}
+                onClick={() => setShowStats(false)}
+                title="Hide stats (i)"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#999" strokeWidth="1.2" strokeLinecap="round">
+                  <line x1="2" y1="2" x2="8" y2="8" /><line x1="8" y1="2" x2="2" y2="8" />
+                </svg>
+              </button>
+              {/* Fixed-width inner to prevent text reflow during width transition */}
+              <div className="flex flex-col gap-2" style={{ width: statsW, minWidth: statsW }}>
+              {/* Info header */}
+              <div className="flex flex-col" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px", flex: 1, minHeight: 0 }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
+                    <p className="text-[15px] font-medium mt-1.5" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
+                    {h.year && <p className="text-[11px] mt-1" style={{ color: "#a3a3a3" }}>{h.year}</p>}
+                  </div>
+                  {h.logoUrl && (
+                    <div className="flex-shrink-0 relative overflow-hidden" style={{ width: 28, height: 28, borderRadius: "50%" }}>
+                      <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="28px" />
+                    </div>
+                  )}
+                </div>
+                {h.description && <p className="text-[11px] mt-4 leading-relaxed" style={{ color: "#999" }}>{h.description}</p>}
+              </div>
               {sections.map((s) => (
                 <div key={s.key} className="overflow-hidden" style={{
                   borderRadius: cardRadius,
@@ -985,6 +1045,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                   transition: cardMorph,
                 }}>{s.content}</div>
               ))}
+              </div>
             </div>
           );
         };
@@ -992,88 +1053,80 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         const expandEase = "0.5s cubic-bezier(0.16, 1, 0.3, 1)";
         const renderRobot = (h: typeof humanoids[0], dist: number, hIdx: number, isFirst: boolean) => {
           const isExpanded = expandedIdx === hIdx;
-          const specs = isExpanded ? [
-            h.height && { label: "Height", value: `${h.height} cm` },
-            h.weight && { label: "Weight", value: `${h.weight} kg` },
-            h.dof && { label: "DOF", value: `${h.dof}` },
-            h.maxSpeed && { label: "Speed", value: `${h.maxSpeed} m/s` },
-            h.status && { label: "Status", value: h.status },
-          ].filter(Boolean) as { label: string; value: string }[] : [];
+          const gallery = h.media?.filter((m) => m.type === "image") || [];
+          const allImages = [h.imageUrl || "/robots/placeholder.png", ...gallery.map((m) => m.url)];
 
           return (
             <div
-              className="relative overflow-hidden flex-shrink-0 group/card"
+              className="relative overflow-hidden flex-shrink-0 group/card flex"
               style={{
-                width: isExpanded ? "70vw" : comparing ? `${robotW - 8}vw` : `${robotW}vw`,
-                height: isExpanded ? "82vh" : comparing ? `${robotH - 10}vh` : `${robotH}vh`,
-                maxWidth: isExpanded ? 1100 : comparing ? robotMaxW - 100 : robotMaxW,
+                width: isExpanded ? `${robotW + 14}vw` : comparing ? `${robotW - 8}vw` : `${robotW}vw`,
+                height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
+                maxWidth: isExpanded ? robotMaxW + 240 : comparing ? robotMaxW - 100 : robotMaxW,
                 transition: `all ${expandEase}`,
                 borderRadius: cardRadius,
                 background: "#FAFAFA",
                 pointerEvents: "auto",
                 zIndex: isExpanded ? 20 : 1,
-                display: "flex",
               }}
             >
-              {/* Robot image */}
+              {/* Main image area */}
               <div className="relative flex-1 flex items-center justify-center p-6 pointer-events-none" style={{
                 opacity: isExpanded ? 1 : Math.max(0.5, 1 - dist * robotFade),
                 transition: `opacity ${expandEase}`,
               }}>
                 <div className="relative w-full h-full">
-                  <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes={isExpanded ? "50vw" : comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst} />
+                  <Image src={h.imageUrl || "/robots/placeholder.png"} alt={h.name} fill className="object-contain" sizes={isExpanded ? "40vw" : comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst} />
                 </div>
               </div>
 
-              {/* Detail panel — grows from 0 width when expanded */}
+              {/* Right side — thumbnails + info, revealed on expand */}
               <div style={{
-                width: isExpanded ? "42%" : 0,
-                minWidth: isExpanded ? 300 : 0,
+                width: isExpanded ? 140 : 0,
                 opacity: isExpanded ? 1 : 0,
                 overflow: "hidden",
-                transition: `width ${expandEase}, min-width ${expandEase}, opacity 0.3s ease ${isExpanded ? "0.15s" : "0s"}`,
+                flexShrink: 0,
+                transition: `width ${expandEase}, opacity 0.3s ease ${isExpanded ? "0.12s" : "0s"}`,
               }}>
-                <div className="flex flex-col justify-between h-full py-8 px-8" style={{ minWidth: 300 }}>
-                  <div className="flex items-center justify-between">
-                    <button onClick={() => setExpandedIdx(null)} className="w-7 h-7 flex items-center justify-center cursor-pointer hover:bg-neutral-200" style={{ borderRadius: 6, background: "#ebebeb" }}>
-                      <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#525252" strokeWidth="1.5" strokeLinecap="round"><line x1="1.5" y1="1.5" x2="9.5" y2="9.5" /><line x1="9.5" y1="1.5" x2="1.5" y2="9.5" /></svg>
-                    </button>
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => setExpandedIdx(hIdx > 0 ? hIdx - 1 : humanoids.length - 1)} className="w-7 h-7 flex items-center justify-center cursor-pointer hover:bg-neutral-200" style={{ borderRadius: 6, background: "#ebebeb" }}>
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="7.5,2 3.5,6 7.5,10" /></svg>
-                      </button>
-                      <span className="text-[10px] tabular-nums mx-1" style={{ color: "#a3a3a3" }}>{String(hIdx + 1).padStart(2, "0")}<span style={{ color: "#d4d4d4" }}>/</span>{String(humanoids.length).padStart(2, "0")}</span>
-                      <button onClick={() => setExpandedIdx(hIdx < humanoids.length - 1 ? hIdx + 1 : 0)} className="w-7 h-7 flex items-center justify-center cursor-pointer hover:bg-neutral-200" style={{ borderRadius: 6, background: "#ebebeb" }}>
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="4.5,2 8.5,6 4.5,10" /></svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 flex flex-col justify-center">
-                    <p className="text-[10px] tracking-widest uppercase font-medium mb-3" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
-                    <h2 className="text-[28px] font-medium leading-none" style={{ color: "var(--c-ink)", letterSpacing: "-0.04em" }}>{h.name}</h2>
-                    {h.year && <p className="text-[13px] mt-2" style={{ color: "#a3a3a3" }}>{h.year}</p>}
-                    {h.description && <p className="text-[13px] leading-relaxed mt-5" style={{ color: "#737373", maxWidth: 320 }}>{h.description}</p>}
-                    {h.cost && h.cost !== "N/A" && <p className="text-[18px] font-medium mt-6" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>{h.cost}</p>}
-                    {h.purchaseUrl && (
-                      <a href={h.purchaseUrl} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center mt-4 px-5 py-2 text-[11px] font-medium tracking-wide hover:bg-neutral-800"
-                        style={{ background: "#171717", color: "#fff", borderRadius: 6 }}>Buy</a>
+                <div className="flex flex-col justify-between h-full py-5 pr-5" style={{ width: 140, minWidth: 140 }}>
+                  {/* Name + meta */}
+                  <div>
+                    <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
+                    <p className="text-[14px] font-medium mt-1" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
+                    {h.cost && h.cost !== "N/A" && (
+                      <p className="text-[12px] mt-1" style={{ color: "#a3a3a3" }}>{h.cost}</p>
                     )}
                   </div>
 
-                  <div className="flex items-start gap-6 pt-5" style={{ borderTop: "1px solid #e5e5e5" }}>
-                    {specs.map((s) => (
-                      <div key={s.label}>
-                        <p className="text-[9px] tracking-widest uppercase" style={{ color: "#a3a3a3", letterSpacing: "0.1em" }}>{s.label}</p>
-                        <p className="text-[13px] font-medium mt-1" style={{ color: "var(--c-ink)" }}>{s.value}</p>
+                  {/* Vertical thumbnail strip */}
+                  <div className="flex flex-col gap-1.5 overflow-y-auto scrollbar-hide mt-3 flex-1" style={{ minHeight: 0 }}>
+                    {allImages.map((src, i) => (
+                      <div
+                        key={i}
+                        className="relative flex-shrink-0 cursor-pointer overflow-hidden"
+                        style={{ width: "100%", aspectRatio: "1", borderRadius: cardRadius - 1, background: "#f0f0ee" }}
+                      >
+                        <Image src={src} alt={`${h.name} ${i + 1}`} fill className="object-contain p-1.5" sizes="120px" />
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Expand button — hidden when expanded */}
+              {/* Close button — shown when expanded */}
+              {isExpanded && (
+                <button
+                  className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center cursor-pointer hover:bg-neutral-200 transition-opacity duration-200"
+                  style={{ background: "rgba(245,245,244,0.9)", borderRadius: cardRadius, pointerEvents: "auto", zIndex: 2 }}
+                  onClick={() => setExpandedIdx(null)}
+                >
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#525252" strokeWidth="1.5" strokeLinecap="round">
+                    <line x1="1.5" y1="1.5" x2="9.5" y2="9.5" /><line x1="9.5" y1="1.5" x2="1.5" y2="9.5" />
+                  </svg>
+                </button>
+              )}
+
+              {/* Expand button — shown on hover when collapsed */}
               {!isExpanded && (
                 <button
                   className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center cursor-pointer opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
@@ -1085,6 +1138,23 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                     <line x1="12.5" y1="1.5" x2="8" y2="6" />
                     <polyline points="5.5,12.5 1.5,12.5 1.5,8.5" />
                     <line x1="1.5" y1="12.5" x2="6" y2="8" />
+                  </svg>
+                </button>
+              )}
+
+              {/* Show stats button — visible on robot card when stats hidden */}
+              {!showStats && !isExpanded && (
+                <button
+                  className="absolute bottom-3 right-3 w-7 h-7 flex items-center justify-center cursor-pointer opacity-0 group-hover/card:opacity-60 transition-opacity duration-200"
+                  style={{ borderRadius: cardRadius, pointerEvents: "auto" }}
+                  onClick={() => setShowStats(true)}
+                  title="Show stats (i)"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.3" strokeLinecap="round">
+                    <rect x="1.5" y="2" width="4" height="10" rx="1" />
+                    <line x1="8.5" y1="4" x2="12.5" y2="4" />
+                    <line x1="8.5" y1="7" x2="12.5" y2="7" />
+                    <line x1="8.5" y1="10" x2="11" y2="10" />
                   </svg>
                 </button>
               )}
@@ -1123,7 +1193,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
       {/* ── Tuner ── */}
       <button className="absolute top-20 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowTuner(!showTuner)}>{showTuner ? "Close" : "Tune"}</button>
       {showTuner && (
-        <div className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide">
+        <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide">
           <div><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Presets</p><div className="flex flex-wrap gap-1.5">{(Object.keys(SCROLL_PRESETS) as PresetKey[]).map((key) => (<button key={key} onClick={() => applyPreset(key)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${presetKey === key && !isCustom ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{SCROLL_PRESETS[key].label}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Fine Tune</p>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Stiffness <span className="tabular-nums text-neutral-400">{stiffness.toFixed(2)}</span></label><input type="range" min={2} max={40} value={Math.round(stiffness * 100)} onChange={(e) => { setCustomStiffness(Number(e.target.value) / 100); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
@@ -1142,6 +1212,22 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Squish <span className="tabular-nums text-neutral-400">{robotSquish.toFixed(2)}</span></label><input type="range" min={0} max={15} value={Math.round(robotSquish * 100)} onChange={(e) => setRobotSquish(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Fade <span className="tabular-nums text-neutral-400">{robotFade.toFixed(2)}</span></label><input type="range" min={0} max={60} value={Math.round(robotFade * 100)} onChange={(e) => setRobotFade(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
           </div>
+          {arcStyle === "crown" && (
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(152); setDrumFsMax(20); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(2); setDrumTracking(0.04); }}>Reset</button></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Angle <span className="tabular-nums text-neutral-400">{drumAngle}°</span></label><input type="range" min={8} max={45} value={drumAngle} onChange={(e) => setDrumAngle(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{drumRadius}px</span></label><input type="range" min={60} max={300} value={drumRadius} onChange={(e) => setDrumRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Size max <span className="tabular-nums text-neutral-400">{drumFsMax}px</span></label><input type="range" min={20} max={80} value={drumFsMax} onChange={(e) => setDrumFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Size min <span className="tabular-nums text-neutral-400">{drumFsMin}px</span></label><input type="range" min={6} max={32} value={drumFsMin} onChange={(e) => setDrumFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Weight <span className="tabular-nums text-neutral-400">{drumFwMax}</span></label><input type="range" min={300} max={900} step={100} value={drumFwMax} onChange={(e) => setDrumFwMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Compression <span className="tabular-nums text-neutral-400">{drumCompression.toFixed(2)}</span></label><input type="range" min={40} max={100} value={Math.round(drumCompression * 100)} onChange={(e) => setDrumCompression(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Fade power <span className="tabular-nums text-neutral-400">{drumOpPower.toFixed(1)}</span></label><input type="range" min={3} max={40} value={Math.round(drumOpPower * 10)} onChange={(e) => setDrumOpPower(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">X offset <span className="tabular-nums text-neutral-400">{drumXOffset}px</span></label><input type="range" min={10} max={120} value={drumXOffset} onChange={(e) => setDrumXOffset(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Mask fade <span className="tabular-nums text-neutral-400">{drumMaskFade}%</span></label><input type="range" min={0} max={35} value={drumMaskFade} onChange={(e) => setDrumMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Visible items <span className="tabular-nums text-neutral-400">{drumRange}</span></label><input type="range" min={2} max={8} value={drumRange} onChange={(e) => setDrumRange(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Tracking <span className="tabular-nums text-neutral-400">{drumTracking.toFixed(2)}em</span></label><input type="range" min={-10} max={10} value={Math.round(drumTracking * 100)} onChange={(e) => setDrumTracking(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+          </div>
+          )}
         </div>
       )}
 
@@ -1470,6 +1556,17 @@ export default function Home() {
   const [showDimSlider, setShowDimSlider] = useState(false);
   const toastTimeout = useRef<ReturnType<typeof setTimeout>>(null);
 
+  // ── Intro animation state ──
+  const [introPhase, setIntroPhase] = useState<"logo" | "exit" | "done">("logo");
+
+  useEffect(() => {
+    // Phase 1: logo sits for a beat, then exits
+    const t1 = setTimeout(() => setIntroPhase("exit"), 800);
+    // Phase 2: overlay unmounts, content expands in
+    const t2 = setTimeout(() => setIntroPhase("done"), 1150);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -1494,22 +1591,65 @@ export default function Home() {
     setTimeout(() => setGoToIndex(null), 100);
   };
 
+  const introDone = introPhase === "done";
+
   return (
     <main
       className="min-h-screen bg-white"
       style={{ fontFamily: FONTS[fontIdx].family, "--text-dim": textDim } as React.CSSProperties}
     >
-      <LayoutSwitcher
-        active={layout}
-        onChange={setLayout}
-        indexSubView={indexSubView}
-        onIndexSubViewChange={setIndexSubView}
-        navStyle={navStyle}
-        onNavStyleChange={setNavStyle}
-      />
+      {/* ── Intro overlay ── */}
+      {introPhase !== "done" && (
+        <div className="intro-overlay">
+          <div className="relative flex items-center justify-center" style={{ width: 56, height: 56 }}>
+            {/* Ring */}
+            <svg
+              width="56" height="56" viewBox="0 0 56 56" fill="none"
+              className="absolute inset-0"
+              style={{ transform: "rotate(-90deg)" }}
+            >
+              <circle
+                cx="28" cy="28" r="18"
+                stroke="var(--c-ink)" strokeWidth="1" fill="none"
+                strokeDasharray="113" strokeDashoffset="113"
+                strokeLinecap="round"
+                style={{
+                  opacity: 0.1,
+                  animation: introPhase === "logo"
+                    ? "intro-ring-draw 0.7s cubic-bezier(0.33, 1, 0.68, 1) 0.35s forwards"
+                    : "intro-ring-fade 0.3s ease forwards",
+                }}
+              />
+            </svg>
+            {/* Logo */}
+            <svg
+              width="24" height="24" viewBox="0 0 20 20" fill="none"
+              className={introPhase === "logo" ? "intro-logo-enter" : "intro-logo-exit"}
+            >
+              <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+              <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+            </svg>
+          </div>
+        </div>
+      )}
 
-      {layout === "E" && <Browse goToIndex={goToIndex} />}
-      {layout === "Z" && <TextIndex subView={indexSubView} />}
+      {/* ── Nav ── */}
+      <div className={introDone ? "intro-nav" : "opacity-0"}>
+        <LayoutSwitcher
+          active={layout}
+          onChange={setLayout}
+          indexSubView={indexSubView}
+          onIndexSubViewChange={setIndexSubView}
+          navStyle={navStyle}
+          onNavStyleChange={setNavStyle}
+        />
+      </div>
+
+      {/* ── Content ── */}
+      <div className={introDone ? "intro-content" : "opacity-0"}>
+        {layout === "E" && <Browse goToIndex={goToIndex} />}
+        {layout === "Z" && <TextIndex subView={indexSubView} />}
+      </div>
 
       {/* Font toast */}
       {showFontToast && (
@@ -1546,13 +1686,15 @@ export default function Home() {
       )}
 
       {/* Bottom ? button */}
-      <button
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
-        style={{ background: chatOpen ? "var(--c-ink)" : "#F7F7F7", color: chatOpen ? "white" : "#999" }}
-        onClick={() => setChatOpen(!chatOpen)}
-      >
-        <span className="text-[14px] font-medium">{chatOpen ? "×" : "?"}</span>
-      </button>
+      <div className={introDone ? "intro-nav" : "opacity-0"}>
+        <button
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
+          style={{ background: chatOpen ? "var(--c-ink)" : "#F7F7F7", color: chatOpen ? "white" : "#999" }}
+          onClick={() => setChatOpen(!chatOpen)}
+        >
+          <span className="text-[14px] font-medium">{chatOpen ? "×" : "?"}</span>
+        </button>
+      </div>
 
       {chatOpen && <GuideChat onSelect={handleSelectHumanoid} />}
     </main>

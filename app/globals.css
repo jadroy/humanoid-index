@@ -79,6 +79,107 @@ main {
   --c-ink-subtle: color-mix(in srgb, #c4c4c4 calc(100% - var(--text-dim) * 1%), white);
 }
 
+/* ═══════════════════════════════════════
+   INTRO ANIMATION
+   ═══════════════════════════════════════ */
+
+@keyframes intro-logo-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+}
+
+@keyframes intro-logo-out {
+  0% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes intro-ring-draw {
+  0% {
+    stroke-dashoffset: 113;
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.12;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.12;
+  }
+}
+
+@keyframes intro-ring-fade {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes intro-content-expand {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes intro-nav-slide {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+}
+
+.intro-logo-enter {
+  opacity: 0;
+  animation: intro-logo-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+}
+
+.intro-logo-exit {
+  animation: intro-logo-out 0.35s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+
+.intro-content {
+  animation: intro-content-expand 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.intro-nav {
+  animation: intro-nav-slide 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+  opacity: 0;
+}
+
 /* Expanded view animations */
 @keyframes expand-in {
   from {
