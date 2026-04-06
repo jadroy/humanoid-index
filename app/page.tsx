@@ -70,8 +70,8 @@ function LayoutSwitcher({
 
   // ── Style: floating (original — island with border) ──
   if (navStyle === "floating") return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-5 pointer-events-none">
-      <div className="w-full mx-6 flex items-center justify-between pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 bg-white" style={{ maxWidth: 1100 - 48 }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 pt-5 pointer-events-none px-6">
+      <div className="flex items-center justify-between pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 bg-white mx-auto" style={{ maxWidth: 1052 }}>
         {mark}
         <div className="flex items-center gap-0.5">
           {ALL_LAYOUTS.map((l) => (
@@ -703,6 +703,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [showTuner, setShowTuner] = useState(false);
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
+  const [splitHover, setSplitHover] = useState(false);
+  const [addHover, setAddHover] = useState(false);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("crown");
 
@@ -862,7 +864,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
   const enterCompare = () => { springR.jumpTo(springL.index < humanoids.length - 1 ? springL.index + 1 : 0); setComparing(true); setActiveSide("right"); };
-  const exitCompare = () => { setComparing(false); setActiveSide("left"); };
+  const exitCompare = () => { setComparing(false); setActiveSide("left"); setSplitHover(false); };
 
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
@@ -880,34 +882,16 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
   return (
     <div className="h-screen overflow-hidden select-none relative bg-white">
-      {/* ── Left arc ── */}
-      <div className="absolute top-0 bottom-0 left-0" style={{ width: "50%", zIndex: 2, opacity: comparing && activeSide !== "left" ? 0.35 : 1, transition: `opacity 0.3s ${ease}` }}
-        onMouseEnter={() => comparing && setActiveSide("left")}
-      >
-        <ArcDots pos={springL.pos} onClickItem={(i) => { springL.jumpTo(i); if (comparing) setActiveSide("left"); }} dimmed={comparing && activeSide !== "left"} variant={arcStyle} drumAngle={drumAngle} drumRadius={drumRadius} drumFsMax={drumFsMax} drumFsMin={drumFsMin} drumFwMax={drumFwMax} drumCompression={drumCompression} drumOpPower={drumOpPower} drumXOffset={drumXOffset} drumTracking={drumTracking} drumRange={drumRange} drumMaskFade={drumMaskFade} />
-      </div>
+      {/* Arc dots are rendered inside their respective section groups below */}
 
-      {/* ── Right arc — only visible in compare ── */}
-      <div
-        className="absolute top-0 bottom-0 right-0"
-        style={{
-          width: "50%",
-          zIndex: 2,
-          opacity: comparing ? (activeSide === "right" ? 1 : 0.35) : 0,
-          pointerEvents: comparing ? "auto" : "none",
-          transition: `opacity ${dur} ${ease}`,
-        }}
-        onMouseEnter={() => comparing && setActiveSide("right")}
-      >
-        <ArcDots pos={springR.pos} mirrored onClickItem={(i) => { if (comparing) { springR.jumpTo(i); setActiveSide("right"); } }} dimmed={comparing && activeSide !== "right"} variant={arcStyle} drumAngle={drumAngle} drumRadius={drumRadius} drumFsMax={drumFsMax} drumFsMin={drumFsMin} drumFwMax={drumFwMax} drumCompression={drumCompression} drumOpPower={drumOpPower} drumXOffset={drumXOffset} drumTracking={drumTracking} drumRange={drumRange} drumMaskFade={drumMaskFade} />
-      </div>
-
-      {/* ── Add compare button — large hover zone, button appears on hover ── */}
+      {/* ── Add compare button — hover zone on far right edge ── */}
       {!comparing && (
         <div
-          className="absolute top-0 bottom-0 right-0 flex items-center group cursor-pointer"
-          style={{ width: "45%", zIndex: 3, justifyContent: "center", paddingRight: "12%" }}
-          onClick={enterCompare}
+          className="absolute top-0 bottom-0 right-0 flex items-center justify-center group cursor-pointer"
+          style={{ width: "22%", zIndex: 10 }}
+          onClick={() => { setAddHover(false); enterCompare(); }}
+          onMouseEnter={() => setAddHover(true)}
+          onMouseLeave={() => setAddHover(false)}
         >
           <div
             className="rounded-full flex items-center justify-center transition-all duration-300 opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100"
@@ -921,19 +905,22 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         </div>
       )}
 
-      {/* ── Remove compare button — shows between the two robots on hover ── */}
+      {/* ── Exit compare — hover over center splits the two sides apart ── */}
       {comparing && (
         <div
-          className="absolute top-0 bottom-0 flex items-center justify-center group cursor-pointer"
-          style={{ left: "40%", width: "20%", zIndex: 3 }}
+          className="absolute top-0 bottom-0 flex items-center justify-center group/split cursor-pointer"
+          style={{ left: "50%", width: 60, marginLeft: -30, zIndex: 10 }}
           onClick={exitCompare}
+          onMouseEnter={() => setSplitHover(true)}
+          onMouseLeave={() => setSplitHover(false)}
         >
+          {/* Minus button — appears on hover */}
           <div
-            className="rounded-full flex items-center justify-center transition-all duration-300 opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100"
-            style={{ width: 40, height: 40, background: "#ebebeb" }}
+            className="rounded-full flex items-center justify-center transition-all duration-300 opacity-0 scale-75 group-hover/split:opacity-100 group-hover/split:scale-100"
+            style={{ width: 32, height: 32, background: "#ebebeb", zIndex: 1 }}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
-              <line x1="3" y1="8" x2="13" y2="8" />
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
+              <line x1="4" y1="8" x2="12" y2="8" />
             </svg>
           </div>
         </div>
@@ -1162,28 +1149,62 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           );
         };
 
+        const arcProps = { drumAngle, drumRadius, drumFsMax, drumFsMin, drumFwMax, drumCompression, drumOpPower, drumXOffset, drumTracking, drumRange, drumMaskFade };
+
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 4 }}>
             <div className="flex items-start" style={{ gap: cardGap }}>
-              {renderRobot(hL, distL, springL.index, true)}
-              {renderStats(hL)}
-
-              <div className="flex-shrink-0 overflow-hidden" style={{
-                width: comparing ? statsW : 0,
-                opacity: comparing ? 1 : 0,
-                transition: `width ${dur} ${ease}, opacity 0.3s ${ease} ${comparing ? "0.1s" : "0s"}`,
+              {/* Left group — arc + robot + stats */}
+              <div className="relative flex items-start" style={{
+                gap: cardGap,
+                transform: splitHover ? "translateX(-12px)" : addHover ? "translateX(-16px)" : "translateX(0)",
+                transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
               }}>
-                {renderStats(hR)}
+                {/* Left arc — positioned to the left of the robot */}
+                <div className="absolute top-0 bottom-0 right-full" style={{
+                  width: 200, zIndex: 2,
+                  opacity: comparing && activeSide !== "left" ? 0.35 : 1,
+                  transition: `opacity 0.3s ${ease}`,
+                }}>
+                  <ArcDots pos={springL.pos} onClickItem={(i) => { springL.jumpTo(i); if (comparing) setActiveSide("left"); }} dimmed={comparing && activeSide !== "left"} variant={arcStyle} {...arcProps} />
+                </div>
+                {renderRobot(hL, distL, springL.index, true)}
+                {renderStats(hL)}
               </div>
 
-              {/* Right robot — appears in compare mode */}
-              <div className="flex-shrink-0 overflow-hidden" style={{
-                opacity: comparing ? 1 : 0,
-                transform: `scale(${comparing ? 1 : 0.95})`,
-                width: comparing ? "auto" : 0,
-                transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}`,
+              {/* Right group — stats + robot + arc */}
+              <div className="relative flex items-start" style={{
+                gap: cardGap,
+                transform: splitHover ? "translateX(12px)" : "translateX(0)",
+                transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
               }}>
-                {renderRobot(hR, distR, springR.index, false)}
+                <div className="flex-shrink-0 overflow-hidden" style={{
+                  width: comparing ? statsW : 0,
+                  opacity: comparing ? 1 : 0,
+                  transition: `width ${dur} ${ease}, opacity 0.3s ${ease} ${comparing ? "0.1s" : "0s"}`,
+                }}>
+                  {renderStats(hR)}
+                </div>
+
+                {/* Right robot — appears in compare mode */}
+                <div className="flex-shrink-0 overflow-hidden" style={{
+                  opacity: comparing ? 1 : 0,
+                  transform: `scale(${comparing ? 1 : 0.95})`,
+                  width: comparing ? "auto" : 0,
+                  transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}`,
+                }}>
+                  {renderRobot(hR, distR, springR.index, false)}
+                </div>
+
+                {/* Right arc — positioned to the right of the robot */}
+                <div className="absolute top-0 bottom-0 left-full" style={{
+                  width: 200, zIndex: 2,
+                  opacity: comparing ? (activeSide === "right" ? 1 : 0.35) : 0,
+                  pointerEvents: comparing ? "auto" : "none",
+                  transition: `opacity ${dur} ${ease}`,
+                }}>
+                  <ArcDots pos={springR.pos} mirrored onClickItem={(i) => { if (comparing) { springR.jumpTo(i); setActiveSide("right"); } }} dimmed={comparing && activeSide !== "right"} variant={arcStyle} {...arcProps} />
+                </div>
               </div>
             </div>
           </div>

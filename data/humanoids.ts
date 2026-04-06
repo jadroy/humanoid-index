@@ -142,6 +142,7 @@ export const humanoids: Humanoid[] = [
     weight: 63,
     dof: 41,
     maxSpeed: 3.0,
+    description: "Large-scale humanoid from Ubtech with 41 degrees of freedom, capable of navigating uneven terrain and performing manipulation tasks in industrial settings.",
   },
   {
     id: "10",
