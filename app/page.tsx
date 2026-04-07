@@ -1241,30 +1241,36 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               {!isExpanded && (() => {
                 const crownSpring = isFirst ? springL : springR;
                 const crownSide = isFirst ? "left" : "right";
-                const crownItems: { idx: number; o: number }[] = [];
+                const crownItems: { idx: number; o: number; cy: number; cz: number }[] = [];
                 const cf = Math.floor(crownSpring.pos);
-                for (let n = cf - 3; n <= cf + 4; n++) if (n >= 0 && n < humanoids.length) crownItems.push({ idx: n, o: n - crownSpring.pos });
+                for (let n = cf - 3; n <= cf + 4; n++) {
+                  if (n < 0 || n >= humanoids.length) continue;
+                  const co = n - crownSpring.pos;
+                  const rad = (co * 14 * Math.PI) / 180;
+                  const cz = Math.cos(rad);
+                  if (cz <= 0.01) continue;
+                  const cy = Math.sin(rad) * 72;
+                  crownItems.push({ idx: n, o: co, cy, cz });
+                }
+                const crownYRange = crownItems.reduce((acc, { cy }) => ({ min: Math.min(acc.min, cy), max: Math.max(acc.max, cy) }), { min: Infinity, max: -Infinity });
                 return (
                   <div className="absolute top-3 pointer-events-auto z-[3]" style={{ ...(crownSide === "left" ? { right: "100%", marginRight: 6 } : { left: "100%", marginLeft: 6 }), height: 110, width: 30 }}>
                     {/* Static dashes */}
                     {Array.from({ length: 11 }, (_, j) => {
                       const y = (j - 5) * 9;
+                      if (crownYRange.min !== Infinity && (y < crownYRange.min - 2 || y > crownYRange.max + 2)) return null;
                       const isMajor = j % 3 === 0;
                       const dfc = Math.abs(j - 5);
                       return <div key={j} className="absolute" style={{ [crownSide === "left" ? "left" : "right"]: 0, top: `calc(50% + ${y}px)`, width: isMajor ? 8 : 5, height: 1, background: `rgba(0,0,0,${isMajor ? 0.1 : 0.05})`, borderRadius: 1, opacity: Math.max(0, 1 - dfc * 0.14), transform: "translateY(-50%)" }} />;
                     })}
                     {/* Rail */}
-                    <div className="absolute" style={{ [crownSide === "left" ? "left" : "right"]: 0, top: "10%", bottom: "10%", width: 1, background: "rgba(0,0,0,0.05)" }} />
+                    {crownYRange.min !== Infinity && <div className="absolute" style={{ [crownSide === "left" ? "left" : "right"]: 0, top: `calc(50% + ${crownYRange.min}px)`, height: crownYRange.max - crownYRange.min, width: 1, background: "rgba(0,0,0,0.05)" }} />}
                     {/* Brass marker */}
                     <div className="absolute" style={{ [crownSide === "left" ? "left" : "right"]: -4, top: "50%", transform: `translateY(-50%)${crownSide === "right" ? " scaleX(-1)" : ""}` }}>
                       <svg width="5" height="7" viewBox="0 0 5 7" fill="#8a7245" opacity="0.45"><polygon points="0,1.5 5,3.5 0,5.5" /></svg>
                     </div>
                     {/* Scrolling numbers */}
-                    {crownItems.map(({ idx: ci, o: co }) => {
-                      const rad = (co * 14 * Math.PI) / 180;
-                      const cy = Math.sin(rad) * 72;
-                      const cz = Math.cos(rad);
-                      if (cz <= 0.01) return null;
+                    {crownItems.map(({ idx: ci, o: co, cy, cz }) => {
                       const cfs = 7 + cz * 3.5;
                       const cop = Math.pow(cz, 3);
                       const cAct = Math.abs(co) < 0.15;
