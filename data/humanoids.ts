@@ -126,6 +126,7 @@ export const humanoids: Humanoid[] = [
     height: 170,
     weight: 70,
     dof: 20,
+    imageUrl: "/robots/phoenix.png",
     description: "General-purpose humanoid powered by Sanctuary AI's Carbon cognition system.",
   },
   {
@@ -139,6 +140,7 @@ export const humanoids: Humanoid[] = [
     weight: 63,
     dof: 41,
     maxSpeed: 3.0,
+    imageUrl: "/robots/walker-x.png",
     description: "Large-scale humanoid for uneven terrain and industrial manipulation.",
   },
   {

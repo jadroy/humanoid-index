@@ -768,8 +768,10 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [drumMaskFade, setDrumMaskFade] = useState(30);
   const [drumRange, setDrumRange] = useState(3);
   const [drumTracking, setDrumTracking] = useState(0.04);
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [showStats, setShowStats] = useState(true);
+  // Per-card gallery index: keyed by humanoid index
+  const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
+  const galleryScrollRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [openStat, setOpenStat] = useState<string | null>(null);
 
   // Layout dimensions
@@ -836,9 +838,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
     const onWheel = (e: WheelEvent) => {
       if ((e.target as HTMLElement)?.closest?.("[data-tuner]")) return;
+      if ((e.target as HTMLElement)?.closest?.("[data-gallery-scroll]") && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
       e.preventDefault();
-      if (expandedIdxRef.current !== null) return;
-
       const now = performance.now();
       const dt = now - lastTime;
       lastTime = now;
@@ -884,10 +885,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   }, [springL.go, springL.nudge, springR.go, springR.nudge]);
 
   // Keyboard — arrows control active side, tab switches, esc exits
-  const expandedIdxRef = useRef(expandedIdx); expandedIdxRef.current = expandedIdx;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (expandedIdxRef.current !== null) return;
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
       if (e.key === "s") { setArcStyle((s) => ARC_STYLES[(ARC_STYLES.indexOf(s) + 1) % ARC_STYLES.length]); return; }
@@ -899,17 +898,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [activeGo, comparing]);
 
-  // Keyboard for expanded view
-  useEffect(() => {
-    if (expandedIdx === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setExpandedIdx(null); }
-      if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); setExpandedIdx((p) => p !== null && p > 0 ? p - 1 : humanoids.length - 1); }
-      if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); setExpandedIdx((p) => p !== null && p < humanoids.length - 1 ? p + 1 : 0); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [expandedIdx]);
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
   const enterCompare = () => { springR.jumpTo(springL.index < humanoids.length - 1 ? springL.index + 1 : 0); setComparing(true); setActiveSide("right"); };
@@ -1109,8 +1097,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           return (
             <div className="flex-shrink-0 relative group/stats" style={{
               overflowX: "hidden", overflowY: "visible",
-              width: expandedIdx !== null || !showStats ? 0 : statsW,
-              opacity: expandedIdx !== null || !showStats ? 0 : 1,
+              width: !showStats ? 0 : statsW,
+              opacity: !showStats ? 0 : 1,
               height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
               maxHeight: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
               transition: `width ${dur} ${ease}, opacity 0.25s ${ease}`,
@@ -1118,7 +1106,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               {/* Fixed-width inner to prevent text reflow during width transition */}
               <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
               {/* Info header — fixed height */}
-              <div className="flex flex-col" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px", height: 150, flexShrink: 0 }}>
+              <div className="flex flex-col" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px", flexShrink: 0 }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
@@ -1126,13 +1114,13 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                     {h.year && <p className="text-[11px] mt-1" style={{ color: "#a3a3a3" }}>{h.year}</p>}
                   </div>
                   {h.logoUrl && (
-                    <div className="flex-shrink-0 relative overflow-hidden" style={{ width: 28, height: 28, borderRadius: "50%" }}>
+                    <div className="flex-shrink-0 relative overflow-hidden" style={{ width: 28, height: 28, borderRadius: cardRadius * 0.6 }}>
                       <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="28px" />
                     </div>
                   )}
                 </div>
                 {h.description && (
-                  <p className="text-[12.5px] mt-4 leading-relaxed overflow-hidden" style={{
+                  <p className="text-[12.5px] mt-2 leading-relaxed overflow-hidden" style={{
                     color: "#999",
                     display: "-webkit-box",
                     WebkitLineClamp: 2,
@@ -1171,74 +1159,111 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           );
         };
 
-        const expandEase = "0.5s cubic-bezier(0.16, 1, 0.3, 1)";
         const renderRobot = (h: typeof humanoids[0], dist: number, hIdx: number, isFirst: boolean) => {
-          const isExpanded = expandedIdx === hIdx;
           const gallery = h.media?.filter((m) => m.type === "image") || [];
           const allImages = [h.imageUrl, ...gallery.map((m) => m.url)].filter(Boolean) as string[];
+          const hasGallery = allImages.length > 1;
+          const currentImg = galleryIdx[hIdx] || 0;
+
+          const scrollTo = (idx: number) => {
+            const el = galleryScrollRefs.current[hIdx];
+            if (!el) return;
+            el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" });
+          };
+
+          const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+            const el = e.currentTarget;
+            const idx = Math.round(el.scrollLeft / el.clientWidth);
+            if (idx !== (galleryIdx[hIdx] || 0)) {
+              setGalleryIdx((prev) => ({ ...prev, [hIdx]: idx }));
+            }
+          };
 
           return (
-            <div className="relative flex-shrink-0 group/card" style={{ zIndex: isExpanded ? 20 : 1 }}>
-            {/* Inner card with overflow hidden for image clipping */}
+            <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
+            {/* Inner card */}
             <div
-              className="relative overflow-hidden flex"
+              className="relative flex flex-col overflow-hidden"
               style={{
-                width: isExpanded ? `${robotW + 14}vw` : comparing ? `${robotW - 8}vw` : `${robotW}vw`,
+                width: comparing ? `${robotW - 8}vw` : `${robotW}vw`,
                 height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
-                maxWidth: isExpanded ? robotMaxW + 240 : comparing ? robotMaxW - 100 : robotMaxW,
-                transition: `all ${expandEase}`,
+                maxWidth: comparing ? robotMaxW - 100 : robotMaxW,
                 borderRadius: cardRadius,
                 background: "#FAFAFA",
                 pointerEvents: "auto",
               }}
             >
-              {/* Main image area */}
-              <div className="relative flex-1 flex items-center justify-center p-6 pointer-events-none" style={{
-                opacity: isExpanded ? 1 : Math.max(0.5, 1 - dist * robotFade),
-                transition: `opacity ${expandEase}`,
-              }}>
-                <div className="relative w-full h-full">
-                  {h.imageUrl ? <Image src={h.imageUrl} alt={h.name} fill className="object-contain" sizes={isExpanded ? "40vw" : comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst} /> : <PlaceholderLogo />}
+              {/* Media area — fills remaining space */}
+              <div className="relative flex-1 min-h-0">
+                <div
+                  ref={(el) => { galleryScrollRefs.current[hIdx] = el; }}
+                  data-gallery-scroll={hasGallery ? "" : undefined}
+                  className="scrollbar-hide"
+                  style={{
+                    display: "flex",
+                    width: "100%", height: "100%",
+                    overflowX: hasGallery ? "auto" : "hidden",
+                    overflowY: "hidden",
+                    scrollSnapType: "x mandatory",
+                    opacity: Math.max(0.5, 1 - dist * robotFade),
+                  }}
+                  onScroll={hasGallery ? onScroll : undefined}
+                >
+                  {allImages.length > 0 ? allImages.map((src, i) => (
+                    <div key={i} className="relative flex items-center justify-center p-6 pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start" }}>
+                      <div className="relative w-full h-full">
+                        <Image src={src} alt={`${h.name} ${i + 1}`} fill className="object-contain" sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst && i === 0} />
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="relative flex items-center justify-center p-6 pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
+                      <PlaceholderLogo />
+                    </div>
+                  )}
                 </div>
+
+                {/* Hover arrows — centered on media area */}
+                {hasGallery && (
+                  <>
+                    <button
+                      className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[2]"
+                      style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
+                      onClick={() => scrollTo(Math.max(0, currentImg - 1))}
+                    >
+                      <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,1.5 2,5 6,8.5" /></svg>
+                    </button>
+                    <button
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[2]"
+                      style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
+                      onClick={() => scrollTo(Math.min(allImages.length - 1, currentImg + 1))}
+                    >
+                      <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,1.5 6,5 2,8.5" /></svg>
+                    </button>
+                  </>
+                )}
               </div>
 
-              {/* Right side — thumbnails + info, revealed on expand */}
-              <div style={{
-                width: isExpanded ? 140 : 0,
-                opacity: isExpanded ? 1 : 0,
-                overflow: "hidden",
-                flexShrink: 0,
-                transition: `width ${expandEase}, opacity 0.3s ease ${isExpanded ? "0.12s" : "0s"}`,
-              }}>
-                <div className="flex flex-col justify-between h-full py-5 pr-5" style={{ width: 140, minWidth: 140 }}>
-                  {/* Name + meta */}
-                  <div>
-                    <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
-                    <p className="text-[14px] font-medium mt-1" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
-                    {h.cost && h.cost !== "N/A" && (
-                      <p className="text-[12px] mt-1" style={{ color: "#a3a3a3" }}>{h.cost}</p>
-                    )}
-                  </div>
-
-                  {/* Vertical thumbnail strip */}
-                  <div className="flex flex-col gap-1.5 overflow-y-auto scrollbar-hide mt-3 flex-1" style={{ minHeight: 0 }}>
-                    {allImages.map((src, i) => (
-                      <div
-                        key={i}
-                        className="relative flex-shrink-0 cursor-pointer overflow-hidden"
-                        style={{ width: "100%", aspectRatio: "1", borderRadius: cardRadius - 1, background: "#f0f0ee" }}
-                      >
-                        <Image src={src} alt={`${h.name} ${i + 1}`} fill className="object-contain p-1.5" sizes="120px" />
-                      </div>
+              {/* Dot strip — fixed height, always present for consistent card sizing */}
+              <div className="flex items-center justify-center shrink-0" style={{ height: 20 }}>
+                {hasGallery && (
+                  <div className="flex gap-1.5">
+                    {allImages.map((_, i) => (
+                      <div key={i} style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: i === currentImg ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)",
+                        transition: "background 0.2s ease",
+                      }} />
                     ))}
                   </div>
-                </div>
+                )}
               </div>
 
             </div>
 
               {/* Mini crown — outside edge of card */}
-              {!isExpanded && (() => {
+              {(() => {
                 const crownSpring = isFirst ? springL : springR;
                 const crownSide = isFirst ? "left" : "right";
                 const crownItems: { idx: number; o: number; cy: number; cz: number }[] = [];
@@ -1283,50 +1308,19 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               })()}
 
               {/* Stats toggle — outside bottom-left of card */}
-              {!isExpanded && (
-                <button
-                  className="absolute bottom-3 w-5 h-5 flex items-center justify-center cursor-pointer opacity-50 hover:opacity-80 transition-opacity duration-200 z-[3]"
-                  style={{ ...(isFirst ? { right: "100%", marginRight: 8 } : { left: "100%", marginLeft: 8 }), borderRadius: 4, pointerEvents: "auto" }}
-                  onClick={() => setShowStats((s) => !s)}
-                  title={showStats ? "Hide stats (i)" : "Show stats (i)"}
-                >
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.2" strokeLinecap="round">
-                    <rect x="1.5" y="2" width="4" height="10" rx="1" />
-                    <line x1="8.5" y1="4" x2="12.5" y2="4" />
-                    <line x1="8.5" y1="7" x2="12.5" y2="7" />
-                    <line x1="8.5" y1="10" x2="11" y2="10" />
-                  </svg>
-                </button>
-              )}
-
-              {/* Close button — shown when expanded */}
-              {isExpanded && (
-                <button
-                  className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center cursor-pointer hover:bg-neutral-200 transition-opacity duration-200"
-                  style={{ background: "rgba(245,245,244,0.9)", borderRadius: cardRadius, pointerEvents: "auto", zIndex: 2 }}
-                  onClick={() => setExpandedIdx(null)}
-                >
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#525252" strokeWidth="1.5" strokeLinecap="round">
-                    <line x1="1.5" y1="1.5" x2="9.5" y2="9.5" /><line x1="9.5" y1="1.5" x2="1.5" y2="9.5" />
-                  </svg>
-                </button>
-              )}
-
-              {/* Expand button — shown on hover when collapsed */}
-              {!isExpanded && (
-                <button
-                  className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center cursor-pointer opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
-                  style={{ background: "rgba(245,245,244,0.9)", borderRadius: cardRadius, pointerEvents: "auto", zIndex: 2 }}
-                  onClick={(e) => { e.stopPropagation(); setExpandedIdx(hIdx); }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="8.5,1.5 12.5,1.5 12.5,5.5" />
-                    <line x1="12.5" y1="1.5" x2="8" y2="6" />
-                    <polyline points="5.5,12.5 1.5,12.5 1.5,8.5" />
-                    <line x1="1.5" y1="12.5" x2="6" y2="8" />
-                  </svg>
-                </button>
-              )}
+              <button
+                className="absolute bottom-3 w-5 h-5 flex items-center justify-center cursor-pointer opacity-50 hover:opacity-80 transition-opacity duration-200 z-[3]"
+                style={{ ...(isFirst ? { right: "100%", marginRight: 8 } : { left: "100%", marginLeft: 8 }), borderRadius: 4, pointerEvents: "auto" }}
+                onClick={() => setShowStats((s) => !s)}
+                title={showStats ? "Hide stats (i)" : "Show stats (i)"}
+              >
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.2" strokeLinecap="round">
+                  <rect x="1.5" y="2" width="4" height="10" rx="1" />
+                  <line x1="8.5" y1="4" x2="12.5" y2="4" />
+                  <line x1="8.5" y1="7" x2="12.5" y2="7" />
+                  <line x1="8.5" y1="10" x2="11" y2="10" />
+                </svg>
+              </button>
             </div>
           );
         };
@@ -1414,10 +1408,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         </div>
       )}
 
-      {/* Click-away to close expanded */}
-      {expandedIdx !== null && (
-        <div className="fixed inset-0 z-[3]" onClick={() => setExpandedIdx(null)} />
-      )}
     </div>
   );
 }
