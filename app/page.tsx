@@ -1165,7 +1165,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           const hasGallery = allImages.length > 1;
           const currentImg = galleryIdx[hIdx] || 0;
 
-          const scrollTo = (idx: number) => {
+          const scrollGallery = (idx: number) => {
             const el = galleryScrollRefs.current[hIdx];
             if (!el) return;
             el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" });
@@ -1205,6 +1205,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                     overflowX: hasGallery ? "auto" : "hidden",
                     overflowY: "hidden",
                     scrollSnapType: "x mandatory",
+                    scrollBehavior: "smooth",
                     opacity: Math.max(0.5, 1 - dist * robotFade),
                   }}
                   onScroll={hasGallery ? onScroll : undefined}
@@ -1228,14 +1229,14 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                     <button
                       className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[2]"
                       style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
-                      onClick={() => scrollTo(Math.max(0, currentImg - 1))}
+                      onClick={(e) => { e.stopPropagation(); scrollGallery(Math.max(0, currentImg - 1)); }}
                     >
                       <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,1.5 2,5 6,8.5" /></svg>
                     </button>
                     <button
                       className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[2]"
                       style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
-                      onClick={() => scrollTo(Math.min(allImages.length - 1, currentImg + 1))}
+                      onClick={(e) => { e.stopPropagation(); scrollGallery(Math.min(allImages.length - 1, currentImg + 1)); }}
                     >
                       <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,1.5 6,5 2,8.5" /></svg>
                     </button>
