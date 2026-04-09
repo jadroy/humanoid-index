@@ -968,6 +968,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
       {(() => {
         const bodyStyle = { color: "#999", lineHeight: 1.4 } as const;
         const ico = (d: string) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.45 }}><path d={d} /></svg>;
+        const icoInfo = ico("M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 5v2m0 4h.01");
         const icoRuler = ico("M6 3v18 M6 9h4 M6 15h4 M18 3v18 M18 9h-4 M18 15h-4");
         const icoDof = ico("M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83");
         const icoSpeed = ico("M12 12l4-8M19.07 4.93A10 10 0 1 0 20.45 13");
@@ -1001,6 +1002,14 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         );
 
         return [
+          { key: "desc", show: !!h.description, label: (
+            <div className="flex items-center gap-2.5">
+              {icoInfo}
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Info</p>
+            </div>
+          ), detail: (
+            <p className="text-[12px] leading-relaxed" style={{ color: "#999" }}>{h.description}</p>
+          ) },
           { key: "overview", show: !!(h.height || h.weight), label: (
             <div className="flex items-center gap-2.5">
               {icoRuler}
@@ -1123,14 +1132,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                     </div>
                   )}
                 </div>
-                {h.description && (
-                  <p className="text-[12.5px] mt-2 leading-relaxed overflow-hidden" style={{
-                    color: "#999",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical" as const,
-                  }}>{h.description}</p>
-                )}
               </div>
               {/* Stats — lighter container, spaced out */}
               <div className="flex flex-col pointer-events-auto" style={{ padding: "6px 12px", borderRadius: cardRadius, background: "#FCFCFC", position: "relative", zIndex: 11 }}>

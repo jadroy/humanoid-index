@@ -12,7 +12,6 @@ export default function CatalogIndex({ humanoids }: CatalogIndexProps) {
   const allBots = humanoids;
   const legends = allBots.filter(b => b.id.startsWith('legend'));
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Group by status
   const inProduction = allBots.filter(b => b.status === 'In Production');
@@ -120,30 +119,10 @@ export default function CatalogIndex({ humanoids }: CatalogIndexProps) {
                     {bot.weight && <span className="text-[8px] text-neutral-300">{bot.weight}kg</span>}
                     {bot.dof && <span className="text-[8px] text-neutral-300">{bot.dof}DOF</span>}
                     {bot.maxSpeed && <span className="text-[8px] text-neutral-300">{bot.maxSpeed}m/s</span>}
-                    {bot.description && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setExpandedId(expandedId === bot.id ? null : bot.id);
-                        }}
-                        className="text-[8px] text-neutral-300 hover:text-neutral-500 transition-colors ml-auto"
-                      >
-                        {expandedId === bot.id ? '▾ info' : '▸ info'}
-                      </button>
-                    )}
-                    {bot.cost && bot.cost !== 'N/A' && !bot.description && (
+                    {bot.cost && bot.cost !== 'N/A' && (
                       <span className="text-[8px] text-neutral-500 ml-auto">{bot.cost}</span>
                     )}
-                    {bot.cost && bot.cost !== 'N/A' && bot.description && (
-                      <span className="text-[8px] text-neutral-500">{bot.cost}</span>
-                    )}
                   </div>
-                  {expandedId === bot.id && bot.description && (
-                    <div className="text-[9px] text-neutral-400 leading-relaxed mt-1.5 pr-4">
-                      {bot.description}
-                    </div>
-                  )}
                 </div>
 
                 {/* Hover arrow */}
