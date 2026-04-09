@@ -560,6 +560,7 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
             top: "50%",
             ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
             transform: "translateY(-50%)",
+            transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
           viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
         >
@@ -853,6 +854,39 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [statsGap, setStatsGap] = useState(8);     // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(6);  // px
 
+  // Adaptive arc positioning
+  const [windowWidth, setWindowWidth] = useState(1920);
+  const [autoArcInset, setAutoArcInset] = useState(true);
+
+  useEffect(() => {
+    setWindowWidth(window.innerWidth);
+    let raf: number;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setWindowWidth(window.innerWidth));
+    };
+    window.addEventListener("resize", onResize);
+    return () => { window.removeEventListener("resize", onResize); cancelAnimationFrame(raf); };
+  }, []);
+
+  const centerHalfWidth = (() => {
+    const cardPx = comparing
+      ? Math.min((robotW - 8) * windowWidth / 100, robotMaxW - 100)
+      : Math.min(robotW * windowWidth / 100, robotMaxW);
+    const statsPx = showStats ? statsW : 0;
+    const gap = showStats ? statsGap : 0;
+    if (comparing) {
+      return cardPx + gap + statsPx + cardGap / 2;
+    }
+    return (cardPx + gap + statsPx) / 2;
+  })();
+
+  const availableSpace = (windowWidth / 2) - centerHalfWidth;
+  const adaptiveArcInset = Math.round(Math.min(600, Math.max(30, availableSpace * 0.6)));
+  const adaptiveDrumXOffset = Math.round(Math.min(300, Math.max(40, availableSpace * 0.5)));
+  const effectiveArcInset = autoArcInset ? adaptiveArcInset : arcInset;
+  const effectiveDrumXOffset = autoArcInset ? adaptiveDrumXOffset : drumXOffset;
+
   const stiffness = isCustom ? customStiffness : SCROLL_PRESETS[presetKey].stiffness;
   const damping = isCustom ? customDamping : SCROLL_PRESETS[presetKey].damping;
   const wheelThreshold = isCustom ? customThreshold : SCROLL_PRESETS[presetKey].wheelThreshold;
@@ -1003,11 +1037,11 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           drumFwMax={drumFwMax}
           drumCompression={drumCompression}
           drumOpPower={drumOpPower}
-          drumXOffset={drumXOffset}
+          drumXOffset={effectiveDrumXOffset}
           drumTracking={drumTracking}
           drumRange={drumRange}
           drumMaskFade={drumMaskFade}
-          arcInset={arcInset}
+          arcInset={effectiveArcInset}
           arcWheelR={arcWheelR}
           arcStepDeg={arcStepDeg}
           arcTextGap={arcTextGap}
@@ -1031,10 +1065,17 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             drumFwMax={drumFwMax}
             drumCompression={drumCompression}
             drumOpPower={drumOpPower}
-            drumXOffset={drumXOffset}
+            drumXOffset={effectiveDrumXOffset}
             drumTracking={drumTracking}
             drumRange={drumRange}
             drumMaskFade={drumMaskFade}
+            arcInset={effectiveArcInset}
+            arcWheelR={arcWheelR}
+            arcStepDeg={arcStepDeg}
+            arcTextGap={arcTextGap}
+            arcLineOp={arcLineOp}
+            arcFsMax={arcFsMax}
+            arcFsMin={arcFsMin}
           />
         </div>
       )}
@@ -1498,7 +1539,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Tracking <span className="tabular-nums text-neutral-400">{drumTracking.toFixed(2)}em</span></label><input type="range" min={-10} max={10} value={Math.round(drumTracking * 100)} onChange={(e) => setDrumTracking(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Mini radius <span className="tabular-nums text-neutral-400">{miniCrownRadius}px</span></label><input type="range" min={20} max={100} value={miniCrownRadius} onChange={(e) => setMiniCrownRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Scroll threshold <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={100} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => setArcInset(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Auto position</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${autoArcInset ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoArcInset(!autoArcInset)}>{autoArcInset ? "On" : "Off"}</button><span className="text-[9px] tabular-nums text-neutral-300">{effectiveArcInset}px</span></div>
+            <div style={{ opacity: autoArcInset ? 0.3 : 1 }}><label className="text-[10px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => { setArcInset(Number(e.target.value)); setAutoArcInset(false); }} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Arc radius <span className="tabular-nums text-neutral-400">{arcWheelR}px</span></label><input type="range" min={300} max={1500} value={arcWheelR} onChange={(e) => setArcWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Step angle <span className="tabular-nums text-neutral-400">{arcStepDeg.toFixed(1)}°</span></label><input type="range" min={10} max={80} value={Math.round(arcStepDeg * 10)} onChange={(e) => setArcStepDeg(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Text gap <span className="tabular-nums text-neutral-400">{arcTextGap}px</span></label><input type="range" min={0} max={80} value={arcTextGap} onChange={(e) => setArcTextGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
