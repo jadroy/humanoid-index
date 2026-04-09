@@ -268,7 +268,7 @@ const arcStyleLabels: Record<ArcStyle, string> = {
 // ═══════════════════════════════════════════════════════════════
 // Arc renderer — multiple visual styles along a translucent curved track
 // ═══════════════════════════════════════════════════════════════
-function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 300 }: { pos: number; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number }) {
+function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10 }: { pos: number; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number }) {
   const R = 300, off = 30, range = (variant === "crown" || variant === "arc-timeline") ? dRange : 2;
   const cx = -R + off;
   const getP = (o: number) => {
@@ -543,49 +543,65 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
 
   // ── arc-timeline: large SVG wheel jutting from edge ──
   if (variant === "arc-timeline") {
-    const wheelR = 700;
-    const arcAngle = dAngle * 0.6; // degrees per step
+    const wheelR = aWheelR;
+    const stepDeg = aStepDeg;
+    const arcItems: { i: number; o: number }[] = [];
+    const af = Math.floor(pos);
+    for (let n = af - 14; n <= af + 15; n++) {
+      if (n >= 0 && n < humanoids.length) arcItems.push({ i: n, o: n - pos });
+    }
     return (
-      <div className="absolute inset-0 overflow-visible">
+      <div className="absolute inset-0 overflow-visible pointer-events-auto">
         <svg
-          className="absolute overflow-visible"
+          className="absolute overflow-visible pointer-events-auto"
           style={{
             width: wheelR * 2,
             height: wheelR * 2,
             top: "50%",
-            ...(mirrored ? { left: "auto", right: -wheelR + aInset } : { left: -wheelR + aInset }),
+            ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
             transform: "translateY(-50%)",
           }}
           viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
         >
-          <circle cx={wheelR} cy={wheelR} r={wheelR - 15} fill="none" stroke="#ebebeb" strokeWidth="1" />
-          {items.map(({ i, o }) => {
-            const theta = (mirrored ? -1 : 1) * o * arcAngle * Math.PI / 180 - Math.PI / 2 + (mirrored ? Math.PI : 0);
-            const r = wheelR - 15;
-            const dotCx = wheelR + Math.cos(theta) * r;
-            const dotCy = wheelR + Math.sin(theta) * r;
-            const z = Math.cos(o * arcAngle * Math.PI / 180);
-            if (z <= 0.01) return null;
-            const isAct = Math.abs(o) < 0.15;
-            const op = Math.pow(Math.max(0, z), 2);
-            const year = humanoids[i]?.year;
+          <circle cx={wheelR} cy={wheelR} r={wheelR - aTextGap} fill="none" stroke="#ebebeb" strokeWidth="0.5" style={{ opacity: aLineOp }} />
+          {arcItems.map(({ i, o }) => {
+            const deg = o * stepDeg;
+            const rad = deg * Math.PI / 180;
+            const r = wheelR - aTextGap;
+            const baseAngle = mirrored ? Math.PI : 0;
+            const theta = baseAngle + rad;
+            const cx = wheelR + Math.cos(theta) * r;
+            const cy = wheelR + Math.sin(theta) * r;
+            const tangentDeg = theta * 180 / Math.PI + (mirrored ? 180 : 0);
+            const dist = Math.abs(o);
+            const isAct = dist < 0.5;
+            const t = Math.min(dist / 10, 1);
+            const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
+            const fw = isAct ? 500 : 400;
+            const op = Math.max(0.08, 1 - t * 0.9);
             const name = humanoids[i]?.name;
-            // Label offset — push text inward from the arc
-            const inward = mirrored ? -1 : 1;
-            const labelX = dotCx + inward * 16;
-            const labelY = dotCy;
             return (
-              <g key={i} className="cursor-pointer" style={{ opacity: op }} onClick={() => onClickItem(i)}>
-                <circle cx={dotCx} cy={dotCy} r={isAct ? 4.5 : 3} fill={isAct ? "var(--c-ink)" : "#ccc"} style={{ transition: "all 0.15s ease" }} />
-                <text x={labelX} y={labelY + 1} textAnchor={mirrored ? "end" : "start"} dominantBaseline="middle" style={{ fontSize: isAct ? 11 : 9, fontWeight: isAct ? 600 : 400, fill: isAct ? "var(--c-ink)" : "#b3b3b3", fontFamily: "inherit", letterSpacing: "-0.01em", transition: "all 0.15s ease" }}>
-                  {year ?? String(i).padStart(2, "0")}
-                </text>
-                {isAct && name && (
-                  <text x={labelX} y={labelY + 13} textAnchor={mirrored ? "end" : "start"} dominantBaseline="middle" style={{ fontSize: 8, fill: "#999", fontFamily: "inherit", letterSpacing: "0.02em" }}>
-                    {name}
-                  </text>
-                )}
-              </g>
+              <text
+                key={i}
+                x={cx}
+                y={cy}
+                className="cursor-pointer"
+                textAnchor={mirrored ? "end" : "start"}
+                dominantBaseline="middle"
+                onClick={() => onClickItem(i)}
+                style={{
+                  fontSize: fs,
+                  fontWeight: fw,
+                  fill: isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`,
+                  fontFamily: "inherit",
+                  letterSpacing: "-0.02em",
+                  opacity: op,
+                  transition: "opacity 0.15s ease",
+                }}
+                transform={`rotate(${tangentDeg}, ${cx}, ${cy})`}
+              >
+                {name ?? String(i).padStart(2, "0")}
+              </text>
             );
           })}
         </svg>
@@ -817,6 +833,12 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [drumTracking, setDrumTracking] = useState(0.04);
   const [miniCrownRadius, setMiniCrownRadius] = useState(70);
   const [arcInset, setArcInset] = useState(80);
+  const [arcWheelR, setArcWheelR] = useState(700);
+  const [arcStepDeg, setArcStepDeg] = useState(3.5);
+  const [arcTextGap, setArcTextGap] = useState(15);
+  const [arcLineOp, setArcLineOp] = useState(0.5);
+  const [arcFsMax, setArcFsMax] = useState(22);
+  const [arcFsMin, setArcFsMin] = useState(10);
   const [showStats, setShowStats] = useState(true);
   // Per-card gallery index: keyed by humanoid index
   const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
@@ -986,11 +1008,17 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           drumRange={drumRange}
           drumMaskFade={drumMaskFade}
           arcInset={arcInset}
+          arcWheelR={arcWheelR}
+          arcStepDeg={arcStepDeg}
+          arcTextGap={arcTextGap}
+          arcLineOp={arcLineOp}
+          arcFsMax={arcFsMax}
+          arcFsMin={arcFsMin}
         />
       </div>
       {/* Right arc nav */}
       {comparing && (
-        <div className="fixed top-0 bottom-0 right-0 z-[3] pointer-events-auto overflow-visible" style={{ width: 200 }}>
+        <div className="fixed top-0 bottom-0 right-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
           <ArcDots
             pos={springR.pos}
             mirrored
@@ -1471,6 +1499,12 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Mini radius <span className="tabular-nums text-neutral-400">{miniCrownRadius}px</span></label><input type="range" min={20} max={100} value={miniCrownRadius} onChange={(e) => setMiniCrownRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Scroll threshold <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={100} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => setArcInset(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Arc radius <span className="tabular-nums text-neutral-400">{arcWheelR}px</span></label><input type="range" min={300} max={1500} value={arcWheelR} onChange={(e) => setArcWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Step angle <span className="tabular-nums text-neutral-400">{arcStepDeg.toFixed(1)}°</span></label><input type="range" min={10} max={80} value={Math.round(arcStepDeg * 10)} onChange={(e) => setArcStepDeg(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Text gap <span className="tabular-nums text-neutral-400">{arcTextGap}px</span></label><input type="range" min={0} max={80} value={arcTextGap} onChange={(e) => setArcTextGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Line opacity <span className="tabular-nums text-neutral-400">{arcLineOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(arcLineOp * 100)} onChange={(e) => setArcLineOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Font max <span className="tabular-nums text-neutral-400">{arcFsMax}px</span></label><input type="range" min={12} max={40} value={arcFsMax} onChange={(e) => setArcFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{arcFsMin}px</span></label><input type="range" min={6} max={20} value={arcFsMin} onChange={(e) => setArcFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           )}
         </div>
