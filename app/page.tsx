@@ -743,7 +743,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [drumMaskFade, setDrumMaskFade] = useState(30);
   const [drumRange, setDrumRange] = useState(1);
   const [drumTracking, setDrumTracking] = useState(0.04);
-  const [miniCrownRadius, setMiniCrownRadius] = useState(40);
+  const [miniCrownRadius, setMiniCrownRadius] = useState(70);
   const [showStats, setShowStats] = useState(true);
   // Per-card gallery index: keyed by humanoid index
   const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
@@ -1385,7 +1385,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           </div>
           {arcStyle === "crown" && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(40); }}>Reset</button></div>
+            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(70); }}>Reset</button></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Angle <span className="tabular-nums text-neutral-400">{drumAngle}°</span></label><input type="range" min={8} max={45} value={drumAngle} onChange={(e) => setDrumAngle(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{drumRadius}px</span></label><input type="range" min={60} max={300} value={drumRadius} onChange={(e) => setDrumRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Size max <span className="tabular-nums text-neutral-400">{drumFsMax}px</span></label><input type="range" min={20} max={80} value={drumFsMax} onChange={(e) => setDrumFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -1424,38 +1424,40 @@ function GridBrowse() {
   );
 
   return (
-    <div className="px-6 md:px-12 lg:px-20 pt-16 pb-20">
-      {/* Hero / title section */}
-      <div className="mb-16 mt-4">
-        <p className="text-[9px] tracking-[0.3em] uppercase text-neutral-300 mb-4 font-medium">Catalog</p>
-        <h1 className="text-[72px] font-extralight tracking-[-0.04em] text-neutral-900 leading-[0.9]">Humanoid<br /><span className="font-semibold">Index</span></h1>
-        <p className="text-[13px] text-neutral-400 mt-6 max-w-sm leading-relaxed font-light">{humanoids.length} robots · {manufacturers.length} manufacturers · {Math.min(...humanoids.filter(h => h.year).map(h => h.year!))}–{Math.max(...humanoids.filter(h => h.year).map(h => h.year!))}</p>
-
-        {/* Filters */}
-        <div className="flex items-center gap-2 mt-6 flex-wrap">
-          <button
-            className="px-3 py-1.5 rounded-full text-[11px] cursor-pointer transition-all"
-            style={{ background: !filterStatus ? "#1d1d1f" : "#f0f0ee", color: !filterStatus ? "white" : "#737373" }}
-            onClick={() => setFilterStatus(null)}
-          >All</button>
-          {statuses.map(s => (
+    <div className="px-6 md:px-12 lg:px-20 pt-20 pb-20">
+      {/* Hero */}
+      <div className="flex flex-col lg:flex-row lg:items-end gap-10 lg:gap-20 mb-16">
+        <div className="lg:w-[45%] flex-shrink-0">
+          <h1 className="text-[48px] font-light tracking-[-0.03em] text-neutral-900 leading-[1.05]">Humanoid Robots</h1>
+          <p className="text-[13px] text-neutral-400 mt-4 max-w-sm leading-[1.6]">{humanoids.length} models · {manufacturers.length} manufacturers · {Math.min(...humanoids.filter(h => h.year).map(h => h.year!))}–{Math.max(...humanoids.filter(h => h.year).map(h => h.year!))}</p>
+        </div>
+        <div className="flex-1 flex flex-col items-start lg:items-end">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              key={s}
-              className="px-3 py-1.5 rounded-full text-[11px] cursor-pointer transition-all"
-              style={{ background: filterStatus === s ? "#1d1d1f" : "#f0f0ee", color: filterStatus === s ? "white" : "#737373" }}
-              onClick={() => setFilterStatus(filterStatus === s ? null : s)}
-            >{s}</button>
-          ))}
-          <div className="w-px h-4 bg-neutral-200 mx-1" />
-          <select
-            className="px-3 py-1.5 rounded-full text-[11px] bg-[#f0f0ee] text-neutral-500 cursor-pointer border-none outline-none appearance-none pr-6"
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23999' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}
-            value={filterMfr || ""}
-            onChange={(e) => setFilterMfr(e.target.value || null)}
-          >
-            <option value="">All manufacturers</option>
-            {manufacturers.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
+              className="px-3.5 py-1.5 rounded-full text-[11px] cursor-pointer transition-all"
+              style={{ background: !filterStatus ? "#1d1d1f" : "#f5f5f4", color: !filterStatus ? "white" : "#737373" }}
+              onClick={() => setFilterStatus(null)}
+            >All</button>
+            {statuses.map(s => (
+              <button
+                key={s}
+                className="px-3.5 py-1.5 rounded-full text-[11px] cursor-pointer transition-all"
+                style={{ background: filterStatus === s ? "#1d1d1f" : "#f5f5f4", color: filterStatus === s ? "white" : "#737373" }}
+                onClick={() => setFilterStatus(filterStatus === s ? null : s)}
+              >{s}</button>
+            ))}
+            <div className="w-px h-4 bg-neutral-200 mx-1" />
+            <select
+              className="px-3.5 py-1.5 rounded-full text-[11px] text-neutral-500 cursor-pointer border-none outline-none appearance-none pr-7"
+              style={{ background: "#f5f5f4", backgroundImage: `url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23999' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}
+              value={filterMfr || ""}
+              onChange={(e) => setFilterMfr(e.target.value || null)}
+            >
+              <option value="">All manufacturers</option>
+              {manufacturers.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <p className="text-[11px] text-neutral-300 mt-3">{filtered.length === humanoids.length ? `Showing all ${humanoids.length}` : `${filtered.length} of ${humanoids.length}`} robots</p>
         </div>
       </div>
 
