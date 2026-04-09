@@ -74,7 +74,7 @@ function LayoutSwitcher({
 
   // ── Mark logo (shared) ──
   const mark = (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.25 }} className="cursor-pointer" onContextMenu={cycleNavStyle}>
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.25 }} className="cursor-pointer" onClick={() => onChange("E" as Layout)} onContextMenu={cycleNavStyle}>
       <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
       <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
     </svg>
@@ -1508,7 +1508,7 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const floatingRef = useRef<HTMLDivElement>(null);
 
-  // Group by year for timeline, sorted descending
+  // Group by year, sorted descending
   const byYear = humanoids.reduce<Record<number, { h: typeof humanoids[number]; idx: number }[]>>((acc, h, idx) => {
     const y = h.year ?? 0;
     if (!acc[y]) acc[y] = [];
@@ -1516,146 +1516,95 @@ function TextIndex({ subView }: { subView: IndexSubView }) {
     return acc;
   }, {});
   const years = Object.keys(byYear).map(Number).filter(Boolean).sort((a, b) => b - a);
+  const newestYear = years[0];
 
-  const timelineRef = useRef<HTMLDivElement>(null);
+  // Merge sparse years into groups so columns aren't wasted
+  const groups: { label: string; entries: { h: typeof humanoids[number]; idx: number }[] }[] = [];
+  let pendingYears: number[] = [];
+  let pendingEntries: { h: typeof humanoids[number]; idx: number }[] = [];
 
-  // Map wheel Y → horizontal scroll for timeline
-  useEffect(() => {
-    if (subView !== "timeline") return;
-    const el = timelineRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      el.scrollLeft += e.deltaY + e.deltaX;
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [subView]);
+  for (const year of years) {
+    const entries = byYear[year];
+    if (entries.length >= 3) {
+      // Flush pending
+      if (pendingEntries.length > 0) {
+        const label = pendingYears.length === 1 ? `${pendingYears[0]}` : `${pendingYears[0]}–${pendingYears[pendingYears.length - 1]}`;
+        groups.push({ label, entries: pendingEntries });
+        pendingYears = [];
+        pendingEntries = [];
+      }
+      groups.push({ label: `${year}`, entries });
+    } else {
+      pendingYears.push(year);
+      pendingEntries.push(...entries);
+      // Flush when we've accumulated enough
+      if (pendingEntries.length >= 3) {
+        const label = pendingYears.length === 1 ? `${pendingYears[0]}` : `${pendingYears[0]}–${pendingYears[pendingYears.length - 1]}`;
+        groups.push({ label, entries: pendingEntries });
+        pendingYears = [];
+        pendingEntries = [];
+      }
+    }
+  }
+  if (pendingEntries.length > 0) {
+    const label = pendingYears.length === 1 ? `${pendingYears[0]}` : `${pendingYears[0]}–${pendingYears[pendingYears.length - 1]}`;
+    groups.push({ label, entries: pendingEntries });
+  }
 
-  // ── List sub-view ──
-  if (subView === "list") {
-    return (
-      <div
-        className="min-h-screen overflow-y-auto scrollbar-hide select-none relative"
-        onMouseMove={(e) => {
-          if (floatingRef.current) floatingRef.current.style.top = `${e.clientY - 140}px`;
-        }}
-      >
-        <div className="max-w-[640px] mx-auto pt-24 pb-16 px-6 md:px-10">
-          <p className="text-[13px] text-neutral-400 mb-10">{humanoids.length} humanoids</p>
-          {humanoids.map((h, i) => (
-            <div
-              key={h.id}
-              className="border-b border-neutral-100 py-4 cursor-pointer flex items-baseline gap-4 transition-colors"
-              onMouseEnter={() => setHovered(i)}
-              onMouseLeave={() => setHovered(null)}
-            >
-              <span className="text-[11px] tabular-nums text-neutral-300 w-5">{String(i + 1).padStart(2, "0")}</span>
-              <span
-                className={`text-[13px] transition-colors duration-200 ${hovered === i ? "text-neutral-900 font-medium" : "text-neutral-500"}`}
-                style={{ letterSpacing: "-0.02em" }}
-              >
-                {h.name}
-              </span>
-              <span className="text-[11px] text-neutral-300 ml-auto">{h.manufacturer}</span>
+  return (
+    <div
+      className="min-h-screen overflow-y-auto scrollbar-hide select-none relative"
+      onMouseMove={(e) => {
+        if (floatingRef.current) {
+          const y = Math.min(Math.max(e.clientY - 140, 20), window.innerHeight - 300);
+          floatingRef.current.style.top = `${y}px`;
+        }
+      }}
+    >
+      <div className="max-w-[1100px] mx-auto pt-20 pb-20 px-6 md:px-12 lg:px-20">
+        <p className="text-[13px] text-neutral-400 mb-12">{humanoids.length} humanoids · {years[years.length - 1]}–{years[0]}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-0">
+          {groups.map((group) => (
+            <div key={group.label} className="break-inside-avoid mb-10">
+              {/* Year header */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-[22px] font-medium tabular-nums" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>{group.label}</span>
+                <div className="flex-1 h-px bg-neutral-100" />
+                <span className="text-[10px] text-neutral-300 uppercase tracking-wider">{group.entries.length}</span>
+              </div>
+
+              {/* Entries */}
+              {group.entries.map(({ h, idx }) => (
+                <div
+                  key={h.id}
+                  className="py-2.5 cursor-pointer flex items-baseline gap-3 transition-colors border-b border-neutral-50"
+                  onMouseEnter={() => setHovered(idx)}
+                  onMouseLeave={() => setHovered(null)}
+                >
+                  <span
+                    className={`text-[13px] transition-colors duration-150 flex-1 ${hovered === idx ? "text-neutral-900 font-medium" : "text-neutral-500"}`}
+                    style={{ letterSpacing: "-0.02em" }}
+                  >
+                    {h.name}
+                    {h.year === newestYear && <span className="ml-2 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full align-middle" style={{ background: "#e5e5e5", color: "#737373" }}>New</span>}
+                  </span>
+                  <span className="text-[10px] text-neutral-300 uppercase tracking-wider">{h.manufacturer}</span>
+                </div>
+              ))}
             </div>
           ))}
         </div>
-        {hovered !== null && (
-          <div ref={floatingRef} className="fixed pointer-events-none z-50 animate-blur-fade" style={{ right: "10%" }}>
-            <div className="relative w-[200px] h-[280px]">
-              {humanoids[hovered].imageUrl ? <Image src={humanoids[hovered].imageUrl} alt={humanoids[hovered].name} fill className="object-contain" sizes="200px" /> : <PlaceholderLogo />}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ── Timeline sub-view ──
-  const sortedYears = [...years].sort((a, b) => a - b); // oldest → newest (left → right)
-  const YEAR_COL_W = 220;
-  const PAD_X = 100;
-  const timelineW = sortedYears.length * YEAR_COL_W + PAD_X * 2;
-
-  return (
-    <div className="h-screen overflow-hidden select-none relative bg-white">
-      {/* Robot preview — upper area */}
-      <div className="absolute top-0 left-0 right-0 flex flex-col items-center justify-center pointer-events-none" style={{ height: "50%" }}>
-        {hovered !== null ? (
-          <div className="animate-blur-fade flex flex-col items-center">
-            <div className="relative w-[180px] h-[240px]">
-              {humanoids[hovered].imageUrl ? <Image src={humanoids[hovered].imageUrl} alt={humanoids[hovered].name} fill className="object-contain" sizes="180px" /> : <PlaceholderLogo />}
-            </div>
-            <p className="text-[13px] font-medium mt-3" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>
-              {humanoids[hovered].name}
-            </p>
-            <p className="text-[11px] text-neutral-400 mt-0.5">
-              {humanoids[hovered].manufacturer}
-            </p>
-          </div>
-        ) : (
-          <p className="text-[11px] text-neutral-300 italic">Hover to preview</p>
-        )}
       </div>
 
-      {/* Horizontal scrollable timeline — lower area */}
-      <div
-        ref={timelineRef}
-        className="absolute bottom-0 left-0 right-0 overflow-x-auto overflow-y-hidden scrollbar-hide"
-        style={{ height: "50%" }}
-      >
-        <div className="relative h-full" style={{ width: timelineW, minWidth: "100%" }}>
-          {/* Horizontal line */}
-          <div
-            className="absolute bg-neutral-200"
-            style={{ top: "50%", left: PAD_X - 20, right: PAD_X - 20, height: 1 }}
-          />
-
-          {/* Year columns */}
-          {sortedYears.map((year, yi) => {
-            const x = PAD_X + yi * YEAR_COL_W;
-            const entries = byYear[year];
-
-            return (
-              <div key={year} className="absolute" style={{ left: x, top: 0, bottom: 0, width: YEAR_COL_W }}>
-                {/* Dot on the line */}
-                <div
-                  className="absolute w-[7px] h-[7px] rounded-full bg-neutral-400"
-                  style={{ top: "50%", left: 0, transform: "translate(-50%, -50%)" }}
-                />
-
-                {/* Year label — below the line */}
-                <div className="absolute" style={{ top: "calc(50% + 16px)", left: 0, transform: "translateX(-50%)" }}>
-                  <span className="text-[18px] font-medium tabular-nums" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>
-                    {year}
-                  </span>
-                </div>
-
-                {/* Names — stacked above the line, growing upward */}
-                <div
-                  className="absolute flex flex-col-reverse items-start gap-0.5"
-                  style={{ bottom: "calc(50% + 14px)", left: -6 }}
-                >
-                  {entries.map(({ h, idx }) => (
-                    <span
-                      key={h.id}
-                      className={`text-[13px] whitespace-nowrap cursor-pointer transition-colors duration-150 leading-relaxed ${
-                        hovered === idx ? "text-neutral-900 font-medium" : "text-neutral-400"
-                      }`}
-                      style={{ letterSpacing: "-0.01em" }}
-                      onMouseEnter={() => setHovered(idx)}
-                      onMouseLeave={() => setHovered(null)}
-                    >
-                      {h.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      {/* Floating preview */}
+      {hovered !== null && (
+        <div ref={floatingRef} className="fixed pointer-events-none z-50 animate-blur-fade" style={{ right: "6%", transition: "top 0.15s ease-out" }}>
+          <div className="relative w-[160px] h-[240px]">
+            {humanoids[hovered].imageUrl ? <Image src={humanoids[hovered].imageUrl} alt={humanoids[hovered].name} fill className="object-contain" sizes="160px" /> : <PlaceholderLogo />}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
