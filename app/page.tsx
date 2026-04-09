@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
+import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 
 function PlaceholderLogo({ className }: { className?: string }) {
   return (
@@ -23,7 +24,6 @@ const layoutLabels: Record<Layout, string> = {
   Z: "Index",
 };
 
-const INDEX_SUB_VIEWS = ["list", "timeline"] as const;
 
 // ─── Nav Styles ─────────────────────────────────────────────────
 const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid"] as const;
@@ -33,15 +33,11 @@ type NavStyle = (typeof NAV_STYLES)[number];
 function LayoutSwitcher({
   active,
   onChange,
-  indexSubView,
-  onIndexSubViewChange,
   navStyle,
   onNavStyleChange,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
-  indexSubView: IndexSubView;
-  onIndexSubViewChange: (v: IndexSubView) => void;
   navStyle: NavStyle;
   onNavStyleChange: (s: NavStyle) => void;
 }) {
@@ -50,8 +46,6 @@ function LayoutSwitcher({
     const idx = NAV_STYLES.indexOf(navStyle);
     onNavStyleChange(NAV_STYLES[(idx + 1) % NAV_STYLES.length]);
   };
-
-  const subViewButtons = null;
 
   // ── Mark logo (shared) ──
   const mark = (
@@ -74,7 +68,7 @@ function LayoutSwitcher({
                 {layoutLabels[l]}
               </button>
             ))}
-            {subViewButtons}
+  
           </div>
         </div>
       </nav>
@@ -99,7 +93,7 @@ function LayoutSwitcher({
               {layoutLabels[l]}
             </button>
           ))}
-          {subViewButtons}
+
         </div>
       </div>
     </nav>
@@ -119,7 +113,7 @@ function LayoutSwitcher({
               {active === l && <div className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-neutral-800 rounded-full" />}
             </button>
           ))}
-          {subViewButtons}
+
         </div>
       </div>
     </nav>
@@ -138,7 +132,7 @@ function LayoutSwitcher({
               {layoutLabels[l]}
             </button>
           ))}
-          {subViewButtons}
+
         </div>
         <div className="w-5" /> {/* balance spacer */}
       </div>
@@ -158,7 +152,7 @@ function LayoutSwitcher({
               {layoutLabels[l]}
             </button>
           ))}
-          {subViewButtons}
+
         </div>
       </div>
     </nav>
@@ -1406,116 +1400,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// INDEX — Horizontal timeline with image cards grouped by year
-// ═══════════════════════════════════════════════════════════════
-
-function TextIndex() {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const cardRadius = 6;
-
-  // Group by year, oldest first
-  const byYear = humanoids.reduce<Record<number, typeof humanoids>>((acc, h) => {
-    const y = h.year ?? 0;
-    if (!acc[y]) acc[y] = [];
-    acc[y].push(h);
-    return acc;
-  }, {});
-  const years = Object.keys(byYear).map(Number).filter(Boolean).sort((a, b) => a - b);
-  const newestYear = years[years.length - 1];
-
-  // Wheel → horizontal scroll
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      el.scrollLeft += e.deltaY + e.deltaX;
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
-
-  return (
-    <div className="h-screen overflow-hidden select-none relative bg-white">
-      <div
-        ref={scrollRef}
-        className="absolute inset-0 overflow-x-auto overflow-y-hidden scrollbar-hide"
-      >
-        <div className="flex h-full items-end px-8 gap-6 pb-10 pt-16">
-          {years.map((year, yi) => {
-            const entries = byYear[year];
-            return (
-              <div key={year} className="flex-shrink-0 flex flex-col justify-end">
-                {/* Cards row */}
-                <div className="flex gap-3 mb-4">
-                  {entries.map((h, i) => (
-                    <div
-                      key={h.id}
-                      className="group flex flex-col gap-2 cursor-pointer flex-shrink-0"
-                      style={{
-                        width: 180,
-                        opacity: 0,
-                        animation: `grid-card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${(yi * 80) + (i * 50)}ms forwards`,
-                      }}
-                    >
-                      {/* Image */}
-                      <div className="relative aspect-[3/4] overflow-hidden" style={{ borderRadius: cardRadius, background: "#FAFAFA" }}>
-                        {h.year === newestYear && (
-                          <div className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded-full text-[8px] uppercase tracking-wider font-medium" style={{ background: "#e5e5e5", color: "#737373" }}>New</div>
-                        )}
-                        {h.description && (
-                          <div className="absolute top-2 right-2 z-10 group/info">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="12" r="10" />
-                              <path d="M12 16v-4M12 8h.01" />
-                            </svg>
-                            <div className="absolute top-5 right-0 w-44 px-2.5 py-1.5 rounded-md opacity-0 group-hover/info:opacity-100 pointer-events-none transition-opacity duration-150" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-                              <p className="text-[10px] leading-relaxed" style={{ color: "#999" }}>{h.description}</p>
-                            </div>
-                          </div>
-                        )}
-                        {h.imageUrl ? (
-                          <Image src={h.imageUrl} alt={h.name} fill className={`${h.imageFit === "cover" ? "object-cover" : "object-contain"} group-hover:scale-[1.01] transition-transform duration-200`} style={h.imagePosition ? { objectPosition: h.imagePosition, padding: h.imageFit === "cover" ? 0 : 16 } : { padding: 16 }} sizes="180px" />
-                        ) : (
-                          <PlaceholderLogo />
-                        )}
-                      </div>
-
-                      {/* Label */}
-                      <div className="flex items-center gap-2 px-0.5">
-                        <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: 3, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
-                          {h.logoUrl ? (
-                            <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="22px" />
-                          ) : (
-                            <svg width="10" height="10" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
-                              <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
-                              <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
-                            </svg>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
-                          <p className="text-[9px] tracking-widest uppercase font-medium truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Year label */}
-                <div className="flex items-center gap-3 border-t border-neutral-100 pt-3" style={{ width: entries.length * 180 + (entries.length - 1) * 12 }}>
-                  <span className="text-[28px] font-medium tabular-nums" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>{year}</span>
-                  <span className="text-[11px] text-neutral-300 uppercase tracking-wider ml-auto">{entries.length}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════
 // PAGE
@@ -1663,7 +1547,7 @@ const FONTS = [
 
 export default function Home() {
   const [layout, setLayout] = useState<Layout>("Z");
-  const [indexSubView, setIndexSubView] = useState<IndexSubView>("list");
+
   const [navStyle, setNavStyle] = useState<NavStyle>("underline");
   const [chatOpen, setChatOpen] = useState(false);
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
@@ -1756,8 +1640,6 @@ export default function Home() {
           <LayoutSwitcher
             active={layout}
             onChange={setLayout}
-            indexSubView={indexSubView}
-            onIndexSubViewChange={setIndexSubView}
             navStyle={navStyle}
             onNavStyleChange={setNavStyle}
           />
@@ -1767,7 +1649,7 @@ export default function Home() {
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
         {layout === "E" && <Browse goToIndex={goToIndex} />}
-        {layout === "Z" && <TextIndex />}
+        {layout === "Z" && <EllipticalCarousel />}
       </div>
 
       {/* Font toast */}
