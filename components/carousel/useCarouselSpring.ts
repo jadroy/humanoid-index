@@ -24,7 +24,7 @@ export function useCarouselSpring({
 
     setAngle(pos.current);
 
-    if (Math.abs(vel.current) > 0.0001 || Math.abs(target.current - pos.current) > 0.001) {
+    if (Math.abs(vel.current) > 0.00005 || Math.abs(target.current - pos.current) > 0.0005) {
       requestAnimationFrame(tick);
     } else {
       pos.current = target.current;
