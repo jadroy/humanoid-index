@@ -1167,8 +1167,9 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
           const scrollGallery = (idx: number) => {
             const el = galleryScrollRefs.current[hIdx];
-            if (!el) return;
-            el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" });
+            if (!el || !el.children[idx]) return;
+            const child = el.children[idx] as HTMLElement;
+            el.scrollTo({ left: child.offsetLeft, behavior: "smooth" });
           };
 
           const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -1205,7 +1206,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                     overflowX: hasGallery ? "auto" : "hidden",
                     overflowY: "hidden",
                     scrollSnapType: "x mandatory",
-                    scrollBehavior: "smooth",
                     opacity: Math.max(0.5, 1 - dist * robotFade),
                   }}
                   onScroll={hasGallery ? onScroll : undefined}
@@ -1222,27 +1222,27 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                     </div>
                   )}
                 </div>
-
-                {/* Hover arrows — centered on media area */}
-                {hasGallery && (
-                  <>
-                    <button
-                      className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[2]"
-                      style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
-                      onClick={(e) => { e.stopPropagation(); scrollGallery(Math.max(0, currentImg - 1)); }}
-                    >
-                      <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,1.5 2,5 6,8.5" /></svg>
-                    </button>
-                    <button
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[2]"
-                      style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
-                      onClick={(e) => { e.stopPropagation(); scrollGallery(Math.min(allImages.length - 1, currentImg + 1)); }}
-                    >
-                      <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,1.5 6,5 2,8.5" /></svg>
-                    </button>
-                  </>
-                )}
               </div>
+
+              {/* Hover arrows — at card level, above scroll container */}
+              {hasGallery && currentImg > 0 && (
+                <button
+                  className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[5]"
+                  style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
+                  onClick={(e) => { e.stopPropagation(); scrollGallery(currentImg - 1); }}
+                >
+                  <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,1.5 2,5 6,8.5" /></svg>
+                </button>
+              )}
+              {hasGallery && currentImg < allImages.length - 1 && (
+                <button
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[5]"
+                  style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
+                  onClick={(e) => { e.stopPropagation(); scrollGallery(currentImg + 1); }}
+                >
+                  <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,1.5 6,5 2,8.5" /></svg>
+                </button>
+              )}
 
               {/* Dot strip — fixed height, always present for consistent card sizing */}
               <div className="flex items-center justify-center shrink-0" style={{ height: 20 }}>
