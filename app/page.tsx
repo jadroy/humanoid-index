@@ -15,11 +15,12 @@ function PlaceholderLogo({ className }: { className?: string }) {
   );
 }
 
-const ALL_LAYOUTS = ["E", "Z"] as const;
+const ALL_LAYOUTS = ["E", "G", "Z"] as const;
 type Layout = (typeof ALL_LAYOUTS)[number];
 
 const layoutLabels: Record<Layout, string> = {
   E: "Scroll",
+  G: "Grid",
   Z: "Index",
 };
 
@@ -760,16 +761,17 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
   // Crown drum config
   const [drumAngle, setDrumAngle] = useState(14);
-  const [drumRadius, setDrumRadius] = useState(168);
-  const [drumFsMax, setDrumFsMax] = useState(20);
+  const [drumRadius, setDrumRadius] = useState(90);
+  const [drumFsMax, setDrumFsMax] = useState(16);
   const [drumFsMin, setDrumFsMin] = useState(8);
   const [drumFwMax, setDrumFwMax] = useState(500);
   const [drumCompression, setDrumCompression] = useState(0.62);
   const [drumOpPower, setDrumOpPower] = useState(3.5);
   const [drumXOffset, setDrumXOffset] = useState(120);
   const [drumMaskFade, setDrumMaskFade] = useState(30);
-  const [drumRange, setDrumRange] = useState(3);
+  const [drumRange, setDrumRange] = useState(1);
   const [drumTracking, setDrumTracking] = useState(0.04);
+  const [miniCrownRadius, setMiniCrownRadius] = useState(40);
   const [showStats, setShowStats] = useState(true);
   // Per-card gallery index: keyed by humanoid index
   const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
@@ -1116,26 +1118,28 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               {/* Fixed-width inner to prevent text reflow during width transition */}
               <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
               {/* Info header — fixed height */}
-              <div className="flex flex-col pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
-                    <p className="text-[15px] font-medium mt-1.5" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {h.year && <p className="text-[11px]" style={{ color: "#a3a3a3" }}>{h.year}</p>}
-                      {h.id.startsWith("legend") && <span className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
-                    </div>
-                  </div>
-                  {h.logoUrl && (
-                    <div className="flex-shrink-0 relative overflow-hidden" style={{ width: 28, height: 28, borderRadius: cardRadius * 0.6 }}>
-                      <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="28px" />
-                    </div>
+              <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
+                <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+                  {h.logoUrl ? (
+                    <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="32px" />
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
+                      <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+                      <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+                    </svg>
                   )}
                 </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
+                  <p className="text-[10px] tracking-widest uppercase font-medium mt-0.5 truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                    {h.manufacturer}{h.year ? ` · ${h.year}` : ''}{h.id.startsWith("legend") ? '' : ''}
+                  </p>
+                </div>
+                {h.id.startsWith("legend") && <span className="flex-shrink-0 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
               </div>
               {/* Stats — lighter container, spaced out */}
               <div className="flex flex-col pointer-events-auto" style={{ padding: "6px 12px", borderRadius: cardRadius, background: "#FCFCFC", position: "relative", zIndex: 11 }}>
-                {sections.filter((s) => s.show).map((s) => {
+                {sections.filter((s) => s.show && s.label).map((s) => {
                   const isOpen = openStat === s.key;
                   return (
                     <div key={s.key}>
@@ -1199,6 +1203,12 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 pointerEvents: "auto",
               }}
             >
+              {/* New badge */}
+              {h.year === 2025 && (
+                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-medium" style={{ background: "#e5e5e5", color: "#737373" }}>
+                  New
+                </div>
+              )}
               {/* Media area — fills remaining space */}
               <div className="relative flex-1 min-h-0">
                 <div
@@ -1278,13 +1288,13 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 const crownSide = isFirst ? "left" : "right";
                 const crownItems: { idx: number; o: number; cy: number; cz: number }[] = [];
                 const cf = Math.floor(crownSpring.pos);
-                for (let n = cf - 3; n <= cf + 4; n++) {
+                for (let n = cf - 1; n <= cf + 2; n++) {
                   if (n < 0 || n >= humanoids.length) continue;
                   const co = n - crownSpring.pos;
                   const rad = (co * 14 * Math.PI) / 180;
                   const cz = Math.cos(rad);
                   if (cz <= 0.01) continue;
-                  const cy = Math.sin(rad) * 72;
+                  const cy = Math.sin(rad) * miniCrownRadius;
                   crownItems.push({ idx: n, o: co, cy, cz });
                 }
                 const crownYRange = crownItems.reduce((acc, { cy }) => ({ min: Math.min(acc.min, cy), max: Math.max(acc.max, cy) }), { min: Infinity, max: -Infinity });
@@ -1403,7 +1413,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           </div>
           {arcStyle === "crown" && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(152); setDrumFsMax(20); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(2); setDrumTracking(0.04); }}>Reset</button></div>
+            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(40); }}>Reset</button></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Angle <span className="tabular-nums text-neutral-400">{drumAngle}°</span></label><input type="range" min={8} max={45} value={drumAngle} onChange={(e) => setDrumAngle(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{drumRadius}px</span></label><input type="range" min={60} max={300} value={drumRadius} onChange={(e) => setDrumRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Size max <span className="tabular-nums text-neutral-400">{drumFsMax}px</span></label><input type="range" min={20} max={80} value={drumFsMax} onChange={(e) => setDrumFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -1415,11 +1425,73 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Mask fade <span className="tabular-nums text-neutral-400">{drumMaskFade}%</span></label><input type="range" min={0} max={35} value={drumMaskFade} onChange={(e) => setDrumMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Visible items <span className="tabular-nums text-neutral-400">{drumRange}</span></label><input type="range" min={2} max={8} value={drumRange} onChange={(e) => setDrumRange(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Tracking <span className="tabular-nums text-neutral-400">{drumTracking.toFixed(2)}em</span></label><input type="range" min={-10} max={10} value={Math.round(drumTracking * 100)} onChange={(e) => setDrumTracking(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Mini radius <span className="tabular-nums text-neutral-400">{miniCrownRadius}px</span></label><input type="range" min={20} max={100} value={miniCrownRadius} onChange={(e) => setMiniCrownRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           )}
         </div>
       )}
 
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GRID — Cards with image + info/stats
+// ═══════════════════════════════════════════════════════════════
+function GridBrowse() {
+  const cardRadius = 6;
+  const newestYear = Math.max(...humanoids.filter(h => h.year).map(h => h.year!));
+
+  return (
+    <div className="px-6 md:px-12 lg:px-20 pt-16 pb-20">
+      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+        {humanoids.map((h) => (
+          <a key={h.id} href={`/robot/${h.id}`} className="group flex flex-col gap-2 cursor-pointer">
+            {/* Image card */}
+            <div className="relative aspect-[3/4] overflow-hidden" style={{ borderRadius: cardRadius, background: "#FAFAFA" }}>
+              {h.year === newestYear && (
+                <div className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-medium" style={{ background: "#e5e5e5", color: "#737373" }}>New</div>
+              )}
+              {h.description && (
+                <div className="absolute top-3 right-3 z-10 group/info">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4M12 8h.01" />
+                  </svg>
+                  <div className="absolute top-6 right-0 w-48 px-3 py-2 rounded-md opacity-0 group-hover/info:opacity-100 pointer-events-none transition-opacity duration-150" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+                    <p className="text-[11px] leading-relaxed" style={{ color: "#999" }}>{h.description}</p>
+                  </div>
+                </div>
+              )}
+              {h.imageUrl ? (
+                <Image src={h.imageUrl} alt={h.name} fill className={`${h.imageFit === "cover" ? "object-cover" : "object-contain"} group-hover:scale-[1.01] transition-transform duration-200`} style={h.imagePosition ? { objectPosition: h.imagePosition, padding: h.imageFit === "cover" ? 0 : 24 } : { padding: 24 }} sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" />
+              ) : (
+                <PlaceholderLogo />
+              )}
+            </div>
+
+            {/* Label */}
+            <div className="flex items-center gap-2.5 px-1 py-1">
+              <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 28, height: 28, borderRadius: 4, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+                {h.logoUrl ? (
+                  <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="28px" />
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
+                    <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+                    <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+                  </svg>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
+                <p className="text-[10px] tracking-widest uppercase font-medium mt-0.5 truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                  {h.manufacturer}{h.year ? ` · ${h.year}` : ""}
+                </p>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1835,6 +1907,7 @@ export default function Home() {
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
         {layout === "E" && <Browse goToIndex={goToIndex} />}
+        {layout === "G" && <GridBrowse />}
         {layout === "Z" && <TextIndex subView={indexSubView} />}
       </div>
 

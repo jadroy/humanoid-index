@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Humanoid } from "@/data/humanoids";
+import { humanoids as allHumanoids } from "@/data/humanoids";
 import type { ViewConfig } from "./Sidebar";
 
 interface HumanoidCardProps {
@@ -27,6 +28,8 @@ export default function HumanoidCard({
   onToggleSelect
 }: HumanoidCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const newestYear = Math.max(...allHumanoids.filter(h => h.year).map(h => h.year!));
+  const isNew = humanoid.year === newestYear;
 
   // Get alternative image from media if available
   const alternativeImage = humanoid.media && humanoid.media.length > 1
@@ -75,6 +78,13 @@ export default function HumanoidCard({
                   <path d="M5 12l5 5L20 7" />
                 </svg>
               )}
+            </div>
+          )}
+
+          {/* New badge */}
+          {isNew && !compareMode && (
+            <div className="absolute top-2 left-2 z-20 px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-medium" style={{ background: "#e5e5e5", color: "#737373" }}>
+              New
             </div>
           )}
 
