@@ -748,6 +748,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [customThreshold, setCustomThreshold] = useState(54);
   const [robotSquish, setRobotSquish] = useState(0.00);
   const [robotFade, setRobotFade] = useState(0.08);
+  const [bottomFadeH, setBottomFadeH] = useState(40);
+  const [bottomFadeOpacity, setBottomFadeOpacity] = useState(0.9);
   const [showTuner, setShowTuner] = useState(false);
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
@@ -1210,9 +1212,9 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                   onScroll={hasGallery ? onScroll : undefined}
                 >
                   {allImages.length > 0 ? allImages.map((src, i) => (
-                    <div key={i} className="relative flex items-center justify-center p-6 pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start" }}>
+                    <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: h.imageFit === "cover" ? 0 : h.imagePosition === "bottom" ? "24px 24px 0" : 24 }}>
                       <div className="relative w-full h-full">
-                        <Image src={src} alt={`${h.name} ${i + 1}`} fill className="object-contain" sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst && i === 0} />
+                        <Image src={src} alt={`${h.name} ${i + 1}`} fill className={h.imageFit === "cover" ? "object-cover" : "object-contain"} style={h.imagePosition ? { objectPosition: h.imagePosition } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst && i === 0} />
                       </div>
                     </div>
                   )) : (
@@ -1221,6 +1223,27 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                     </div>
                   )}
                 </div>
+
+                {/* Bottom fade for cut-off images */}
+                {h.imagePosition === "bottom" && (
+                  <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]" style={{ height: bottomFadeH, background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))` }} />
+                )}
+                {/* Dot strip — overlaid at bottom with fade */}
+                {hasGallery && (
+                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none" style={{ height: 28, background: "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))" }}>
+                    <div className="flex gap-1.5">
+                      {allImages.map((_, i) => (
+                        <div key={i} style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: "50%",
+                          background: i === currentImg ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)",
+                          transition: "background 0.2s ease",
+                        }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Hover arrows — at card level, above scroll container */}
@@ -1242,23 +1265,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                   <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,1.5 6,5 2,8.5" /></svg>
                 </button>
               )}
-
-              {/* Dot strip — fixed height, always present for consistent card sizing */}
-              <div className="flex items-center justify-center shrink-0" style={{ height: 20 }}>
-                {hasGallery && (
-                  <div className="flex gap-1.5">
-                    {allImages.map((_, i) => (
-                      <div key={i} style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: "50%",
-                        background: i === currentImg ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)",
-                        transition: "background 0.2s ease",
-                      }} />
-                    ))}
-                  </div>
-                )}
-              </div>
 
             </div>
 
@@ -1388,6 +1394,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Microinteractions</p>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Squish <span className="tabular-nums text-neutral-400">{robotSquish.toFixed(2)}</span></label><input type="range" min={0} max={15} value={Math.round(robotSquish * 100)} onChange={(e) => setRobotSquish(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Fade <span className="tabular-nums text-neutral-400">{robotFade.toFixed(2)}</span></label><input type="range" min={0} max={60} value={Math.round(robotFade * 100)} onChange={(e) => setRobotFade(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Bottom fade height <span className="tabular-nums text-neutral-400">{bottomFadeH}px</span></label><input type="range" min={0} max={120} value={bottomFadeH} onChange={(e) => setBottomFadeH(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Bottom fade opacity <span className="tabular-nums text-neutral-400">{bottomFadeOpacity.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(bottomFadeOpacity * 100)} onChange={(e) => setBottomFadeOpacity(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           {arcStyle === "crown" && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">

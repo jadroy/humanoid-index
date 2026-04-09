@@ -18,6 +18,8 @@ export interface Humanoid {
   maxSpeed?: number; // m/s
   description?: string;
   imageUrl?: string; // Primary/cover image
+  imagePosition?: string; // CSS object-position override (default: "center")
+  imageFit?: "contain" | "cover"; // CSS object-fit override (default: "contain")
   logoUrl?: string; // Company logo
   manufacturerUrl?: string; // Company website
   media?: MediaItem[]; // Additional images and videos
@@ -244,6 +246,7 @@ export const humanoids: Humanoid[] = [
     id: "15",
     name: "Astribot S1",
     manufacturer: "Astribot",
+    logoUrl: "/robots/Astribot.png",
     year: 2024,
     cost: "N/A",
     status: "Prototype",
@@ -255,7 +258,8 @@ export const humanoids: Humanoid[] = [
   {
     id: "16",
     name: "Kepler Forerunner",
-    manufacturer: "Kepler Robot",
+    manufacturer: "Kepler Robotics",
+    logoUrl: "/robots/Kepler-robotics.svg",
     year: 2024,
     cost: "$30K",
     status: "Prototype",
@@ -268,6 +272,7 @@ export const humanoids: Humanoid[] = [
     id: "17",
     name: "Tiangong",
     manufacturer: "Beijing Humanoid Robot Center",
+    logoUrl: "/robots/Beijing-humanoid-robot-center.png",
     year: 2024,
     cost: "N/A",
     status: "Prototype",
@@ -338,6 +343,10 @@ export const humanoids: Humanoid[] = [
     id: "23",
     name: "Armar-6",
     manufacturer: "KIT",
+    logoUrl: "/robots/KIT.png",
+    imageUrl: "/robots/armar-6.png",
+    imagePosition: "bottom",
+    imageFit: "cover",
     year: 2018,
     status: "Prototype",
     height: 175,
@@ -362,6 +371,9 @@ export const humanoids: Humanoid[] = [
     id: "25",
     name: "Roboy",
     manufacturer: "Devanthro",
+    logoUrl: "/robots/Devanthro.png",
+    imageUrl: "/robots/roboy.png",
+    imagePosition: "bottom",
     year: 2013,
     status: "Prototype",
     height: 140,
