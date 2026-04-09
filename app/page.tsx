@@ -57,8 +57,8 @@ function LayoutSwitcher({
 
   // ── Style: floating (original — island with border) ──
   if (navStyle === "floating") return (
-    <nav className="fixed top-0 left-0 right-0 z-50 pt-5 px-6 pointer-events-none">
-      <div className="flex items-center justify-between pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 mx-auto" style={{ maxWidth: 1052, background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 pt-4 px-6 pointer-events-none">
+      <div className="flex flex-col items-center gap-2 pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 mx-auto" style={{ maxWidth: 1052, background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
           {mark}
           <div className="flex items-center gap-0.5">
             {ALL_LAYOUTS.map((l) => (
@@ -68,7 +68,6 @@ function LayoutSwitcher({
                 {layoutLabels[l]}
               </button>
             ))}
-  
           </div>
         </div>
       </nav>
@@ -79,8 +78,8 @@ function LayoutSwitcher({
   // ── Style: pill — rounded capsule, tinted active state ──
   if (navStyle === "pill") return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex items-center gap-2 pointer-events-auto px-2 py-1.5 rounded-full" style={frost}>
-        <div className="pl-2">{mark}</div>
+      <div className="flex flex-col items-center gap-1.5 pointer-events-auto px-3 py-2 rounded-2xl" style={frost}>
+        {mark}
         <div className="flex items-center gap-1">
           {ALL_LAYOUTS.map((l) => (
             <button key={l} onClick={() => onChange(l)}
@@ -102,7 +101,7 @@ function LayoutSwitcher({
   // ── Style: underline — clean text with active underline ──
   if (navStyle === "underline") return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex items-center gap-6 pointer-events-auto px-4 py-2 rounded-sm" style={frost}>
+      <div className="flex flex-col items-center gap-1.5 pointer-events-auto px-4 py-2.5 rounded-sm" style={frost}>
         {mark}
         <div className="flex items-center gap-4">
           {ALL_LAYOUTS.map((l) => (
@@ -122,7 +121,7 @@ function LayoutSwitcher({
   // ── Style: bordered — full-width top bar with bottom border ──
   if (navStyle === "bordered") return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={frost}>
-      <div className="flex items-center justify-between max-w-[1100px] mx-auto px-6 py-3">
+      <div className="flex flex-col items-center gap-1 max-w-[1100px] mx-auto px-6 py-3">
         {mark}
         <div className="flex items-center gap-1">
           {ALL_LAYOUTS.map((l) => (
@@ -132,9 +131,7 @@ function LayoutSwitcher({
               {layoutLabels[l]}
             </button>
           ))}
-
         </div>
-        <div className="w-5" /> {/* balance spacer */}
       </div>
     </nav>
   );
@@ -142,7 +139,7 @@ function LayoutSwitcher({
   // ── Style: minimal — just text, no container, no border ──
   if (navStyle === "minimal") return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-6 pointer-events-none">
-      <div className="flex items-center gap-5 pointer-events-auto px-4 py-2 rounded-sm" style={frost}>
+      <div className="flex flex-col items-center gap-1.5 pointer-events-auto px-4 py-2.5 rounded-sm" style={frost}>
         {mark}
         <div className="flex items-center gap-3">
           {ALL_LAYOUTS.map((l) => (
@@ -161,7 +158,7 @@ function LayoutSwitcher({
   // ── Style: solid — dark bar, inverted text ──
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex items-center gap-4 pointer-events-auto px-5 py-2 rounded-sm" style={{ background: "rgba(23,23,23,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+      <div className="flex flex-col items-center gap-1.5 pointer-events-auto px-5 py-2.5 rounded-sm" style={{ background: "rgba(23,23,23,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.4 }} className="cursor-pointer" onContextMenu={cycleNavStyle}>
           <circle cx="10" cy="5" r="3" fill="#fff" />
           <rect x="7" y="9.5" width="6" height="8" rx="3" fill="#fff" />
@@ -256,14 +253,14 @@ function useSpring(s: number, d: number) {
 // ═══════════════════════════════════════════════════════════════
 const ARC_STYLES = [
   // core
-  "crown", "pills", "classic", "ticks", "minimal",
+  "crown", "arc-timeline", "pills", "classic", "ticks", "minimal",
   // pill + number hybrids
   "h-clean", "h-stacked", "h-reveal", "h-flush", "h-mono",
   "h-light", "h-bold", "h-spaced", "h-underline", "h-tag",
 ] as const;
 type ArcStyle = (typeof ARC_STYLES)[number];
 const arcStyleLabels: Record<ArcStyle, string> = {
-  crown: "Crown", pills: "Pills", classic: "Classic", ticks: "Ticks", minimal: "Minimal",
+  crown: "Crown", "arc-timeline": "Arc", pills: "Pills", classic: "Classic", ticks: "Ticks", minimal: "Minimal",
   "h-clean": "Clean", "h-stacked": "Stacked", "h-reveal": "Reveal", "h-flush": "Flush", "h-mono": "Mono",
   "h-light": "Light", "h-bold": "Bold", "h-spaced": "Spaced", "h-underline": "Underline", "h-tag": "Tag",
 };
@@ -271,8 +268,8 @@ const arcStyleLabels: Record<ArcStyle, string> = {
 // ═══════════════════════════════════════════════════════════════
 // Arc renderer — multiple visual styles along a translucent curved track
 // ═══════════════════════════════════════════════════════════════
-function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35 }: { pos: number; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number }) {
-  const R = 300, off = 30, range = variant === "crown" ? dRange : 2;
+function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 300 }: { pos: number; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number }) {
+  const R = 300, off = 30, range = (variant === "crown" || variant === "arc-timeline") ? dRange : 2;
   const cx = -R + off;
   const getP = (o: number) => {
     const a = (o * 8 * Math.PI) / 180;
@@ -293,7 +290,7 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
         </filter>
       </defs>
       {noTrack ? (
-        variant !== "minimal" && variant !== "crown" && <circle cx={cx} cy="50%" r={R} fill="none" stroke="#e8e8e8" strokeWidth="1" style={{ opacity: dimmed ? 0.3 : 1 }} />
+        variant !== "minimal" && variant !== "crown" && variant !== "arc-timeline" && <circle cx={cx} cy="50%" r={R} fill="none" stroke="#e8e8e8" strokeWidth="1" style={{ opacity: dimmed ? 0.3 : 1 }} />
       ) : (
         <circle cx={cx} cy="50%" r={R} fill="none" stroke="rgba(243,243,243,0.85)" strokeWidth={variant === "ticks" ? 44 : 38} filter={`url(#ts-${sid})`} style={{ opacity: dimmed ? 0.3 : 1 }} />
       )}
@@ -311,6 +308,36 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
     const num = String(i).padStart(2, "0");
     const flip = mirrored ? "scaleX(-1)" : undefined;
 
+    // ── arc-timeline: curved arc with dots and year labels ──
+    if (variant === "arc-timeline") {
+      const arcR = dRadius * 2.5;
+      const arcDeg = o * dAngle * 0.8;
+      const arcRad = arcDeg * Math.PI / 180;
+      const arcY = Math.sin(arcRad) * arcR;
+      const arcX = (1 - Math.cos(arcRad)) * (mirrored ? -60 : 60);
+      const arcZ = Math.cos(arcRad);
+      if (arcZ <= 0.01) return <div key={i} />;
+      const op = Math.pow(Math.max(0, arcZ), 2.5) * bOp;
+      const dotSize = isActive ? 5 : 3;
+      const year = humanoids[i]?.year;
+      const name = humanoids[i]?.name;
+      return (
+        <div key={i} className="absolute cursor-pointer flex items-center gap-2.5" style={{
+          left: mirrored ? undefined : dXOff,
+          right: mirrored ? dXOff : undefined,
+          top: `calc(50% + ${arcY}px)`,
+          transform: `translateY(-50%) translateX(${arcX}px)`,
+          opacity: op,
+          flexDirection: mirrored ? "row-reverse" : "row",
+        }} onClick={() => onClickItem(i)}>
+          <div style={{ width: dotSize, height: dotSize, borderRadius: "50%", background: isActive ? "var(--c-ink)" : "#ccc", transition: "all 0.15s ease", flexShrink: 0 }} />
+          <div style={{ textAlign: mirrored ? "right" : "left" }}>
+            <span style={{ fontSize: isActive ? 11 : 9, fontWeight: isActive ? 600 : 400, color: isActive ? "var(--c-ink)" : "#b3b3b3", letterSpacing: "-0.01em", lineHeight: 1, display: "block", transition: "all 0.15s ease", transform: flip }}>{year ?? num}</span>
+            {isActive && name && <span style={{ fontSize: 8, color: "#999", letterSpacing: "0.02em", lineHeight: 1.4, display: "block", transform: flip }}>{name}</span>}
+          </div>
+        </div>
+      );
+    }
     // ── crown: physical drum wheel ──
     if (variant === "crown") {
       const drumDeg = o * dAngle;
@@ -513,6 +540,58 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
   } as React.CSSProperties : drumMask;
 
   const finalMask = variant === "crown" ? crownDepth : drumMask;
+
+  // ── arc-timeline: large SVG wheel jutting from edge ──
+  if (variant === "arc-timeline") {
+    const wheelR = 700;
+    const arcAngle = dAngle * 0.6; // degrees per step
+    return (
+      <div className="absolute inset-0 overflow-visible">
+        <svg
+          className="absolute overflow-visible"
+          style={{
+            width: wheelR * 2,
+            height: wheelR * 2,
+            top: "50%",
+            ...(mirrored ? { left: "auto", right: -wheelR + aInset } : { left: -wheelR + aInset }),
+            transform: "translateY(-50%)",
+          }}
+          viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
+        >
+          <circle cx={wheelR} cy={wheelR} r={wheelR - 15} fill="none" stroke="#ebebeb" strokeWidth="1" />
+          {items.map(({ i, o }) => {
+            const theta = (mirrored ? -1 : 1) * o * arcAngle * Math.PI / 180 - Math.PI / 2 + (mirrored ? Math.PI : 0);
+            const r = wheelR - 15;
+            const dotCx = wheelR + Math.cos(theta) * r;
+            const dotCy = wheelR + Math.sin(theta) * r;
+            const z = Math.cos(o * arcAngle * Math.PI / 180);
+            if (z <= 0.01) return null;
+            const isAct = Math.abs(o) < 0.15;
+            const op = Math.pow(Math.max(0, z), 2);
+            const year = humanoids[i]?.year;
+            const name = humanoids[i]?.name;
+            // Label offset — push text inward from the arc
+            const inward = mirrored ? -1 : 1;
+            const labelX = dotCx + inward * 16;
+            const labelY = dotCy;
+            return (
+              <g key={i} className="cursor-pointer" style={{ opacity: op }} onClick={() => onClickItem(i)}>
+                <circle cx={dotCx} cy={dotCy} r={isAct ? 4.5 : 3} fill={isAct ? "var(--c-ink)" : "#ccc"} style={{ transition: "all 0.15s ease" }} />
+                <text x={labelX} y={labelY + 1} textAnchor={mirrored ? "end" : "start"} dominantBaseline="middle" style={{ fontSize: isAct ? 11 : 9, fontWeight: isAct ? 600 : 400, fill: isAct ? "var(--c-ink)" : "#b3b3b3", fontFamily: "inherit", letterSpacing: "-0.01em", transition: "all 0.15s ease" }}>
+                  {year ?? String(i).padStart(2, "0")}
+                </text>
+                {isAct && name && (
+                  <text x={labelX} y={labelY + 13} textAnchor={mirrored ? "end" : "start"} dominantBaseline="middle" style={{ fontSize: 8, fill: "#999", fontFamily: "inherit", letterSpacing: "0.02em" }}>
+                    {name}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    );
+  }
 
   if (mirrored) {
     return <div className="absolute inset-0" style={{ transform: "scaleX(-1)", ...finalMask }}>{crownElements}{content}</div>;
@@ -737,6 +816,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [drumRange, setDrumRange] = useState(1);
   const [drumTracking, setDrumTracking] = useState(0.04);
   const [miniCrownRadius, setMiniCrownRadius] = useState(70);
+  const [arcInset, setArcInset] = useState(80);
   const [showStats, setShowStats] = useState(true);
   // Per-card gallery index: keyed by humanoid index
   const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
@@ -748,6 +828,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [robotMaxW, setRobotMaxW] = useState(400); // px
   const [statsW, setStatsW] = useState(260);       // px
   const [cardGap, setCardGap] = useState(8);       // px
+  const [statsGap, setStatsGap] = useState(8);     // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(6);  // px
 
   const stiffness = isCustom ? customStiffness : SCROLL_PRESETS[presetKey].stiffness;
@@ -887,7 +968,48 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
   return (
     <div className="h-screen overflow-hidden select-none relative bg-white">
-      {/* Arc dots are rendered inside their respective section groups below */}
+      {/* Left arc nav */}
+      <div className="fixed top-0 bottom-0 left-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
+        <ArcDots
+          pos={springL.pos}
+          onClickItem={(idx) => springL.jumpTo(idx)}
+          variant={arcStyle}
+          drumAngle={drumAngle}
+          drumRadius={drumRadius}
+          drumFsMax={drumFsMax}
+          drumFsMin={drumFsMin}
+          drumFwMax={drumFwMax}
+          drumCompression={drumCompression}
+          drumOpPower={drumOpPower}
+          drumXOffset={drumXOffset}
+          drumTracking={drumTracking}
+          drumRange={drumRange}
+          drumMaskFade={drumMaskFade}
+          arcInset={arcInset}
+        />
+      </div>
+      {/* Right arc nav */}
+      {comparing && (
+        <div className="fixed top-0 bottom-0 right-0 z-[3] pointer-events-auto overflow-visible" style={{ width: 200 }}>
+          <ArcDots
+            pos={springR.pos}
+            mirrored
+            onClickItem={(idx) => springR.jumpTo(idx)}
+            variant={arcStyle}
+            drumAngle={drumAngle}
+            drumRadius={drumRadius}
+            drumFsMax={drumFsMax}
+            drumFsMin={drumFsMin}
+            drumFwMax={drumFwMax}
+            drumCompression={drumCompression}
+            drumOpPower={drumOpPower}
+            drumXOffset={drumXOffset}
+            drumTracking={drumTracking}
+            drumRange={drumRange}
+            drumMaskFade={drumMaskFade}
+          />
+        </div>
+      )}
 
       {/* ── Add compare button — hover zone right of center ── */}
       {!comparing && (
@@ -1170,9 +1292,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             >
               {/* New badge */}
               {h.year === 2025 && (
-                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-medium" style={{ background: "#e5e5e5", color: "#737373" }}>
-                  New
-                </div>
+                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 text-[9px] tracking-[0.08em] uppercase font-medium" style={{ borderRadius: Math.max(3, cardRadius - 1), background: "#fef0e4", color: "#c47a2a" }}>New</div>
               )}
               {/* Media area — fills remaining space */}
               <div className="relative flex-1 min-h-0">
@@ -1247,50 +1367,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
             </div>
 
-              {/* Mini crown — outside edge of card */}
-              {(() => {
-                const crownSpring = isFirst ? springL : springR;
-                const crownSide = isFirst ? "left" : "right";
-                const crownItems: { idx: number; o: number; cy: number; cz: number }[] = [];
-                const cf = Math.floor(crownSpring.pos);
-                for (let n = cf - 1; n <= cf + 2; n++) {
-                  if (n < 0 || n >= humanoids.length) continue;
-                  const co = n - crownSpring.pos;
-                  const rad = (co * 14 * Math.PI) / 180;
-                  const cz = Math.cos(rad);
-                  if (cz <= 0.01) continue;
-                  const cy = Math.sin(rad) * miniCrownRadius;
-                  crownItems.push({ idx: n, o: co, cy, cz });
-                }
-                const crownYRange = crownItems.reduce((acc, { cy }) => ({ min: Math.min(acc.min, cy), max: Math.max(acc.max, cy) }), { min: Infinity, max: -Infinity });
-                return (
-                  <div className="absolute top-3 pointer-events-auto z-[3]" style={{ ...(crownSide === "left" ? { right: "100%", marginRight: 6 } : { left: "100%", marginLeft: 6 }), height: 110, width: 30 }}>
-                    {/* Static dashes */}
-                    {Array.from({ length: 11 }, (_, j) => {
-                      const y = (j - 5) * 9;
-                      if (crownYRange.min !== Infinity && (y < crownYRange.min - 2 || y > crownYRange.max + 2)) return null;
-                      const isMajor = j % 3 === 0;
-                      const dfc = Math.abs(j - 5);
-                      return <div key={j} className="absolute" style={{ [crownSide === "left" ? "left" : "right"]: 0, top: `calc(50% + ${y}px)`, width: isMajor ? 8 : 5, height: 1, background: `rgba(0,0,0,${isMajor ? 0.1 : 0.05})`, borderRadius: 1, opacity: Math.max(0, 1 - dfc * 0.14), transform: "translateY(-50%)" }} />;
-                    })}
-                    {/* Rail */}
-                    {crownYRange.min !== Infinity && <div className="absolute" style={{ [crownSide === "left" ? "left" : "right"]: 0, top: `calc(50% + ${crownYRange.min}px)`, height: crownYRange.max - crownYRange.min, width: 1, background: "rgba(0,0,0,0.05)" }} />}
-                    {/* Brass marker */}
-                    <div className="absolute" style={{ [crownSide === "left" ? "left" : "right"]: -4, top: "50%", transform: `translateY(-50%)${crownSide === "right" ? " scaleX(-1)" : ""}` }}>
-                      <svg width="5" height="7" viewBox="0 0 5 7" fill="#8a7245" opacity="0.45"><polygon points="0,1.5 5,3.5 0,5.5" /></svg>
-                    </div>
-                    {/* Scrolling numbers */}
-                    {crownItems.map(({ idx: ci, o: co, cy, cz }) => {
-                      const cfs = 7 + cz * 3.5;
-                      const cop = Math.pow(cz, 3);
-                      const cAct = Math.abs(co) < 0.15;
-                      return <div key={ci} className="absolute cursor-pointer" style={{ [crownSide === "left" ? "left" : "right"]: 10, top: `calc(50% + ${cy}px)`, transform: `translateY(-50%) scaleY(${0.6 + cz * 0.4})`, opacity: cop }} onClick={() => crownSpring.jumpTo(ci)}>
-                        <span className="tabular-nums" style={{ fontSize: cfs, fontWeight: cAct ? 600 : 400, lineHeight: 1, color: cAct ? "#1d1d1f" : `rgba(0,0,0,${0.15 + cz * 0.25})`, letterSpacing: "0.02em" }}>{String(ci).padStart(2, "0")}</span>
-                      </div>;
-                    })}
-                  </div>
-                );
-              })()}
 
               {/* Stats toggle — outside bottom-left of card */}
               <button
@@ -1315,7 +1391,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             <div className="flex items-start" style={{ gap: cardGap }}>
               {/* Left group */}
               <div className="flex items-start" style={{
-                gap: cardGap,
+                gap: statsGap,
                 transform: splitHover ? "translateX(-12px)" : addHover ? "translateX(-16px)" : "translateX(0)",
                 transition: "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
               }}>
@@ -1325,7 +1401,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
               {/* Right group */}
               <div className="flex items-start" style={{
-                gap: cardGap,
+                gap: statsGap,
                 transform: splitHover ? "translateX(12px)" : "translateX(0)",
                 transition: "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
               }}>
@@ -1357,6 +1433,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
       {showTuner && (
         <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide">
           <div><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Presets</p><div className="flex flex-wrap gap-1.5">{(Object.keys(SCROLL_PRESETS) as PresetKey[]).map((key) => (<button key={key} onClick={() => applyPreset(key)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${presetKey === key && !isCustom ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{SCROLL_PRESETS[key].label}</button>))}</div></div>
+          <div><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => setArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Fine Tune</p>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Stiffness <span className="tabular-nums text-neutral-400">{stiffness.toFixed(2)}</span></label><input type="range" min={2} max={40} value={Math.round(stiffness * 100)} onChange={(e) => { setCustomStiffness(Number(e.target.value) / 100); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Damping <span className="tabular-nums text-neutral-400">{damping.toFixed(2)}</span></label><input type="range" min={40} max={95} value={Math.round(damping * 100)} onChange={(e) => { setCustomDamping(Number(e.target.value) / 100); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
@@ -1368,6 +1445,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Max width <span className="tabular-nums text-neutral-400">{robotMaxW}px</span></label><input type="range" min={200} max={800} step={10} value={robotMaxW} onChange={(e) => setRobotMaxW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Stats width <span className="tabular-nums text-neutral-400">{statsW}px</span></label><input type="range" min={0} max={300} step={5} value={statsW} onChange={(e) => setStatsW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{cardGap}px</span></label><input type="range" min={0} max={32} value={cardGap} onChange={(e) => setCardGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Stats gap <span className="tabular-nums text-neutral-400">{statsGap}px</span></label><input type="range" min={0} max={300} value={statsGap} onChange={(e) => setStatsGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{cardRadius}px</span></label><input type="range" min={0} max={32} value={cardRadius} onChange={(e) => setCardRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Microinteractions</p>
@@ -1376,7 +1454,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Bottom fade height <span className="tabular-nums text-neutral-400">{bottomFadeH}px</span></label><input type="range" min={0} max={120} value={bottomFadeH} onChange={(e) => setBottomFadeH(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Bottom fade opacity <span className="tabular-nums text-neutral-400">{bottomFadeOpacity.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(bottomFadeOpacity * 100)} onChange={(e) => setBottomFadeOpacity(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
           </div>
-          {arcStyle === "crown" && (
+          {(arcStyle === "crown" || arcStyle === "arc-timeline") && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(70); }}>Reset</button></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Angle <span className="tabular-nums text-neutral-400">{drumAngle}°</span></label><input type="range" min={8} max={45} value={drumAngle} onChange={(e) => setDrumAngle(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -1391,6 +1469,8 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Visible items <span className="tabular-nums text-neutral-400">{drumRange}</span></label><input type="range" min={2} max={8} value={drumRange} onChange={(e) => setDrumRange(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Tracking <span className="tabular-nums text-neutral-400">{drumTracking.toFixed(2)}em</span></label><input type="range" min={-10} max={10} value={Math.round(drumTracking * 100)} onChange={(e) => setDrumTracking(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Mini radius <span className="tabular-nums text-neutral-400">{miniCrownRadius}px</span></label><input type="range" min={20} max={100} value={miniCrownRadius} onChange={(e) => setMiniCrownRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Scroll threshold <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={100} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => setArcInset(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           )}
         </div>
