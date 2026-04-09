@@ -1112,7 +1112,10 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                   <div>
                     <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
                     <p className="text-[15px] font-medium mt-1.5" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
-                    {h.year && <p className="text-[11px] mt-1" style={{ color: "#a3a3a3" }}>{h.year}</p>}
+                    <div className="flex items-center gap-2 mt-1">
+                      {h.year && <p className="text-[11px]" style={{ color: "#a3a3a3" }}>{h.year}</p>}
+                      {h.id.startsWith("legend") && <span className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
+                    </div>
                   </div>
                   {h.logoUrl && (
                     <div className="flex-shrink-0 relative overflow-hidden" style={{ width: 28, height: 28, borderRadius: cardRadius * 0.6 }}>
@@ -1212,7 +1215,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                   onScroll={hasGallery ? onScroll : undefined}
                 >
                   {allImages.length > 0 ? allImages.map((src, i) => (
-                    <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: h.imageFit === "cover" ? 0 : h.imagePosition === "bottom" ? "24px 24px 0" : 24 }}>
+                    <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: h.imageFit === "cover" ? 0 : h.imagePosition === "bottom" ? "24px 24px 0 24px" : 24 }}>
                       <div className="relative w-full h-full">
                         <Image src={src} alt={`${h.name} ${i + 1}`} fill className={h.imageFit === "cover" ? "object-cover" : "object-contain"} style={h.imagePosition ? { objectPosition: h.imagePosition } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst && i === 0} />
                       </div>
@@ -1225,7 +1228,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 </div>
 
                 {/* Bottom fade for cut-off images */}
-                {h.imagePosition === "bottom" && (
+                {h.imagePosition?.includes("bottom") && (
                   <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]" style={{ height: bottomFadeH, background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))` }} />
                 )}
                 {/* Dot strip — overlaid at bottom with fade */}
