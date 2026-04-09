@@ -773,7 +773,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
   const galleryScrollRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [openStat, setOpenStat] = useState<string | null>(null);
-
   // Layout dimensions
   const [robotW, setRobotW] = useState(30);       // vw
   const [robotH, setRobotH] = useState(60);       // vh
@@ -1106,7 +1105,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
               {/* Fixed-width inner to prevent text reflow during width transition */}
               <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
               {/* Info header — fixed height */}
-              <div className="flex flex-col" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px", flexShrink: 0 }}>
+              <div className="flex flex-col pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
