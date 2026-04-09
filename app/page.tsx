@@ -15,12 +15,11 @@ function PlaceholderLogo({ className }: { className?: string }) {
   );
 }
 
-const ALL_LAYOUTS = ["E", "G", "Z"] as const;
+const ALL_LAYOUTS = ["E", "Z"] as const;
 type Layout = (typeof ALL_LAYOUTS)[number];
 
 const layoutLabels: Record<Layout, string> = {
   E: "Scroll",
-  G: "Grid",
   Z: "Index",
 };
 
@@ -1408,128 +1407,18 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// GRID — Cards with image + info/stats
+// INDEX — Horizontal timeline with image cards grouped by year
 // ═══════════════════════════════════════════════════════════════
-function GridBrowse() {
-  const cardRadius = 6;
-  const newestYear = Math.max(...humanoids.filter(h => h.year).map(h => h.year!));
-
-  const statuses = [...new Set(humanoids.map(h => h.status).filter(Boolean))] as string[];
-  const manufacturers = [...new Set(humanoids.map(h => h.manufacturer))].sort();
-  const [filterStatus, setFilterStatus] = useState<string | null>(null);
-  const [filterMfr, setFilterMfr] = useState<string | null>(null);
-  const filtered = humanoids.filter(h =>
-    (!filterStatus || h.status === filterStatus) &&
-    (!filterMfr || h.manufacturer === filterMfr)
-  );
-
-  return (
-    <div className="px-6 md:px-12 lg:px-20 pt-20 pb-20">
-      {/* Hero */}
-      <div className="flex flex-col lg:flex-row lg:items-end gap-10 lg:gap-20 mb-16">
-        <div className="lg:w-[45%] flex-shrink-0">
-          <h1 className="text-[48px] font-light tracking-[-0.03em] text-neutral-900 leading-[1.05]">Humanoid Robots</h1>
-          <p className="text-[13px] text-neutral-400 mt-4 max-w-sm leading-[1.6]">{humanoids.length} models · {manufacturers.length} manufacturers · {Math.min(...humanoids.filter(h => h.year).map(h => h.year!))}–{Math.max(...humanoids.filter(h => h.year).map(h => h.year!))}</p>
-        </div>
-        <div className="flex-1 flex flex-col items-start lg:items-end">
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              className="px-3.5 py-1.5 rounded-full text-[11px] cursor-pointer transition-all"
-              style={{ background: !filterStatus ? "#1d1d1f" : "#f5f5f4", color: !filterStatus ? "white" : "#737373" }}
-              onClick={() => setFilterStatus(null)}
-            >All</button>
-            {statuses.map(s => (
-              <button
-                key={s}
-                className="px-3.5 py-1.5 rounded-full text-[11px] cursor-pointer transition-all"
-                style={{ background: filterStatus === s ? "#1d1d1f" : "#f5f5f4", color: filterStatus === s ? "white" : "#737373" }}
-                onClick={() => setFilterStatus(filterStatus === s ? null : s)}
-              >{s}</button>
-            ))}
-            <div className="w-px h-4 bg-neutral-200 mx-1" />
-            <select
-              className="px-3.5 py-1.5 rounded-full text-[11px] text-neutral-500 cursor-pointer border-none outline-none appearance-none pr-7"
-              style={{ background: "#f5f5f4", backgroundImage: `url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23999' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}
-              value={filterMfr || ""}
-              onChange={(e) => setFilterMfr(e.target.value || null)}
-            >
-              <option value="">All manufacturers</option>
-              {manufacturers.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-          <p className="text-[11px] text-neutral-300 mt-3">{filtered.length === humanoids.length ? `Showing all ${humanoids.length}` : `${filtered.length} of ${humanoids.length}`} robots</p>
-        </div>
-      </div>
-
-      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-        {filtered.map((h, i) => (
-          <div key={h.id} className="group flex flex-col gap-2 cursor-pointer" style={{
-            opacity: 0,
-            animation: `grid-card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${i * 40}ms forwards`,
-          }}>
-            {/* Image card */}
-            <div className="relative aspect-[3/4] overflow-hidden" style={{ borderRadius: cardRadius, background: "#FAFAFA" }}>
-              {h.year === newestYear && (
-                <div className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-medium" style={{ background: "#e5e5e5", color: "#737373" }}>New</div>
-              )}
-              {h.description && (
-                <div className="absolute top-3 right-3 z-10 group/info">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 16v-4M12 8h.01" />
-                  </svg>
-                  <div className="absolute top-6 right-0 w-48 px-3 py-2 rounded-md opacity-0 group-hover/info:opacity-100 pointer-events-none transition-opacity duration-150" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-                    <p className="text-[11px] leading-relaxed" style={{ color: "#999" }}>{h.description}</p>
-                  </div>
-                </div>
-              )}
-              {h.imageUrl ? (
-                <Image src={h.imageUrl} alt={h.name} fill className={`${h.imageFit === "cover" ? "object-cover" : "object-contain"} group-hover:scale-[1.01] transition-transform duration-200`} style={h.imagePosition ? { objectPosition: h.imagePosition, padding: h.imageFit === "cover" ? 0 : 24 } : { padding: 24 }} sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" />
-              ) : (
-                <PlaceholderLogo />
-              )}
-            </div>
-
-            {/* Label */}
-            <div className="flex items-center gap-2.5 px-1 py-1">
-              <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 28, height: 28, borderRadius: 4, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
-                {h.logoUrl ? (
-                  <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="28px" />
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
-                    <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
-                    <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
-                  </svg>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[10px] tracking-widest uppercase font-medium mt-0.5 truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
-                  {h.manufacturer}{h.year ? ` · ${h.year}` : ""}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════
-// INDEX — Minimal text list + Timeline sub-view
-// ═══════════════════════════════════════════════════════════════
-type IndexSubView = "list" | "timeline";
 
 function TextIndex() {
-  const [hovered, setHovered] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const cardRadius = 6;
 
-  // Group by year, newest first
-  const byYear = humanoids.reduce<Record<number, { h: typeof humanoids[number]; idx: number }[]>>((acc, h, idx) => {
+  // Group by year, oldest first
+  const byYear = humanoids.reduce<Record<number, typeof humanoids>>((acc, h) => {
     const y = h.year ?? 0;
     if (!acc[y]) acc[y] = [];
-    acc[y].push({ h, idx });
+    acc[y].push(h);
     return acc;
   }, {});
   const years = Object.keys(byYear).map(Number).filter(Boolean).sort((a, b) => a - b);
@@ -1549,56 +1438,73 @@ function TextIndex() {
 
   return (
     <div className="h-screen overflow-hidden select-none relative bg-white">
-      {/* Robot preview — fixed center */}
-      <div className="fixed top-0 left-0 right-0 flex flex-col items-center justify-center pointer-events-none z-40" style={{ height: "50%" }}>
-        {hovered !== null ? (
-          <div className="animate-blur-fade flex flex-col items-center">
-            <div className="relative w-[200px] h-[280px]">
-              {humanoids[hovered].imageUrl ? <Image src={humanoids[hovered].imageUrl} alt={humanoids[hovered].name} fill className="object-contain" sizes="200px" /> : <PlaceholderLogo />}
-            </div>
-            <p className="text-[15px] font-medium mt-3" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>
-              {humanoids[hovered].name}
-            </p>
-            <p className="text-[12px] text-neutral-400 mt-0.5">
-              {humanoids[hovered].manufacturer}
-            </p>
-          </div>
-        ) : (
-          <p className="text-[12px] text-neutral-300 italic">Hover a name to preview</p>
-        )}
-      </div>
-
-      {/* Horizontal scroll — full height, content bottom-aligned */}
       <div
         ref={scrollRef}
         className="absolute inset-0 overflow-x-auto overflow-y-hidden scrollbar-hide"
       >
-        <div className="flex h-full items-end px-12 gap-0 pb-10">
-          {years.map((year) => {
+        <div className="flex h-full items-end px-8 gap-6 pb-10 pt-16">
+          {years.map((year, yi) => {
             const entries = byYear[year];
             return (
-              <div key={year} className="flex-shrink-0 flex flex-col justify-end" style={{ width: 240, padding: "0 20px" }}>
-                {/* Entries */}
-                {entries.map(({ h, idx }) => (
-                  <div
-                    key={h.id}
-                    className="py-2 cursor-pointer transition-colors"
-                    onMouseEnter={() => setHovered(idx)}
-                    onMouseLeave={() => setHovered(null)}
-                  >
-                    <p
-                      className={`text-[15px] transition-colors duration-150 ${hovered === idx ? "text-neutral-900 font-medium" : "text-neutral-400"}`}
-                      style={{ letterSpacing: "-0.02em" }}
+              <div key={year} className="flex-shrink-0 flex flex-col justify-end">
+                {/* Cards row */}
+                <div className="flex gap-3 mb-4">
+                  {entries.map((h, i) => (
+                    <div
+                      key={h.id}
+                      className="group flex flex-col gap-2 cursor-pointer flex-shrink-0"
+                      style={{
+                        width: 180,
+                        opacity: 0,
+                        animation: `grid-card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${(yi * 80) + (i * 50)}ms forwards`,
+                      }}
                     >
-                      {h.name}
-                      {h.year === newestYear && <span className="ml-2 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full align-middle" style={{ background: "#e5e5e5", color: "#737373" }}>New</span>}
-                    </p>
-                    <p className="text-[11px] text-neutral-300 mt-0.5">{h.manufacturer}</p>
-                  </div>
-                ))}
+                      {/* Image */}
+                      <div className="relative aspect-[3/4] overflow-hidden" style={{ borderRadius: cardRadius, background: "#FAFAFA" }}>
+                        {h.year === newestYear && (
+                          <div className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded-full text-[8px] uppercase tracking-wider font-medium" style={{ background: "#e5e5e5", color: "#737373" }}>New</div>
+                        )}
+                        {h.description && (
+                          <div className="absolute top-2 right-2 z-10 group/info">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10" />
+                              <path d="M12 16v-4M12 8h.01" />
+                            </svg>
+                            <div className="absolute top-5 right-0 w-44 px-2.5 py-1.5 rounded-md opacity-0 group-hover/info:opacity-100 pointer-events-none transition-opacity duration-150" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+                              <p className="text-[10px] leading-relaxed" style={{ color: "#999" }}>{h.description}</p>
+                            </div>
+                          </div>
+                        )}
+                        {h.imageUrl ? (
+                          <Image src={h.imageUrl} alt={h.name} fill className={`${h.imageFit === "cover" ? "object-cover" : "object-contain"} group-hover:scale-[1.01] transition-transform duration-200`} style={h.imagePosition ? { objectPosition: h.imagePosition, padding: h.imageFit === "cover" ? 0 : 16 } : { padding: 16 }} sizes="180px" />
+                        ) : (
+                          <PlaceholderLogo />
+                        )}
+                      </div>
 
-                {/* Year label — bottom */}
-                <div className="flex items-center gap-3 mt-3 border-t border-neutral-100 pt-3">
+                      {/* Label */}
+                      <div className="flex items-center gap-2 px-0.5">
+                        <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: 3, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+                          {h.logoUrl ? (
+                            <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="22px" />
+                          ) : (
+                            <svg width="10" height="10" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
+                              <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+                              <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
+                          <p className="text-[9px] tracking-widest uppercase font-medium truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Year label */}
+                <div className="flex items-center gap-3 border-t border-neutral-100 pt-3" style={{ width: entries.length * 180 + (entries.length - 1) * 12 }}>
                   <span className="text-[28px] font-medium tabular-nums" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>{year}</span>
                   <span className="text-[11px] text-neutral-300 uppercase tracking-wider ml-auto">{entries.length}</span>
                 </div>
@@ -1756,7 +1662,7 @@ const FONTS = [
 ] as const;
 
 export default function Home() {
-  const [layout, setLayout] = useState<Layout>("G");
+  const [layout, setLayout] = useState<Layout>("Z");
   const [indexSubView, setIndexSubView] = useState<IndexSubView>("list");
   const [navStyle, setNavStyle] = useState<NavStyle>("underline");
   const [chatOpen, setChatOpen] = useState(false);
@@ -1861,7 +1767,6 @@ export default function Home() {
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
         {layout === "E" && <Browse goToIndex={goToIndex} />}
-        {layout === "G" && <GridBrowse />}
         {layout === "Z" && <TextIndex />}
       </div>
 
