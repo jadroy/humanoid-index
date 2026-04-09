@@ -52,25 +52,7 @@ function LayoutSwitcher({
     onNavStyleChange(NAV_STYLES[(idx + 1) % NAV_STYLES.length]);
   };
 
-  // ── Sub-view buttons (shared across all styles) ──
-  const subViewButtons = active === "Z" && (
-    <>
-      <span className="text-[11px] text-neutral-200 mx-1">/</span>
-      {INDEX_SUB_VIEWS.map((v) => (
-        <button
-          key={v}
-          onClick={() => onIndexSubViewChange(v)}
-          className="px-1.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer capitalize"
-          style={{
-            color: indexSubView === v ? "var(--c-ink)" : "#c4c4c4",
-            fontWeight: indexSubView === v ? 500 : 400,
-          }}
-        >
-          {v}
-        </button>
-      ))}
-    </>
-  );
+  const subViewButtons = null;
 
   // ── Mark logo (shared) ──
   const mark = (
@@ -82,27 +64,29 @@ function LayoutSwitcher({
 
   // ── Style: floating (original — island with border) ──
   if (navStyle === "floating") return (
-    <nav className="pt-5 px-6">
-      <div className="flex items-center justify-between pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 bg-white mx-auto" style={{ maxWidth: 1052 }}>
-        {mark}
-        <div className="flex items-center gap-0.5">
-          {ALL_LAYOUTS.map((l) => (
-            <button key={l} onClick={() => onChange(l)}
-              className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
-              style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
-              {layoutLabels[l]}
-            </button>
-          ))}
-          {subViewButtons}
+    <nav className="fixed top-0 left-0 right-0 z-50 pt-5 px-6 pointer-events-none">
+      <div className="flex items-center justify-between pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 mx-auto" style={{ maxWidth: 1052, background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+          {mark}
+          <div className="flex items-center gap-0.5">
+            {ALL_LAYOUTS.map((l) => (
+              <button key={l} onClick={() => onChange(l)}
+                className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
+                {layoutLabels[l]}
+              </button>
+            ))}
+            {subViewButtons}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
   );
+
+  const frost = { background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } as React.CSSProperties;
 
   // ── Style: pill — rounded capsule, tinted active state ──
   if (navStyle === "pill") return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex items-center gap-2 pointer-events-auto px-2 py-1.5 rounded-full bg-neutral-100/80 backdrop-blur-sm">
+      <div className="flex items-center gap-2 pointer-events-auto px-2 py-1.5 rounded-full" style={frost}>
         <div className="pl-2">{mark}</div>
         <div className="flex items-center gap-1">
           {ALL_LAYOUTS.map((l) => (
@@ -125,7 +109,7 @@ function LayoutSwitcher({
   // ── Style: underline — clean text with active underline ──
   if (navStyle === "underline") return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex items-center gap-6 pointer-events-auto px-4 py-2">
+      <div className="flex items-center gap-6 pointer-events-auto px-4 py-2 rounded-sm" style={frost}>
         {mark}
         <div className="flex items-center gap-4">
           {ALL_LAYOUTS.map((l) => (
@@ -144,7 +128,7 @@ function LayoutSwitcher({
 
   // ── Style: bordered — full-width top bar with bottom border ──
   if (navStyle === "bordered") return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 bg-white/90 backdrop-blur-sm pointer-events-auto">
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={frost}>
       <div className="flex items-center justify-between max-w-[1100px] mx-auto px-6 py-3">
         {mark}
         <div className="flex items-center gap-1">
@@ -165,7 +149,7 @@ function LayoutSwitcher({
   // ── Style: minimal — just text, no container, no border ──
   if (navStyle === "minimal") return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-6 pointer-events-none">
-      <div className="flex items-center gap-5 pointer-events-auto">
+      <div className="flex items-center gap-5 pointer-events-auto px-4 py-2 rounded-sm" style={frost}>
         {mark}
         <div className="flex items-center gap-3">
           {ALL_LAYOUTS.map((l) => (
@@ -184,7 +168,7 @@ function LayoutSwitcher({
   // ── Style: solid — dark bar, inverted text ──
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex items-center gap-4 pointer-events-auto px-5 py-2 rounded-sm bg-neutral-900">
+      <div className="flex items-center gap-4 pointer-events-auto px-5 py-2 rounded-sm" style={{ background: "rgba(23,23,23,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.4 }} className="cursor-pointer" onContextMenu={cycleNavStyle}>
           <circle cx="10" cy="5" r="3" fill="#fff" />
           <rect x="7" y="9.5" width="6" height="8" rx="3" fill="#fff" />
@@ -197,18 +181,6 @@ function LayoutSwitcher({
               {layoutLabels[l]}
             </button>
           ))}
-          {active === "Z" && (
-            <>
-              <span className="text-[11px] text-neutral-600 mx-1">/</span>
-              {INDEX_SUB_VIEWS.map((v) => (
-                <button key={v} onClick={() => onIndexSubViewChange(v)}
-                  className="px-1.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer capitalize"
-                  style={{ color: indexSubView === v ? "#fff" : "#666", fontWeight: indexSubView === v ? 500 : 400 }}>
-                  {v}
-                </button>
-              ))}
-            </>
-          )}
         </div>
       </div>
     </nav>
@@ -1442,10 +1414,53 @@ function GridBrowse() {
   const cardRadius = 6;
   const newestYear = Math.max(...humanoids.filter(h => h.year).map(h => h.year!));
 
+  const statuses = [...new Set(humanoids.map(h => h.status).filter(Boolean))] as string[];
+  const manufacturers = [...new Set(humanoids.map(h => h.manufacturer))].sort();
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [filterMfr, setFilterMfr] = useState<string | null>(null);
+  const filtered = humanoids.filter(h =>
+    (!filterStatus || h.status === filterStatus) &&
+    (!filterMfr || h.manufacturer === filterMfr)
+  );
+
   return (
     <div className="px-6 md:px-12 lg:px-20 pt-16 pb-20">
+      {/* Hero / title section */}
+      <div className="mb-16 mt-4">
+        <p className="text-[9px] tracking-[0.3em] uppercase text-neutral-300 mb-4 font-medium">Catalog</p>
+        <h1 className="text-[72px] font-extralight tracking-[-0.04em] text-neutral-900 leading-[0.9]">Humanoid<br /><span className="font-semibold">Index</span></h1>
+        <p className="text-[13px] text-neutral-400 mt-6 max-w-sm leading-relaxed font-light">{humanoids.length} robots · {manufacturers.length} manufacturers · {Math.min(...humanoids.filter(h => h.year).map(h => h.year!))}–{Math.max(...humanoids.filter(h => h.year).map(h => h.year!))}</p>
+
+        {/* Filters */}
+        <div className="flex items-center gap-2 mt-6 flex-wrap">
+          <button
+            className="px-3 py-1.5 rounded-full text-[11px] cursor-pointer transition-all"
+            style={{ background: !filterStatus ? "#1d1d1f" : "#f0f0ee", color: !filterStatus ? "white" : "#737373" }}
+            onClick={() => setFilterStatus(null)}
+          >All</button>
+          {statuses.map(s => (
+            <button
+              key={s}
+              className="px-3 py-1.5 rounded-full text-[11px] cursor-pointer transition-all"
+              style={{ background: filterStatus === s ? "#1d1d1f" : "#f0f0ee", color: filterStatus === s ? "white" : "#737373" }}
+              onClick={() => setFilterStatus(filterStatus === s ? null : s)}
+            >{s}</button>
+          ))}
+          <div className="w-px h-4 bg-neutral-200 mx-1" />
+          <select
+            className="px-3 py-1.5 rounded-full text-[11px] bg-[#f0f0ee] text-neutral-500 cursor-pointer border-none outline-none appearance-none pr-6"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23999' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}
+            value={filterMfr || ""}
+            onChange={(e) => setFilterMfr(e.target.value || null)}
+          >
+            <option value="">All manufacturers</option>
+            {manufacturers.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-        {humanoids.map((h, i) => (
+        {filtered.map((h, i) => (
           <div key={h.id} className="group flex flex-col gap-2 cursor-pointer" style={{
             opacity: 0,
             animation: `grid-card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${i * 40}ms forwards`,
@@ -1504,107 +1519,92 @@ function GridBrowse() {
 // ═══════════════════════════════════════════════════════════════
 type IndexSubView = "list" | "timeline";
 
-function TextIndex({ subView }: { subView: IndexSubView }) {
+function TextIndex() {
   const [hovered, setHovered] = useState<number | null>(null);
-  const floatingRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Group by year, sorted descending
+  // Group by year, newest first
   const byYear = humanoids.reduce<Record<number, { h: typeof humanoids[number]; idx: number }[]>>((acc, h, idx) => {
     const y = h.year ?? 0;
     if (!acc[y]) acc[y] = [];
     acc[y].push({ h, idx });
     return acc;
   }, {});
-  const years = Object.keys(byYear).map(Number).filter(Boolean).sort((a, b) => b - a);
-  const newestYear = years[0];
+  const years = Object.keys(byYear).map(Number).filter(Boolean).sort((a, b) => a - b);
+  const newestYear = years[years.length - 1];
 
-  // Merge sparse years into groups so columns aren't wasted
-  const groups: { label: string; entries: { h: typeof humanoids[number]; idx: number }[] }[] = [];
-  let pendingYears: number[] = [];
-  let pendingEntries: { h: typeof humanoids[number]; idx: number }[] = [];
-
-  for (const year of years) {
-    const entries = byYear[year];
-    if (entries.length >= 3) {
-      // Flush pending
-      if (pendingEntries.length > 0) {
-        const label = pendingYears.length === 1 ? `${pendingYears[0]}` : `${pendingYears[0]}–${pendingYears[pendingYears.length - 1]}`;
-        groups.push({ label, entries: pendingEntries });
-        pendingYears = [];
-        pendingEntries = [];
-      }
-      groups.push({ label: `${year}`, entries });
-    } else {
-      pendingYears.push(year);
-      pendingEntries.push(...entries);
-      // Flush when we've accumulated enough
-      if (pendingEntries.length >= 3) {
-        const label = pendingYears.length === 1 ? `${pendingYears[0]}` : `${pendingYears[0]}–${pendingYears[pendingYears.length - 1]}`;
-        groups.push({ label, entries: pendingEntries });
-        pendingYears = [];
-        pendingEntries = [];
-      }
-    }
-  }
-  if (pendingEntries.length > 0) {
-    const label = pendingYears.length === 1 ? `${pendingYears[0]}` : `${pendingYears[0]}–${pendingYears[pendingYears.length - 1]}`;
-    groups.push({ label, entries: pendingEntries });
-  }
+  // Wheel → horizontal scroll
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      el.scrollLeft += e.deltaY + e.deltaX;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   return (
-    <div
-      className="min-h-screen overflow-y-auto scrollbar-hide select-none relative"
-      onMouseMove={(e) => {
-        if (floatingRef.current) {
-          const y = Math.min(Math.max(e.clientY - 140, 20), window.innerHeight - 300);
-          floatingRef.current.style.top = `${y}px`;
-        }
-      }}
-    >
-      <div className="max-w-[1100px] mx-auto pt-20 pb-20 px-6 md:px-12 lg:px-20">
-        <p className="text-[13px] text-neutral-400 mb-12">{humanoids.length} humanoids · {years[years.length - 1]}–{years[0]}</p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-0">
-          {groups.map((group) => (
-            <div key={group.label} className="break-inside-avoid mb-10">
-              {/* Year header */}
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-[22px] font-medium tabular-nums" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>{group.label}</span>
-                <div className="flex-1 h-px bg-neutral-100" />
-                <span className="text-[10px] text-neutral-300 uppercase tracking-wider">{group.entries.length}</span>
-              </div>
-
-              {/* Entries */}
-              {group.entries.map(({ h, idx }) => (
-                <div
-                  key={h.id}
-                  className="py-2.5 cursor-pointer flex items-baseline gap-3 transition-colors border-b border-neutral-50"
-                  onMouseEnter={() => setHovered(idx)}
-                  onMouseLeave={() => setHovered(null)}
-                >
-                  <span
-                    className={`text-[13px] transition-colors duration-150 flex-1 ${hovered === idx ? "text-neutral-900 font-medium" : "text-neutral-500"}`}
-                    style={{ letterSpacing: "-0.02em" }}
-                  >
-                    {h.name}
-                    {h.year === newestYear && <span className="ml-2 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full align-middle" style={{ background: "#e5e5e5", color: "#737373" }}>New</span>}
-                  </span>
-                  <span className="text-[10px] text-neutral-300 uppercase tracking-wider">{h.manufacturer}</span>
-                </div>
-              ))}
+    <div className="h-screen overflow-hidden select-none relative bg-white">
+      {/* Robot preview — fixed center */}
+      <div className="fixed top-0 left-0 right-0 flex flex-col items-center justify-center pointer-events-none z-40" style={{ height: "50%" }}>
+        {hovered !== null ? (
+          <div className="animate-blur-fade flex flex-col items-center">
+            <div className="relative w-[200px] h-[280px]">
+              {humanoids[hovered].imageUrl ? <Image src={humanoids[hovered].imageUrl} alt={humanoids[hovered].name} fill className="object-contain" sizes="200px" /> : <PlaceholderLogo />}
             </div>
-          ))}
-        </div>
+            <p className="text-[15px] font-medium mt-3" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>
+              {humanoids[hovered].name}
+            </p>
+            <p className="text-[12px] text-neutral-400 mt-0.5">
+              {humanoids[hovered].manufacturer}
+            </p>
+          </div>
+        ) : (
+          <p className="text-[12px] text-neutral-300 italic">Hover a name to preview</p>
+        )}
       </div>
 
-      {/* Floating preview */}
-      {hovered !== null && (
-        <div ref={floatingRef} className="fixed pointer-events-none z-50 animate-blur-fade" style={{ right: "6%", transition: "top 0.15s ease-out" }}>
-          <div className="relative w-[160px] h-[240px]">
-            {humanoids[hovered].imageUrl ? <Image src={humanoids[hovered].imageUrl} alt={humanoids[hovered].name} fill className="object-contain" sizes="160px" /> : <PlaceholderLogo />}
-          </div>
+      {/* Horizontal scroll — full height, content bottom-aligned */}
+      <div
+        ref={scrollRef}
+        className="absolute inset-0 overflow-x-auto overflow-y-hidden scrollbar-hide"
+      >
+        <div className="flex h-full items-end px-12 gap-0 pb-10">
+          {years.map((year) => {
+            const entries = byYear[year];
+            return (
+              <div key={year} className="flex-shrink-0 flex flex-col justify-end" style={{ width: 240, padding: "0 20px" }}>
+                {/* Entries */}
+                {entries.map(({ h, idx }) => (
+                  <div
+                    key={h.id}
+                    className="py-2 cursor-pointer transition-colors"
+                    onMouseEnter={() => setHovered(idx)}
+                    onMouseLeave={() => setHovered(null)}
+                  >
+                    <p
+                      className={`text-[15px] transition-colors duration-150 ${hovered === idx ? "text-neutral-900 font-medium" : "text-neutral-400"}`}
+                      style={{ letterSpacing: "-0.02em" }}
+                    >
+                      {h.name}
+                      {h.year === newestYear && <span className="ml-2 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full align-middle" style={{ background: "#e5e5e5", color: "#737373" }}>New</span>}
+                    </p>
+                    <p className="text-[11px] text-neutral-300 mt-0.5">{h.manufacturer}</p>
+                  </div>
+                ))}
+
+                {/* Year label — bottom */}
+                <div className="flex items-center gap-3 mt-3 border-t border-neutral-100 pt-3">
+                  <span className="text-[28px] font-medium tabular-nums" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>{year}</span>
+                  <span className="text-[11px] text-neutral-300 uppercase tracking-wider ml-auto">{entries.length}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -1860,7 +1860,7 @@ export default function Home() {
       <div className={introDone ? "intro-content" : "opacity-0"}>
         {layout === "E" && <Browse goToIndex={goToIndex} />}
         {layout === "G" && <GridBrowse />}
-        {layout === "Z" && <TextIndex subView={indexSubView} />}
+        {layout === "Z" && <TextIndex />}
       </div>
 
       {/* Font toast */}
