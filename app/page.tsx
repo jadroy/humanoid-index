@@ -1445,8 +1445,11 @@ function GridBrowse() {
   return (
     <div className="px-6 md:px-12 lg:px-20 pt-16 pb-20">
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-        {humanoids.map((h) => (
-          <a key={h.id} href={`/robot/${h.id}`} className="group flex flex-col gap-2 cursor-pointer">
+        {humanoids.map((h, i) => (
+          <div key={h.id} className="group flex flex-col gap-2 cursor-pointer" style={{
+            opacity: 0,
+            animation: `grid-card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${i * 40}ms forwards`,
+          }}>
             {/* Image card */}
             <div className="relative aspect-[3/4] overflow-hidden" style={{ borderRadius: cardRadius, background: "#FAFAFA" }}>
               {h.year === newestYear && (
@@ -1489,7 +1492,7 @@ function GridBrowse() {
                 </p>
               </div>
             </div>
-          </a>
+          </div>
         ))}
       </div>
     </div>
@@ -1802,9 +1805,9 @@ const FONTS = [
 ] as const;
 
 export default function Home() {
-  const [layout, setLayout] = useState<Layout>("E");
+  const [layout, setLayout] = useState<Layout>("G");
   const [indexSubView, setIndexSubView] = useState<IndexSubView>("list");
-  const [navStyle, setNavStyle] = useState<NavStyle>("floating");
+  const [navStyle, setNavStyle] = useState<NavStyle>("underline");
   const [chatOpen, setChatOpen] = useState(false);
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
   const [fontIdx, setFontIdx] = useState(0);
