@@ -1,58 +1,122 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
 interface Options {
-  stiffness?: number;
-  damping?: number;
+  freq?: number;         // natural frequency in Hz
+  zeta?: number;         // damping ratio; 1.0 = critical (no overshoot)
   initialAngle?: number;
+  minAngle?: number;
+  maxAngle?: number;
+  sliceAngle?: number;   // distance between snap points
 }
 
+// Continuous spring scrubber. Target is a free float; scrubBy nudges it
+// with exponential rubber-band past [minAngle, maxAngle]; release() snaps
+// back into bounds and rounds to the nearest slice.
 export function useCarouselSpring({
-  stiffness = 0.08,
-  damping = 0.78,
+  freq = 2.2,
+  zeta = 1.0,
   initialAngle = 0,
+  minAngle = -Infinity,
+  maxAngle = Infinity,
+  sliceAngle = 1,
 }: Options = {}) {
   const [angle, setAngle] = useState(initialAngle);
   const pos = useRef(initialAngle);
   const vel = useRef(0);
   const target = useRef(initialAngle);
-  const running = useRef(false);
+  const raf = useRef<number>(0);
+  const lastTime = useRef(0);
 
-  const tick = useCallback(() => {
-    const force = (target.current - pos.current) * stiffness;
-    vel.current = (vel.current + force) * damping;
-    pos.current += vel.current;
+  const fRef = useRef(freq); fRef.current = freq;
+  const zRef = useRef(zeta); zRef.current = zeta;
+  const minRef = useRef(minAngle); minRef.current = minAngle;
+  const maxRef = useRef(maxAngle); maxRef.current = maxAngle;
+  const sliceRef = useRef(sliceAngle); sliceRef.current = sliceAngle;
 
-    setAngle(pos.current);
+  const tick = useCallback((now: number) => {
+    const last = lastTime.current || now;
+    // clamp dt so a blurred tab / long frame can't explode the integration
+    const dt = Math.min(0.05, (now - last) / 1000);
+    lastTime.current = now;
 
-    if (Math.abs(vel.current) > 0.00005 || Math.abs(target.current - pos.current) > 0.0005) {
-      requestAnimationFrame(tick);
-    } else {
-      pos.current = target.current;
-      setAngle(target.current);
-      running.current = false;
+    const omega = 2 * Math.PI * fRef.current;
+    const k = omega * omega;
+    const c = 2 * zRef.current * omega;
+
+    // sub-step at high stiffness or long dt for numerical stability
+    const steps = dt > 1 / 120 ? 2 : 1;
+    const h = dt / steps;
+    for (let i = 0; i < steps; i++) {
+      const accel = (target.current - pos.current) * k - vel.current * c;
+      vel.current += accel * h;
+      pos.current += vel.current * h;
     }
-  }, [stiffness, damping]);
+
+    const settled =
+      Math.abs(pos.current - target.current) < 0.0001 &&
+      Math.abs(vel.current) < 0.0001;
+
+    if (settled) {
+      pos.current = target.current;
+      vel.current = 0;
+      setAngle(target.current);
+      raf.current = 0;
+      lastTime.current = 0;
+      return;
+    }
+    setAngle(pos.current);
+    raf.current = requestAnimationFrame(tick);
+  }, []);
 
   const start = useCallback(() => {
-    if (!running.current) {
-      running.current = true;
-      requestAnimationFrame(tick);
-    }
+    if (raf.current) return;
+    lastTime.current = 0;
+    raf.current = requestAnimationFrame(tick);
   }, [tick]);
 
-  const advance = useCallback((steps: number, sliceAngle: number) => {
-    target.current += steps * sliceAngle;
+  // exponential rubber-band past [minAngle, maxAngle], measured in slices
+  const rubberClamp = (raw: number) => {
+    const min = minRef.current;
+    const max = maxRef.current;
+    const slice = sliceRef.current || 1;
+    if (raw < min) {
+      const excess = (min - raw) / slice;
+      return min - Math.pow(excess, 0.55) * slice * 0.6;
+    }
+    if (raw > max) {
+      const excess = (raw - max) / slice;
+      return max + Math.pow(excess, 0.55) * slice * 0.6;
+    }
+    return raw;
+  };
+
+  // discrete step (keyboard/click)
+  const advance = useCallback((steps: number, slice: number) => {
+    const next = target.current + steps * slice;
+    target.current = Math.max(minRef.current, Math.min(maxRef.current, next));
     start();
   }, [start]);
 
-  const nudge = useCallback((amount: number) => {
-    pos.current += amount;
-    setAngle(pos.current);
+  // continuous scrub (wheel)
+  const scrubBy = useCallback((delta: number) => {
+    target.current = rubberClamp(target.current + delta);
     start();
   }, [start]);
 
-  // Start initial render
+  // end-of-gesture: snap to nearest slice inside bounds
+  const release = useCallback(() => {
+    const slice = sliceRef.current || 1;
+    const clamped = Math.max(minRef.current, Math.min(maxRef.current, target.current));
+    target.current = Math.round(clamped / slice) * slice;
+    start();
+  }, [start]);
+
+  const jumpTo = useCallback((a: number) => {
+    target.current = Math.max(minRef.current, Math.min(maxRef.current, a));
+    start();
+  }, [start]);
+
   useEffect(() => { start(); }, [start]);
 
-  return { angle, advance, nudge, target };
+  return { angle, advance, scrubBy, release, jumpTo, target };
 }

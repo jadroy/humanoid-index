@@ -1,42 +1,34 @@
 import { useEffect, useRef } from "react";
 
 interface Options {
-  threshold?: number;
   decayMs?: number;
-  onStep: (direction: 1 | -1) => void;
-  onPartial?: (ratio: number) => void;
+  onScrub: (deltaY: number) => void;
+  onRelease?: () => void;
 }
 
+// Continuous wheel input. Every event forwards its raw deltaY to onScrub,
+// and onRelease fires after `decayMs` of silence so the consumer can snap.
 export function useWheelInput({
-  threshold = 50,
-  decayMs = 150,
-  onStep,
-  onPartial,
+  decayMs = 140,
+  onScrub,
+  onRelease,
 }: Options) {
-  const acc = useRef(0);
-  const decay = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const releaseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      acc.current += e.deltaY;
-
-      if (decay.current) clearTimeout(decay.current);
-      decay.current = setTimeout(() => {
-        acc.current = 0;
-        onPartial?.(0);
+      onScrub(e.deltaY);
+      if (releaseTimer.current) clearTimeout(releaseTimer.current);
+      releaseTimer.current = setTimeout(() => {
+        onRelease?.();
       }, decayMs);
-
-      if (Math.abs(acc.current) > threshold) {
-        onStep(acc.current > 0 ? 1 : -1);
-        acc.current = 0;
-        onPartial?.(0);
-      } else {
-        onPartial?.(acc.current / threshold);
-      }
     };
 
     window.addEventListener("wheel", onWheel, { passive: false });
-    return () => window.removeEventListener("wheel", onWheel);
-  }, [threshold, decayMs, onStep, onPartial]);
+    return () => {
+      window.removeEventListener("wheel", onWheel);
+      if (releaseTimer.current) clearTimeout(releaseTimer.current);
+    };
+  }, [decayMs, onScrub, onRelease]);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback, useState, useRef } from "react";
 import { humanoids } from "@/data/humanoids";
 import { useCarouselSpring } from "./useCarouselSpring";
 import { useWheelInput } from "./useWheelInput";
@@ -12,9 +12,9 @@ export default function EllipticalCarousel() {
   const [wheelR, setWheelR] = useState(800);
   const [arcSpread, setArcSpread] = useState(0.45);   // fraction of π
   const [dotR, setDotR] = useState(3.5);
-  const [stiffness, setStiffness] = useState(0.06);
-  const [damping, setDamping] = useState(0.82);
-  const [wheelThreshold, setWheelThreshold] = useState(50);
+  const [freq, setFreq] = useState(2.2);               // spring natural freq (Hz)
+  const [zeta, setZeta] = useState(1.0);               // damping ratio — 1.0 = critical
+  const [pxPerYear, setPxPerYear] = useState(130);     // wheel px to advance one year
   const [arcHeight, setArcHeight] = useState(100);
   const [fadeRange, setFadeRange] = useState(0.6);     // fraction of spread
   const [showPanel, setShowPanel] = useState(false);
@@ -38,63 +38,114 @@ export default function EllipticalCarousel() {
 
   const spring = useCarouselSpring({
     initialAngle: (N - 1) * sliceAngle,
-    stiffness,
-    damping,
+    minAngle: 0,
+    maxAngle: (N - 1) * sliceAngle,
+    sliceAngle,
+    freq,
+    zeta,
   });
 
-  const handleStep = useCallback(
-    (dir: 1 | -1) => spring.advance(dir, sliceAngle),
-    [spring, sliceAngle],
-  );
+  // Every wheel event drags the target by (deltaY / pxPerYear) years of arc.
+  const pxPerYearRef = useRef(pxPerYear); pxPerYearRef.current = pxPerYear;
+  const sliceRef = useRef(sliceAngle); sliceRef.current = sliceAngle;
+  const handleScrub = useCallback((deltaY: number) => {
+    const deltaYears = deltaY / pxPerYearRef.current;
+    spring.scrubBy(deltaYears * sliceRef.current);
+  }, [spring]);
+  const handleRelease = useCallback(() => {
+    spring.release();
+  }, [spring]);
+  useWheelInput({ onScrub: handleScrub, onRelease: handleRelease });
 
-  useWheelInput({ onStep: handleStep, threshold: wheelThreshold });
-
-  // Determine which year is closest to center (top of arc)
+  // Continuous index float. Floor/ceil/frac drives the year-to-year crossfade.
   const centerAngle = spring.angle;
-  const activeIdx = Math.round(centerAngle / sliceAngle);
-  const clampedIdx = Math.max(0, Math.min(N - 1, activeIdx));
-  const activeYear = years[clampedIdx];
-  const activeEntries = groups[activeYear];
-  const cols = Math.min(activeEntries.length, MAX_COLS);
-
-  // Wheel center is below the viewport. The top of the arc pokes up.
-  // We position dots at angle theta relative to the top of the circle (12 o'clock = 0).
-  // Positive theta = clockwise = right, negative = left.
+  const idxFloat = Math.max(0, Math.min(N - 1, centerAngle / sliceAngle));
+  const floorIdx = Math.max(0, Math.min(N - 1, Math.floor(idxFloat)));
+  const ceilIdx = Math.min(N - 1, floorIdx + 1);
+  const frac = Math.max(0, Math.min(1, idxFloat - floorIdx));
+  const sameIdx = floorIdx === ceilIdx;
+  const floorYear = years[floorIdx];
+  const ceilYear = years[ceilIdx];
+  const floorEntries = groups[floorYear];
+  const ceilEntries = groups[ceilYear];
+  const floorCols = Math.min(floorEntries.length, MAX_COLS);
+  const ceilCols = Math.min(ceilEntries.length, MAX_COLS);
 
   return (
     <div className="h-screen overflow-hidden select-none relative bg-white flex flex-col">
       {/* Cards area */}
       <div className="flex-1 flex items-center justify-center px-8 pt-12">
         <div className="flex flex-col items-center">
-          <div
-            key={`label-${activeYear}`}
-            className="flex items-center gap-3 mb-6"
-            style={{ opacity: 0, animation: "carousel-fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
-          >
-            <span
-              className="text-[36px] font-light tabular-nums"
-              style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}
+          {/* Year label — crossfades between adjacent years during scrub */}
+          <div className="relative mb-6" style={{ height: 44 }}>
+            <div
+              className="absolute inset-0 flex items-center justify-center gap-3"
+              style={{ opacity: 1 - frac }}
             >
-              {activeYear}
-            </span>
-            <span className="text-[12px] text-neutral-300 uppercase tracking-wider">
-              {activeEntries.length} {activeEntries.length === 1 ? "robot" : "robots"}
-            </span>
+              <span
+                className="text-[36px] font-light tabular-nums"
+                style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}
+              >
+                {floorYear}
+              </span>
+              <span className="text-[12px] text-neutral-300 uppercase tracking-wider">
+                {floorEntries.length} {floorEntries.length === 1 ? "robot" : "robots"}
+              </span>
+            </div>
+            {!sameIdx && frac > 0.001 && (
+              <div
+                className="absolute inset-0 flex items-center justify-center gap-3"
+                style={{ opacity: frac }}
+              >
+                <span
+                  className="text-[36px] font-light tabular-nums"
+                  style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}
+                >
+                  {ceilYear}
+                </span>
+                <span className="text-[12px] text-neutral-300 uppercase tracking-wider">
+                  {ceilEntries.length} {ceilEntries.length === 1 ? "robot" : "robots"}
+                </span>
+              </div>
+            )}
           </div>
 
-          <div
-            key={activeYear}
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${cols}, ${CARD_W}px)`,
-              gap: CARD_GAP,
-              opacity: 0,
-              animation: "carousel-fade-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-            }}
-          >
-            {activeEntries.map((h) => (
-              <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} />
-            ))}
+          {/* Card grid — two years stacked, weighted by frac */}
+          <div className="relative">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${floorCols}, ${CARD_W}px)`,
+                gap: CARD_GAP,
+                opacity: 1 - frac,
+                pointerEvents: frac > 0.5 ? "none" : "auto",
+              }}
+            >
+              {floorEntries.map((h) => (
+                <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} />
+              ))}
+            </div>
+            {!sameIdx && frac > 0.001 && (
+              <div
+                className="absolute inset-0 flex items-start justify-center"
+                style={{
+                  opacity: frac,
+                  pointerEvents: frac > 0.5 ? "auto" : "none",
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${ceilCols}, ${CARD_W}px)`,
+                    gap: CARD_GAP,
+                  }}
+                >
+                  {ceilEntries.map((h) => (
+                    <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -138,8 +189,15 @@ export default function EllipticalCarousel() {
             // Only render dots in the visible arc region (top portion)
             if (dotAngle < -Math.PI / 2 - ARC_SPREAD * 0.7 || dotAngle > -Math.PI / 2 + ARC_SPREAD * 0.7) return null;
 
-            const isActive = i === clampedIdx;
-            // Fade based on distance from center
+            // Smooth "active" weighting based on distance (no hard round boundary)
+            const distSlices = Math.abs(i - idxFloat);
+            const activeWeight = Math.max(0, 1 - distSlices);
+            const dotSize = dotR + 1.5 * activeWeight;
+            const fill = activeWeight > 0.001
+              ? `rgba(29,29,31,${0.35 + 0.65 * activeWeight})`
+              : "#ccc";
+
+            // Fade based on distance from center of arc
             const dist = Math.abs(dotAngle + Math.PI / 2);
             const opacity = Math.max(0.2, 1 - dist / (ARC_SPREAD * fadeRange));
 
@@ -147,30 +205,27 @@ export default function EllipticalCarousel() {
               <g
                 key={year}
                 className="cursor-pointer"
-                onClick={() => {
-                  spring.target.current = i * sliceAngle;
-                  spring.advance(0, sliceAngle); // trigger animation
-                }}
+                onClick={() => spring.jumpTo(i * sliceAngle)}
                 style={{ opacity }}
               >
                 <circle
                   cx={cx}
                   cy={cy}
-                  r={isActive ? dotR + 1.5 : dotR}
-                  fill={isActive ? "var(--c-ink)" : "#ccc"}
-                  style={{ transition: "r 0.2s ease, fill 0.2s ease" }}
+                  r={dotSize}
+                  fill={fill}
                 />
                 <text
                   x={cx}
                   y={cy - 12}
                   textAnchor="middle"
                   style={{
-                    fontSize: isActive ? 11 : 9,
-                    fontWeight: isActive ? 600 : 400,
-                    fill: isActive ? "var(--c-ink)" : "#b3b3b3",
+                    fontSize: 9 + 2 * activeWeight,
+                    fontWeight: activeWeight > 0.5 ? 600 : 400,
+                    fill: activeWeight > 0.001
+                      ? `rgba(29,29,31,${0.4 + 0.6 * activeWeight})`
+                      : "#b3b3b3",
                     fontFamily: "inherit",
                     letterSpacing: "-0.01em",
-                    transition: "all 0.2s ease",
                   }}
                 >
                   {year}
@@ -196,12 +251,12 @@ export default function EllipticalCarousel() {
             <p className="text-[10px] tracking-widest uppercase text-neutral-400 font-medium">Arc Tuner</p>
             <button
               className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer"
-              onClick={() => { setWheelR(800); setArcSpread(0.45); setDotR(3.5); setStiffness(0.06); setDamping(0.82); setWheelThreshold(50); setArcHeight(100); setFadeRange(0.6); }}
+              onClick={() => { setWheelR(800); setArcSpread(0.45); setDotR(3.5); setFreq(2.2); setZeta(1.0); setPxPerYear(130); setArcHeight(100); setFadeRange(0.6); }}
             >Reset</button>
           </div>
-          <div><label className="text-neutral-500 flex justify-between">Stiffness <span className="tabular-nums text-neutral-400">{stiffness.toFixed(2)}</span></label><input type="range" min={1} max={20} value={Math.round(stiffness * 100)} onChange={(e) => setStiffness(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
-          <div><label className="text-neutral-500 flex justify-between">Damping <span className="tabular-nums text-neutral-400">{damping.toFixed(2)}</span></label><input type="range" min={50} max={98} value={Math.round(damping * 100)} onChange={(e) => setDamping(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
-          <div><label className="text-neutral-500 flex justify-between">Wheel threshold <span className="tabular-nums text-neutral-400">{wheelThreshold}px</span></label><input type="range" min={10} max={150} value={wheelThreshold} onChange={(e) => setWheelThreshold(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+          <div><label className="text-neutral-500 flex justify-between">Frequency <span className="tabular-nums text-neutral-400">{freq.toFixed(1)} Hz</span></label><input type="range" min={10} max={60} value={Math.round(freq * 10)} onChange={(e) => setFreq(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+          <div><label className="text-neutral-500 flex justify-between">Damping <span className="tabular-nums text-neutral-400">{zeta.toFixed(2)}</span></label><input type="range" min={50} max={130} value={Math.round(zeta * 100)} onChange={(e) => setZeta(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+          <div><label className="text-neutral-500 flex justify-between">Sensitivity <span className="tabular-nums text-neutral-400">{pxPerYear} px/yr</span></label><input type="range" min={60} max={260} value={pxPerYear} onChange={(e) => setPxPerYear(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           <div><label className="text-neutral-500 flex justify-between">Wheel radius <span className="tabular-nums text-neutral-400">{wheelR}px</span></label><input type="range" min={300} max={1500} value={wheelR} onChange={(e) => setWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           <div><label className="text-neutral-500 flex justify-between">Arc spread <span className="tabular-nums text-neutral-400">{(arcSpread * 180).toFixed(0)}°</span></label><input type="range" min={10} max={90} value={Math.round(arcSpread * 100)} onChange={(e) => setArcSpread(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
           <div><label className="text-neutral-500 flex justify-between">Arc height <span className="tabular-nums text-neutral-400">{arcHeight}px</span></label><input type="range" min={40} max={250} value={arcHeight} onChange={(e) => setArcHeight(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
