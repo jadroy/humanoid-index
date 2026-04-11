@@ -32,31 +32,51 @@ function LogoMark({
   loading?: boolean;
   ringColor?: string;
 }) {
-  const pad = 6; // breathing room so the ring sits outside the mark
+  const pad = 6;
   const total = size + pad * 2;
+
+  // Keep the ring mounted for a beat after loading flips off so it can fade.
+  const [ringVisible, setRingVisible] = useState(false);
+  useEffect(() => {
+    if (loading) {
+      setRingVisible(true);
+      return;
+    }
+    const t = setTimeout(() => setRingVisible(false), 320);
+    return () => clearTimeout(t);
+  }, [loading]);
+
   return (
     <div
       className="relative inline-flex items-center justify-center cursor-pointer"
       style={{ width: total, height: total }}
       onClick={onClick}
     >
-      {loading && (
+      {ringVisible && (
         <svg
-          className="absolute inset-0 pointer-events-none animate-lucky-spin"
           width={total}
           height={total}
           viewBox={`0 0 ${total} ${total}`}
+          fill="none"
+          className="absolute inset-0 pointer-events-none"
+          style={{ transform: "rotate(-90deg)" }}
         >
           <circle
             cx={total / 2}
             cy={total / 2}
-            r={total / 2 - 1.5}
+            r={total / 2 - 2}
             fill="none"
             stroke={ringColor}
-            strokeWidth="1.2"
+            strokeWidth="1"
             strokeLinecap="round"
-            strokeDasharray={`${(Math.PI * (total - 3)) * 0.28} ${(Math.PI * (total - 3)) * 0.72}`}
-            style={{ opacity: 0.55 }}
+            strokeDasharray="88"
+            strokeDashoffset="88"
+            style={{
+              opacity: 0.12,
+              animation: loading
+                ? "lucky-ring-draw 0.7s cubic-bezier(0.33, 1, 0.68, 1) forwards"
+                : "lucky-ring-fade 0.3s ease forwards",
+            }}
           />
         </svg>
       )}

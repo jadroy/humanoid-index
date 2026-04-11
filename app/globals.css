@@ -130,15 +130,24 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0.55;
 }
 
-/* Lucky logo — dashed ring spinning around the mark while the spring runs */
-@keyframes lucky-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* Lucky logo — same draw-in ring as the intro overlay, scaled for the nav */
+@keyframes lucky-ring-draw {
+  0% {
+    stroke-dashoffset: 88;
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.12;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.12;
+  }
 }
 
-.animate-lucky-spin {
-  animation: lucky-spin 900ms linear infinite;
-  transform-origin: center;
+@keyframes lucky-ring-fade {
+  from { opacity: 0.12; }
+  to { opacity: 0; }
 }
 
 /* ═══════════════════════════════════════
