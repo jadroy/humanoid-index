@@ -16,9 +16,9 @@ function PlaceholderMark() {
   );
 }
 
-function CarouselCard({ humanoid: h, isNew }: { humanoid: Humanoid; isNew: boolean }) {
+function CarouselCard({ humanoid: h, isNew, width = CARD_W }: { humanoid: Humanoid; isNew: boolean; width?: number }) {
   return (
-    <div className="group flex flex-col gap-1.5 cursor-pointer" style={{ width: CARD_W }}>
+    <div className="group flex flex-col gap-1.5 cursor-pointer" style={{ width }}>
       {/* Image */}
       <div className="relative aspect-[3/4] overflow-hidden" style={{ borderRadius: cardRadius, background: "#FAFAFA" }}>
         {isNew && (
@@ -44,7 +44,7 @@ function CarouselCard({ humanoid: h, isNew }: { humanoid: Humanoid; isNew: boole
             fill
             className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
             style={h.imagePosition ? { objectPosition: h.imagePosition, padding: h.imageFit === "cover" ? 0 : 14 } : { padding: 14 }}
-            sizes={`${CARD_W}px`}
+            sizes={`${width}px`}
           />
         ) : (
           <PlaceholderMark />

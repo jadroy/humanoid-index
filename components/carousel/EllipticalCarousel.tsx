@@ -68,8 +68,17 @@ export default function EllipticalCarousel() {
   const ceilYear = years[ceilIdx];
   const floorEntries = groups[floorYear];
   const ceilEntries = groups[ceilYear];
-  const floorCols = Math.min(floorEntries.length, MAX_COLS);
-  const ceilCols = Math.min(ceilEntries.length, MAX_COLS);
+
+  // Sparse years stay at CARD_W=160 (up to 8 cards in 2 rows of 4). Heavy years
+  // spread into 2 rows with a smaller card width, so a 12-robot year fits at 6×2.
+  const DENSE_CARD_W = 128;
+  const layoutFor = (count: number): { cols: number; cardW: number } => {
+    if (count <= 4) return { cols: count, cardW: CARD_W };
+    if (count <= 8) return { cols: MAX_COLS, cardW: CARD_W };
+    return { cols: Math.ceil(count / 2), cardW: DENSE_CARD_W };
+  };
+  const floorLayout = layoutFor(floorEntries.length);
+  const ceilLayout = layoutFor(ceilEntries.length);
 
   return (
     <div className="h-screen overflow-hidden select-none relative bg-white flex flex-col">
@@ -138,7 +147,7 @@ export default function EllipticalCarousel() {
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: `repeat(${floorCols}, ${CARD_W}px)`,
+                      gridTemplateColumns: `repeat(${floorLayout.cols}, ${floorLayout.cardW}px)`,
                       gap: CARD_GAP,
                       opacity: fadeOut,
                       transform: `translate3d(${floorDx}px,0,0)`,
@@ -147,7 +156,7 @@ export default function EllipticalCarousel() {
                     }}
                   >
                     {floorEntries.map((h) => (
-                      <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} />
+                      <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} width={floorLayout.cardW} />
                     ))}
                   </div>
                   {!sameIdx && frac > 0.001 && (
@@ -163,12 +172,12 @@ export default function EllipticalCarousel() {
                       <div
                         style={{
                           display: "grid",
-                          gridTemplateColumns: `repeat(${ceilCols}, ${CARD_W}px)`,
+                          gridTemplateColumns: `repeat(${ceilLayout.cols}, ${ceilLayout.cardW}px)`,
                           gap: CARD_GAP,
                         }}
                       >
                         {ceilEntries.map((h) => (
-                          <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} />
+                          <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} width={ceilLayout.cardW} />
                         ))}
                       </div>
                     </div>

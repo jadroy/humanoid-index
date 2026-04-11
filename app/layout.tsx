@@ -1,73 +1,75 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { Inter, DM_Sans, Plus_Jakarta_Sans, Space_Grotesk, Manrope, Outfit, Sora, Albert_Sans, Instrument_Sans, Rubik, Nunito_Sans, Work_Sans, Poppins, Raleway, Figtree, Karla, Lexend, Red_Hat_Display, Archivo, Be_Vietnam_Pro, Urbanist, Jost, Quicksand, Cabin, Bricolage_Grotesque, Onest, Wix_Madefor_Display, Gabarito, Noto_Sans, Schibsted_Grotesk } from "next/font/google";
+import {
+  Inter,
+  B612,
+  B612_Mono,
+  Space_Mono,
+  JetBrains_Mono,
+  IBM_Plex_Sans,
+  IBM_Plex_Mono,
+  Azeret_Mono,
+  Chivo_Mono,
+  Fira_Code,
+  Orbitron,
+  Chakra_Petch,
+  Oxanium,
+  Rajdhani,
+  Exo_2,
+  Michroma,
+  Major_Mono_Display,
+  Tektur,
+  Anta,
+  Syne,
+} from "next/font/google";
 import "./globals.css";
 import SearchModal from "@/components/SearchModal";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
-const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk" });
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
-const sora = Sora({ subsets: ["latin"], variable: "--font-sora" });
-const albertSans = Albert_Sans({ subsets: ["latin"], variable: "--font-albert-sans" });
-const instrumentSans = Instrument_Sans({ subsets: ["latin"], variable: "--font-instrument-sans" });
-const rubik = Rubik({ subsets: ["latin"], variable: "--font-rubik" });
-const nunitoSans = Nunito_Sans({ subsets: ["latin"], variable: "--font-nunito-sans" });
-const workSans = Work_Sans({ subsets: ["latin"], variable: "--font-work-sans" });
-const poppins = Poppins({ subsets: ["latin"], variable: "--font-poppins", weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"] });
-const raleway = Raleway({ subsets: ["latin"], variable: "--font-raleway" });
-const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
-const karla = Karla({ subsets: ["latin"], variable: "--font-karla" });
-const lexend = Lexend({ subsets: ["latin"], variable: "--font-lexend" });
-const redHatDisplay = Red_Hat_Display({ subsets: ["latin"], variable: "--font-red-hat-display" });
-const archivo = Archivo({ subsets: ["latin"], variable: "--font-archivo" });
-const beVietnamPro = Be_Vietnam_Pro({ subsets: ["latin"], variable: "--font-be-vietnam-pro", weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"] });
-const urbanist = Urbanist({ subsets: ["latin"], variable: "--font-urbanist" });
-const jost = Jost({ subsets: ["latin"], variable: "--font-jost" });
-const quicksand = Quicksand({ subsets: ["latin"], variable: "--font-quicksand" });
-const cabin = Cabin({ subsets: ["latin"], variable: "--font-cabin" });
-const bricolageGrotesque = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-bricolage-grotesque" });
-const onest = Onest({ subsets: ["latin"], variable: "--font-onest" });
-const wixMadefor = Wix_Madefor_Display({ subsets: ["latin"], variable: "--font-wix-madefor" });
-const gabarito = Gabarito({ subsets: ["latin"], variable: "--font-gabarito" });
-const notoSans = Noto_Sans({ subsets: ["latin"], variable: "--font-noto-sans" });
-const schibstedGrotesk = Schibsted_Grotesk({ subsets: ["latin"], variable: "--font-schibsted-grotesk" });
+const b612 = B612({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-b612" });
+const b612Mono = B612_Mono({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-b612-mono" });
+const spaceMono = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-space-mono" });
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono" });
+const ibmPlexSans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"], variable: "--font-ibm-plex-sans" });
+const ibmPlexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"], variable: "--font-ibm-plex-mono" });
+const azeretMono = Azeret_Mono({ subsets: ["latin"], variable: "--font-azeret-mono" });
+const chivoMono = Chivo_Mono({ subsets: ["latin"], variable: "--font-chivo-mono" });
+const firaCode = Fira_Code({ subsets: ["latin"], variable: "--font-fira-code" });
+const orbitron = Orbitron({ subsets: ["latin"], variable: "--font-orbitron" });
+const chakraPetch = Chakra_Petch({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"], variable: "--font-chakra-petch" });
+const oxanium = Oxanium({ subsets: ["latin"], variable: "--font-oxanium" });
+const rajdhani = Rajdhani({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"], variable: "--font-rajdhani" });
+const exo2 = Exo_2({ subsets: ["latin"], variable: "--font-exo-2" });
+const michroma = Michroma({ subsets: ["latin"], weight: "400", variable: "--font-michroma" });
+const majorMono = Major_Mono_Display({ subsets: ["latin"], weight: "400", variable: "--font-major-mono" });
+const tektur = Tektur({ subsets: ["latin"], variable: "--font-tektur" });
+const anta = Anta({ subsets: ["latin"], weight: "400", variable: "--font-anta" });
+const syne = Syne({ subsets: ["latin"], variable: "--font-syne" });
 
 const fontVars = [
   GeistSans.variable,
+  GeistMono.variable,
   inter.variable,
-  dmSans.variable,
-  jakarta.variable,
-  spaceGrotesk.variable,
-  manrope.variable,
-  outfit.variable,
-  sora.variable,
-  albertSans.variable,
-  instrumentSans.variable,
-  rubik.variable,
-  nunitoSans.variable,
-  workSans.variable,
-  poppins.variable,
-  raleway.variable,
-  figtree.variable,
-  karla.variable,
-  lexend.variable,
-  redHatDisplay.variable,
-  archivo.variable,
-  beVietnamPro.variable,
-  urbanist.variable,
-  jost.variable,
-  quicksand.variable,
-  cabin.variable,
-  bricolageGrotesque.variable,
-  onest.variable,
-  wixMadefor.variable,
-  gabarito.variable,
-  notoSans.variable,
-  schibstedGrotesk.variable,
+  b612.variable,
+  b612Mono.variable,
+  spaceMono.variable,
+  jetbrainsMono.variable,
+  ibmPlexSans.variable,
+  ibmPlexMono.variable,
+  azeretMono.variable,
+  chivoMono.variable,
+  firaCode.variable,
+  orbitron.variable,
+  chakraPetch.variable,
+  oxanium.variable,
+  rajdhani.variable,
+  exo2.variable,
+  michroma.variable,
+  majorMono.variable,
+  tektur.variable,
+  anta.variable,
+  syne.variable,
 ].join(" ");
 
 export const metadata: Metadata = {

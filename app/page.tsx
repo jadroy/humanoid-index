@@ -35,11 +35,13 @@ function LayoutSwitcher({
   onChange,
   navStyle,
   onNavStyleChange,
+  onLogoClick,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
   navStyle: NavStyle;
   onNavStyleChange: (s: NavStyle) => void;
+  onLogoClick?: () => void;
 }) {
   const cycleNavStyle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -47,131 +49,164 @@ function LayoutSwitcher({
     onNavStyleChange(NAV_STYLES[(idx + 1) % NAV_STYLES.length]);
   };
 
+  const handleLogoClick = () => {
+    onChange("E" as Layout);
+    onLogoClick?.();
+  };
+
   // ── Mark logo (shared) ──
   const mark = (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.25 }} className="cursor-pointer" onClick={() => onChange("E" as Layout)} onContextMenu={cycleNavStyle}>
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.25 }} className="cursor-pointer" onClick={handleLogoClick} onContextMenu={cycleNavStyle}>
       <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
       <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
     </svg>
   );
 
+  const frost = { background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } as React.CSSProperties;
+
   // ── Style: floating (original — island with border) ──
   if (navStyle === "floating") return (
-    <nav className="fixed top-0 left-0 right-0 z-50 pt-4 px-6 pointer-events-none">
-      <div className="flex flex-col items-center gap-2 pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60 mx-auto" style={{ maxWidth: 1052, background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
-          {mark}
-          <div className="flex items-center gap-0.5">
-            {ALL_LAYOUTS.map((l) => (
-              <button key={l} onClick={() => onChange(l)}
-                className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
-                style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
-                {layoutLabels[l]}
-              </button>
-            ))}
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+      <div className="flex items-center gap-4">
+        <div className="pointer-events-auto">{mark}</div>
+        <div className="flex-1 flex justify-center">
+          <div className="pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60" style={frost}>
+            <div className="flex items-center gap-0.5">
+              {ALL_LAYOUTS.map((l) => (
+                <button key={l} onClick={() => onChange(l)}
+                  className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                  style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
+                  {layoutLabels[l]}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </nav>
+        <div style={{ width: 20 }} />
+      </div>
+    </nav>
   );
-
-  const frost = { background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } as React.CSSProperties;
 
   // ── Style: pill — rounded capsule, tinted active state ──
   if (navStyle === "pill") return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex flex-col items-center gap-1.5 pointer-events-auto px-3 py-2 rounded-2xl" style={frost}>
-        {mark}
-        <div className="flex items-center gap-1">
-          {ALL_LAYOUTS.map((l) => (
-            <button key={l} onClick={() => onChange(l)}
-              className="px-3 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer rounded-full"
-              style={{
-                color: active === l ? "#fff" : "#999",
-                background: active === l ? "var(--c-ink)" : "transparent",
-                fontWeight: active === l ? 500 : 400,
-              }}>
-              {layoutLabels[l]}
-            </button>
-          ))}
-
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+      <div className="flex items-center gap-4">
+        <div className="pointer-events-auto">{mark}</div>
+        <div className="flex-1 flex justify-center">
+          <div className="pointer-events-auto px-3 py-2 rounded-2xl" style={frost}>
+            <div className="flex items-center gap-1">
+              {ALL_LAYOUTS.map((l) => (
+                <button key={l} onClick={() => onChange(l)}
+                  className="px-3 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer rounded-full"
+                  style={{
+                    color: active === l ? "#fff" : "#999",
+                    background: active === l ? "var(--c-ink)" : "transparent",
+                    fontWeight: active === l ? 500 : 400,
+                  }}>
+                  {layoutLabels[l]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
+        <div style={{ width: 20 }} />
       </div>
     </nav>
   );
 
   // ── Style: underline — clean text with active underline ──
   if (navStyle === "underline") return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex flex-col items-center gap-1.5 pointer-events-auto px-4 py-2.5 rounded-sm" style={frost}>
-        {mark}
-        <div className="flex items-center gap-4">
-          {ALL_LAYOUTS.map((l) => (
-            <button key={l} onClick={() => onChange(l)}
-              className="relative px-1 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
-              style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
-              {layoutLabels[l]}
-              {active === l && <div className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-neutral-800 rounded-full" />}
-            </button>
-          ))}
-
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+      <div className="flex items-center gap-4">
+        <div className="pointer-events-auto">{mark}</div>
+        <div className="flex-1 flex justify-center">
+          <div className="pointer-events-auto px-4 py-2.5 rounded-sm" style={frost}>
+            <div className="flex items-center gap-4">
+              {ALL_LAYOUTS.map((l) => (
+                <button key={l} onClick={() => onChange(l)}
+                  className="relative px-1 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                  style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
+                  {layoutLabels[l]}
+                  {active === l && <div className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-neutral-800 rounded-full" />}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
+        <div style={{ width: 20 }} />
       </div>
     </nav>
   );
 
   // ── Style: bordered — full-width top bar with bottom border ──
   if (navStyle === "bordered") return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={frost}>
-      <div className="flex flex-col items-center gap-1 max-w-[1100px] mx-auto px-6 py-3">
-        {mark}
-        <div className="flex items-center gap-1">
-          {ALL_LAYOUTS.map((l) => (
-            <button key={l} onClick={() => onChange(l)}
-              className="px-3 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
-              style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
-              {layoutLabels[l]}
-            </button>
-          ))}
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={{ ...frost, paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+      <div className="flex items-center gap-4 pb-3">
+        <div>{mark}</div>
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center gap-1">
+            {ALL_LAYOUTS.map((l) => (
+              <button key={l} onClick={() => onChange(l)}
+                className="px-3 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
+                {layoutLabels[l]}
+              </button>
+            ))}
+          </div>
         </div>
+        <div style={{ width: 20 }} />
       </div>
     </nav>
   );
 
   // ── Style: minimal — just text, no container, no border ──
   if (navStyle === "minimal") return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-6 pointer-events-none">
-      <div className="flex flex-col items-center gap-1.5 pointer-events-auto px-4 py-2.5 rounded-sm" style={frost}>
-        {mark}
-        <div className="flex items-center gap-3">
-          {ALL_LAYOUTS.map((l) => (
-            <button key={l} onClick={() => onChange(l)}
-              className="px-1 py-0.5 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
-              style={{ color: active === l ? "var(--c-ink)" : "#d4d4d4", fontWeight: active === l ? 600 : 400 }}>
-              {layoutLabels[l]}
-            </button>
-          ))}
-
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+      <div className="flex items-center gap-4">
+        <div className="pointer-events-auto">{mark}</div>
+        <div className="flex-1 flex justify-center">
+          <div className="pointer-events-auto px-4 py-2.5 rounded-sm" style={frost}>
+            <div className="flex items-center gap-3">
+              {ALL_LAYOUTS.map((l) => (
+                <button key={l} onClick={() => onChange(l)}
+                  className="px-1 py-0.5 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                  style={{ color: active === l ? "var(--c-ink)" : "#d4d4d4", fontWeight: active === l ? 600 : 400 }}>
+                  {layoutLabels[l]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
+        <div style={{ width: 20 }} />
       </div>
     </nav>
   );
 
   // ── Style: solid — dark bar, inverted text ──
+  const solidMark = (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.4 }} className="cursor-pointer" onClick={handleLogoClick} onContextMenu={cycleNavStyle}>
+      <circle cx="10" cy="5" r="3" fill="#fff" />
+      <rect x="7" y="9.5" width="6" height="8" rx="3" fill="#fff" />
+    </svg>
+  );
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pt-5 pointer-events-none">
-      <div className="flex flex-col items-center gap-1.5 pointer-events-auto px-5 py-2.5 rounded-sm" style={{ background: "rgba(23,23,23,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.4 }} className="cursor-pointer" onContextMenu={cycleNavStyle}>
-          <circle cx="10" cy="5" r="3" fill="#fff" />
-          <rect x="7" y="9.5" width="6" height="8" rx="3" fill="#fff" />
-        </svg>
-        <div className="flex items-center gap-0.5">
-          {ALL_LAYOUTS.map((l) => (
-            <button key={l} onClick={() => onChange(l)}
-              className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
-              style={{ color: active === l ? "#fff" : "#666", fontWeight: active === l ? 500 : 400 }}>
-              {layoutLabels[l]}
-            </button>
-          ))}
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+      <div className="flex items-center gap-4">
+        <div className="pointer-events-auto">{solidMark}</div>
+        <div className="flex-1 flex justify-center">
+          <div className="pointer-events-auto px-5 py-2.5 rounded-sm" style={{ background: "rgba(23,23,23,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+            <div className="flex items-center gap-0.5">
+              {ALL_LAYOUTS.map((l) => (
+                <button key={l} onClick={() => onChange(l)}
+                  className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                  style={{ color: active === l ? "#fff" : "#666", fontWeight: active === l ? 500 : 400 }}>
+                  {layoutLabels[l]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
+        <div style={{ width: 20 }} />
       </div>
     </nav>
   );
@@ -570,7 +605,7 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
             const rad = deg * Math.PI / 180;
             const r = wheelR - aTextGap;
             const baseAngle = mirrored ? Math.PI : 0;
-            const theta = baseAngle + rad;
+            const theta = baseAngle + (mirrored ? -rad : rad);
             const cx = wheelR + Math.cos(theta) * r;
             const cy = wheelR + Math.sin(theta) * r;
             const tangentDeg = theta * 180 / Math.PI + (mirrored ? 180 : 0);
@@ -610,6 +645,21 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
     );
   }
 
+  if (variant === "crown") {
+    return (
+      <div
+        className="absolute top-0 bottom-0"
+        style={{
+          width: "100vw",
+          ...(mirrored ? { right: 0, transform: "scaleX(-1)" } : { left: 0 }),
+          ...finalMask,
+        }}
+      >
+        {crownElements}
+        {content}
+      </div>
+    );
+  }
   if (mirrored) {
     return <div className="absolute inset-0" style={{ transform: "scaleX(-1)", ...finalMask }}>{crownElements}{content}</div>;
   }
@@ -803,7 +853,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex }: { goToIndex?: number | null }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -818,7 +868,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
-  const [arcStyle, setArcStyle] = useState<ArcStyle>("crown");
+  const [arcStyle, setArcStyle] = useState<ArcStyle>("arc-timeline");
 
   // Crown drum config
   const [drumAngle, setDrumAngle] = useState(14);
@@ -833,14 +883,14 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [drumRange, setDrumRange] = useState(1);
   const [drumTracking, setDrumTracking] = useState(0.04);
   const [miniCrownRadius, setMiniCrownRadius] = useState(70);
-  const [arcInset, setArcInset] = useState(80);
+  const [arcInset, setArcInset] = useState(70);
+  const [navTop, setNavTop] = useState(8);
   const [arcWheelR, setArcWheelR] = useState(700);
   const [arcStepDeg, setArcStepDeg] = useState(3.5);
   const [arcTextGap, setArcTextGap] = useState(15);
   const [arcLineOp, setArcLineOp] = useState(0.5);
   const [arcFsMax, setArcFsMax] = useState(22);
   const [arcFsMin, setArcFsMin] = useState(10);
-  const [showStats, setShowStats] = useState(true);
   // Per-card gallery index: keyed by humanoid index
   const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
   const galleryScrollRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -852,7 +902,16 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   const [statsW, setStatsW] = useState(260);       // px
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(8);     // px — gap between robot and stats
-  const [cardRadius, setCardRadius] = useState(6);  // px
+  const [cardRadius, setCardRadius] = useState(28);  // px
+
+  // Compare-header split tuner
+  const [showSplitTuner, setShowSplitTuner] = useState(false);
+  const [splitVariant, setSplitVariant] = useState<"morph" | "push" | "lift" | "shrink" | "swap">("shrink");
+  const [splitAmount, setSplitAmount] = useState(44);
+  const [splitScale, setSplitScale] = useState(0.97);
+  const [splitLiftY, setSplitLiftY] = useState(4);
+  const [splitShadowOp, setSplitShadowOp] = useState(0.12);
+  const [splitDur, setSplitDur] = useState(320); // ms
 
   // Adaptive arc positioning
   const [windowWidth, setWindowWidth] = useState(1920);
@@ -873,19 +932,30 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
     const cardPx = comparing
       ? Math.min((robotW - 8) * windowWidth / 100, robotMaxW - 100)
       : Math.min(robotW * windowWidth / 100, robotMaxW);
-    const statsPx = showStats ? statsW : 0;
-    const gap = showStats ? statsGap : 0;
+    const statsPx = statsW;
+    const gap = statsGap;
     if (comparing) {
-      return cardPx + gap + statsPx + cardGap / 2;
+      return cardPx + gap + statsPx / 2;
     }
     return (cardPx + gap + statsPx) / 2;
   })();
 
   const availableSpace = (windowWidth / 2) - centerHalfWidth;
-  const adaptiveArcInset = Math.round(Math.min(600, Math.max(30, availableSpace * 0.6)));
+  const adaptiveArcInset = Math.round(Math.min(180, Math.max(48, availableSpace * 0.3)));
   const adaptiveDrumXOffset = Math.round(Math.min(300, Math.max(40, availableSpace * 0.5)));
   const effectiveArcInset = autoArcInset ? adaptiveArcInset : arcInset;
   const effectiveDrumXOffset = autoArcInset ? adaptiveDrumXOffset : drumXOffset;
+
+  // Publish the arc's leftmost-label x so the nav logo can align to it
+  useEffect(() => {
+    const x = Math.max(16, effectiveArcInset - arcTextGap);
+    document.documentElement.style.setProperty("--arc-logo-x", `${x}px`);
+  }, [effectiveArcInset, arcTextGap]);
+
+  // Publish nav top offset as a CSS variable
+  useEffect(() => {
+    document.documentElement.style.setProperty("--nav-top", `${navTop}px`);
+  }, [navTop]);
 
   const stiffness = isCustom ? customStiffness : SCROLL_PRESETS[presetKey].stiffness;
   const damping = isCustom ? customDamping : SCROLL_PRESETS[presetKey].damping;
@@ -995,7 +1065,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
       if (e.key === "s") { setArcStyle((s) => ARC_STYLES[(ARC_STYLES.indexOf(s) + 1) % ARC_STYLES.length]); return; }
-      if (e.key === "i") { setShowStats((s) => !s); return; }
       if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); activeGo(1); }
       else if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); activeGo(-1); }
     };
@@ -1018,9 +1087,9 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
   ].filter(Boolean) as { label: string; value: string }[];
   const statsL = getStats(hL);
 
-  // Transition easing
-  const ease = "cubic-bezier(0.16, 1, 0.3, 1)";
-  const dur = "0.55s";
+  // Transition easing — Material standard: smooth, clean, no overshoot
+  const ease = "cubic-bezier(0.4, 0, 0.2, 1)";
+  const dur = "0.5s";
 
   return (
     <div className="h-screen overflow-hidden select-none relative bg-white">
@@ -1101,27 +1170,6 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         </div>
       )}
 
-      {/* ── Exit compare — hover over center splits the two sides apart ── */}
-      {comparing && (
-        <div
-          className="absolute top-0 bottom-0 flex items-center justify-center group/split cursor-pointer"
-          style={{ left: "50%", width: 120, marginLeft: -60, zIndex: 10 }}
-          onClick={exitCompare}
-          onMouseEnter={() => setSplitHover(true)}
-          onMouseLeave={() => setSplitHover(false)}
-        >
-          {/* Minus button — appears on hover */}
-          <div
-            className="rounded-full flex items-center justify-center transition-all duration-300 opacity-0 scale-75 group-hover/split:opacity-100 group-hover/split:scale-100"
-            style={{ width: 32, height: 32, background: "#ebebeb", zIndex: 1 }}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
-              <line x1="4" y1="8" x2="12" y2="8" />
-            </svg>
-          </div>
-        </div>
-      )}
-
       {/* ── Humanoid groups: [stats | robot] per side ── */}
       {(() => {
         const bodyStyle = { color: "#999", lineHeight: 1.4 } as const;
@@ -1133,7 +1181,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         const icoStatus = ico("M22 12h-4l-3 9L9 3l-3 9H2");
 
         const chevron = (open: boolean) => (
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform 0.2s ease", transform: open ? "rotate(180deg)" : "rotate(0)" }}>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: `transform 0.42s ${ease}`, transform: open ? "rotate(180deg)" : "rotate(0)" }}>
             <polyline points="2,3.5 5,6.5 8,3.5" />
           </svg>
         );
@@ -1263,16 +1311,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
         const renderStats = (h: typeof humanoids[0]) => {
           const sections = statSections(h);
           return (
-            <div className="flex-shrink-0 relative group/stats" style={{
-              overflowX: "hidden", overflowY: "visible",
-              width: !showStats ? 0 : statsW,
-              opacity: !showStats ? 0 : 1,
-              height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
-              maxHeight: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
-              transition: `width ${dur} ${ease}, opacity 0.25s ${ease}`,
-            }}>
-              {/* Fixed-width inner to prevent text reflow during width transition */}
-              <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
+            <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
               {/* Info header — fixed height */}
               <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
                 <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
@@ -1308,10 +1347,10 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                         {chevron(isOpen)}
                       </button>
                       <div style={{
-                        maxHeight: isOpen ? 120 : 0,
+                        maxHeight: isOpen ? 140 : 0,
                         opacity: isOpen ? 1 : 0,
                         overflow: "hidden",
-                        transition: "max-height 0.25s ease, opacity 0.2s ease",
+                        transition: `max-height 0.45s ${ease}, opacity 0.35s ${ease}`,
                       }}>
                         <div className="pb-2 pl-[22.5px]">{s.detail}</div>
                       </div>
@@ -1319,6 +1358,206 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                   );
                 })}
               </div>
+            </div>
+          );
+        };
+
+        const renderMergedStats = () => {
+          const heightL = hL.height ?? 0, heightR = hR.height ?? 0;
+          const weightL = hL.weight ?? 0, weightR = hR.weight ?? 0;
+          const dofL = hL.dof ?? 0, dofR = hR.dof ?? 0;
+          const speedL = hL.maxSpeed ?? 0, speedR = hR.maxSpeed ?? 0;
+          const statusColor = (status?: string) => status === "In Production" ? "#22c55e" : status === "Prototype" ? "#eab308" : status === "Concept" ? "#3b82f6" : "#a3a3a3";
+
+          const compareRow = (label: string, valL: string | null, valR: string | null, lWin: boolean, rWin: boolean) => (
+            <div className="flex items-baseline justify-between gap-2" style={{ marginTop: 6 }}>
+              <p className="text-[11px] tabular-nums flex-1 text-left" style={{ color: lWin ? "var(--c-ink)" : "#c4c4c4" }}>{valL || "—"}</p>
+              <p className="text-[9px] uppercase text-center" style={{ color: "#a3a3a3", letterSpacing: "0.08em", minWidth: 44 }}>{label}</p>
+              <p className="text-[11px] tabular-nums flex-1 text-right" style={{ color: rWin ? "var(--c-ink)" : "#c4c4c4" }}>{valR || "—"}</p>
+            </div>
+          );
+
+          const sections = [
+            {
+              key: "overview",
+              show: !!(heightL || weightL || heightR || weightR),
+              label: (
+                <div className="flex items-center gap-2.5">
+                  {icoRuler}
+                  <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Overview</p>
+                </div>
+              ),
+              detail: (
+                <div>
+                  {(heightL || heightR) ? compareRow("Height", heightL ? `${heightL} cm` : null, heightR ? `${heightR} cm` : null, heightL > heightR && heightL > 0, heightR > heightL && heightR > 0) : null}
+                  {(weightL || weightR) ? compareRow("Weight", weightL ? `${weightL} kg` : null, weightR ? `${weightR} kg` : null, weightL > 0 && (weightR === 0 || weightL < weightR), weightR > 0 && (weightL === 0 || weightR < weightL)) : null}
+                </div>
+              ),
+            },
+            {
+              key: "dof",
+              show: !!(dofL || dofR),
+              label: (
+                <div className="flex items-center gap-2.5">
+                  {icoDof}
+                  <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
+                </div>
+              ),
+              detail: compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null, dofL > dofR && dofL > 0, dofR > dofL && dofR > 0),
+            },
+            {
+              key: "speed",
+              show: !!(speedL || speedR),
+              label: (
+                <div className="flex items-center gap-2.5">
+                  {icoSpeed}
+                  <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Speed</p>
+                </div>
+              ),
+              detail: compareRow("Speed", speedL ? `${speedL} m/s` : null, speedR ? `${speedR} m/s` : null, speedL > speedR && speedL > 0, speedR > speedL && speedR > 0),
+            },
+            {
+              key: "status",
+              show: !!(hL.status || hR.status),
+              label: (
+                <div className="flex items-center gap-2.5">
+                  {icoStatus}
+                  <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status</p>
+                </div>
+              ),
+              detail: (
+                <div className="flex items-center gap-3" style={{ marginTop: 6 }}>
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: statusColor(hL.status) }} />
+                    <p className="text-[11px] truncate" style={{ color: "var(--c-ink-body)" }}>{hL.status || "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+                    <p className="text-[11px] truncate" style={{ color: "var(--c-ink-body)" }}>{hR.status || "—"}</p>
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: statusColor(hR.status) }} />
+                  </div>
+                </div>
+              ),
+            },
+          ];
+
+          const headerCell = (h: typeof humanoids[0]) => (
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 26, height: 26, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+                {h.logoUrl ? (
+                  <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="26px" />
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
+                    <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+                    <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+                  </svg>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
+                <p className="text-[9px] tracking-widest uppercase font-medium truncate" style={{ color: "#a3a3a3", letterSpacing: "0.06em", marginTop: 1 }}>{h.manufacturer}</p>
+              </div>
+            </div>
+          );
+
+          return (
+            <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
+              {(() => {
+                const active = splitHover;
+                const sDur = `${splitDur}ms`;
+                const unifiedL = `${cardRadius}px 0 0 ${cardRadius}px`;
+                const unifiedR = `0 ${cardRadius}px ${cardRadius}px 0`;
+                const roundedAll: string | number = cardRadius;
+                let containerGap = 0;
+                let leftRadius: string | number = active ? roundedAll : unifiedL;
+                let rightRadius: string | number = active ? roundedAll : unifiedR;
+                let leftTransform = "translateX(0)";
+                let rightTransform = "translateX(0)";
+                let leftShadow = "none";
+                let rightShadow = "none";
+                let transformOrigin = "center center";
+
+                if (splitVariant === "morph") {
+                  containerGap = active ? splitAmount : 0;
+                } else if (splitVariant === "push") {
+                  leftTransform = active ? `translateX(-${splitAmount / 2}px)` : "translateX(0)";
+                  rightTransform = active ? `translateX(${splitAmount / 2}px)` : "translateX(0)";
+                } else if (splitVariant === "lift") {
+                  containerGap = active ? splitAmount : 0;
+                  leftTransform = active ? `translateY(-${splitLiftY}px)` : "translateY(0)";
+                  rightTransform = active ? `translateY(-${splitLiftY}px)` : "translateY(0)";
+                  const blur = Math.max(6, splitLiftY * 3);
+                  leftShadow = active ? `0 ${splitLiftY + 2}px ${blur}px rgba(0,0,0,${splitShadowOp})` : "none";
+                  rightShadow = leftShadow;
+                } else if (splitVariant === "shrink") {
+                  containerGap = active ? splitAmount : 0;
+                  leftTransform = active ? `scale(${splitScale})` : "scale(1)";
+                  rightTransform = active ? `scale(${splitScale})` : "scale(1)";
+                  transformOrigin = "center center";
+                } else if (splitVariant === "swap") {
+                  containerGap = active ? splitAmount : 0;
+                  leftTransform = active ? `translateX(${splitAmount / 2}px)` : "translateX(0)";
+                  rightTransform = active ? `translateX(-${splitAmount / 2}px)` : "translateX(0)";
+                }
+
+                const pillTransition = `border-radius ${sDur} ${ease}, transform ${sDur} ${ease}, box-shadow ${sDur} ${ease}`;
+
+                return (
+                  <div className="flex items-center pointer-events-auto" style={{
+                    flexShrink: 0,
+                    position: "relative",
+                    zIndex: 11,
+                    gap: containerGap,
+                    transition: `gap ${sDur} ${ease}`,
+                  }}>
+                    <div className="flex-1 min-w-0 flex items-center" style={{
+                      background: "#FAFAFA",
+                      padding: "10px 12px",
+                      borderRadius: leftRadius,
+                      transform: leftTransform,
+                      boxShadow: leftShadow,
+                      transformOrigin,
+                      transition: pillTransition,
+                    }}>
+                      {headerCell(hL)}
+                    </div>
+                    <div className="flex-1 min-w-0 flex items-center" style={{
+                      background: "#FAFAFA",
+                      padding: "10px 12px",
+                      borderRadius: rightRadius,
+                      transform: rightTransform,
+                      boxShadow: rightShadow,
+                      transformOrigin,
+                      transition: pillTransition,
+                    }}>
+                      {headerCell(hR)}
+                    </div>
+                  </div>
+                );
+              })()}
+              <div className="flex flex-col pointer-events-auto" style={{ padding: "6px 12px", borderRadius: cardRadius, background: "#FCFCFC", position: "relative", zIndex: 11 }}>
+                {sections.filter((s) => s.show).map((s) => {
+                  const isOpen = openStat === s.key;
+                  return (
+                    <div key={s.key}>
+                      <button
+                        className="w-full flex items-center justify-between cursor-pointer py-2"
+                        style={{ background: "none", border: "none", padding: "8px 0" }}
+                        onClick={() => setOpenStat(isOpen ? null : s.key)}
+                      >
+                        {s.label}
+                        {chevron(isOpen)}
+                      </button>
+                      <div style={{
+                        maxHeight: isOpen ? 140 : 0,
+                        opacity: isOpen ? 1 : 0,
+                        overflow: "hidden",
+                        transition: `max-height 0.45s ${ease}, opacity 0.35s ${ease}`,
+                      }}>
+                        <div className="pb-2">{s.detail}</div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -1357,6 +1596,7 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
                 borderRadius: cardRadius,
                 background: "#FAFAFA",
                 pointerEvents: "auto",
+                transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
               }}
             >
               {/* New badge */}
@@ -1437,60 +1677,91 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
             </div>
 
 
-              {/* Stats toggle — outside bottom-left of card */}
-              <button
-                className="absolute bottom-3 w-5 h-5 flex items-center justify-center cursor-pointer opacity-50 hover:opacity-80 transition-opacity duration-200 z-[3]"
-                style={{ ...(isFirst ? { right: "100%", marginRight: 8 } : { left: "100%", marginLeft: 8 }), borderRadius: 4, pointerEvents: "auto" }}
-                onClick={() => setShowStats((s) => !s)}
-                title={showStats ? "Hide stats (i)" : "Show stats (i)"}
-              >
-                <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#525252" strokeWidth="1.2" strokeLinecap="round">
-                  <rect x="1.5" y="2" width="4" height="10" rx="1" />
-                  <line x1="8.5" y1="4" x2="12.5" y2="4" />
-                  <line x1="8.5" y1="7" x2="12.5" y2="7" />
-                  <line x1="8.5" y1="10" x2="11" y2="10" />
-                </svg>
-              </button>
             </div>
           );
         };
 
+        const effectiveGap = statsGap;
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 11 }}>
-            <div className="flex items-start" style={{ gap: cardGap }}>
-              {/* Left group */}
-              <div className="flex items-start" style={{
-                gap: statsGap,
+            <div className="flex items-start">
+              {/* Left robot */}
+              <div style={{
                 transform: splitHover ? "translateX(-12px)" : addHover ? "translateX(-16px)" : "translateX(0)",
-                transition: "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
+                transition: `transform ${dur} ${ease}`,
               }}>
                 {renderRobot(hL, distL, springL.index, true)}
-                {renderStats(hL)}
               </div>
 
-              {/* Right group */}
-              <div className="flex items-start" style={{
-                gap: statsGap,
-                transform: splitHover ? "translateX(12px)" : "translateX(0)",
-                transition: "transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
+              {/* Stats slot — crossfade single ↔ merged */}
+              <div className="flex-shrink-0 relative" style={{
+                marginLeft: effectiveGap,
+                overflowX: "visible", overflowY: "visible",
+                width: statsW,
+                height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
+                transform: !comparing && addHover ? "translateX(-16px)" : "translateX(0)",
+                transition: `width ${dur} ${ease}, height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left ${dur} ${ease}, transform ${dur} ${ease}`,
               }}>
-                <div className="flex-shrink-0 overflow-hidden" style={{
-                  width: comparing ? statsW : 0,
-                  opacity: comparing ? 1 : 0,
-                  transition: `width ${dur} ${ease}, opacity 0.3s ${ease} ${comparing ? "0.1s" : "0s"}`,
+                <div className="absolute inset-0" style={{
+                  opacity: comparing ? 0 : 1,
+                  pointerEvents: comparing ? "none" : "auto",
+                  transition: `opacity 0.2s ${ease}`,
                 }}>
-                  {renderStats(hR)}
+                  {renderStats(hL)}
+                </div>
+                <div className="absolute inset-0" style={{
+                  opacity: comparing ? 1 : 0,
+                  pointerEvents: comparing ? "auto" : "none",
+                  transition: `opacity 0.2s ${ease} ${comparing ? "0.06s" : "0s"}`,
+                }}>
+                  {renderMergedStats()}
                 </div>
 
-                <div className="flex-shrink-0" style={{
-                  opacity: comparing ? 1 : 0,
-                  transform: `scale(${comparing ? 1 : 0.95})`,
-                  width: comparing ? "auto" : 0,
-                  overflow: comparing ? "visible" : "hidden",
-                  transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}`,
-                }}>
-                  {renderRobot(hR, distR, springR.index, false)}
-                </div>
+                {/* Exit compare — hover zone overlaying dual header; minus sits on divider */}
+                {comparing && (
+                  <div
+                    className="absolute cursor-pointer pointer-events-auto flex items-center justify-center"
+                    style={{
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 48,
+                      zIndex: 12,
+                    }}
+                    onClick={exitCompare}
+                    onMouseEnter={() => setSplitHover(true)}
+                    onMouseLeave={() => setSplitHover(false)}
+                  >
+                    <div
+                      className="flex items-center justify-center"
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 999,
+                        background: "#ebebeb",
+                        opacity: splitHover ? 1 : 0,
+                        transform: `scale(${splitHover ? 1 : 0.75})`,
+                        transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
+                        <line x1="4" y1="8" x2="12" y2="8" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right robot — compare only */}
+              <div className="flex-shrink-0" style={{
+                opacity: comparing ? 1 : 0,
+                transform: `translateX(${splitHover ? 12 : 0}px) scale(${comparing ? 1 : 0.95})`,
+                width: comparing ? "auto" : 0,
+                marginLeft: comparing ? effectiveGap : 0,
+                overflow: comparing ? "visible" : "hidden",
+                transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}, margin-left ${dur} ${ease}`,
+              }}>
+                {renderRobot(hR, distR, springR.index, false)}
               </div>
             </div>
           </div>
@@ -1499,29 +1770,68 @@ function Browse({ goToIndex }: { goToIndex?: number | null }) {
 
       {/* ── Tuner ── */}
       <button className="absolute top-20 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowTuner(!showTuner)}>{showTuner ? "Close" : "Tune"}</button>
+      <button className="absolute top-32 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowSplitTuner(!showSplitTuner)}>{showSplitTuner ? "Close" : "Split"}</button>
+      {showSplitTuner && (
+        <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
+          <div>
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Header Split</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(["morph", "push", "lift", "shrink", "swap"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setSplitVariant(v)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${splitVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400">Fine Tune</p>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Split amount <span className="tabular-nums text-neutral-400">{splitAmount}px</span></label>
+              <input type="range" min={0} max={120} value={splitAmount} onChange={(e) => setSplitAmount(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            {splitVariant === "shrink" && (
+              <div>
+                <label className="text-[10px] text-neutral-500 flex justify-between">Scale <span className="tabular-nums text-neutral-400">{splitScale.toFixed(2)}</span></label>
+                <input type="range" min={70} max={100} value={Math.round(splitScale * 100)} onChange={(e) => setSplitScale(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" />
+              </div>
+            )}
+            {splitVariant === "lift" && (
+              <>
+                <div>
+                  <label className="text-[10px] text-neutral-500 flex justify-between">Lift Y <span className="tabular-nums text-neutral-400">{splitLiftY}px</span></label>
+                  <input type="range" min={0} max={24} value={splitLiftY} onChange={(e) => setSplitLiftY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-neutral-500 flex justify-between">Shadow <span className="tabular-nums text-neutral-400">{splitShadowOp.toFixed(2)}</span></label>
+                  <input type="range" min={0} max={40} value={Math.round(splitShadowOp * 100)} onChange={(e) => setSplitShadowOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" />
+                </div>
+              </>
+            )}
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Duration <span className="tabular-nums text-neutral-400">{splitDur}ms</span></label>
+              <input type="range" min={150} max={1200} step={10} value={splitDur} onChange={(e) => setSplitDur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+          </div>
+          <div className="pt-2 border-t border-neutral-100">
+            <button
+              onClick={() => { setSplitVariant("shrink"); setSplitAmount(44); setSplitScale(0.97); setSplitLiftY(4); setSplitShadowOp(0.12); setSplitDur(320); }}
+              className="text-[10px] text-neutral-400 hover:text-neutral-600 cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
       {showTuner && (
-        <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide">
-          <div><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Presets</p><div className="flex flex-wrap gap-1.5">{(Object.keys(SCROLL_PRESETS) as PresetKey[]).map((key) => (<button key={key} onClick={() => applyPreset(key)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${presetKey === key && !isCustom ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{SCROLL_PRESETS[key].label}</button>))}</div></div>
+        <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide" style={{ overscrollBehavior: "contain" }}>
           <div><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => setArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Fine Tune</p>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Stiffness <span className="tabular-nums text-neutral-400">{stiffness.toFixed(2)}</span></label><input type="range" min={2} max={40} value={Math.round(stiffness * 100)} onChange={(e) => { setCustomStiffness(Number(e.target.value) / 100); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Damping <span className="tabular-nums text-neutral-400">{damping.toFixed(2)}</span></label><input type="range" min={40} max={95} value={Math.round(damping * 100)} onChange={(e) => { setCustomDamping(Number(e.target.value) / 100); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Sensitivity <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={60} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
-          </div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Layout</p>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Robot width <span className="tabular-nums text-neutral-400">{robotW}vw</span></label><input type="range" min={15} max={50} value={robotW} onChange={(e) => setRobotW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Robot height <span className="tabular-nums text-neutral-400">{robotH}vh</span></label><input type="range" min={30} max={90} value={robotH} onChange={(e) => setRobotH(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Max width <span className="tabular-nums text-neutral-400">{robotMaxW}px</span></label><input type="range" min={200} max={800} step={10} value={robotMaxW} onChange={(e) => setRobotMaxW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Stats width <span className="tabular-nums text-neutral-400">{statsW}px</span></label><input type="range" min={0} max={300} step={5} value={statsW} onChange={(e) => setStatsW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{cardGap}px</span></label><input type="range" min={0} max={32} value={cardGap} onChange={(e) => setCardGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Stats gap <span className="tabular-nums text-neutral-400">{statsGap}px</span></label><input type="range" min={0} max={300} value={statsGap} onChange={(e) => setStatsGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{cardRadius}px</span></label><input type="range" min={0} max={32} value={cardRadius} onChange={(e) => setCardRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-          </div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Microinteractions</p>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Squish <span className="tabular-nums text-neutral-400">{robotSquish.toFixed(2)}</span></label><input type="range" min={0} max={15} value={Math.round(robotSquish * 100)} onChange={(e) => setRobotSquish(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Fade <span className="tabular-nums text-neutral-400">{robotFade.toFixed(2)}</span></label><input type="range" min={0} max={60} value={Math.round(robotFade * 100)} onChange={(e) => setRobotFade(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Bottom fade height <span className="tabular-nums text-neutral-400">{bottomFadeH}px</span></label><input type="range" min={0} max={120} value={bottomFadeH} onChange={(e) => setBottomFadeH(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Bottom fade opacity <span className="tabular-nums text-neutral-400">{bottomFadeOpacity.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(bottomFadeOpacity * 100)} onChange={(e) => setBottomFadeOpacity(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Nav</p>
+            <div><p className="text-[10px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Top offset <span className="tabular-nums text-neutral-400">{navTop}px</span></label><input type="range" min={0} max={48} value={navTop} onChange={(e) => setNavTop(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           {(arcStyle === "crown" || arcStyle === "arc-timeline") && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
@@ -1668,41 +1978,37 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
 
 // ─── Fonts ─────────────────────────────────────────────────────
 const FONTS = [
+  // Anchors
   { name: "Geist Sans", family: "var(--font-geist-sans)" },
+  { name: "Geist Mono", family: "var(--font-geist-mono)" },
   { name: "Inter", family: "var(--font-inter)" },
-  { name: "DM Sans", family: "var(--font-dm-sans)" },
-  { name: "Plus Jakarta Sans", family: "var(--font-jakarta)" },
-  { name: "Space Grotesk", family: "var(--font-space-grotesk)" },
-  { name: "Manrope", family: "var(--font-manrope)" },
-  { name: "Outfit", family: "var(--font-outfit)" },
-  { name: "Sora", family: "var(--font-sora)" },
-  { name: "Albert Sans", family: "var(--font-albert-sans)" },
-  { name: "Instrument Sans", family: "var(--font-instrument-sans)" },
-  { name: "Rubik", family: "var(--font-rubik)" },
-  { name: "Nunito Sans", family: "var(--font-nunito-sans)" },
-  { name: "Work Sans", family: "var(--font-work-sans)" },
-  { name: "Poppins", family: "var(--font-poppins)" },
-  { name: "Raleway", family: "var(--font-raleway)" },
-  { name: "Figtree", family: "var(--font-figtree)" },
-  { name: "Karla", family: "var(--font-karla)" },
-  { name: "Lexend", family: "var(--font-lexend)" },
-  { name: "Red Hat Display", family: "var(--font-red-hat-display)" },
-  { name: "Archivo", family: "var(--font-archivo)" },
-  { name: "Be Vietnam Pro", family: "var(--font-be-vietnam-pro)" },
-  { name: "Urbanist", family: "var(--font-urbanist)" },
-  { name: "Jost", family: "var(--font-jost)" },
-  { name: "Quicksand", family: "var(--font-quicksand)" },
-  { name: "Cabin", family: "var(--font-cabin)" },
-  { name: "Bricolage Grotesque", family: "var(--font-bricolage-grotesque)" },
-  { name: "Onest", family: "var(--font-onest)" },
-  { name: "Wix Madefor", family: "var(--font-wix-madefor)" },
-  { name: "Gabarito", family: "var(--font-gabarito)" },
-  { name: "Noto Sans", family: "var(--font-noto-sans)" },
-  { name: "Schibsted Grotesk", family: "var(--font-schibsted-grotesk)" },
+  // Aerospace / cockpit
+  { name: "B612", family: "var(--font-b612)" },
+  { name: "B612 Mono", family: "var(--font-b612-mono)" },
+  { name: "Space Mono", family: "var(--font-space-mono)" },
+  // Dev / computer
+  { name: "JetBrains Mono", family: "var(--font-jetbrains-mono)" },
+  { name: "IBM Plex Sans", family: "var(--font-ibm-plex-sans)" },
+  { name: "IBM Plex Mono", family: "var(--font-ibm-plex-mono)" },
+  { name: "Azeret Mono", family: "var(--font-azeret-mono)" },
+  { name: "Chivo Mono", family: "var(--font-chivo-mono)" },
+  { name: "Fira Code", family: "var(--font-fira-code)" },
+  // Sci-fi / futuristic
+  { name: "Orbitron", family: "var(--font-orbitron)" },
+  { name: "Chakra Petch", family: "var(--font-chakra-petch)" },
+  { name: "Oxanium", family: "var(--font-oxanium)" },
+  { name: "Rajdhani", family: "var(--font-rajdhani)" },
+  { name: "Exo 2", family: "var(--font-exo-2)" },
+  { name: "Michroma", family: "var(--font-michroma)" },
+  { name: "Major Mono Display", family: "var(--font-major-mono)" },
+  // Contemporary geometric
+  { name: "Tektur", family: "var(--font-tektur)" },
+  { name: "Anta", family: "var(--font-anta)" },
+  { name: "Syne", family: "var(--font-syne)" },
 ] as const;
 
 export default function Home() {
-  const [layout, setLayout] = useState<Layout>("Z");
+  const [layout, setLayout] = useState<Layout>("E");
 
   const [navStyle, setNavStyle] = useState<NavStyle>("underline");
   const [chatOpen, setChatOpen] = useState(false);
@@ -1715,6 +2021,7 @@ export default function Home() {
 
   // ── Intro animation state ──
   const [introPhase, setIntroPhase] = useState<"logo" | "exit" | "done">("logo");
+  const [motionActive, setMotionActive] = useState(true);
 
   useEffect(() => {
     // Phase 1: logo sits for a beat, then exits
@@ -1722,6 +2029,14 @@ export default function Home() {
     // Phase 2: overlay unmounts, content expands in
     const t2 = setTimeout(() => setIntroPhase("done"), 1150);
     return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  // Replay just the content/nav entrance animations (no loader)
+  const replayMotion = useCallback(() => {
+    setMotionActive(false);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setMotionActive(true));
+    });
   }, []);
 
   useEffect(() => {
@@ -1792,19 +2107,20 @@ export default function Home() {
 
       {/* ── Nav ── */}
       {introDone && (
-        <div className="intro-nav fixed inset-0 z-[999] pointer-events-none">
+        <div className={`fixed inset-0 z-[999] pointer-events-none ${motionActive ? "intro-nav" : "opacity-0"}`}>
           <LayoutSwitcher
             active={layout}
             onChange={setLayout}
             navStyle={navStyle}
             onNavStyleChange={setNavStyle}
+            onLogoClick={replayMotion}
           />
         </div>
       )}
 
       {/* ── Content ── */}
-      <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} />}
+      <div className={introDone && motionActive ? "intro-content" : "opacity-0"}>
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} />}
         {layout === "Z" && <EllipticalCarousel />}
       </div>
 
@@ -1843,7 +2159,7 @@ export default function Home() {
       )}
 
       {/* Bottom ? button */}
-      <div className={introDone ? "intro-nav" : "opacity-0"}>
+      <div className={introDone && motionActive ? "intro-nav" : "opacity-0"}>
         <button
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
           style={{ background: chatOpen ? "var(--c-ink)" : "#F7F7F7", color: chatOpen ? "white" : "#999" }}

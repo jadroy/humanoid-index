@@ -11,6 +11,11 @@
   letter-spacing: var(--tracking-tight, -0.03em);
 }
 
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 img {
   -webkit-user-drag: none;
   user-select: none;
