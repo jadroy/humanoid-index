@@ -22,91 +22,54 @@ function LogoMark({
   opacity = 0.25,
   size = 20,
   onClick,
-  onContextMenu,
+  loading = false,
+  ringColor = "var(--c-ink)",
 }: {
   fill?: string;
   opacity?: number;
   size?: number;
   onClick?: () => void;
-  onContextMenu?: (e: React.MouseEvent) => void;
+  loading?: boolean;
+  ringColor?: string;
 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 20 20"
-      fill="none"
-      style={{ opacity }}
-      className="cursor-pointer"
-      onClick={onClick}
-      onContextMenu={onContextMenu}
-    >
-      <circle cx="10" cy="5" r="3" fill={fill} />
-      <rect x="7" y="9.5" width="6" height="8" rx="3" fill={fill} />
-    </svg>
-  );
-}
-
-// ─── Logo right-click menu ──────────────────────────────────────
-type LogoAction = { label: string; onClick: () => void; shortcut?: string };
-function LogoMenu({
-  open,
-  x,
-  y,
-  onClose,
-  actions,
-}: {
-  open: boolean;
-  x: number;
-  y: number;
-  onClose: () => void;
-  actions: LogoAction[];
-}) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as HTMLElement;
-      if (!t.closest("[data-logo-menu]")) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("mousedown", onDown);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("mousedown", onDown);
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
-
+  const pad = 6; // breathing room so the ring sits outside the mark
+  const total = size + pad * 2;
   return (
     <div
-      data-logo-menu
-      className="fixed z-[1000] rounded-xl animate-logo-menu-in pointer-events-auto"
-      style={{
-        left: x,
-        top: y,
-        background: "rgba(255,255,255,0.96)",
-        backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
-        border: "1px solid rgba(0,0,0,0.06)",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.04)",
-        minWidth: 210,
-        padding: 6,
-        transformOrigin: "top left",
-      }}
+      className="relative inline-flex items-center justify-center cursor-pointer"
+      style={{ width: total, height: total }}
+      onClick={onClick}
     >
-      {actions.map((a, i) => (
-        <button
-          key={i}
-          onClick={() => { a.onClick(); onClose(); }}
-          className="w-full flex items-center justify-between text-left px-3 py-2 rounded-lg cursor-pointer transition-colors hover:bg-neutral-100"
-          style={{ background: "transparent", border: "none" }}
+      {loading && (
+        <svg
+          className="absolute inset-0 pointer-events-none animate-lucky-spin"
+          width={total}
+          height={total}
+          viewBox={`0 0 ${total} ${total}`}
         >
-          <span className="text-[12px]" style={{ color: "#404040" }}>{a.label}</span>
-          {a.shortcut && <span className="text-[10px] tabular-nums ml-6" style={{ color: "#a3a3a3" }}>{a.shortcut}</span>}
-        </button>
-      ))}
+          <circle
+            cx={total / 2}
+            cy={total / 2}
+            r={total / 2 - 1.5}
+            fill="none"
+            stroke={ringColor}
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeDasharray={`${(Math.PI * (total - 3)) * 0.28} ${(Math.PI * (total - 3)) * 0.72}`}
+            style={{ opacity: 0.55 }}
+          />
+        </svg>
+      )}
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 20 20"
+        fill="none"
+        style={{ opacity }}
+      >
+        <circle cx="10" cy="5" r="3" fill={fill} />
+        <rect x="7" y="9.5" width="6" height="8" rx="3" fill={fill} />
+      </svg>
     </div>
   );
 }
@@ -125,98 +88,28 @@ const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "sol
 type NavStyle = (typeof NAV_STYLES)[number];
 
 // ─── Layout Switcher ────────────────────────────────────────────
-const LOGO_SVG_MARKUP = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
-  <circle cx="10" cy="5" r="3" fill="currentColor"/>
-  <rect x="7" y="9.5" width="6" height="8" rx="3" fill="currentColor"/>
-</svg>`;
 
 function LayoutSwitcher({
   active,
   onChange,
   navStyle,
-  onNavStyleChange,
   onRandomHumanoid,
+  luckyActive = false,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
   navStyle: NavStyle;
   onNavStyleChange: (s: NavStyle) => void;
   onRandomHumanoid?: () => void;
+  luckyActive?: boolean;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 1500);
+  const handleClick = () => {
+    if (active !== "E") onChange("E" as Layout);
+    onRandomHumanoid?.();
   };
 
-  const actions: LogoAction[] = [
-    {
-      label: "Copy logo SVG",
-      onClick: () => {
-        navigator.clipboard.writeText(LOGO_SVG_MARKUP).then(() => showToast("Logo SVG copied"));
-      },
-    },
-    {
-      label: "Download SVG",
-      onClick: () => {
-        const blob = new Blob([LOGO_SVG_MARKUP], { type: "image/svg+xml" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "humanoid-index.svg";
-        a.click();
-        URL.revokeObjectURL(url);
-      },
-    },
-    {
-      label: "Copy link",
-      onClick: () => {
-        navigator.clipboard.writeText(window.location.href).then(() => showToast("Link copied"));
-      },
-    },
-    {
-      label: "Random humanoid",
-      shortcut: "⇧R",
-      onClick: () => onRandomHumanoid?.(),
-    },
-    {
-      label: `Nav style · ${navStyle}`,
-      onClick: () => {
-        const idx = NAV_STYLES.indexOf(navStyle);
-        onNavStyleChange(NAV_STYLES[(idx + 1) % NAV_STYLES.length]);
-      },
-    },
-  ];
-
-  const openMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setMenuPos({ x: e.clientX, y: e.clientY });
-    setMenuOpen(true);
-  };
-
-  const handleClick = () => onChange("E" as Layout);
-
-  const mark = <LogoMark onClick={handleClick} onContextMenu={openMenu} />;
-  const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} onContextMenu={openMenu} />;
-
-  const menuAndToast = (
-    <>
-      <LogoMenu open={menuOpen} x={menuPos.x} y={menuPos.y} onClose={() => setMenuOpen(false)} actions={actions} />
-      {toast && (
-        <div
-          className="fixed top-20 left-1/2 -translate-x-1/2 z-[1001] px-4 py-2 rounded-lg animate-blur-fade pointer-events-none"
-          style={{ background: "rgba(0,0,0,0.06)", backdropFilter: "blur(12px)" }}
-        >
-          <p className="text-[11px] tracking-wide" style={{ color: "#737373" }}>{toast}</p>
-        </div>
-      )}
-    </>
-  );
+  const mark = <LogoMark onClick={handleClick} loading={luckyActive} />;
+  const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} loading={luckyActive} ringColor="#fff" />;
 
   const frost = { background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } as React.CSSProperties;
 
@@ -362,7 +255,7 @@ function LayoutSwitcher({
     </nav>
   );
 
-  return <>{navEl}{menuAndToast}</>;
+  return navEl;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -451,6 +344,7 @@ function useSpring(s: number, d: number) {
   }, []);
 
   const getPos = useCallback(() => posRef.current + nudgeRef.current, []);
+  const getVel = useCallback(() => velRef.current, []);
 
   useEffect(() => {
     posRef.current = targetRef.current; velRef.current = 0; nudgeRef.current = 0;
@@ -461,7 +355,7 @@ function useSpring(s: number, d: number) {
     return () => { if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; } };
   }, [notify]);
 
-  return { index, subscribe, getPos, go, nudge, jumpTo, targetRef };
+  return { index, subscribe, getPos, getVel, go, nudge, jumpTo, targetRef };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -486,6 +380,16 @@ const arcStyleLabels: Record<ArcStyle, string> = {
 // ═══════════════════════════════════════════════════════════════
 type SpringSubscribe = (cb: (p: number) => void) => () => void;
 
+// Section derivation — determines which "chapter" a humanoid belongs to.
+// Customize this to change arc-timeline section separators.
+function getSection(h: typeof humanoids[0]): string {
+  if (h.id.startsWith("legend-")) return "Legends";
+  const y = h.year ?? 0;
+  if (y >= 2023) return "Modern";
+  if (y >= 2015) return "Prior wave";
+  return "Earlier";
+}
+
 // Imperative arc-timeline wheel: renders text nodes once per window, then
 // updates their x/y/transform/fontSize/opacity directly in response to spring
 // ticks — avoids a React reconciliation per frame.
@@ -498,11 +402,26 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
 }) {
   const wheelR = aWheelR;
   const r = wheelR - aTextGap;
+  const sepR = r + 26; // separators sit on an outer ring so they read as chapter markers
   const items: { i: number }[] = [];
   for (let n = index - 14; n <= index + 15; n++) {
     if (n >= 0 && n < humanoids.length) items.push({ i: n });
   }
+  // Section boundaries within the window. A separator sits between items with
+  // different sections, at the midpoint position (e.g., between index 5 and 6 → 5.5).
+  const separators: { pos: number; label: string }[] = [];
+  for (let n = 0; n < items.length - 1; n++) {
+    const a = humanoids[items[n].i];
+    const b = humanoids[items[n + 1].i];
+    if (!a || !b) continue;
+    const sA = getSection(a);
+    const sB = getSection(b);
+    if (sA !== sB) {
+      separators.push({ pos: (items[n].i + items[n + 1].i) / 2, label: sB });
+    }
+  }
   const textRefs = useRef<Array<SVGTextElement | null>>([]);
+  const sepRefs = useRef<Array<SVGGElement | null>>([]);
 
   useLayoutEffect(() => {
     const update = (pos: number) => {
@@ -534,9 +453,26 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
         el.style.fill = fill;
         el.style.opacity = String(op);
       }
+      for (let idx = 0; idx < separators.length; idx++) {
+        const g = sepRefs.current[idx];
+        if (!g) continue;
+        const sep = separators[idx];
+        const o = sep.pos - pos;
+        const deg = o * aStepDeg;
+        const rad = (deg * Math.PI) / 180;
+        const baseAngle = mirrored ? Math.PI : 0;
+        const theta = baseAngle + (mirrored ? -rad : rad);
+        const tx = wheelR + Math.cos(theta) * sepR;
+        const ty = wheelR + Math.sin(theta) * sepR;
+        const tangentDeg = (theta * 180) / Math.PI + (mirrored ? 180 : 0);
+        const dist = Math.abs(o);
+        const op = Math.max(0, 1 - Math.min(dist / 8, 1));
+        g.setAttribute("transform", `translate(${tx}, ${ty}) rotate(${tangentDeg})`);
+        g.style.opacity = String(op);
+      }
     };
     return subscribe(update);
-  }, [items, subscribe, mirrored, wheelR, r, aStepDeg, aFsMax, aFsMin]);
+  }, [items, separators, subscribe, mirrored, wheelR, r, sepR, aStepDeg, aFsMax, aFsMin]);
 
   return (
     <div className="absolute inset-0 overflow-visible pointer-events-auto">
@@ -573,6 +509,40 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
             </text>
           );
         })}
+        {separators.map((sep, idx) => (
+          <g
+            key={`sep-${sep.pos}-${sep.label}`}
+            ref={(el) => { sepRefs.current[idx] = el; }}
+          >
+            {/* tick mark */}
+            <line
+              x1={0}
+              y1={-6}
+              x2={0}
+              y2={6}
+              stroke="#a3a3a3"
+              strokeWidth="0.8"
+              strokeLinecap="round"
+            />
+            {/* section label */}
+            <text
+              x={mirrored ? -10 : 10}
+              y={0}
+              textAnchor={mirrored ? "end" : "start"}
+              dominantBaseline="middle"
+              style={{
+                fontFamily: "inherit",
+                fontSize: "8px",
+                fontWeight: 600,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                fill: "#a3a3a3",
+              }}
+            >
+              {sep.label}
+            </text>
+          </g>
+        ))}
       </svg>
     </div>
   );
@@ -1037,9 +1007,103 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Card "give" — subtle physical reactions to the spring, applied
+// imperatively on each subscription tick.
+// ═══════════════════════════════════════════════════════════════
+const GIVE_STYLES = [
+  "none", "squish-y", "squish-x", "breath", "sag", "float",
+  "push", "lean", "tilt", "blur", "dim", "drag",
+] as const;
+type GiveStyle = (typeof GIVE_STYLES)[number];
+const giveStyleLabels: Record<GiveStyle, string> = {
+  none: "None",
+  "squish-y": "Squish Y",
+  "squish-x": "Squish X",
+  breath: "Breath",
+  sag: "Sag",
+  float: "Float",
+  push: "Push",
+  lean: "Lean",
+  tilt: "Tilt",
+  blur: "Blur",
+  dim: "Dim",
+  drag: "Drag",
+};
+
+type GiveSettings = {
+  velScale: number;   // multiplier applied to raw spring velocity
+  pushAmt: number;    // px of translateY per unit velocity
+  leanAmt: number;    // degrees of rotateZ per unit velocity
+  tiltAmt: number;    // degrees of rotateX per unit velocity
+  tiltDepth: number;  // perspective depth for tilt (px)
+};
+
+function applyGive(
+  el: HTMLDivElement,
+  variant: GiveStyle,
+  pos: number,
+  vel: number,
+  s: GiveSettings,
+) {
+  const dist = Math.abs(pos - Math.round(pos)); // 0..0.5
+  // Normalize velocity into roughly [-1, 1] for the reactive variants.
+  const v = Math.max(-1, Math.min(1, vel * s.velScale));
+  switch (variant) {
+    case "none":
+      el.style.transform = "";
+      el.style.filter = "";
+      return;
+    case "squish-y":
+      el.style.transform = `scaleY(${1 - dist * 0.04})`;
+      el.style.filter = "";
+      return;
+    case "squish-x":
+      el.style.transform = `scaleX(${1 - dist * 0.04})`;
+      el.style.filter = "";
+      return;
+    case "breath":
+      el.style.transform = `scale(${1 - dist * 0.025})`;
+      el.style.filter = "";
+      return;
+    case "sag":
+      el.style.transform = `translateY(${dist * 5}px)`;
+      el.style.filter = "";
+      return;
+    case "float":
+      el.style.transform = `translateY(${-dist * 5}px)`;
+      el.style.filter = "";
+      return;
+    case "push":
+      el.style.transform = `translateY(${v * s.pushAmt}px)`;
+      el.style.filter = "";
+      return;
+    case "lean":
+      el.style.transform = `rotate(${v * s.leanAmt}deg)`;
+      el.style.filter = "";
+      return;
+    case "tilt":
+      el.style.transform = `perspective(${s.tiltDepth}px) rotateX(${-v * s.tiltAmt}deg)`;
+      el.style.filter = "";
+      return;
+    case "blur":
+      el.style.transform = "";
+      el.style.filter = `blur(${dist * 2.2}px)`;
+      return;
+    case "dim":
+      el.style.transform = "";
+      el.style.filter = `brightness(${1 - dist * 0.14})`;
+      return;
+    case "drag":
+      el.style.transform = `scaleY(${1 - dist * 0.025}) translateY(${v * s.pushAmt * 0.6}px)`;
+      el.style.filter = "";
+      return;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyActive = false }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; luckyNonce?: number; luckyActive?: boolean }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -1049,6 +1113,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
   const [bottomFadeH, setBottomFadeH] = useState(40);
   const [bottomFadeOpacity, setBottomFadeOpacity] = useState(0.9);
   const [showTuner, setShowTuner] = useState(false);
+  const [buyLayout, setBuyLayout] = useState<"card" | "chip">("card");
+  const [buyCardStyle, setBuyCardStyle] = useState<"split" | "dark">("split");
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
@@ -1071,6 +1137,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
   const [miniCrownRadius, setMiniCrownRadius] = useState(70);
   const [arcInset, setArcInset] = useState(70);
   const [navTop, setNavTop] = useState(8);
+  const [giveStyle, setGiveStyle] = useState<GiveStyle>("none");
+  const [giveVelScale, setGiveVelScale] = useState(3);
+  const [givePushAmt, setGivePushAmt] = useState(5);
+  const [giveLeanAmt, setGiveLeanAmt] = useState(0.9);
+  const [giveTiltAmt, setGiveTiltAmt] = useState(4);
+  const [giveTiltDepth, setGiveTiltDepth] = useState(800);
   const [arcWheelR, setArcWheelR] = useState(700);
   const [arcStepDeg, setArcStepDeg] = useState(3.5);
   const [arcTextGap, setArcTextGap] = useState(15);
@@ -1080,6 +1152,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
   // Per-card gallery index: keyed by humanoid index
   const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
   const galleryScrollRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  // Inner-card refs — spring subscriptions drive a subtle "give" transform
+  const leftCardRef = useRef<HTMLDivElement | null>(null);
+  const rightCardRef = useRef<HTMLDivElement | null>(null);
   const [openStat, setOpenStat] = useState<string | null>(null);
   // Layout dimensions
   const [robotW, setRobotW] = useState(30);       // vw
@@ -1152,6 +1227,46 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
   const springR = useSpring(stiffness, damping);
   const activeGo = comparing ? (activeSide === "left" ? springL.go : springR.go) : springL.go;
 
+  // Continuous card "give" — dispatches to the active variant on each
+  // spring tick. Variant + settings changes hot-swap the callback.
+  const effectiveGive: GiveStyle = luckyActive ? "tilt" : giveStyle;
+  const giveSettings: GiveSettings = {
+    velScale: giveVelScale,
+    pushAmt: givePushAmt,
+    leanAmt: giveLeanAmt,
+    tiltAmt: giveTiltAmt,
+    tiltDepth: giveTiltDepth,
+  };
+  const giveSettingsRef = useRef(giveSettings);
+  giveSettingsRef.current = giveSettings;
+  const giveStyleRef = useRef(effectiveGive);
+  giveStyleRef.current = effectiveGive;
+  useLayoutEffect(() => {
+    const make = (
+      ref: React.MutableRefObject<HTMLDivElement | null>,
+      getVel: () => number,
+    ) => (pos: number) => {
+      const el = ref.current;
+      if (!el) return;
+      applyGive(el, giveStyleRef.current, pos, getVel(), giveSettingsRef.current);
+    };
+    const unsubL = springL.subscribe(make(leftCardRef, springL.getVel));
+    const unsubR = springR.subscribe(make(rightCardRef, springR.getVel));
+    return () => { unsubL(); unsubR(); };
+  }, [springL.subscribe, springR.subscribe, springL.getVel, springR.getVel]);
+
+  // Re-apply immediately when variant or slider values change so the preview
+  // reflects the new settings even while the spring is at rest.
+  useLayoutEffect(() => {
+    const apply = (ref: React.MutableRefObject<HTMLDivElement | null>, getPos: () => number, getVel: () => number) => {
+      const el = ref.current;
+      if (!el) return;
+      applyGive(el, effectiveGive, getPos(), getVel(), giveSettingsRef.current);
+    };
+    apply(leftCardRef, springL.getPos, springL.getVel);
+    apply(rightCardRef, springR.getPos, springR.getVel);
+  }, [effectiveGive, giveVelScale, givePushAmt, giveLeanAmt, giveTiltAmt, giveTiltDepth, springL.getPos, springR.getPos, springL.getVel, springR.getVel]);
+
   // External navigation from chat
   useEffect(() => {
     if (goToIndex != null) springL.jumpTo(goToIndex);
@@ -1182,6 +1297,26 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
   // Global wheel — velocity-aware stepping + elastic pre-threshold feedback
   const activeSideRef = useRef(activeSide); activeSideRef.current = activeSide;
   const comparingRef = useRef(comparing); comparingRef.current = comparing;
+
+  // "I'm feeling lucky" — react to Home bumping the nonce. Skip the initial 0.
+  useEffect(() => {
+    if (!luckyNonce) return;
+    const pickDifferent = (exclude: number[]) => {
+      let t = Math.floor(Math.random() * humanoids.length);
+      let guard = 0;
+      while (exclude.includes(t) && guard++ < 20) {
+        t = Math.floor(Math.random() * humanoids.length);
+      }
+      return t;
+    };
+    const targetL = pickDifferent([springL.index]);
+    springL.jumpTo(targetL);
+    if (comparing) {
+      const targetR = pickDifferent([springR.index, targetL]);
+      springR.jumpTo(targetR);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [luckyNonce]);
   useEffect(() => {
     let acc = 0;
     let lastTime = 0;
@@ -1526,21 +1661,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
               <p className="text-[11px] mt-2" style={{ color: "#999" }}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : "No longer in active production."}</p>
             </div>
           ) },
-          { key: "buy", show: !!(h.purchaseUrl || (h.cost && h.cost !== "N/A")), content: (
-            h.purchaseUrl ? (
-              <a href={h.purchaseUrl} target="_blank" rel="noopener noreferrer"
-                className="pointer-events-auto block"
-                style={{ textDecoration: "none", background: "#2563eb", margin: "-12px", padding: "12px", borderRadius: cardRadius }}>
-                <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.7)" }}>From {h.cost && h.cost !== "N/A" ? h.cost : ""}</p>
-                <p className="text-[13px] font-medium mt-1" style={{ color: "#fff" }}>Buy &rarr;</p>
-              </a>
-            ) : (
-              <>
-                <p className="text-[13px]" style={{ color: "#999" }}>{h.status === "In Production" ? "Starting at" : "Est."}</p>
-                <p className="text-[13px] font-medium mt-1" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}>{h.cost}</p>
-              </>
-            )
-          )},
         ];
         };
 
@@ -1596,7 +1716,106 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
                   );
                 })}
               </div>
+              {buyLayout === "card" && renderBuyCard(h)}
             </div>
+          );
+        };
+
+        const renderBuyCard = (h: typeof humanoids[0]) => {
+          const hasBuy = !!(h.purchaseUrl || (h.cost && h.cost !== "N/A"));
+          if (!hasBuy) return null;
+          const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
+          const leadIn = h.status === "In Production" ? "From" : "Est.";
+          const href = h.purchaseUrl;
+
+          if (buyCardStyle === "split") {
+            const priceContainer = (
+              <div className="flex items-center pointer-events-auto" style={{
+                flex: 1,
+                minWidth: 0,
+                borderRadius: cardRadius,
+                background: "#FAFAFA",
+                padding: "10px 16px",
+                minHeight: 52,
+              }}>
+                <div className="min-w-0">
+                  <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                    {priceLabel ? leadIn : "Price"}
+                  </p>
+                  <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                    {priceLabel || "Inquire"}
+                  </p>
+                </div>
+              </div>
+            );
+            const circleStyle: React.CSSProperties = {
+              width: 52,
+              height: 52,
+              borderRadius: 999,
+              background: "#FAFAFA",
+              flexShrink: 0,
+            };
+            const circleIcon = (
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1d1d1f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
+              </svg>
+            );
+            const linkCircle = href ? (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Buy ${h.name}`}
+                className="flex items-center justify-center pointer-events-auto transition-colors hover:bg-neutral-100"
+                style={{ ...circleStyle, textDecoration: "none" }}
+              >
+                {circleIcon}
+              </a>
+            ) : (
+              <div className="flex items-center justify-center pointer-events-auto" style={{ ...circleStyle, opacity: 0.4 }}>
+                {circleIcon}
+              </div>
+            );
+            return (
+              <div className="flex items-center" style={{ flexShrink: 0, gap: cardGap }}>
+                {priceContainer}
+                {linkCircle}
+              </div>
+            );
+          }
+
+          // "dark" — slim sleek premium CTA
+          const darkBody = (
+            <>
+              <span className="text-[9px] tracking-[0.14em] uppercase font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
+                {href ? "Purchase" : "Price"}
+              </span>
+              <span className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[12px] font-medium tabular-nums truncate" style={{ color: "#fff", letterSpacing: "-0.01em" }}>
+                  {priceLabel || "Inquire"}
+                </span>
+                {href && (
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75 }}>
+                    <path d="M3.5 8.5 8.5 3.5M4.5 3.5h4v4" />
+                  </svg>
+                )}
+              </span>
+            </>
+          );
+          const darkStyle: React.CSSProperties = {
+            background: "#0f0f10",
+            borderRadius: 999,
+            padding: "7px 14px",
+            flexShrink: 0,
+            height: 32,
+          };
+          const darkClass = "flex items-center justify-between gap-3 pointer-events-auto transition-[filter] hover:brightness-125";
+          return href ? (
+            <a href={href} target="_blank" rel="noopener noreferrer" className={darkClass} style={{ ...darkStyle, textDecoration: "none" }}>
+              {darkBody}
+            </a>
+          ) : (
+            <div className={darkClass} style={darkStyle}>{darkBody}</div>
           );
         };
 
@@ -1801,7 +2020,104 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
           );
         };
 
-        const renderRobot = (h: typeof humanoids[0], dist: number, hIdx: number, isFirst: boolean) => {
+        const renderMedia = (mh: typeof humanoids[0], mIdx: number, markPriority: boolean) => {
+          const mGallery = mh.media?.filter((m) => m.type === "image") || [];
+          const mImages = [mh.imageUrl, ...mGallery.map((m) => m.url)].filter(Boolean) as string[];
+          const mHasGallery = mImages.length > 1;
+          const mCurrent = galleryIdx[mIdx] || 0;
+
+          const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+            const el = e.currentTarget;
+            const idx = Math.round(el.scrollLeft / el.clientWidth);
+            if (idx !== (galleryIdx[mIdx] || 0)) {
+              setGalleryIdx((prev) => ({ ...prev, [mIdx]: idx }));
+            }
+          };
+
+          return (
+            <>
+              {/* New badge — rides with the humanoid */}
+              {mh.year === 2025 && (
+                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 text-[9px] tracking-[0.08em] uppercase font-medium" style={{ borderRadius: Math.max(3, cardRadius - 1), background: "#fef0e4", color: "#c47a2a" }}>New</div>
+              )}
+              <div
+                ref={(el) => { galleryScrollRefs.current[mIdx] = el; }}
+                data-gallery-scroll={mHasGallery ? "" : undefined}
+                className="scrollbar-hide"
+                style={{
+                  display: "flex",
+                  width: "100%", height: "100%",
+                  overflowX: mHasGallery ? "auto" : "hidden",
+                  overflowY: "hidden",
+                  scrollSnapType: "x mandatory",
+                }}
+                onScroll={mHasGallery ? onScroll : undefined}
+              >
+                {mImages.length > 0 ? mImages.map((src, i) => (
+                  <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: mh.imageFit === "cover" ? 0 : mh.imagePosition === "bottom" ? "24px 24px 0 24px" : 24 }}>
+                    <div className="relative w-full h-full">
+                      <Image src={src} alt={`${mh.name} ${i + 1}`} fill className={mh.imageFit === "cover" ? "object-cover" : "object-contain"} style={mh.imagePosition ? { objectPosition: mh.imagePosition } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
+                    </div>
+                  </div>
+                )) : (
+                  <div className="relative flex items-center justify-center p-6 pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
+                    <PlaceholderLogo />
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom fade for cut-off images */}
+              {mh.imagePosition?.includes("bottom") && (
+                <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]" style={{ height: bottomFadeH, background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))` }} />
+              )}
+              {/* Dot strip — overlaid at bottom with fade */}
+              {mHasGallery && (
+                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none" style={{ height: 28, background: "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))" }}>
+                  <div className="flex gap-1.5">
+                    {mImages.map((_, i) => (
+                      <div key={i} style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: i === mCurrent ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)",
+                        transition: "background 0.2s ease",
+                      }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        };
+
+        const renderBuyChip = (h: typeof humanoids[0]) => {
+          if (!h.purchaseUrl) return null;
+          return (
+            <div className="absolute z-[6]" style={{ top: 14, right: 14 }}>
+              <a
+                href={h.purchaseUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Buy ${h.name}`}
+                className="flex items-center justify-center pointer-events-auto transition-transform hover:scale-[1.06]"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 999,
+                  background: "#fff",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.06), 0 4px 14px rgba(0,0,0,0.08)",
+                  textDecoration: "none",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#1d1d1f" strokeWidth="1.75" strokeLinecap="round">
+                  <path d="M7 2.5v9M2.5 7h9" />
+                </svg>
+              </a>
+            </div>
+          );
+        };
+
+        const renderRobot = (h: typeof humanoids[0], _dist: number, hIdx: number, isFirst: boolean) => {
           const gallery = h.media?.filter((m) => m.type === "image") || [];
           const allImages = [h.imageUrl, ...gallery.map((m) => m.url)].filter(Boolean) as string[];
           const hasGallery = allImages.length > 1;
@@ -1814,18 +2130,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
             el.scrollTo({ left: child.offsetLeft, behavior: "smooth" });
           };
 
-          const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
-            const el = e.currentTarget;
-            const idx = Math.round(el.scrollLeft / el.clientWidth);
-            if (idx !== (galleryIdx[hIdx] || 0)) {
-              setGalleryIdx((prev) => ({ ...prev, [hIdx]: idx }));
-            }
-          };
-
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
             {/* Inner card */}
             <div
+              ref={isFirst ? leftCardRef : rightCardRef}
               className="relative flex flex-col overflow-hidden"
               style={{
                 width: comparing ? `${robotW - 8}vw` : `${robotW}vw`,
@@ -1835,64 +2144,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
                 background: "#FAFAFA",
                 pointerEvents: "auto",
                 transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
+                willChange: "transform",
               }}
             >
-              {/* New badge */}
-              {h.year === 2025 && (
-                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 text-[9px] tracking-[0.08em] uppercase font-medium" style={{ borderRadius: Math.max(3, cardRadius - 1), background: "#fef0e4", color: "#c47a2a" }}>New</div>
-              )}
-              {/* Media area — fills remaining space */}
-              <div className="relative flex-1 min-h-0">
-                <div
-                  ref={(el) => { galleryScrollRefs.current[hIdx] = el; }}
-                  data-gallery-scroll={hasGallery ? "" : undefined}
-                  className="scrollbar-hide"
-                  style={{
-                    display: "flex",
-                    width: "100%", height: "100%",
-                    overflowX: hasGallery ? "auto" : "hidden",
-                    overflowY: "hidden",
-                    scrollSnapType: "x mandatory",
-                    opacity: Math.max(0.5, 1 - dist * robotFade),
-                  }}
-                  onScroll={hasGallery ? onScroll : undefined}
-                >
-                  {allImages.length > 0 ? allImages.map((src, i) => (
-                    <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: h.imageFit === "cover" ? 0 : h.imagePosition === "bottom" ? "24px 24px 0 24px" : 24 }}>
-                      <div className="relative w-full h-full">
-                        <Image src={src} alt={`${h.name} ${i + 1}`} fill className={h.imageFit === "cover" ? "object-cover" : "object-contain"} style={h.imagePosition ? { objectPosition: h.imagePosition } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={isFirst && i === 0} />
-                      </div>
-                    </div>
-                  )) : (
-                    <div className="relative flex items-center justify-center p-6 pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
-                      <PlaceholderLogo />
-                    </div>
-                  )}
-                </div>
-
-                {/* Bottom fade for cut-off images */}
-                {h.imagePosition?.includes("bottom") && (
-                  <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]" style={{ height: bottomFadeH, background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))` }} />
-                )}
-                {/* Dot strip — overlaid at bottom with fade */}
-                {hasGallery && (
-                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none" style={{ height: 28, background: "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))" }}>
-                    <div className="flex gap-1.5">
-                      {allImages.map((_, i) => (
-                        <div key={i} style={{
-                          width: 5,
-                          height: 5,
-                          borderRadius: "50%",
-                          background: i === currentImg ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)",
-                          transition: "background 0.2s ease",
-                        }} />
-                      ))}
-                    </div>
-                  </div>
-                )}
+              {/* Media area */}
+              <div className="relative flex-1 min-h-0 overflow-hidden">
+                {renderMedia(h, hIdx, isFirst)}
               </div>
 
-              {/* Hover arrows — at card level, above scroll container */}
+              {/* Hover arrows — anchored to the active humanoid's gallery */}
               {hasGallery && currentImg > 0 && (
                 <button
                   className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[5]"
@@ -1911,6 +2171,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
                   <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,1.5 6,5 2,8.5" /></svg>
                 </button>
               )}
+
+              {buyLayout === "chip" && renderBuyChip(h)}
 
             </div>
 
@@ -2008,6 +2270,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
 
       {/* ── Tuner ── */}
       <button className="absolute top-20 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowTuner(!showTuner)}>{showTuner ? "Close" : "Tune"}</button>
+
       <button className="absolute top-32 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowSplitTuner(!showSplitTuner)}>{showSplitTuner ? "Close" : "Split"}</button>
       {showSplitTuner && (
         <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
@@ -2066,10 +2329,46 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
       )}
       {showTuner && (
         <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide" style={{ overscrollBehavior: "contain" }}>
-          <div><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => setArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
+          <div>
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Buy</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(["card", "chip"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setBuyLayout(v)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${buyLayout === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {v === "card" ? "Stats card" : "Image chip"}
+                </button>
+              ))}
+            </div>
+            {buyLayout === "card" && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {(["split", "dark"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setBuyCardStyle(v)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${buyCardStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => setArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Nav</p>
             <div><p className="text-[10px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Top offset <span className="tabular-nums text-neutral-400">{navTop}px</span></label><input type="range" min={0} max={48} value={navTop} onChange={(e) => setNavTop(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+          </div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Card Give</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setGiveVelScale(3); setGivePushAmt(5); setGiveLeanAmt(0.9); setGiveTiltAmt(4); setGiveTiltDepth(800); }}>Reset</button></div>
+            <div className="flex flex-wrap gap-1.5">{GIVE_STYLES.map((s) => (<button key={s} onClick={() => setGiveStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${giveStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{giveStyleLabels[s]}</button>))}</div>
+            <div style={{ opacity: (giveStyle === "push" || giveStyle === "lean" || giveStyle === "tilt" || giveStyle === "drag") ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Velocity scale <span className="tabular-nums text-neutral-400">{giveVelScale.toFixed(1)}</span></label><input type="range" min={5} max={80} value={Math.round(giveVelScale * 10)} onChange={(e) => setGiveVelScale(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: (giveStyle === "push" || giveStyle === "drag") ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Push amount <span className="tabular-nums text-neutral-400">{givePushAmt}px</span></label><input type="range" min={0} max={30} value={givePushAmt} onChange={(e) => setGivePushAmt(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: giveStyle === "lean" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Lean amount <span className="tabular-nums text-neutral-400">{giveLeanAmt.toFixed(1)}°</span></label><input type="range" min={0} max={50} value={Math.round(giveLeanAmt * 10)} onChange={(e) => setGiveLeanAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Tilt amount <span className="tabular-nums text-neutral-400">{giveTiltAmt.toFixed(1)}°</span></label><input type="range" min={0} max={200} value={Math.round(giveTiltAmt * 10)} onChange={(e) => setGiveTiltAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Tilt depth <span className="tabular-nums text-neutral-400">{giveTiltDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={giveTiltDepth} onChange={(e) => setGiveTiltDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           {(arcStyle === "crown" || arcStyle === "arc-timeline") && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
@@ -2251,6 +2550,10 @@ export default function Home() {
   const [navStyle, setNavStyle] = useState<NavStyle>("underline");
   const [chatOpen, setChatOpen] = useState(false);
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
+  const [luckyActive, setLuckyActive] = useState(false);
+  const [luckyNonce, setLuckyNonce] = useState(0);
+  const luckyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (luckyTimer.current) clearTimeout(luckyTimer.current); }, []);
   const [fontIdx, setFontIdx] = useState(0);
   const [textDim, setTextDim] = useState(0);
   const [showFontToast, setShowFontToast] = useState(false);
@@ -2301,12 +2604,13 @@ export default function Home() {
   };
 
   const onRandomHumanoid = useCallback(() => {
-    const idx = Math.floor(Math.random() * humanoids.length);
-    setLayout("E");
-    setGoToIndex(idx);
+    if (layout !== "E") setLayout("E");
     setChatOpen(false);
-    setTimeout(() => setGoToIndex(null), 100);
-  }, []);
+    setLuckyNonce((n) => n + 1);
+    setLuckyActive(true);
+    if (luckyTimer.current) clearTimeout(luckyTimer.current);
+    luckyTimer.current = setTimeout(() => setLuckyActive(false), 1400);
+  }, [layout]);
 
   const introDone = introPhase === "done";
 
@@ -2359,13 +2663,14 @@ export default function Home() {
             navStyle={navStyle}
             onNavStyleChange={setNavStyle}
             onRandomHumanoid={onRandomHumanoid}
+            luckyActive={luckyActive}
           />
         </div>
       )}
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} luckyNonce={luckyNonce} luckyActive={luckyActive} />}
         {layout === "Z" && <EllipticalCarousel />}
       </div>
 
