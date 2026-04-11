@@ -80,113 +80,105 @@ export default function EllipticalCarousel() {
   const floorLayout = layoutFor(floorEntries.length);
   const ceilLayout = layoutFor(ceilEntries.length);
 
+  // Swift slide values shared by card grid and year label
+  const CARD_SLIDE = 260;
+  const LABEL_SLIDE = 90;
+  const fadeOut = Math.max(0, 1 - frac * 1.9);
+  const fadeIn = Math.max(0, Math.min(1, (frac - 0.15) * 1.9));
+  const floorDx = -frac * CARD_SLIDE;
+  const ceilDx = (1 - frac) * CARD_SLIDE;
+  const floorLabelDx = -frac * LABEL_SLIDE;
+  const ceilLabelDx = (1 - frac) * LABEL_SLIDE;
+
   return (
     <div className="h-screen overflow-hidden select-none relative bg-white flex flex-col">
-      {/* Cards area */}
+      {/* Cards area — swift slide between adjacent years.
+          Floor (older) exits left; ceil (newer) enters from right. */}
       <div className="flex-1 flex items-center justify-center px-8 pt-12">
         <div className="flex flex-col items-center">
-          {/* Swift slide between adjacent years.
-              Floor (older) exits left; ceil (newer) enters from right.
-              Opacity curve is accelerated so cards vanish fast and the
-              slide reads as motion, not a crossfade blur. */}
-          {(() => {
-            const CARD_SLIDE = 260;      // px the card grid travels
-            const LABEL_SLIDE = 90;      // px the year label travels
-            const fadeOut = Math.max(0, 1 - frac * 1.9);           // floor gone by ~0.53
-            const fadeIn = Math.max(0, Math.min(1, (frac - 0.15) * 1.9)); // ceil starts at 0.15, full by ~0.68
-            const floorDx = -frac * CARD_SLIDE;
-            const ceilDx = (1 - frac) * CARD_SLIDE;
-            const floorLabelDx = -frac * LABEL_SLIDE;
-            const ceilLabelDx = (1 - frac) * LABEL_SLIDE;
-            return (
-              <>
-                {/* Year label */}
-                <div className="relative mb-6" style={{ height: 44 }}>
-                  <div
-                    className="absolute inset-0 flex items-center justify-center gap-3"
-                    style={{
-                      opacity: fadeOut,
-                      transform: `translate3d(${floorLabelDx}px,0,0)`,
-                      willChange: "transform, opacity",
-                    }}
-                  >
-                    <span
-                      className="text-[36px] font-light tabular-nums"
-                      style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}
-                    >
-                      {floorYear}
-                    </span>
-                    <span className="text-[12px] text-neutral-300 uppercase tracking-wider">
-                      {floorEntries.length} {floorEntries.length === 1 ? "robot" : "robots"}
-                    </span>
-                  </div>
-                  {!sameIdx && frac > 0.001 && (
-                    <div
-                      className="absolute inset-0 flex items-center justify-center gap-3"
-                      style={{
-                        opacity: fadeIn,
-                        transform: `translate3d(${ceilLabelDx}px,0,0)`,
-                        willChange: "transform, opacity",
-                      }}
-                    >
-                      <span
-                        className="text-[36px] font-light tabular-nums"
-                        style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}
-                      >
-                        {ceilYear}
-                      </span>
-                      <span className="text-[12px] text-neutral-300 uppercase tracking-wider">
-                        {ceilEntries.length} {ceilEntries.length === 1 ? "robot" : "robots"}
-                      </span>
-                    </div>
-                  )}
+          <div className="relative">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${floorLayout.cols}, ${floorLayout.cardW}px)`,
+                gap: CARD_GAP,
+                opacity: fadeOut,
+                transform: `translate3d(${floorDx}px,0,0)`,
+                willChange: "transform, opacity",
+                pointerEvents: frac > 0.5 ? "none" : "auto",
+              }}
+            >
+              {floorEntries.map((h) => (
+                <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} width={floorLayout.cardW} />
+              ))}
+            </div>
+            {!sameIdx && frac > 0.001 && (
+              <div
+                className="absolute inset-0 flex items-start justify-center"
+                style={{
+                  opacity: fadeIn,
+                  transform: `translate3d(${ceilDx}px,0,0)`,
+                  willChange: "transform, opacity",
+                  pointerEvents: frac > 0.5 ? "auto" : "none",
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${ceilLayout.cols}, ${ceilLayout.cardW}px)`,
+                    gap: CARD_GAP,
+                  }}
+                >
+                  {ceilEntries.map((h) => (
+                    <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} width={ceilLayout.cardW} />
+                  ))}
                 </div>
-
-                {/* Card grid */}
-                <div className="relative">
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: `repeat(${floorLayout.cols}, ${floorLayout.cardW}px)`,
-                      gap: CARD_GAP,
-                      opacity: fadeOut,
-                      transform: `translate3d(${floorDx}px,0,0)`,
-                      willChange: "transform, opacity",
-                      pointerEvents: frac > 0.5 ? "none" : "auto",
-                    }}
-                  >
-                    {floorEntries.map((h) => (
-                      <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} width={floorLayout.cardW} />
-                    ))}
-                  </div>
-                  {!sameIdx && frac > 0.001 && (
-                    <div
-                      className="absolute inset-0 flex items-start justify-center"
-                      style={{
-                        opacity: fadeIn,
-                        transform: `translate3d(${ceilDx}px,0,0)`,
-                        willChange: "transform, opacity",
-                        pointerEvents: frac > 0.5 ? "auto" : "none",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: `repeat(${ceilLayout.cols}, ${ceilLayout.cardW}px)`,
-                          gap: CARD_GAP,
-                        }}
-                      >
-                        {ceilEntries.map((h) => (
-                          <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} width={ceilLayout.cardW} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            );
-          })()}
+              </div>
+            )}
+          </div>
         </div>
+      </div>
+
+      {/* Year display — sits above the arc so the big label pairs with the active dot */}
+      <div className="flex-shrink-0 relative pointer-events-none" style={{ height: 56 }}>
+        <div
+          className="absolute inset-0 flex items-end justify-center gap-3 pb-1"
+          style={{
+            opacity: fadeOut,
+            transform: `translate3d(${floorLabelDx}px,0,0)`,
+            willChange: "transform, opacity",
+          }}
+        >
+          <span
+            className="text-[40px] font-light tabular-nums leading-none"
+            style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}
+          >
+            {floorYear}
+          </span>
+          <span className="text-[11px] text-neutral-400 uppercase tracking-wider pb-1.5">
+            {floorEntries.length} {floorEntries.length === 1 ? "robot" : "robots"}
+          </span>
+        </div>
+        {!sameIdx && frac > 0.001 && (
+          <div
+            className="absolute inset-0 flex items-end justify-center gap-3 pb-1"
+            style={{
+              opacity: fadeIn,
+              transform: `translate3d(${ceilLabelDx}px,0,0)`,
+              willChange: "transform, opacity",
+            }}
+          >
+            <span
+              className="text-[40px] font-light tabular-nums leading-none"
+              style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}
+            >
+              {ceilYear}
+            </span>
+            <span className="text-[11px] text-neutral-400 uppercase tracking-wider pb-1.5">
+              {ceilEntries.length} {ceilEntries.length === 1 ? "robot" : "robots"}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Arc wheel — bottom, clipped */}
@@ -258,13 +250,12 @@ export default function EllipticalCarousel() {
                   y={cy - 12}
                   textAnchor="middle"
                   style={{
-                    fontSize: 9 + 2 * activeWeight,
-                    fontWeight: activeWeight > 0.5 ? 600 : 400,
-                    fill: activeWeight > 0.001
-                      ? `rgba(29,29,31,${0.4 + 0.6 * activeWeight})`
-                      : "#b3b3b3",
+                    fontSize: 9,
+                    fontWeight: 400,
+                    fill: "#b3b3b3",
                     fontFamily: "inherit",
                     letterSpacing: "-0.01em",
+                    opacity: 1 - activeWeight,
                   }}
                 >
                   {year}
