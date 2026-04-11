@@ -1277,12 +1277,32 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
   const ease = "cubic-bezier(0.4, 0, 0.2, 1)";
   const dur = "0.5s";
 
-  // Preload ±2 neighbor images around each active index so integer crossings
-  // don't flash waiting for Next/Image to fetch+decode.
+  // Image preloader. Starts tight (±2 around current) then widens during
+  // idle time until every humanoid's image has been fetched via the same
+  // Next/Image optimization pipeline — crossings always hit cache, even
+  // on the first pass.
+  const [preloadRadius, setPreloadRadius] = useState(2);
+  useEffect(() => {
+    if (preloadRadius >= humanoids.length) return;
+    type IdleWindow = Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (h: number) => void;
+    };
+    const w = window as IdleWindow;
+    const run = () => setPreloadRadius((r) => Math.min(humanoids.length, r + 4));
+    let handle: number;
+    if (w.requestIdleCallback) {
+      handle = w.requestIdleCallback(run, { timeout: 1500 });
+      return () => { w.cancelIdleCallback?.(handle); };
+    }
+    handle = window.setTimeout(run, 400);
+    return () => { window.clearTimeout(handle); };
+  }, [preloadRadius]);
+
   const preloadIndices = (() => {
     const s = new Set<number>();
     const add = (idx: number) => {
-      for (let k = -2; k <= 2; k++) {
+      for (let k = -preloadRadius; k <= preloadRadius; k++) {
         const n = idx + k;
         if (n >= 0 && n < humanoids.length && k !== 0) s.add(n);
       }
