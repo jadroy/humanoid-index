@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -12,6 +12,101 @@ function PlaceholderLogo({ className }: { className?: string }) {
         <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
         <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
       </svg>
+    </div>
+  );
+}
+
+// ─── Logo mark ──────────────────────────────────────────────────
+function LogoMark({
+  fill = "var(--c-ink)",
+  opacity = 0.25,
+  size = 20,
+  onClick,
+  onContextMenu,
+}: {
+  fill?: string;
+  opacity?: number;
+  size?: number;
+  onClick?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      fill="none"
+      style={{ opacity }}
+      className="cursor-pointer"
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+    >
+      <circle cx="10" cy="5" r="3" fill={fill} />
+      <rect x="7" y="9.5" width="6" height="8" rx="3" fill={fill} />
+    </svg>
+  );
+}
+
+// ─── Logo right-click menu ──────────────────────────────────────
+type LogoAction = { label: string; onClick: () => void; shortcut?: string };
+function LogoMenu({
+  open,
+  x,
+  y,
+  onClose,
+  actions,
+}: {
+  open: boolean;
+  x: number;
+  y: number;
+  onClose: () => void;
+  actions: LogoAction[];
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest("[data-logo-menu]")) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onDown);
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      data-logo-menu
+      className="fixed z-[1000] rounded-xl animate-logo-menu-in pointer-events-auto"
+      style={{
+        left: x,
+        top: y,
+        background: "rgba(255,255,255,0.96)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        border: "1px solid rgba(0,0,0,0.06)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.04)",
+        minWidth: 210,
+        padding: 6,
+        transformOrigin: "top left",
+      }}
+    >
+      {actions.map((a, i) => (
+        <button
+          key={i}
+          onClick={() => { a.onClick(); onClose(); }}
+          className="w-full flex items-center justify-between text-left px-3 py-2 rounded-lg cursor-pointer transition-colors hover:bg-neutral-100"
+          style={{ background: "transparent", border: "none" }}
+        >
+          <span className="text-[12px]" style={{ color: "#404040" }}>{a.label}</span>
+          {a.shortcut && <span className="text-[10px] tabular-nums ml-6" style={{ color: "#a3a3a3" }}>{a.shortcut}</span>}
+        </button>
+      ))}
     </div>
   );
 }
@@ -30,42 +125,104 @@ const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "sol
 type NavStyle = (typeof NAV_STYLES)[number];
 
 // ─── Layout Switcher ────────────────────────────────────────────
+const LOGO_SVG_MARKUP = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+  <circle cx="10" cy="5" r="3" fill="currentColor"/>
+  <rect x="7" y="9.5" width="6" height="8" rx="3" fill="currentColor"/>
+</svg>`;
+
 function LayoutSwitcher({
   active,
   onChange,
   navStyle,
   onNavStyleChange,
-  onLogoClick,
+  onRandomHumanoid,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
   navStyle: NavStyle;
   onNavStyleChange: (s: NavStyle) => void;
-  onLogoClick?: () => void;
+  onRandomHumanoid?: () => void;
 }) {
-  const cycleNavStyle = (e: React.MouseEvent) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 1500);
+  };
+
+  const actions: LogoAction[] = [
+    {
+      label: "Copy logo SVG",
+      onClick: () => {
+        navigator.clipboard.writeText(LOGO_SVG_MARKUP).then(() => showToast("Logo SVG copied"));
+      },
+    },
+    {
+      label: "Download SVG",
+      onClick: () => {
+        const blob = new Blob([LOGO_SVG_MARKUP], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "humanoid-index.svg";
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+    },
+    {
+      label: "Copy link",
+      onClick: () => {
+        navigator.clipboard.writeText(window.location.href).then(() => showToast("Link copied"));
+      },
+    },
+    {
+      label: "Random humanoid",
+      shortcut: "⇧R",
+      onClick: () => onRandomHumanoid?.(),
+    },
+    {
+      label: `Nav style · ${navStyle}`,
+      onClick: () => {
+        const idx = NAV_STYLES.indexOf(navStyle);
+        onNavStyleChange(NAV_STYLES[(idx + 1) % NAV_STYLES.length]);
+      },
+    },
+  ];
+
+  const openMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    const idx = NAV_STYLES.indexOf(navStyle);
-    onNavStyleChange(NAV_STYLES[(idx + 1) % NAV_STYLES.length]);
+    setMenuPos({ x: e.clientX, y: e.clientY });
+    setMenuOpen(true);
   };
 
-  const handleLogoClick = () => {
-    onChange("E" as Layout);
-    onLogoClick?.();
-  };
+  const handleClick = () => onChange("E" as Layout);
 
-  // ── Mark logo (shared) ──
-  const mark = (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.25 }} className="cursor-pointer" onClick={handleLogoClick} onContextMenu={cycleNavStyle}>
-      <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
-      <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
-    </svg>
+  const mark = <LogoMark onClick={handleClick} onContextMenu={openMenu} />;
+  const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} onContextMenu={openMenu} />;
+
+  const menuAndToast = (
+    <>
+      <LogoMenu open={menuOpen} x={menuPos.x} y={menuPos.y} onClose={() => setMenuOpen(false)} actions={actions} />
+      {toast && (
+        <div
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-[1001] px-4 py-2 rounded-lg animate-blur-fade pointer-events-none"
+          style={{ background: "rgba(0,0,0,0.06)", backdropFilter: "blur(12px)" }}
+        >
+          <p className="text-[11px] tracking-wide" style={{ color: "#737373" }}>{toast}</p>
+        </div>
+      )}
+    </>
   );
 
   const frost = { background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } as React.CSSProperties;
 
+  let navEl: React.ReactElement;
   // ── Style: floating (original — island with border) ──
-  if (navStyle === "floating") return (
+  if (navStyle === "floating") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{mark}</div>
@@ -88,7 +245,7 @@ function LayoutSwitcher({
   );
 
   // ── Style: pill — rounded capsule, tinted active state ──
-  if (navStyle === "pill") return (
+  else if (navStyle === "pill") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{mark}</div>
@@ -115,7 +272,7 @@ function LayoutSwitcher({
   );
 
   // ── Style: underline — clean text with active underline ──
-  if (navStyle === "underline") return (
+  else if (navStyle === "underline") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{mark}</div>
@@ -139,7 +296,7 @@ function LayoutSwitcher({
   );
 
   // ── Style: bordered — full-width top bar with bottom border ──
-  if (navStyle === "bordered") return (
+  else if (navStyle === "bordered") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={{ ...frost, paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
       <div className="flex items-center gap-4 pb-3">
         <div>{mark}</div>
@@ -160,7 +317,7 @@ function LayoutSwitcher({
   );
 
   // ── Style: minimal — just text, no container, no border ──
-  if (navStyle === "minimal") return (
+  else if (navStyle === "minimal") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{mark}</div>
@@ -183,13 +340,7 @@ function LayoutSwitcher({
   );
 
   // ── Style: solid — dark bar, inverted text ──
-  const solidMark = (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.4 }} className="cursor-pointer" onClick={handleLogoClick} onContextMenu={cycleNavStyle}>
-      <circle cx="10" cy="5" r="3" fill="#fff" />
-      <rect x="7" y="9.5" width="6" height="8" rx="3" fill="#fff" />
-    </svg>
-  );
-  return (
+  else navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{solidMark}</div>
@@ -210,6 +361,8 @@ function LayoutSwitcher({
       </div>
     </nav>
   );
+
+  return <>{navEl}{menuAndToast}</>;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -237,8 +390,22 @@ function useSpring(s: number, d: number) {
   const posRef = useRef(0);
   const velRef = useRef(0);
   const nudgeRef = useRef(0);
-  const [pos, setPos] = useState(0);
+  const [index, setIndex] = useState(0);
+  const indexRef = useRef(0);
   const rafRef = useRef<number>(0);
+  const subscribersRef = useRef<Set<(p: number) => void>>(new Set());
+
+  const notify = useCallback((p: number) => {
+    subscribersRef.current.forEach((cb) => cb(p));
+  }, []);
+
+  const commitIndex = useCallback(() => {
+    const next = Math.max(0, Math.min(humanoids.length - 1, Math.round(posRef.current)));
+    if (next !== indexRef.current) {
+      indexRef.current = next;
+      setIndex(next);
+    }
+  }, []);
 
   const tick = useCallback(() => {
     const force = (targetRef.current - posRef.current) * sRef.current;
@@ -252,11 +419,15 @@ function useSpring(s: number, d: number) {
     const settled = Math.abs(posRef.current - targetRef.current) < 0.001 && Math.abs(velRef.current) < 0.001;
     if (settled && nudgeRef.current === 0) {
       posRef.current = targetRef.current; velRef.current = 0;
-      setPos(targetRef.current); rafRef.current = 0; return;
+      notify(targetRef.current);
+      commitIndex();
+      rafRef.current = 0;
+      return;
     }
-    setPos(posRef.current + nudgeRef.current);
+    notify(posRef.current + nudgeRef.current);
+    commitIndex();
     rafRef.current = requestAnimationFrame(tick);
-  }, []);
+  }, [notify, commitIndex]);
 
   const start = useCallback(() => { if (rafRef.current) return; rafRef.current = requestAnimationFrame(tick); }, [tick]);
 
@@ -273,14 +444,24 @@ function useSpring(s: number, d: number) {
 
   const jumpTo = useCallback((idx: number) => { targetRef.current = Math.max(0, Math.min(humanoids.length - 1, idx)); start(); }, [start]);
 
-  useEffect(() => {
-    posRef.current = targetRef.current; velRef.current = 0; nudgeRef.current = 0;
-    setPos(targetRef.current); rafRef.current = 0;
-    return () => { if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; } };
+  const subscribe = useCallback((cb: (p: number) => void) => {
+    subscribersRef.current.add(cb);
+    cb(posRef.current + nudgeRef.current);
+    return () => { subscribersRef.current.delete(cb); };
   }, []);
 
-  const index = Math.max(0, Math.min(humanoids.length - 1, Math.round(pos)));
-  return { pos, index, go, nudge, jumpTo, targetRef };
+  const getPos = useCallback(() => posRef.current + nudgeRef.current, []);
+
+  useEffect(() => {
+    posRef.current = targetRef.current; velRef.current = 0; nudgeRef.current = 0;
+    indexRef.current = Math.round(targetRef.current);
+    setIndex(indexRef.current);
+    notify(targetRef.current);
+    rafRef.current = 0;
+    return () => { if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; } };
+  }, [notify]);
+
+  return { index, subscribe, getPos, go, nudge, jumpTo, targetRef };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -303,8 +484,112 @@ const arcStyleLabels: Record<ArcStyle, string> = {
 // ═══════════════════════════════════════════════════════════════
 // Arc renderer — multiple visual styles along a translucent curved track
 // ═══════════════════════════════════════════════════════════════
-function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10 }: { pos: number; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number }) {
-  const R = 300, off = 30, range = (variant === "crown" || variant === "arc-timeline") ? dRange : 2;
+type SpringSubscribe = (cb: (p: number) => void) => () => void;
+
+// Imperative arc-timeline wheel: renders text nodes once per window, then
+// updates their x/y/transform/fontSize/opacity directly in response to spring
+// ticks — avoids a React reconciliation per frame.
+function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR, aStepDeg, aTextGap, aLineOp, aFsMax, aFsMin }: {
+  index: number;
+  subscribe: SpringSubscribe;
+  mirrored?: boolean;
+  onClickItem: (idx: number) => void;
+  aInset: number; aWheelR: number; aStepDeg: number; aTextGap: number; aLineOp: number; aFsMax: number; aFsMin: number;
+}) {
+  const wheelR = aWheelR;
+  const r = wheelR - aTextGap;
+  const items: { i: number }[] = [];
+  for (let n = index - 14; n <= index + 15; n++) {
+    if (n >= 0 && n < humanoids.length) items.push({ i: n });
+  }
+  const textRefs = useRef<Array<SVGTextElement | null>>([]);
+
+  useLayoutEffect(() => {
+    const update = (pos: number) => {
+      for (let idx = 0; idx < items.length; idx++) {
+        const el = textRefs.current[idx];
+        if (!el) continue;
+        const i = items[idx].i;
+        const o = i - pos;
+        const deg = o * aStepDeg;
+        const rad = (deg * Math.PI) / 180;
+        const baseAngle = mirrored ? Math.PI : 0;
+        const theta = baseAngle + (mirrored ? -rad : rad);
+        const cx = wheelR + Math.cos(theta) * r;
+        const cy = wheelR + Math.sin(theta) * r;
+        const tangentDeg = (theta * 180) / Math.PI + (mirrored ? 180 : 0);
+        const dist = Math.abs(o);
+        const isAct = dist < 0.5;
+        const t = Math.min(dist / 10, 1);
+        const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
+        const fw = isAct ? 500 : 400;
+        const op = Math.max(0.08, 1 - t * 0.9);
+        const fill = isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`;
+
+        el.setAttribute("x", String(cx));
+        el.setAttribute("y", String(cy));
+        el.setAttribute("transform", `rotate(${tangentDeg}, ${cx}, ${cy})`);
+        el.style.fontSize = `${fs}px`;
+        el.style.fontWeight = String(fw);
+        el.style.fill = fill;
+        el.style.opacity = String(op);
+      }
+    };
+    return subscribe(update);
+  }, [items, subscribe, mirrored, wheelR, r, aStepDeg, aFsMax, aFsMin]);
+
+  return (
+    <div className="absolute inset-0 overflow-visible pointer-events-auto">
+      <svg
+        className="absolute overflow-visible pointer-events-auto"
+        style={{
+          width: wheelR * 2,
+          height: wheelR * 2,
+          top: "50%",
+          ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
+          transform: "translateY(-50%)",
+          transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+        viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
+      >
+        <circle cx={wheelR} cy={wheelR} r={r} fill="none" stroke="#ebebeb" strokeWidth="0.5" style={{ opacity: aLineOp }} />
+        {items.map(({ i }, idx) => {
+          const name = humanoids[i]?.name ?? String(i).padStart(2, "0");
+          return (
+            <text
+              key={i}
+              ref={(el) => { textRefs.current[idx] = el; }}
+              className="cursor-pointer"
+              textAnchor={mirrored ? "end" : "start"}
+              dominantBaseline="middle"
+              onClick={() => onClickItem(i)}
+              style={{
+                fontFamily: "inherit",
+                letterSpacing: "-0.02em",
+                transition: "opacity 0.15s ease",
+              }}
+            >
+              {name}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function ArcDots({ index, subscribe, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10 }: { index: number; subscribe: SpringSubscribe; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number }) {
+  // arc-timeline takes the imperative path to avoid React reconciliation per frame
+  if (variant === "arc-timeline") {
+    return <ArcTimelineWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} />;
+  }
+
+  // Other variants: subscribe locally so fractional updates stay contained
+  // inside ArcDots instead of re-rendering Browse.
+  const [pos, setPos] = useState<number>(index);
+  useLayoutEffect(() => subscribe((p) => setPos(p)), [subscribe]);
+
+  const R = 300, off = 30, range = variant === "crown" ? dRange : 2;
   const cx = -R + off;
   const getP = (o: number) => {
     const a = (o * 8 * Math.PI) / 180;
@@ -325,7 +610,7 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
         </filter>
       </defs>
       {noTrack ? (
-        variant !== "minimal" && variant !== "crown" && variant !== "arc-timeline" && <circle cx={cx} cy="50%" r={R} fill="none" stroke="#e8e8e8" strokeWidth="1" style={{ opacity: dimmed ? 0.3 : 1 }} />
+        variant !== "minimal" && variant !== "crown" && <circle cx={cx} cy="50%" r={R} fill="none" stroke="#e8e8e8" strokeWidth="1" style={{ opacity: dimmed ? 0.3 : 1 }} />
       ) : (
         <circle cx={cx} cy="50%" r={R} fill="none" stroke="rgba(243,243,243,0.85)" strokeWidth={variant === "ticks" ? 44 : 38} filter={`url(#ts-${sid})`} style={{ opacity: dimmed ? 0.3 : 1 }} />
       )}
@@ -343,36 +628,6 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
     const num = String(i).padStart(2, "0");
     const flip = mirrored ? "scaleX(-1)" : undefined;
 
-    // ── arc-timeline: curved arc with dots and year labels ──
-    if (variant === "arc-timeline") {
-      const arcR = dRadius * 2.5;
-      const arcDeg = o * dAngle * 0.8;
-      const arcRad = arcDeg * Math.PI / 180;
-      const arcY = Math.sin(arcRad) * arcR;
-      const arcX = (1 - Math.cos(arcRad)) * (mirrored ? -60 : 60);
-      const arcZ = Math.cos(arcRad);
-      if (arcZ <= 0.01) return <div key={i} />;
-      const op = Math.pow(Math.max(0, arcZ), 2.5) * bOp;
-      const dotSize = isActive ? 5 : 3;
-      const year = humanoids[i]?.year;
-      const name = humanoids[i]?.name;
-      return (
-        <div key={i} className="absolute cursor-pointer flex items-center gap-2.5" style={{
-          left: mirrored ? undefined : dXOff,
-          right: mirrored ? dXOff : undefined,
-          top: `calc(50% + ${arcY}px)`,
-          transform: `translateY(-50%) translateX(${arcX}px)`,
-          opacity: op,
-          flexDirection: mirrored ? "row-reverse" : "row",
-        }} onClick={() => onClickItem(i)}>
-          <div style={{ width: dotSize, height: dotSize, borderRadius: "50%", background: isActive ? "var(--c-ink)" : "#ccc", transition: "all 0.15s ease", flexShrink: 0 }} />
-          <div style={{ textAlign: mirrored ? "right" : "left" }}>
-            <span style={{ fontSize: isActive ? 11 : 9, fontWeight: isActive ? 600 : 400, color: isActive ? "var(--c-ink)" : "#b3b3b3", letterSpacing: "-0.01em", lineHeight: 1, display: "block", transition: "all 0.15s ease", transform: flip }}>{year ?? num}</span>
-            {isActive && name && <span style={{ fontSize: 8, color: "#999", letterSpacing: "0.02em", lineHeight: 1.4, display: "block", transform: flip }}>{name}</span>}
-          </div>
-        </div>
-      );
-    }
     // ── crown: physical drum wheel ──
     if (variant === "crown") {
       const drumDeg = o * dAngle;
@@ -575,75 +830,6 @@ function ArcDots({ pos, mirrored, onClickItem, dimmed, variant = "pills", drumAn
   } as React.CSSProperties : drumMask;
 
   const finalMask = variant === "crown" ? crownDepth : drumMask;
-
-  // ── arc-timeline: large SVG wheel jutting from edge ──
-  if (variant === "arc-timeline") {
-    const wheelR = aWheelR;
-    const stepDeg = aStepDeg;
-    const arcItems: { i: number; o: number }[] = [];
-    const af = Math.floor(pos);
-    for (let n = af - 14; n <= af + 15; n++) {
-      if (n >= 0 && n < humanoids.length) arcItems.push({ i: n, o: n - pos });
-    }
-    return (
-      <div className="absolute inset-0 overflow-visible pointer-events-auto">
-        <svg
-          className="absolute overflow-visible pointer-events-auto"
-          style={{
-            width: wheelR * 2,
-            height: wheelR * 2,
-            top: "50%",
-            ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
-            transform: "translateY(-50%)",
-            transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
-          }}
-          viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
-        >
-          <circle cx={wheelR} cy={wheelR} r={wheelR - aTextGap} fill="none" stroke="#ebebeb" strokeWidth="0.5" style={{ opacity: aLineOp }} />
-          {arcItems.map(({ i, o }) => {
-            const deg = o * stepDeg;
-            const rad = deg * Math.PI / 180;
-            const r = wheelR - aTextGap;
-            const baseAngle = mirrored ? Math.PI : 0;
-            const theta = baseAngle + (mirrored ? -rad : rad);
-            const cx = wheelR + Math.cos(theta) * r;
-            const cy = wheelR + Math.sin(theta) * r;
-            const tangentDeg = theta * 180 / Math.PI + (mirrored ? 180 : 0);
-            const dist = Math.abs(o);
-            const isAct = dist < 0.5;
-            const t = Math.min(dist / 10, 1);
-            const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
-            const fw = isAct ? 500 : 400;
-            const op = Math.max(0.08, 1 - t * 0.9);
-            const name = humanoids[i]?.name;
-            return (
-              <text
-                key={i}
-                x={cx}
-                y={cy}
-                className="cursor-pointer"
-                textAnchor={mirrored ? "end" : "start"}
-                dominantBaseline="middle"
-                onClick={() => onClickItem(i)}
-                style={{
-                  fontSize: fs,
-                  fontWeight: fw,
-                  fill: isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`,
-                  fontFamily: "inherit",
-                  letterSpacing: "-0.02em",
-                  opacity: op,
-                  transition: "opacity 0.15s ease",
-                }}
-                transform={`rotate(${tangentDeg}, ${cx}, ${cy})`}
-              >
-                {name ?? String(i).padStart(2, "0")}
-              </text>
-            );
-          })}
-        </svg>
-      </div>
-    );
-  }
 
   if (variant === "crown") {
     return (
@@ -1079,8 +1265,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
 
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
-  const distL = Math.abs(springL.pos - springL.targetRef.current);
-  const distR = Math.abs(springR.pos - springR.targetRef.current);
+  const distL = Math.abs(springL.getPos() - springL.targetRef.current);
+  const distR = Math.abs(springR.getPos() - springR.targetRef.current);
   const getStats = (h: typeof humanoids[0]) => [
     h.height && { label: "Height", value: `${h.height} cm` }, h.weight && { label: "Weight", value: `${h.weight} kg` },
     h.dof && { label: "DOF", value: `${h.dof}` }, h.maxSpeed && { label: "Speed", value: `${h.maxSpeed} m/s` },
@@ -1091,12 +1277,43 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
   const ease = "cubic-bezier(0.4, 0, 0.2, 1)";
   const dur = "0.5s";
 
+  // Preload ±2 neighbor images around each active index so integer crossings
+  // don't flash waiting for Next/Image to fetch+decode.
+  const preloadIndices = (() => {
+    const s = new Set<number>();
+    const add = (idx: number) => {
+      for (let k = -2; k <= 2; k++) {
+        const n = idx + k;
+        if (n >= 0 && n < humanoids.length && k !== 0) s.add(n);
+      }
+    };
+    add(springL.index);
+    if (comparing) add(springR.index);
+    return Array.from(s);
+  })();
+  const preloadSizes = `${Math.round(robotW)}vw`;
+
   return (
     <div className="h-screen overflow-hidden select-none relative bg-white">
+      {/* Neighbor-image preloader — off-screen Next/Image tags matching the
+          card's sizes, so the optimized variants are cached before crossings. */}
+      <div aria-hidden style={{ position: "absolute", left: -99999, top: 0, width: `${robotW}vw`, height: `${robotH}vh`, maxWidth: robotMaxW, pointerEvents: "none", opacity: 0 }}>
+        {preloadIndices.map((i) => {
+          const h = humanoids[i];
+          if (!h?.imageUrl) return null;
+          return (
+            <div key={i} style={{ position: "absolute", inset: 0 }}>
+              <Image src={h.imageUrl} alt="" fill sizes={preloadSizes} />
+            </div>
+          );
+        })}
+      </div>
+
       {/* Left arc nav */}
       <div className="fixed top-0 bottom-0 left-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
         <ArcDots
-          pos={springL.pos}
+          index={springL.index}
+          subscribe={springL.subscribe}
           onClickItem={(idx) => springL.jumpTo(idx)}
           variant={arcStyle}
           drumAngle={drumAngle}
@@ -1123,7 +1340,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange }: { goToIndex?: number 
       {comparing && (
         <div className="fixed top-0 bottom-0 right-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
           <ArcDots
-            pos={springR.pos}
+            index={springR.index}
+            subscribe={springR.subscribe}
             mirrored
             onClickItem={(idx) => springR.jumpTo(idx)}
             variant={arcStyle}
@@ -2021,7 +2239,6 @@ export default function Home() {
 
   // ── Intro animation state ──
   const [introPhase, setIntroPhase] = useState<"logo" | "exit" | "done">("logo");
-  const [motionActive, setMotionActive] = useState(true);
 
   useEffect(() => {
     // Phase 1: logo sits for a beat, then exits
@@ -2029,14 +2246,6 @@ export default function Home() {
     // Phase 2: overlay unmounts, content expands in
     const t2 = setTimeout(() => setIntroPhase("done"), 1150);
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
-
-  // Replay just the content/nav entrance animations (no loader)
-  const replayMotion = useCallback(() => {
-    setMotionActive(false);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => setMotionActive(true));
-    });
   }, []);
 
   useEffect(() => {
@@ -2051,6 +2260,14 @@ export default function Home() {
       if (e.key === "d" && !e.metaKey && !e.ctrlKey) {
         setShowDimSlider((v) => !v);
       }
+      if (e.key === "R" && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        const idx = Math.floor(Math.random() * humanoids.length);
+        setLayout("E");
+        setGoToIndex(idx);
+        setChatOpen(false);
+        setTimeout(() => setGoToIndex(null), 100);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -2062,6 +2279,14 @@ export default function Home() {
     setChatOpen(false);
     setTimeout(() => setGoToIndex(null), 100);
   };
+
+  const onRandomHumanoid = useCallback(() => {
+    const idx = Math.floor(Math.random() * humanoids.length);
+    setLayout("E");
+    setGoToIndex(idx);
+    setChatOpen(false);
+    setTimeout(() => setGoToIndex(null), 100);
+  }, []);
 
   const introDone = introPhase === "done";
 
@@ -2107,19 +2332,19 @@ export default function Home() {
 
       {/* ── Nav ── */}
       {introDone && (
-        <div className={`fixed inset-0 z-[999] pointer-events-none ${motionActive ? "intro-nav" : "opacity-0"}`}>
+        <div className="intro-nav fixed inset-0 z-[999] pointer-events-none">
           <LayoutSwitcher
             active={layout}
             onChange={setLayout}
             navStyle={navStyle}
             onNavStyleChange={setNavStyle}
-            onLogoClick={replayMotion}
+            onRandomHumanoid={onRandomHumanoid}
           />
         </div>
       )}
 
       {/* ── Content ── */}
-      <div className={introDone && motionActive ? "intro-content" : "opacity-0"}>
+      <div className={introDone ? "intro-content" : "opacity-0"}>
         {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} />}
         {layout === "Z" && <EllipticalCarousel />}
       </div>
@@ -2159,7 +2384,7 @@ export default function Home() {
       )}
 
       {/* Bottom ? button */}
-      <div className={introDone && motionActive ? "intro-nav" : "opacity-0"}>
+      <div className={introDone ? "intro-nav" : "opacity-0"}>
         <button
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
           style={{ background: chatOpen ? "var(--c-ink)" : "#F7F7F7", color: chatOpen ? "white" : "#999" }}
