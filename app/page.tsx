@@ -22,7 +22,7 @@ function LogoMark({
   opacity = 0.25,
   size = 20,
   onClick,
-  loading = false,
+  luckyNonce = 0,
   hintNonce = 0,
   ringColor = "var(--c-ink)",
 }: {
@@ -30,23 +30,24 @@ function LogoMark({
   opacity?: number;
   size?: number;
   onClick?: () => void;
-  loading?: boolean;
+  luckyNonce?: number;
   hintNonce?: number;
   ringColor?: string;
 }) {
   const pad = 6;
   const total = size + pad * 2;
 
-  // Swift draw ring when loading fires.
+  // Swift draw ring on each lucky click — keyed off the nonce so rapid
+  // re-clicks restart the animation cleanly.
   const [ringKey, setRingKey] = useState(0);
   const [ringVisible, setRingVisible] = useState(false);
   useEffect(() => {
-    if (!loading) return;
+    if (!luckyNonce) return;
     setRingKey((k) => k + 1);
     setRingVisible(true);
     const t = setTimeout(() => setRingVisible(false), 720);
     return () => clearTimeout(t);
-  }, [loading]);
+  }, [luckyNonce]);
 
   // Hint pulse — expanding ring each time hintNonce bumps.
   const [hintKey, setHintKey] = useState(0);
@@ -150,7 +151,7 @@ function LayoutSwitcher({
   onChange,
   navStyle,
   onRandomHumanoid,
-  luckyActive = false,
+  luckyNonce = 0,
   hintNonce = 0,
 }: {
   active: Layout;
@@ -158,7 +159,7 @@ function LayoutSwitcher({
   navStyle: NavStyle;
   onNavStyleChange: (s: NavStyle) => void;
   onRandomHumanoid?: () => void;
-  luckyActive?: boolean;
+  luckyNonce?: number;
   hintNonce?: number;
 }) {
   const handleClick = () => {
@@ -166,8 +167,8 @@ function LayoutSwitcher({
     onRandomHumanoid?.();
   };
 
-  const mark = <LogoMark onClick={handleClick} loading={luckyActive} hintNonce={hintNonce} />;
-  const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} loading={luckyActive} hintNonce={hintNonce} ringColor="#fff" />;
+  const mark = <LogoMark onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} />;
+  const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} ringColor="#fff" />;
 
   const frost = { background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } as React.CSSProperties;
 
@@ -1093,7 +1094,7 @@ function applyGive(
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyActive = false, addHintNonce = 0, onEnterCompare }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; luckyNonce?: number; luckyActive?: boolean; addHintNonce?: number; onEnterCompare?: () => void }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -1133,6 +1134,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
   const [giveLeanAmt, setGiveLeanAmt] = useState(0.9);
   const [giveTiltAmt, setGiveTiltAmt] = useState(4);
   const [giveTiltDepth, setGiveTiltDepth] = useState(800);
+  // Lucky tap — dedicated params so it doesn't share the give sliders
+  const [luckyTapStyle, setLuckyTapStyle] = useState<"tilt" | "shake">("shake");
+  const [luckyTapDur, setLuckyTapDur] = useState(500);
+  const [luckyTapAngle, setLuckyTapAngle] = useState(2.7);
+  const [luckyTapDepth, setLuckyTapDepth] = useState(1400);
+  const [luckyTapOriginY, setLuckyTapOriginY] = useState(100);
+  const [luckyShakePx, setLuckyShakePx] = useState(8);
+  const [luckyShakeCycles, setLuckyShakeCycles] = useState(2);
+  const luckyTapSettingsRef = useRef({ style: luckyTapStyle, dur: luckyTapDur, angle: luckyTapAngle, depth: luckyTapDepth, originY: luckyTapOriginY, shakePx: luckyShakePx, shakeCycles: luckyShakeCycles });
+  luckyTapSettingsRef.current = { style: luckyTapStyle, dur: luckyTapDur, angle: luckyTapAngle, depth: luckyTapDepth, originY: luckyTapOriginY, shakePx: luckyShakePx, shakeCycles: luckyShakeCycles };
   const [arcWheelR, setArcWheelR] = useState(700);
   const [arcStepDeg, setArcStepDeg] = useState(3.5);
   const [arcTextGap, setArcTextGap] = useState(15);
@@ -1217,9 +1228,60 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
   const springR = useSpring(stiffness, damping);
   const activeGo = comparing ? (activeSide === "left" ? springL.go : springR.go) : springL.go;
 
+  // Lucky tap — short RAF-driven animation, independent of spring duration.
+  // Dispatches on style: "tilt" = sin(πt) bell-curve backward lean,
+  // "shake" = damped sine oscillation along X. The give dispatcher skips
+  // writes while the tap is active (gated by tiltTapRef).
+  const tiltTapRef = useRef(false);
+  useEffect(() => {
+    if (!luckyNonce) return;
+    const cards = [leftCardRef.current, rightCardRef.current].filter(Boolean) as HTMLDivElement[];
+    if (!cards.length) return;
+    tiltTapRef.current = true;
+    const s = luckyTapSettingsRef.current;
+    const start = performance.now();
+    let rafId = 0;
+    if (s.style === "tilt") {
+      for (const el of cards) el.style.transformOrigin = `50% ${s.originY}%`;
+    }
+    const tick = () => {
+      const elapsed = performance.now() - start;
+      const t = Math.min(1, elapsed / s.dur);
+      for (const el of cards) {
+        if (s.style === "tilt") {
+          const intensity = Math.sin(Math.PI * t); // 0 → 1 → 0
+          el.style.transform = `perspective(${s.depth}px) rotateX(${intensity * s.angle}deg)`;
+        } else {
+          // damped sine: oscillates, amplitude decays to 0 by t=1
+          const damp = 1 - t;
+          const y = Math.sin(Math.PI * 2 * s.shakeCycles * t) * damp * s.shakePx;
+          el.style.transform = `translateY(${y}px)`;
+        }
+      }
+      if (t < 1) {
+        rafId = requestAnimationFrame(tick);
+      } else {
+        for (const el of cards) {
+          el.style.transform = "";
+          el.style.transformOrigin = "";
+        }
+        tiltTapRef.current = false;
+      }
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(rafId);
+      tiltTapRef.current = false;
+      for (const el of cards) {
+        el.style.transform = "";
+        el.style.transformOrigin = "";
+      }
+    };
+  }, [luckyNonce]);
+
   // Continuous card "give" — dispatches to the active variant on each
   // spring tick. Variant + settings changes hot-swap the callback.
-  const effectiveGive: GiveStyle = luckyActive ? "tilt" : giveStyle;
+  const effectiveGive: GiveStyle = giveStyle;
   const giveSettings: GiveSettings = {
     velScale: giveVelScale,
     pushAmt: givePushAmt,
@@ -1236,6 +1298,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
       ref: React.MutableRefObject<HTMLDivElement | null>,
       getVel: () => number,
     ) => (pos: number) => {
+      if (tiltTapRef.current) return; // lucky tap owns the transform
       const el = ref.current;
       if (!el) return;
       applyGive(el, giveStyleRef.current, pos, getVel(), giveSettingsRef.current);
@@ -1248,6 +1311,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
   // Re-apply immediately when variant or slider values change so the preview
   // reflects the new settings even while the spring is at rest.
   useLayoutEffect(() => {
+    if (tiltTapRef.current) return;
     const apply = (ref: React.MutableRefObject<HTMLDivElement | null>, getPos: () => number, getVel: () => number) => {
       const el = ref.current;
       if (!el) return;
@@ -2402,6 +2466,23 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
             <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Tilt amount <span className="tabular-nums text-neutral-400">{giveTiltAmt.toFixed(1)}°</span></label><input type="range" min={0} max={200} value={Math.round(giveTiltAmt * 10)} onChange={(e) => setGiveTiltAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
             <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Tilt depth <span className="tabular-nums text-neutral-400">{giveTiltDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={giveTiltDepth} onChange={(e) => setGiveTiltDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] tracking-widest uppercase text-neutral-400">Lucky Tap</p>
+              <button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setLuckyTapStyle("shake"); setLuckyTapDur(500); setLuckyTapAngle(2.7); setLuckyTapDepth(1400); setLuckyTapOriginY(100); setLuckyShakePx(8); setLuckyShakeCycles(2); }}>Reset</button>
+            </div>
+            <div className="flex gap-1.5">
+              {(["tilt", "shake"] as const).map((s) => (
+                <button key={s} onClick={() => setLuckyTapStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${luckyTapStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>
+              ))}
+            </div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Duration <span className="tabular-nums text-neutral-400">{luckyTapDur}ms</span></label><input type="range" min={120} max={900} step={10} value={luckyTapDur} onChange={(e) => setLuckyTapDur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Peak angle <span className="tabular-nums text-neutral-400">{luckyTapAngle.toFixed(1)}°</span></label><input type="range" min={0} max={300} value={Math.round(luckyTapAngle * 10)} onChange={(e) => setLuckyTapAngle(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Depth <span className="tabular-nums text-neutral-400">{luckyTapDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={luckyTapDepth} onChange={(e) => setLuckyTapDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Pivot Y <span className="tabular-nums text-neutral-400">{luckyTapOriginY}%</span></label><input type="range" min={0} max={100} value={luckyTapOriginY} onChange={(e) => setLuckyTapOriginY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake amount <span className="tabular-nums text-neutral-400">{luckyShakePx}px</span></label><input type="range" min={0} max={14} value={luckyShakePx} onChange={(e) => setLuckyShakePx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake cycles <span className="tabular-nums text-neutral-400">{luckyShakeCycles}</span></label><input type="range" min={1} max={8} value={luckyShakeCycles} onChange={(e) => setLuckyShakeCycles(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+          </div>
           {(arcStyle === "crown" || arcStyle === "arc-timeline") && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(70); }}>Reset</button></div>
@@ -2582,14 +2663,11 @@ export default function Home() {
   const [navStyle, setNavStyle] = useState<NavStyle>("underline");
   const [chatOpen, setChatOpen] = useState(false);
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
-  const [luckyActive, setLuckyActive] = useState(false);
   const [luckyNonce, setLuckyNonce] = useState(0);
   const [luckyUsed, setLuckyUsed] = useState(false);
   const [hintNonce, setHintNonce] = useState(0);
   const [addHintNonce, setAddHintNonce] = useState(0);
   const [comparingUsed, setComparingUsed] = useState(false);
-  const luckyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (luckyTimer.current) clearTimeout(luckyTimer.current); }, []);
   const [fontIdx, setFontIdx] = useState(0);
   const [textDim, setTextDim] = useState(0);
   const [showFontToast, setShowFontToast] = useState(false);
@@ -2643,10 +2721,7 @@ export default function Home() {
     if (layout !== "E") setLayout("E");
     setChatOpen(false);
     setLuckyNonce((n) => n + 1);
-    setLuckyActive(true);
     setLuckyUsed(true);
-    if (luckyTimer.current) clearTimeout(luckyTimer.current);
-    luckyTimer.current = setTimeout(() => setLuckyActive(false), 1400);
   }, [layout]);
 
   const introDone = introPhase === "done";
@@ -2717,14 +2792,14 @@ export default function Home() {
 
       {/* ── Nav ── */}
       {introDone && (
-        <div className="intro-nav fixed inset-0 z-[999] pointer-events-none">
+        <div className="intro-nav fixed inset-0 z-[999] pointer-events-none select-none">
           <LayoutSwitcher
             active={layout}
             onChange={setLayout}
             navStyle={navStyle}
             onNavStyleChange={setNavStyle}
             onRandomHumanoid={onRandomHumanoid}
-            luckyActive={luckyActive}
+            luckyNonce={luckyNonce}
             hintNonce={hintNonce}
           />
         </div>
@@ -2732,7 +2807,7 @@ export default function Home() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} luckyNonce={luckyNonce} luckyActive={luckyActive} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} />}
         {layout === "Z" && <EllipticalCarousel />}
       </div>
 
