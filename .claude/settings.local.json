@@ -34,7 +34,12 @@
       "Bash(lsof -ti:3000)",
       "Bash(xargs kill:*)",
       "Bash(python3:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(lsof -i :3000 -sTCP:LISTEN -P -n)",
+      "Bash(npm run:*)",
+      "Bash(wc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(lsof -nP -iTCP:3000 -sTCP:LISTEN)"
     ],
     "deny": [],
     "ask": []

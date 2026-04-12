@@ -378,6 +378,21 @@ export const humanoids: Humanoid[] = [
   },
   // 2013
   {
+    id: "26",
+    name: "Hydraulic Atlas",
+    manufacturer: "Boston Dynamics",
+    logoUrl: "/robots/Boston_Dynamics-logo.svg",
+    manufacturerUrl: "https://www.bostondynamics.com",
+    year: 2013,
+    cost: "N/A",
+    status: "Discontinued",
+    height: 150,
+    weight: 80,
+    dof: 28,
+    maxSpeed: 1.5,
+    description: "DARPA Robotics Challenge pioneer famous for parkour and backflips. Retired in April 2024 in favor of the Electric Atlas.",
+  },
+  {
     id: "22",
     name: "Nadine",
     manufacturer: "NTU Singapore",
