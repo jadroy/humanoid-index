@@ -23,6 +23,7 @@ function LogoMark({
   size = 20,
   onClick,
   loading = false,
+  hintNonce = 0,
   ringColor = "var(--c-ink)",
 }: {
   fill?: string;
@@ -30,21 +31,33 @@ function LogoMark({
   size?: number;
   onClick?: () => void;
   loading?: boolean;
+  hintNonce?: number;
   ringColor?: string;
 }) {
   const pad = 6;
   const total = size + pad * 2;
 
-  // Keep the ring mounted for a beat after loading flips off so it can fade.
+  // Swift draw ring when loading fires.
+  const [ringKey, setRingKey] = useState(0);
   const [ringVisible, setRingVisible] = useState(false);
   useEffect(() => {
-    if (loading) {
-      setRingVisible(true);
-      return;
-    }
-    const t = setTimeout(() => setRingVisible(false), 320);
+    if (!loading) return;
+    setRingKey((k) => k + 1);
+    setRingVisible(true);
+    const t = setTimeout(() => setRingVisible(false), 720);
     return () => clearTimeout(t);
   }, [loading]);
+
+  // Hint pulse — expanding ring each time hintNonce bumps.
+  const [hintKey, setHintKey] = useState(0);
+  const [hintVisible, setHintVisible] = useState(false);
+  useEffect(() => {
+    if (!hintNonce) return;
+    setHintKey((k) => k + 1);
+    setHintVisible(true);
+    const t = setTimeout(() => setHintVisible(false), 2000);
+    return () => clearTimeout(t);
+  }, [hintNonce]);
 
   return (
     <div
@@ -52,8 +65,33 @@ function LogoMark({
       style={{ width: total, height: total }}
       onClick={onClick}
     >
+      {hintVisible && (
+        <svg
+          key={`hint-${hintKey}`}
+          width={total}
+          height={total}
+          viewBox={`0 0 ${total} ${total}`}
+          fill="none"
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            transformOrigin: "center",
+            animation: "lucky-ring-hint 2000ms cubic-bezier(0.22, 1, 0.36, 1) forwards",
+          }}
+        >
+          <circle
+            cx={total / 2}
+            cy={total / 2}
+            r={total / 2 - 2}
+            fill="none"
+            stroke={ringColor}
+            strokeWidth="1"
+            strokeLinecap="round"
+          />
+        </svg>
+      )}
       {ringVisible && (
         <svg
+          key={`ring-${ringKey}`}
           width={total}
           height={total}
           viewBox={`0 0 ${total} ${total}`}
@@ -72,10 +110,8 @@ function LogoMark({
             strokeDasharray="88"
             strokeDashoffset="88"
             style={{
-              opacity: 0.12,
-              animation: loading
-                ? "lucky-ring-draw 0.7s cubic-bezier(0.33, 1, 0.68, 1) forwards"
-                : "lucky-ring-fade 0.3s ease forwards",
+              opacity: 0,
+              animation: "lucky-ring-swipe 700ms cubic-bezier(0.33, 1, 0.68, 1) forwards",
             }}
           />
         </svg>
@@ -115,6 +151,7 @@ function LayoutSwitcher({
   navStyle,
   onRandomHumanoid,
   luckyActive = false,
+  hintNonce = 0,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
@@ -122,14 +159,15 @@ function LayoutSwitcher({
   onNavStyleChange: (s: NavStyle) => void;
   onRandomHumanoid?: () => void;
   luckyActive?: boolean;
+  hintNonce?: number;
 }) {
   const handleClick = () => {
     if (active !== "E") onChange("E" as Layout);
     onRandomHumanoid?.();
   };
 
-  const mark = <LogoMark onClick={handleClick} loading={luckyActive} />;
-  const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} loading={luckyActive} ringColor="#fff" />;
+  const mark = <LogoMark onClick={handleClick} loading={luckyActive} hintNonce={hintNonce} />;
+  const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} loading={luckyActive} hintNonce={hintNonce} ringColor="#fff" />;
 
   const frost = { background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } as React.CSSProperties;
 
@@ -400,15 +438,10 @@ const arcStyleLabels: Record<ArcStyle, string> = {
 // ═══════════════════════════════════════════════════════════════
 type SpringSubscribe = (cb: (p: number) => void) => () => void;
 
-// Section derivation — determines which "chapter" a humanoid belongs to.
-// Customize this to change arc-timeline section separators.
-function getSection(h: typeof humanoids[0]): string {
-  if (h.id.startsWith("legend-")) return "Legends";
-  const y = h.year ?? 0;
-  if (y >= 2023) return "Modern";
-  if (y >= 2015) return "Prior wave";
-  return "Earlier";
-}
+// Miscellaneous tint — older / legend entries get a gold fill in the arc timeline
+const MISC_GOLD = "176,141,87"; // rgb parts of #b08d57
+const isMisc = (h: typeof humanoids[0] | undefined) =>
+  !!h && (h.id.startsWith("legend-") || (h.year ?? 0) < 2020);
 
 // Imperative arc-timeline wheel: renders text nodes once per window, then
 // updates their x/y/transform/fontSize/opacity directly in response to spring
@@ -422,26 +455,11 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
 }) {
   const wheelR = aWheelR;
   const r = wheelR - aTextGap;
-  const sepR = r + 26; // separators sit on an outer ring so they read as chapter markers
   const items: { i: number }[] = [];
   for (let n = index - 14; n <= index + 15; n++) {
     if (n >= 0 && n < humanoids.length) items.push({ i: n });
   }
-  // Section boundaries within the window. A separator sits between items with
-  // different sections, at the midpoint position (e.g., between index 5 and 6 → 5.5).
-  const separators: { pos: number; label: string }[] = [];
-  for (let n = 0; n < items.length - 1; n++) {
-    const a = humanoids[items[n].i];
-    const b = humanoids[items[n + 1].i];
-    if (!a || !b) continue;
-    const sA = getSection(a);
-    const sB = getSection(b);
-    if (sA !== sB) {
-      separators.push({ pos: (items[n].i + items[n + 1].i) / 2, label: sB });
-    }
-  }
   const textRefs = useRef<Array<SVGTextElement | null>>([]);
-  const sepRefs = useRef<Array<SVGGElement | null>>([]);
 
   useLayoutEffect(() => {
     const update = (pos: number) => {
@@ -449,6 +467,7 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
         const el = textRefs.current[idx];
         if (!el) continue;
         const i = items[idx].i;
+        const misc = isMisc(humanoids[i]);
         const o = i - pos;
         const deg = o * aStepDeg;
         const rad = (deg * Math.PI) / 180;
@@ -463,7 +482,9 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
         const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
         const fw = isAct ? 500 : 400;
         const op = Math.max(0.08, 1 - t * 0.9);
-        const fill = isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`;
+        const fill = misc
+          ? (isAct ? `rgb(${MISC_GOLD})` : `rgba(${MISC_GOLD},${0.3 + (1 - t) * 0.45})`)
+          : (isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`);
 
         el.setAttribute("x", String(cx));
         el.setAttribute("y", String(cy));
@@ -473,26 +494,9 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
         el.style.fill = fill;
         el.style.opacity = String(op);
       }
-      for (let idx = 0; idx < separators.length; idx++) {
-        const g = sepRefs.current[idx];
-        if (!g) continue;
-        const sep = separators[idx];
-        const o = sep.pos - pos;
-        const deg = o * aStepDeg;
-        const rad = (deg * Math.PI) / 180;
-        const baseAngle = mirrored ? Math.PI : 0;
-        const theta = baseAngle + (mirrored ? -rad : rad);
-        const tx = wheelR + Math.cos(theta) * sepR;
-        const ty = wheelR + Math.sin(theta) * sepR;
-        const tangentDeg = (theta * 180) / Math.PI + (mirrored ? 180 : 0);
-        const dist = Math.abs(o);
-        const op = Math.max(0, 1 - Math.min(dist / 8, 1));
-        g.setAttribute("transform", `translate(${tx}, ${ty}) rotate(${tangentDeg})`);
-        g.style.opacity = String(op);
-      }
     };
     return subscribe(update);
-  }, [items, separators, subscribe, mirrored, wheelR, r, sepR, aStepDeg, aFsMax, aFsMin]);
+  }, [items, subscribe, mirrored, wheelR, r, aStepDeg, aFsMax, aFsMin]);
 
   return (
     <div className="absolute inset-0 overflow-visible pointer-events-auto">
@@ -529,40 +533,6 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
             </text>
           );
         })}
-        {separators.map((sep, idx) => (
-          <g
-            key={`sep-${sep.pos}-${sep.label}`}
-            ref={(el) => { sepRefs.current[idx] = el; }}
-          >
-            {/* tick mark */}
-            <line
-              x1={0}
-              y1={-6}
-              x2={0}
-              y2={6}
-              stroke="#a3a3a3"
-              strokeWidth="0.8"
-              strokeLinecap="round"
-            />
-            {/* section label */}
-            <text
-              x={mirrored ? -10 : 10}
-              y={0}
-              textAnchor={mirrored ? "end" : "start"}
-              dominantBaseline="middle"
-              style={{
-                fontFamily: "inherit",
-                fontSize: "8px",
-                fontWeight: 600,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                fill: "#a3a3a3",
-              }}
-            >
-              {sep.label}
-            </text>
-          </g>
-        ))}
       </svg>
     </div>
   );
@@ -1123,7 +1093,7 @@ function applyGive(
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyActive = false }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; luckyNonce?: number; luckyActive?: boolean }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyActive = false, addHintNonce = 0, onEnterCompare }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; luckyNonce?: number; luckyActive?: boolean; addHintNonce?: number; onEnterCompare?: () => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -1415,7 +1385,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
 
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
-  const enterCompare = () => { springR.jumpTo(springL.index < humanoids.length - 1 ? springL.index + 1 : 0); setComparing(true); setActiveSide("right"); };
+  const enterCompare = () => { springR.jumpTo(springL.index < humanoids.length - 1 ? springL.index + 1 : 0); setComparing(true); setActiveSide("right"); onEnterCompare?.(); };
+
+  // Add-compare nudge — a quick double-tap leftward motion via CSS keyframe.
+  // Bumps a key so the animation restarts on every nudge cycle.
+  const [addNudgeKey, setAddNudgeKey] = useState(0);
+  const [addHintVisible, setAddHintVisible] = useState(false);
+  useEffect(() => {
+    if (!addHintNonce) return;
+    setAddNudgeKey((k) => k + 1);
+    setAddHintVisible(true);
+    const t = setTimeout(() => setAddHintVisible(false), 1400);
+    return () => clearTimeout(t);
+  }, [addHintNonce]);
   const exitCompare = () => { setComparing(false); setActiveSide("left"); setSplitHover(false); };
 
   const hL = humanoids[springL.index];
@@ -1543,25 +1525,34 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
       )}
 
       {/* ── Add compare button — hover zone right of center ── */}
-      {!comparing && (
-        <div
-          className="absolute top-0 bottom-0 right-0 flex items-center justify-center group cursor-pointer"
-          style={{ width: "38%", zIndex: 10 }}
-          onClick={() => { setAddHover(false); enterCompare(); }}
-          onMouseEnter={() => setAddHover(true)}
-          onMouseLeave={() => setAddHover(false)}
-        >
+      {!comparing && (() => {
+        const addShown = addHover || addHintVisible;
+        return (
           <div
-            className="rounded-full flex items-center justify-center transition-all duration-300 opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100"
-            style={{ width: 40, height: 40, background: "#ebebeb" }}
+            className="absolute top-0 bottom-0 right-0 flex items-center justify-center cursor-pointer"
+            style={{ width: "38%", zIndex: 10 }}
+            onClick={() => { setAddHover(false); enterCompare(); }}
+            onMouseEnter={() => setAddHover(true)}
+            onMouseLeave={() => setAddHover(false)}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
-              <line x1="8" y1="3" x2="8" y2="13" />
-              <line x1="3" y1="8" x2="13" y2="8" />
-            </svg>
+            <div
+              className="rounded-full flex items-center justify-center transition-all duration-300"
+              style={{
+                width: 40,
+                height: 40,
+                background: "#ebebeb",
+                opacity: addShown ? 1 : 0,
+                transform: `scale(${addShown ? 1 : 0.75})`,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
+                <line x1="8" y1="3" x2="8" y2="13" />
+                <line x1="3" y1="8" x2="13" y2="8" />
+              </svg>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Humanoid groups: [stats | robot] per side ── */}
       {(() => {
@@ -1742,13 +1733,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
         };
 
         const renderBuyCard = (h: typeof humanoids[0]) => {
-          const hasBuy = !!(h.purchaseUrl || (h.cost && h.cost !== "N/A"));
-          if (!hasBuy) return null;
           const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
           const leadIn = h.status === "In Production" ? "From" : "Est.";
           const href = h.purchaseUrl;
 
           if (buyCardStyle === "split") {
+            const disabled = !href;
             const priceContainer = (
               <div className="flex items-center pointer-events-auto" style={{
                 flex: 1,
@@ -1757,15 +1747,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
                 background: "#FAFAFA",
                 padding: "10px 16px",
                 minHeight: 52,
+                opacity: disabled ? 0.4 : 1,
               }}>
-                <div className="min-w-0">
-                  <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
-                    {priceLabel ? leadIn : "Price"}
+                {disabled ? (
+                  <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.01em" }}>
+                    Not purchaseable
                   </p>
-                  <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                    {priceLabel || "Inquire"}
-                  </p>
-                </div>
+                ) : (
+                  <div className="min-w-0">
+                    <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                      {priceLabel ? leadIn : "Price"}
+                    </p>
+                    <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                      {priceLabel || "Inquire"}
+                    </p>
+                  </div>
+                )}
               </div>
             );
             const circleStyle: React.CSSProperties = {
@@ -1805,6 +1802,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
           }
 
           // "dark" — slim sleek premium CTA
+          if (!href && !priceLabel) return null;
           const darkBody = (
             <>
               <span className="text-[9px] tracking-[0.14em] uppercase font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
@@ -2206,22 +2204,36 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, luckyAc
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 11 }}>
             <div className="flex items-start">
               {/* Left robot */}
-              <div style={{
-                transform: splitHover ? "translateX(-12px)" : addHover ? "translateX(-16px)" : "translateX(0)",
-                transition: `transform ${dur} ${ease}`,
-              }}>
+              <div
+                key={addHintVisible ? `nudge-${addNudgeKey}` : "idle-l"}
+                className={addHintVisible ? "animate-add-nudge-double" : ""}
+                style={{
+                  transform: addHintVisible
+                    ? undefined
+                    : splitHover ? "translateX(-12px)" : addHover ? "translateX(-16px)" : "translateX(0)",
+                  transition: addHintVisible ? undefined : `transform ${dur} ${ease}`,
+                }}
+              >
                 {renderRobot(hL, distL, springL.index, true)}
               </div>
 
               {/* Stats slot — crossfade single ↔ merged */}
-              <div className="flex-shrink-0 relative" style={{
-                marginLeft: effectiveGap,
-                overflowX: "visible", overflowY: "visible",
-                width: statsW,
-                height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
-                transform: !comparing && addHover ? "translateX(-16px)" : "translateX(0)",
-                transition: `width ${dur} ${ease}, height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left ${dur} ${ease}, transform ${dur} ${ease}`,
-              }}>
+              <div
+                key={addHintVisible ? `nudge-${addNudgeKey}-s` : "idle-s"}
+                className={`flex-shrink-0 relative${addHintVisible ? " animate-add-nudge-double" : ""}`}
+                style={{
+                  marginLeft: effectiveGap,
+                  overflowX: "visible", overflowY: "visible",
+                  width: statsW,
+                  height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
+                  transform: addHintVisible
+                    ? undefined
+                    : !comparing && addHover ? "translateX(-16px)" : "translateX(0)",
+                  transition: addHintVisible
+                    ? `width ${dur} ${ease}, height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left ${dur} ${ease}`
+                    : `width ${dur} ${ease}, height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left ${dur} ${ease}, transform ${dur} ${ease}`,
+                }}
+              >
                 <div className="absolute inset-0" style={{
                   opacity: comparing ? 0 : 1,
                   pointerEvents: comparing ? "none" : "auto",
@@ -2572,6 +2584,10 @@ export default function Home() {
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
   const [luckyActive, setLuckyActive] = useState(false);
   const [luckyNonce, setLuckyNonce] = useState(0);
+  const [luckyUsed, setLuckyUsed] = useState(false);
+  const [hintNonce, setHintNonce] = useState(0);
+  const [addHintNonce, setAddHintNonce] = useState(0);
+  const [comparingUsed, setComparingUsed] = useState(false);
   const luckyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (luckyTimer.current) clearTimeout(luckyTimer.current); }, []);
   const [fontIdx, setFontIdx] = useState(0);
@@ -2628,11 +2644,36 @@ export default function Home() {
     setChatOpen(false);
     setLuckyNonce((n) => n + 1);
     setLuckyActive(true);
+    setLuckyUsed(true);
     if (luckyTimer.current) clearTimeout(luckyTimer.current);
     luckyTimer.current = setTimeout(() => setLuckyActive(false), 1400);
   }, [layout]);
 
   const introDone = introPhase === "done";
+
+  // Subtle affordance: the add-compare nudge fires first (primary action),
+  // then the logo pulse a bit later (secondary, lower priority). Repeats
+  // until each one is used.
+  useEffect(() => {
+    if (!introDone) return;
+    if (luckyUsed && comparingUsed) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const fireCycle = () => {
+      if (!comparingUsed) setAddHintNonce((n) => n + 1);
+      if (!luckyUsed) {
+        timers.push(setTimeout(() => setHintNonce((n) => n + 1), 5500));
+      }
+    };
+    const schedule = (delay: number) => {
+      const t = setTimeout(() => {
+        fireCycle();
+        schedule(20000);
+      }, delay);
+      timers.push(t);
+    };
+    schedule(5500);
+    return () => { timers.forEach(clearTimeout); };
+  }, [introDone, luckyUsed, comparingUsed]);
 
   return (
     <main
@@ -2684,13 +2725,14 @@ export default function Home() {
             onNavStyleChange={setNavStyle}
             onRandomHumanoid={onRandomHumanoid}
             luckyActive={luckyActive}
+            hintNonce={hintNonce}
           />
         </div>
       )}
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} luckyNonce={luckyNonce} luckyActive={luckyActive} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} luckyNonce={luckyNonce} luckyActive={luckyActive} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} />}
         {layout === "Z" && <EllipticalCarousel />}
       </div>
 
