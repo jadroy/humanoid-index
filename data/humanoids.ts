@@ -45,6 +45,7 @@ export const humanoids: Humanoid[] = [
     id: "14",
     name: "Oli",
     manufacturer: "LimX Dynamics",
+    imageUrl: "/robots/oli.png",
     logoUrl: "/robots/Limx.svg",
     year: 2025,
     cost: "$22K",
@@ -53,6 +54,10 @@ export const humanoids: Humanoid[] = [
     weight: 50,
     dof: 31,
     description: "Full-size humanoid for service and research with affordable pricing and COSA agentic OS.",
+    media: [
+      { type: 'image', url: '/robots/oli-side.png', caption: 'Side profile' },
+      { type: 'image', url: '/robots/oli-wave.webp', caption: 'Waving' },
+    ],
   },
   // 2024
   {
