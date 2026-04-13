@@ -1174,6 +1174,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, addHint
   const [splitLiftY, setSplitLiftY] = useState(4);
   const [splitShadowOp, setSplitShadowOp] = useState(0.12);
   const [splitDur, setSplitDur] = useState(320); // ms
+  const [labelPosition, setLabelPosition] = useState<"stack" | "below" | "above">("below");
 
   // Adaptive arc positioning
   const [windowWidth, setWindowWidth] = useState(1920);
@@ -1745,26 +1746,27 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, addHint
           const sections = statSections(h);
           return (
             <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
-              {/* Info header — fixed height */}
-              <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
-                <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
-                  {h.logoUrl ? (
-                    <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="32px" />
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
-                      <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
-                      <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
-                    </svg>
-                  )}
+              {labelPosition === "stack" && (
+                <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
+                  <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+                    {h.logoUrl ? (
+                      <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="32px" />
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
+                        <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+                        <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[15px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
+                    <p className="text-[10px] tracking-widest uppercase font-medium mt-0.5 truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                      {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
+                    </p>
+                  </div>
+                  {h.id.startsWith("legend") && <span className="flex-shrink-0 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
-                  <p className="text-[10px] tracking-widest uppercase font-medium mt-0.5 truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
-                    {h.manufacturer}{h.year ? ` · ${h.year}` : ''}{h.id.startsWith("legend") ? '' : ''}
-                  </p>
-                </div>
-                {h.id.startsWith("legend") && <span className="flex-shrink-0 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
-              </div>
+              )}
               {/* Stats — lighter container, spaced out */}
               <div className="flex flex-col pointer-events-auto" style={{ padding: "6px 12px", borderRadius: cardRadius, background: "#FCFCFC", position: "relative", zIndex: 11 }}>
                 {sections.filter((s) => s.show && s.label).map((s) => {
@@ -2000,7 +2002,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, addHint
 
           return (
             <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
-              {(() => {
+              {labelPosition === "stack" && (() => {
                 const active = splitHover;
                 const sDur = `${splitDur}ms`;
                 const unifiedL = `${cardRadius}px 0 0 ${cardRadius}px`;
@@ -2212,8 +2214,28 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, addHint
             el.scrollTo({ left: child.offsetLeft, behavior: "smooth" });
           };
 
+          const cardLabel = (
+            <div className="flex items-center gap-2 px-0.5">
+              <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+                {h.logoUrl ? (
+                  <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="22px" />
+                ) : (
+                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
+                    <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+                    <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+                  </svg>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
+                <p className="text-[9px] tracking-widest uppercase font-medium truncate" style={{ color: "#a3a3a3", letterSpacing: "0.06em" }}>{h.manufacturer}</p>
+              </div>
+            </div>
+          );
+
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
+            {labelPosition === "above" && <div className="mb-2">{cardLabel}</div>}
             {/* Inner card */}
             <div
               ref={isFirst ? leftCardRef : rightCardRef}
@@ -2258,6 +2280,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, addHint
 
             </div>
 
+            {labelPosition === "below" && <div className="mt-2">{cardLabel}</div>}
 
             </div>
           );
@@ -2370,6 +2393,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, luckyNonce = 0, addHint
       <button className="absolute top-32 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowSplitTuner(!showSplitTuner)}>{showSplitTuner ? "Close" : "Split"}</button>
       {showSplitTuner && (
         <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
+          <div>
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Label Position</p>
+            <div className="flex gap-1.5">
+              {(["stack", "above", "below"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setLabelPosition(v)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${labelPosition === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
           <div>
             <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Header Split</p>
             <div className="flex flex-wrap gap-1.5">
@@ -2572,8 +2609,8 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-16 px-4 pointer-events-none">
-      <div className="w-full max-w-[420px] rounded-2xl overflow-hidden pointer-events-auto animate-slide-from-bottom" style={{ background: "white", border: "1px solid #e8e8e8", boxShadow: "0 8px 32px rgba(0,0,0,0.08)" }}>
+    <div className="fixed bottom-20 z-40 pointer-events-none" style={{ right: "var(--arc-logo-x, 24px)" }}>
+      <div className="w-[min(420px,calc(100vw-48px))] rounded-2xl overflow-hidden pointer-events-auto animate-slide-from-bottom" style={{ background: "white", border: "1px solid #e8e8e8", boxShadow: "0 8px 32px rgba(0,0,0,0.08)" }}>
         {/* Messages */}
         <div ref={scrollRef} className="max-h-[300px] overflow-y-auto p-4 space-y-3 scrollbar-hide">
           {messages.map((m, i) => (
@@ -2848,8 +2885,8 @@ export default function Home() {
       {/* Bottom ? button */}
       <div className={introDone ? "intro-nav" : "opacity-0"}>
         <button
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
-          style={{ background: chatOpen ? "var(--c-ink)" : "#F7F7F7", color: chatOpen ? "white" : "#999" }}
+          className="fixed bottom-6 z-50 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
+          style={{ right: "var(--arc-logo-x, 24px)", background: chatOpen ? "var(--c-ink)" : "#F7F7F7", color: chatOpen ? "white" : "#999" }}
           onClick={() => setChatOpen(!chatOpen)}
         >
           <span className="text-[14px] font-medium">{chatOpen ? "×" : "?"}</span>
