@@ -77,10 +77,21 @@ function LogoMark({
 
   return (
     <div
-      className="relative inline-flex items-center justify-center cursor-pointer"
+      className="group relative inline-flex items-center justify-center cursor-pointer"
       style={{ width: total, height: total }}
       onClick={onClick}
     >
+      <span
+        className="absolute top-1/2 pointer-events-none whitespace-nowrap opacity-0 -translate-y-1/2 group-hover:opacity-[0.3]"
+        style={{
+          left: total + 2,
+          fontSize: 11,
+          color: ringColor,
+          transition: "opacity 180ms ease",
+        }}
+      >
+        I&rsquo;m feeling lucky
+      </span>
       {hintVisible && (
         <svg
           key={`hint-${hintKey}`}
@@ -1484,6 +1495,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // Inner-card refs — spring subscriptions drive a subtle "give" transform
   const leftCardRef = useRef<HTMLDivElement | null>(null);
   const rightCardRef = useRef<HTMLDivElement | null>(null);
+  // Below-label refs — trailing spin driven by spring velocity
+  const leftLabelRef = useRef<HTMLDivElement | null>(null);
+  const rightLabelRef = useRef<HTMLDivElement | null>(null);
   const [openStat, setOpenStat] = useState<string | null>(null);
   // Layout dimensions
   const [robotW, setRobotW] = useState(30);       // vw
@@ -1634,6 +1648,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     };
     const unsubL = springL.subscribe(make(leftCardRef, springL.getVel));
     const unsubR = springR.subscribe(make(rightCardRef, springR.getVel));
+    return () => { unsubL(); unsubR(); };
+  }, [springL.subscribe, springR.subscribe, springL.getVel, springR.getVel]);
+
+  // Below-label tuck — label slides upward behind the card as velocity climbs,
+  // then settles back down as the spring relaxes.
+  useLayoutEffect(() => {
+    const applyLabel = (el: HTMLDivElement | null, vel: number) => {
+      if (!el) return;
+      const v = Math.min(1, Math.abs(vel) * 2.2);
+      const ty = -v * 44;
+      const op = 1 - v * 0.4;
+      el.style.transform = `translate3d(0, ${ty}px, 0)`;
+      el.style.opacity = String(op);
+    };
+    const unsubL = springL.subscribe(() => applyLabel(leftLabelRef.current, springL.getVel()));
+    const unsubR = springR.subscribe(() => applyLabel(rightLabelRef.current, springR.getVel()));
     return () => { unsubL(); unsubR(); };
   }, [springL.subscribe, springR.subscribe, springL.getVel, springR.getVel]);
 
@@ -2577,6 +2607,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 pointerEvents: "auto",
                 transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
                 willChange: "transform",
+                zIndex: 2,
               }}
             >
               {/* Media area */}
@@ -2608,7 +2639,18 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
             </div>
 
-            {labelPosition === "below" && <div className="mt-2">{cardLabel}</div>}
+            {labelPosition === "below" && (
+              <div
+                ref={isFirst ? leftLabelRef : rightLabelRef}
+                className="mt-2 relative"
+                style={{
+                  willChange: "transform, opacity",
+                  zIndex: 0,
+                }}
+              >
+                {cardLabel}
+              </div>
+            )}
 
             </div>
           );
