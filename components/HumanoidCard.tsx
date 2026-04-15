@@ -83,7 +83,7 @@ export default function HumanoidCard({
 
           {/* New badge */}
           {isNew && !compareMode && (
-            <div className="absolute top-2 left-2 z-20 px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-medium" style={{ background: "#e5e5e5", color: "#737373" }}>
+            <div className="absolute top-2 left-2 z-20 px-1.5 py-0 rounded text-[11px] font-semibold" style={{ background: "#8e8e93", color: "#ffffff" }}>
               New
             </div>
           )}

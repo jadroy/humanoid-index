@@ -1258,7 +1258,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <>
               {/* New badge — rides with the humanoid */}
               {mh.year === 2025 && (
-                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 text-[9px] tracking-[0.08em] uppercase font-medium" style={{ borderRadius: Math.max(3, cardRadius - 1), background: "#fef0e4", color: "#c47a2a" }}>New</div>
+                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 text-[11px] font-semibold" style={{ borderRadius: Math.max(3, cardRadius - 1), background: "#8e8e93", color: "#ffffff" }}>New</div>
               )}
               <div
                 ref={(el) => { galleryScrollRefs.current[mIdx] = el; }}
