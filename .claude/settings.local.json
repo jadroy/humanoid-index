@@ -39,7 +39,11 @@
       "Bash(npm run:*)",
       "Bash(wc:*)",
       "Bash(npx eslint:*)",
-      "Bash(lsof -nP -iTCP:3000 -sTCP:LISTEN)"
+      "Bash(lsof -nP -iTCP:3000 -sTCP:LISTEN)",
+      "Bash(npm install *)",
+      "Bash(npm audit *)",
+      "Bash(lsof -i :3000 -sTCP:LISTEN)",
+      "Bash(git check-ignore *)"
     ],
     "deny": [],
     "ask": []
