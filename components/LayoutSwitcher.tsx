@@ -60,7 +60,7 @@ function DragSwitcher({
   const thumbWidth = isRight ? slots.iW : slots.sW;
 
   const scrollInk = active === "E" ? "rgba(38, 38, 38, 1)" : "rgba(38, 38, 38, 0.35)";
-  const indexInk = active === "Z" ? "rgba(38, 38, 38, 0.22)" : "rgba(38, 38, 38, 0.35)";
+  const transition = "max-width 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease, padding 260ms ease";
 
   return (
     <div
@@ -90,29 +90,38 @@ function DragSwitcher({
       >
         {layoutLabels["E"]}
       </button>
-      <div
-        ref={indexSlotRef}
-        className="relative flex items-center"
-      >
+
+      <div ref={indexSlotRef} className="relative flex items-center">
         <button
           onClick={() => { if (active !== "Z") onChange("Z"); }}
-          className="px-3 py-1 text-[11px] tracking-wide cursor-pointer"
+          className="text-[11px] tracking-wide cursor-pointer whitespace-nowrap"
           style={{
-            color: indexInk,
+            color: active === "Z" ? "rgba(38, 38, 38, 0.3)" : "rgba(38, 38, 38, 0.35)",
             fontWeight: 500,
-            transition: "color 200ms ease",
+            padding: active === "Z" ? "4px 4px 4px 12px" : "4px 12px",
+            transition: "color 200ms ease, padding 260ms ease",
           }}
         >
           {layoutLabels["Z"]}
         </button>
         <div
-          className="flex items-center overflow-hidden"
+          className="overflow-hidden flex items-center"
           style={{
-            maxWidth: active === "Z" ? 260 : 0,
+            maxWidth: active === "Z" ? 280 : 0,
             opacity: active === "Z" ? 1 : 0,
-            transition: "max-width 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease",
+            transition,
           }}
         >
+          <span
+            className="text-[11px]"
+            style={{
+              color: "rgba(38, 38, 38, 0.22)",
+              fontWeight: 400,
+              padding: "0 4px 0 0",
+            }}
+          >
+            ›
+          </span>
           <div className="flex items-center gap-1 pr-2">
             {INDEX_VIEWS.map((v) => (
               <button
@@ -120,9 +129,9 @@ function DragSwitcher({
                 onClick={() => onIndexViewChange(v)}
                 className="text-[11px] tracking-wide capitalize whitespace-nowrap transition-colors duration-200 cursor-pointer"
                 style={{
-                  color: indexView === v ? "rgba(38,38,38,0.7)" : "rgba(38,38,38,0.3)",
+                  color: indexView === v ? "rgba(38,38,38,0.85)" : "rgba(38,38,38,0.35)",
                   fontWeight: 500,
-                  padding: "4px 8px",
+                  padding: "0 6px",
                 }}
               >
                 {v}

@@ -276,9 +276,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [luckyShakeCycles, setLuckyShakeCycles] = useState(2);
   const luckyTapSettingsRef = useRef({ style: luckyTapStyle, dur: luckyTapDur, angle: luckyTapAngle, depth: luckyTapDepth, originY: luckyTapOriginY, shakePx: luckyShakePx, shakeCycles: luckyShakeCycles });
   luckyTapSettingsRef.current = { style: luckyTapStyle, dur: luckyTapDur, angle: luckyTapAngle, depth: luckyTapDepth, originY: luckyTapOriginY, shakePx: luckyShakePx, shakeCycles: luckyShakeCycles };
-  const [arcWheelR, setArcWheelR] = useState(700);
-  const [arcStepDeg, setArcStepDeg] = useState(3.5);
-  const [arcTextGap, setArcTextGap] = useState(15);
+  const [arcWheelR, setArcWheelR] = useState(457);
+  const [arcStepDeg, setArcStepDeg] = useState(5.1);
+  const [arcTextGap, setArcTextGap] = useState(2);
   const [arcLineOp, setArcLineOp] = useState(0.5);
   const [arcFsMax, setArcFsMax] = useState(22);
   const [arcFsMin, setArcFsMin] = useState(10);
