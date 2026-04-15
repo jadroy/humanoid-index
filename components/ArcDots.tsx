@@ -1,0 +1,396 @@
+"use client";
+
+import React, { useLayoutEffect, useRef, useState } from "react";
+import { humanoids } from "@/data/humanoids";
+import type { SpringSubscribe } from "@/hooks/useSpring";
+
+// ═══════════════════════════════════════════════════════════════
+// Arc styles
+// ═══════════════════════════════════════════════════════════════
+export const ARC_STYLES = [
+  // core
+  "crown", "arc-timeline", "pills", "classic", "ticks", "minimal",
+  // pill + number hybrids
+  "h-clean", "h-stacked", "h-reveal", "h-flush", "h-mono",
+  "h-light", "h-bold", "h-spaced", "h-underline", "h-tag",
+] as const;
+export type ArcStyle = (typeof ARC_STYLES)[number];
+export const arcStyleLabels: Record<ArcStyle, string> = {
+  crown: "Crown", "arc-timeline": "Arc", pills: "Pills", classic: "Classic", ticks: "Ticks", minimal: "Minimal",
+  "h-clean": "Clean", "h-stacked": "Stacked", "h-reveal": "Reveal", "h-flush": "Flush", "h-mono": "Mono",
+  "h-light": "Light", "h-bold": "Bold", "h-spaced": "Spaced", "h-underline": "Underline", "h-tag": "Tag",
+};
+
+// Miscellaneous tint — older / legend entries get a gold fill in the arc timeline
+export const MISC_GOLD = "176,141,87"; // rgb parts of #b08d57
+export const isMisc = (h: typeof humanoids[0] | undefined) =>
+  !!h && (h.id.startsWith("legend-") || (h.year ?? 0) < 2020);
+
+// Imperative arc-timeline wheel: renders text nodes once per window, then
+// updates their x/y/transform/fontSize/opacity directly in response to spring
+// ticks — avoids a React reconciliation per frame.
+function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR, aStepDeg, aTextGap, aLineOp, aFsMax, aFsMin }: {
+  index: number;
+  subscribe: SpringSubscribe;
+  mirrored?: boolean;
+  onClickItem: (idx: number) => void;
+  aInset: number; aWheelR: number; aStepDeg: number; aTextGap: number; aLineOp: number; aFsMax: number; aFsMin: number;
+}) {
+  const wheelR = aWheelR;
+  const r = wheelR - aTextGap;
+  const items: { i: number }[] = [];
+  for (let n = index - 14; n <= index + 15; n++) {
+    if (n >= 0 && n < humanoids.length) items.push({ i: n });
+  }
+  const textRefs = useRef<Array<SVGTextElement | null>>([]);
+
+  useLayoutEffect(() => {
+    const update = (pos: number) => {
+      for (let idx = 0; idx < items.length; idx++) {
+        const el = textRefs.current[idx];
+        if (!el) continue;
+        const i = items[idx].i;
+        const misc = isMisc(humanoids[i]);
+        const o = i - pos;
+        const deg = o * aStepDeg;
+        const rad = (deg * Math.PI) / 180;
+        const baseAngle = mirrored ? Math.PI : 0;
+        const theta = baseAngle + (mirrored ? -rad : rad);
+        const cx = wheelR + Math.cos(theta) * r;
+        const cy = wheelR + Math.sin(theta) * r;
+        const tangentDeg = (theta * 180) / Math.PI + (mirrored ? 180 : 0);
+        const dist = Math.abs(o);
+        const isAct = dist < 0.5;
+        const t = Math.min(dist / 10, 1);
+        const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
+        const fw = isAct ? 500 : 400;
+        const op = Math.max(0.08, 1 - t * 0.9);
+        const fill = misc
+          ? (isAct ? `rgb(${MISC_GOLD})` : `rgba(${MISC_GOLD},${0.3 + (1 - t) * 0.45})`)
+          : (isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`);
+
+        el.setAttribute("x", String(cx));
+        el.setAttribute("y", String(cy));
+        el.setAttribute("transform", `rotate(${tangentDeg}, ${cx}, ${cy})`);
+        el.style.fontSize = `${fs}px`;
+        el.style.fontWeight = String(fw);
+        el.style.fill = fill;
+        el.style.opacity = String(op);
+      }
+    };
+    return subscribe(update);
+  }, [items, subscribe, mirrored, wheelR, r, aStepDeg, aFsMax, aFsMin]);
+
+  return (
+    <div className="absolute inset-0 overflow-visible pointer-events-auto">
+      <svg
+        className="absolute overflow-visible pointer-events-auto"
+        style={{
+          width: wheelR * 2,
+          height: wheelR * 2,
+          top: "50%",
+          ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
+          transform: "translateY(-50%)",
+          transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+        viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
+      >
+        <circle cx={wheelR} cy={wheelR} r={r} fill="none" stroke="#ebebeb" strokeWidth="0.5" style={{ opacity: aLineOp }} />
+        {items.map(({ i }, idx) => {
+          const name = humanoids[i]?.name ?? String(i).padStart(2, "0");
+          return (
+            <text
+              key={i}
+              ref={(el) => { textRefs.current[idx] = el; }}
+              className="cursor-pointer"
+              textAnchor={mirrored ? "end" : "start"}
+              dominantBaseline="middle"
+              onClick={() => onClickItem(i)}
+              style={{
+                fontFamily: "inherit",
+                letterSpacing: "-0.02em",
+                transition: "opacity 0.15s ease",
+              }}
+            >
+              {name}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+export function ArcDots({ index, subscribe, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10 }: { index: number; subscribe: SpringSubscribe; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number }) {
+  // arc-timeline takes the imperative path to avoid React reconciliation per frame
+  if (variant === "arc-timeline") {
+    return <ArcTimelineWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} />;
+  }
+
+  // Other variants: subscribe locally so fractional updates stay contained
+  // inside ArcDots instead of re-rendering Browse.
+  const [pos, setPos] = useState<number>(index);
+  useLayoutEffect(() => subscribe((p) => setPos(p)), [subscribe]);
+
+  const R = 300, off = 30, range = variant === "crown" ? dRange : 2;
+  const cx = -R + off;
+  const getP = (o: number) => {
+    const a = (o * 8 * Math.PI) / 180;
+    return { x: cx + R * Math.cos(a), y: R * Math.sin(a) };
+  };
+  const items: { i: number; o: number }[] = [];
+  const f = Math.floor(pos);
+  for (let n = f - range; n <= f + range + 1; n++) if (n >= 0 && n < humanoids.length) items.push({ i: n, o: n - pos });
+
+  const sid = mirrored ? "r" : "l";
+  const noTrack = true;
+
+  const track = (
+    <svg className="absolute inset-0 w-full h-full pointer-events-none">
+      <defs>
+        <filter id={`ts-${sid}`}>
+          <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="#000" floodOpacity="0.04" />
+        </filter>
+      </defs>
+      {noTrack ? (
+        variant !== "minimal" && variant !== "crown" && <circle cx={cx} cy="50%" r={R} fill="none" stroke="#e8e8e8" strokeWidth="1" style={{ opacity: dimmed ? 0.3 : 1 }} />
+      ) : (
+        <circle cx={cx} cy="50%" r={R} fill="none" stroke="rgba(243,243,243,0.85)" strokeWidth={variant === "ticks" ? 44 : 38} filter={`url(#ts-${sid})`} style={{ opacity: dimmed ? 0.3 : 1 }} />
+      )}
+    </svg>
+  );
+
+  const renderItem = (i: number, o: number) => {
+    const abs = Math.abs(o), p = getP(o), t = Math.min(abs, 1);
+    const angleDeg = o * 10;
+    const isActive = abs < 0.15;
+    const bOp = dimmed ? 0.35 : 1;
+    const ap = { left: `${p.x}px`, top: `calc(50% + ${p.y}px)` };
+    const cr = { ...ap, transform: `translate(-50%, -50%) rotate(${angleDeg}deg)` };
+    const co = { ...ap, transform: "translateY(-50%)" };
+    const num = String(i).padStart(2, "0");
+    const flip = mirrored ? "scaleX(-1)" : undefined;
+
+    // ── crown: physical drum wheel ──
+    if (variant === "crown") {
+      const drumDeg = o * dAngle;
+      const drumRad = drumDeg * Math.PI / 180;
+      const drumY = Math.sin(drumRad) * dRadius;
+      const drumZ = Math.cos(drumRad);
+      if (drumZ <= 0.01) return <div key={i} />;
+      const fsRange = dFsMax - dFsMin;
+      const fs = dFsMin + drumZ * fsRange;
+      const fw = drumZ > 0.94 ? dFwMax : drumZ > 0.7 ? Math.min(dFwMax, 500) : 400;
+      const op = Math.pow(Math.max(0, drumZ), dOpPow) * bOp;
+      const color = drumZ > 0.94 ? "#1d1d1f" : `rgba(29,29,31,${0.15 + drumZ * 0.35})`;
+      const compMin = dComp;
+      return (<div key={i} className="absolute cursor-pointer" style={{ left: dXOff + 14, top: `calc(50% + ${drumY}px)`, transform: `translateY(-50%) scaleY(${compMin + drumZ * (1 - compMin)})`, opacity: op }} onClick={() => onClickItem(i)}>
+        <span className="tabular-nums" style={{ fontSize: fs, fontWeight: fw, lineHeight: 1, color, letterSpacing: `${dTrack}em` }}>{num}</span>
+      </div>);
+    }
+    // ── pills (no text) ──
+    if (variant === "pills") {
+      const op = (isActive ? 1 : Math.max(0.3, 0.65 - abs * 0.12)) * bOp;
+      return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 6 : 4, height: isActive ? 24 : 12 + (1 - t) * 4, borderRadius: 99, background: isActive ? "#222" : "#aaa" }} />
+      </div>);
+    }
+    // ── classic (original dot + italic number) ──
+    if (variant === "classic") {
+      const dot = 3 + (1 - t) * 3, fs = 24 + (1 - t) * 10;
+      const op = (abs < 0.1 ? 1 : Math.max(0, 0.4 - abs * 0.1)) * bOp;
+      return (<div key={i} className="absolute flex items-center gap-2.5 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div className="rounded-full flex-shrink-0" style={{ width: dot, height: dot, opacity: 0.2 + (1 - t) * 0.8, background: "var(--c-ink)" }} />
+        <span className="tabular-nums font-medium" style={{ fontSize: fs, letterSpacing: "-0.04em", lineHeight: 1, fontStyle: t > 0.5 ? "italic" : "normal", opacity: 0.2 + (1 - t) * 0.8, color: "var(--c-ink)", transform: flip }}>{num}</span>
+      </div>);
+    }
+    // ── ticks (gauge notches, no text) ──
+    if (variant === "ticks") {
+      const op = (isActive ? 1 : Math.max(0.25, 0.6 - abs * 0.12)) * bOp;
+      return (<div key={i} className="absolute cursor-pointer" style={{ ...cr, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 20 : 10 + (1 - t) * 4, height: isActive ? 5 : 3, borderRadius: 99, background: isActive ? "#222" : "#aaa" }} />
+      </div>);
+    }
+    // ── minimal (single dot, no track) ──
+    if (variant === "minimal") {
+      if (!isActive) return <div key={i} />;
+      return (<div key={i} className="absolute" style={{ ...ap, transform: "translate(-50%,-50%)", opacity: bOp }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#222" }} />
+      </div>);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // PILL + NUMBER HYBRIDS
+    // ════════════════════════════════════════════════════════════
+
+    // ── h-clean: pill left, number right, uniform weight, gentle fade ──
+    if (variant === "h-clean") {
+      const op = (isActive ? 1 : Math.max(0.08, 0.5 - abs * 0.14)) * bOp;
+      const fs = isActive ? 26 : 14 + (1 - t) * 4;
+      return (<div key={i} className="absolute flex items-center gap-3 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 5 : 3, height: isActive ? 20 : 10 + (1 - t) * 4, borderRadius: 99, background: isActive ? "#333" : "#c0c0c0", transform: `rotate(${angleDeg}deg)` }} />
+        <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.03em", lineHeight: 1, color: isActive ? "#333" : "#c0c0c0", fontWeight: isActive ? 500 : 400, transform: flip }}>{num}</span>
+      </div>);
+    }
+    // ── h-stacked: number above pill, vertically centered ──
+    if (variant === "h-stacked") {
+      const op = (isActive ? 1 : Math.max(0.08, 0.45 - abs * 0.12)) * bOp;
+      const fs = isActive ? 18 : 10 + (1 - t) * 3;
+      return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: "translate(-50%,-50%)", opacity: op }} onClick={() => onClickItem(i)}>
+        <div className="flex flex-col items-center gap-1.5">
+          <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.02em", lineHeight: 1, color: isActive ? "#333" : "#bbb", fontWeight: isActive ? 600 : 400, transform: flip, display: "inline-block" }}>{num}</span>
+          <div style={{ width: isActive ? 5 : 3, height: isActive ? 14 : 6 + (1 - t) * 3, borderRadius: 99, background: isActive ? "#333" : "#c5c5c5", transform: `rotate(${angleDeg}deg)` }} />
+        </div>
+      </div>);
+    }
+    // ── h-reveal: pills only, number fades in near active ──
+    if (variant === "h-reveal") {
+      const op = (isActive ? 1 : Math.max(0.25, 0.6 - abs * 0.12)) * bOp;
+      const showNum = abs < 0.6;
+      const numOp = showNum ? Math.max(0, 1 - abs * 2.5) : 0;
+      return (<div key={i} className="absolute cursor-pointer" style={{ ...ap, transform: "translate(-50%,-50%)", opacity: op }} onClick={() => onClickItem(i)}>
+        <div className="flex items-center gap-2.5">
+          <div style={{ width: isActive ? 6 : 4, height: isActive ? 22 : 10 + (1 - t) * 4, borderRadius: 99, background: isActive ? "#222" : "#aaa", transform: `rotate(${angleDeg}deg)` }} />
+          {showNum && <span className="tabular-nums" style={{ fontSize: isActive ? 24 : 16, letterSpacing: "-0.04em", lineHeight: 1, color: "#333", fontWeight: 500, opacity: numOp, transform: flip, display: "inline-block", whiteSpace: "nowrap" }}>{num}</span>}
+        </div>
+      </div>);
+    }
+    // ── h-flush: number flush against pill, tight spacing ──
+    if (variant === "h-flush") {
+      const op = (isActive ? 1 : Math.max(0.06, 0.4 - abs * 0.1)) * bOp;
+      const fs = isActive ? 22 : 12 + (1 - t) * 4;
+      return (<div key={i} className="absolute flex items-center cursor-pointer" style={{ ...co, opacity: op, gap: isActive ? 6 : 4 }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 4 : 2.5, height: isActive ? 18 : 8 + (1 - t) * 4, borderRadius: 99, background: isActive ? "#222" : "#ccc", transform: `rotate(${angleDeg}deg)` }} />
+        <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.06em", lineHeight: 1, color: isActive ? "#222" : "#ccc", fontWeight: isActive ? 600 : 300, transform: flip }}>{num}</span>
+      </div>);
+    }
+    // ── h-mono: monospace font, pill as cursor/caret ──
+    if (variant === "h-mono") {
+      const op = (isActive ? 1 : Math.max(0.08, 0.45 - abs * 0.1)) * bOp;
+      const fs = isActive ? 20 : 12 + (1 - t) * 3;
+      return (<div key={i} className="absolute flex items-center gap-2 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 3 : 2, height: isActive ? 20 : 10 + (1 - t) * 3, borderRadius: 1, background: isActive ? "#222" : "#ccc" }} />
+        <span className="font-mono tabular-nums" style={{ fontSize: fs, lineHeight: 1, color: isActive ? "#222" : "#bbb", fontWeight: isActive ? 600 : 400, letterSpacing: "0.02em", transform: flip }}>{num}</span>
+      </div>);
+    }
+    // ── h-light: ultra-thin pill, light font weight, airy ──
+    if (variant === "h-light") {
+      const op = (isActive ? 1 : Math.max(0.1, 0.5 - abs * 0.13)) * bOp;
+      const fs = isActive ? 28 : 16 + (1 - t) * 5;
+      return (<div key={i} className="absolute flex items-center gap-3.5 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 2 : 1.5, height: isActive ? 26 : 12 + (1 - t) * 5, borderRadius: 99, background: isActive ? "#555" : "#d0d0d0", transform: `rotate(${angleDeg}deg)` }} />
+        <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.03em", lineHeight: 1, color: isActive ? "#555" : "#d0d0d0", fontWeight: isActive ? 300 : 200, transform: flip }}>{num}</span>
+      </div>);
+    }
+    // ── h-bold: heavy pill, heavy number, high contrast ──
+    if (variant === "h-bold") {
+      const op = (isActive ? 1 : Math.max(0.1, 0.5 - abs * 0.12)) * bOp;
+      const fs = isActive ? 32 : 16 + (1 - t) * 6;
+      return (<div key={i} className="absolute flex items-center gap-2.5 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 7 : 4, height: isActive ? 26 : 12 + (1 - t) * 5, borderRadius: 99, background: isActive ? "#111" : "#999", transform: `rotate(${angleDeg}deg)` }} />
+        <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.05em", lineHeight: 1, color: isActive ? "#111" : "#999", fontWeight: isActive ? 800 : 500, transform: flip }}>{num}</span>
+      </div>);
+    }
+    // ── h-spaced: wide letter-spacing, editorial feel ──
+    if (variant === "h-spaced") {
+      const op = (isActive ? 1 : Math.max(0.06, 0.42 - abs * 0.1)) * bOp;
+      const fs = isActive ? 16 : 9 + (1 - t) * 3;
+      return (<div key={i} className="absolute flex items-center gap-2 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 4 : 3, height: isActive ? 16 : 8 + (1 - t) * 3, borderRadius: 99, background: isActive ? "#333" : "#c5c5c5", transform: `rotate(${angleDeg}deg)` }} />
+        <span className="tabular-nums uppercase" style={{ fontSize: fs, letterSpacing: "0.2em", lineHeight: 1, color: isActive ? "#333" : "#c5c5c5", fontWeight: isActive ? 500 : 400, transform: flip }}>{num}</span>
+      </div>);
+    }
+    // ── h-underline: number with thin line underneath ──
+    if (variant === "h-underline") {
+      const op = (isActive ? 1 : Math.max(0.06, 0.42 - abs * 0.1)) * bOp;
+      const fs = isActive ? 24 : 13 + (1 - t) * 4;
+      return (<div key={i} className="absolute flex items-center gap-3 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+        <div style={{ width: isActive ? 4 : 2.5, height: isActive ? 18 : 8 + (1 - t) * 3, borderRadius: 99, background: isActive ? "#333" : "#ccc", transform: `rotate(${angleDeg}deg)` }} />
+        <div className="flex flex-col" style={{ gap: isActive ? 3 : 2 }}>
+          <span className="tabular-nums" style={{ fontSize: fs, letterSpacing: "-0.03em", lineHeight: 1, color: isActive ? "#333" : "#ccc", fontWeight: isActive ? 500 : 400, transform: flip, display: "inline-block" }}>{num}</span>
+          <div style={{ height: isActive ? 1.5 : 1, width: "100%", background: isActive ? "#333" : "#d5d5d5", borderRadius: 1 }} />
+        </div>
+      </div>);
+    }
+    // ── h-tag: number in a rounded tag/badge ──
+    const op = (isActive ? 1 : Math.max(0.08, 0.45 - abs * 0.12)) * bOp;
+    const fs = isActive ? 14 : 9 + (1 - t) * 2;
+    return (<div key={i} className="absolute flex items-center gap-2 cursor-pointer" style={{ ...co, opacity: op }} onClick={() => onClickItem(i)}>
+      <div style={{ width: isActive ? 4 : 2.5, height: isActive ? 16 : 8 + (1 - t) * 3, borderRadius: 99, background: isActive ? "#333" : "#ccc", transform: `rotate(${angleDeg}deg)` }} />
+      <span className="tabular-nums" style={{ fontSize: fs, lineHeight: 1, color: isActive ? "#333" : "#c0c0c0", fontWeight: isActive ? 500 : 400, padding: isActive ? "4px 8px" : "2px 5px", borderRadius: 6, background: isActive ? "rgba(0,0,0,0.05)" : "rgba(0,0,0,0.02)", transform: flip, display: "inline-block", whiteSpace: "nowrap" }}>{num}</span>
+    </div>);
+  };
+
+  const content = (
+    <>
+      {track}
+      {items.map(({ i, o }) => renderItem(i, o))}
+    </>
+  );
+
+  const drumMask = variant === "crown" ? { maskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 20}%, black 70%, transparent 90%)`, WebkitMaskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 20}%, black 70%, transparent 90%)` } as React.CSSProperties : {};
+
+  // Crown physical elements — static dashes + blued marker
+  const crownElements = variant === "crown" ? (
+    <>
+      {/* Static dashed lines — fixed ruler markings */}
+      {Array.from({ length: 21 }, (_, j) => {
+        const y = (j - 10) * 12;
+        const distFromCenter = Math.abs(j - 10);
+        const isMajor = j % 5 === 0;
+        const op = Math.max(0, 1 - distFromCenter * 0.09);
+        return (
+          <div key={j} className="absolute pointer-events-none" style={{
+            left: dXOff,
+            top: `calc(50% + ${y}px)`,
+            width: isMajor ? 12 : 7,
+            height: 1,
+            background: `rgba(0,0,0,${isMajor ? 0.12 : 0.06})`,
+            borderRadius: 1,
+            opacity: op,
+            transform: "translateY(-50%)",
+          }} />
+        );
+      })}
+      {/* Rail line */}
+      <div className="absolute pointer-events-none" style={{
+        left: dXOff, top: "15%", bottom: "15%", width: 1,
+        background: "rgba(0,0,0,0.06)", borderRadius: 1,
+      }} />
+      {/* Fixed reading marker — warm brass triangle */}
+      <div className="absolute pointer-events-none" style={{ left: dXOff - 12, top: "50%", transform: "translateY(-50%)" }}>
+        <svg width="8" height="10" viewBox="0 0 8 10" fill="#8a7245" opacity="0.45">
+          <polygon points="0,2.5 8,5 0,7.5" />
+        </svg>
+      </div>
+    </>
+  ) : null;
+
+  // Enhanced depth mask for crown — stronger curve shading
+  const crownDepth = variant === "crown" ? {
+    maskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 15}%, black 65%, transparent 88%)`,
+    WebkitMaskImage: `linear-gradient(to bottom, transparent ${dMaskFade}%, black ${dMaskFade + 15}%, black 65%, transparent 88%)`,
+  } as React.CSSProperties : drumMask;
+
+  const finalMask = variant === "crown" ? crownDepth : drumMask;
+
+  if (variant === "crown") {
+    return (
+      <div
+        className="absolute top-0 bottom-0"
+        style={{
+          width: "100vw",
+          ...(mirrored ? { right: 0, transform: "scaleX(-1)" } : { left: 0 }),
+          ...finalMask,
+        }}
+      >
+        {crownElements}
+        {content}
+      </div>
+    );
+  }
+  if (mirrored) {
+    return <div className="absolute inset-0" style={{ transform: "scaleX(-1)", ...finalMask }}>{crownElements}{content}</div>;
+  }
+  return <div className="absolute inset-0" style={finalMask}>{crownElements}{content}</div>;
+}
