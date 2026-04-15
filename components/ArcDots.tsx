@@ -61,10 +61,10 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
         const tangentDeg = (theta * 180) / Math.PI + (mirrored ? 180 : 0);
         const dist = Math.abs(o);
         const isAct = dist < 0.5;
-        const t = Math.min(dist / 5, 1);
+        const t = Math.min(dist / 7, 1);
         const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
         const fw = isAct ? 500 : 400;
-        const op = Math.max(0.04, Math.pow(1 - t, 1.4));
+        const op = Math.max(0.05, Math.pow(1 - t, 1.2));
         const fill = misc
           ? (isAct ? `rgb(${MISC_GOLD})` : `rgba(${MISC_GOLD},${0.3 + (1 - t) * 0.45})`)
           : (isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`);
