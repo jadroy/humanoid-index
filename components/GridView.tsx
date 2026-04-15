@@ -1,124 +1,111 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { useState } from "react";
 import type { Humanoid } from "@/data/humanoids";
-import type { LayoutConfig } from "./BottomBar";
 
 interface GridViewProps {
   humanoids: Humanoid[];
-  layoutConfig: LayoutConfig;
-  compareMode: boolean;
-  selectedIds: string[];
-  onToggleSelect: (id: string) => void;
-  onHoverChange: (humanoid: Humanoid | null) => void;
 }
 
-export default function GridView({
-  humanoids,
-  layoutConfig,
-  compareMode,
-  selectedIds,
-  onToggleSelect,
-  onHoverChange,
-}: GridViewProps) {
+const MIN_COLS = 2;
+const MAX_COLS = 8;
+
+export default function GridView({ humanoids }: GridViewProps) {
+  const cardRadius = 28;
+  const [cols, setCols] = useState(5);
+
   return (
-    <div className="w-full min-h-full bg-white">
+    <div className="w-full h-screen overflow-y-auto bg-white pt-24 pb-16 px-6 md:px-10 lg:px-16 scrollbar-hide">
       <div
-        className="grid w-full"
+        className="fixed z-40 flex items-center gap-2 pointer-events-auto px-3 py-2 rounded-full"
         style={{
-          gridTemplateColumns: `repeat(${layoutConfig.gridColumns}, 1fr)`,
+          top: "var(--nav-top, 4px)",
+          right: "var(--arc-logo-x, 24px)",
+          background: "rgba(255,255,255,0.75)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          border: "1px solid rgba(0,0,0,0.06)",
         }}
       >
-        {humanoids.map((humanoid, index) => {
-          const isSelected = selectedIds.includes(humanoid.id);
+        <span className="text-[9px] tracking-[0.14em] uppercase" style={{ color: "#a3a3a3" }}>Cols</span>
+        <input
+          type="range"
+          min={MIN_COLS}
+          max={MAX_COLS}
+          value={cols}
+          onChange={(e) => setCols(Number(e.target.value))}
+          className="w-20 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
+        />
+        <span className="text-[10px] tabular-nums w-3 text-right" style={{ color: "var(--c-ink)" }}>{cols}</span>
+      </div>
 
-          const handleClick = (e: React.MouseEvent) => {
-            if (compareMode) {
-              e.preventDefault();
-              onToggleSelect(humanoid.id);
-            }
-          };
-
-          const CardWrapper = compareMode ? "div" : Link;
-          const cardProps = compareMode
-            ? { onClick: handleClick }
-            : { href: `/robot/${humanoid.id}` };
-
-          const borderOpacity = layoutConfig.gridBorderOpacity / 100;
-
-          return (
-            <CardWrapper
-              key={humanoid.id}
-              {...(cardProps as any)}
-              className={`relative group cursor-pointer flex flex-col items-center justify-center aspect-square ${
-                isSelected ? "bg-neutral-100" : ""
-              }`}
+      <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        {humanoids.map((h) => (
+          <Link
+            key={h.id}
+            href={`/robot/${h.id}`}
+            className="group block"
+          >
+            <div
+              className="relative w-full overflow-hidden flex items-center justify-center"
               style={{
-                borderRight: `1px solid rgba(0,0,0,${borderOpacity * 0.1})`,
-                borderBottom: `1px solid rgba(0,0,0,${borderOpacity * 0.1})`,
+                aspectRatio: "1 / 1",
+                borderRadius: cardRadius,
+                background: "#FAFAFA",
               }}
-              onMouseEnter={() => onHoverChange(humanoid)}
-              onMouseLeave={() => onHoverChange(null)}
             >
-              {/* Sci-fi corner brackets - appear on hover */}
-              <div className="absolute inset-4 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-100 z-10">
-                {/* Top left */}
-                <div className="absolute top-0 left-0 w-4 h-4 border-l border-t border-neutral-300" />
-                {/* Top right */}
-                <div className="absolute top-0 right-0 w-4 h-4 border-r border-t border-neutral-300" />
-                {/* Bottom left */}
-                <div className="absolute bottom-0 left-0 w-4 h-4 border-l border-b border-neutral-300" />
-                {/* Bottom right */}
-                <div className="absolute bottom-0 right-0 w-4 h-4 border-r border-b border-neutral-300" />
-              </div>
-
-              {/* Compare mode selection indicator */}
-              {compareMode && (
-                <div
-                  className={`absolute top-3 right-3 z-20 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-100 ${
-                    isSelected
-                      ? "bg-neutral-900 border-neutral-900"
-                      : "bg-white/80 border-neutral-300"
-                  }`}
-                >
-                  {isSelected && (
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="3"
-                    >
-                      <path d="M5 12l5 5L20 7" />
-                    </svg>
-                  )}
-                </div>
-              )}
-
-              {/* Image */}
               <img
-                src={humanoid.imageUrl || "/robots/placeholder.png"}
-                alt={humanoid.name}
+                src={h.imageUrl || "/robots/placeholder.png"}
+                alt={h.name}
                 draggable={false}
-                className="w-full h-full object-contain transition-opacity duration-100"
-                style={{
-                  padding: `${layoutConfig.gridPadding}px`,
-                  opacity: 1,
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = String(layoutConfig.gridHoverOpacity / 100)}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                className="h-[78%] w-auto object-contain transition-transform duration-200 ease-out group-hover:scale-[1.03]"
               />
+            </div>
 
-              {/* Label - shows on hover */}
-              {layoutConfig.gridShowLabels && (
-                <div className="absolute bottom-3 text-center text-[11px] text-neutral-400 truncate px-2 w-full opacity-0 group-hover:opacity-100 transition-opacity duration-100">
-                  {humanoid.name}
-                </div>
-              )}
-            </CardWrapper>
-          );
-        })}
+            <div className="mt-2 flex items-center gap-2 px-0.5">
+              <div
+                className="flex-shrink-0 relative overflow-hidden flex items-center justify-center"
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: cardRadius * 0.6,
+                  background: h.logoUrl ? "transparent" : "#EFEFEF",
+                }}
+              >
+                {h.logoUrl ? (
+                  <Image
+                    src={h.logoUrl}
+                    alt={h.manufacturer}
+                    fill
+                    className="object-cover"
+                    sizes="22px"
+                  />
+                ) : (
+                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
+                    <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+                    <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+                  </svg>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p
+                  className="text-[13px] font-medium truncate"
+                  style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}
+                >
+                  {h.name}
+                </p>
+                <p
+                  className="text-[9px] uppercase font-medium truncate"
+                  style={{ color: "#a3a3a3", letterSpacing: "0.06em" }}
+                >
+                  {h.manufacturer}
+                </p>
+              </div>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );
