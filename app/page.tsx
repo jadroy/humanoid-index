@@ -13,12 +13,13 @@ export async function generateMetadata({
 }: {
   searchParams: Promise<{ h?: string; compare?: string }>;
 }): Promise<Metadata> {
-  const params = await searchParams;
+  let params = await searchParams;
   const headersList = await headers();
   const host = headersList.get("host") || "localhost:3000";
   const proto = headersList.get("x-forwarded-proto") || "http";
   const baseUrl = `${proto}://${host}`;
 
+  // ?compare=leftId,rightId — both must resolve
   if (params.compare) {
     const ids = params.compare.split(",").map((s) => s.trim());
     const left = findHumanoid(ids[0]);
@@ -34,8 +35,14 @@ export async function generateMetadata({
         twitter: { card: "summary_large_image", title, description, images: [ogImage] },
       };
     }
+    // Partial compare (one valid id) — fall through to single-bot path
+    const solo = left || right;
+    if (solo) {
+      params = { ...params, h: solo.id, compare: undefined };
+    }
   }
 
+  // ?h=id — single bot
   if (params.h) {
     const bot = findHumanoid(params.h);
     if (bot) {
@@ -57,9 +64,14 @@ export async function generateMetadata({
     }
   }
 
+  // Default — no valid params or bare URL
+  const title = "Humanoid Index";
+  const description = "A comprehensive visual index of humanoid robots";
   return {
-    title: "Humanoid Index",
-    description: "A comprehensive visual index of humanoid robots",
+    title,
+    description,
+    openGraph: { title, description },
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 

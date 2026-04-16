@@ -5,6 +5,11 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes arc-disk-slide {
+  0% { opacity: 0; transform: translateX(var(--disk-slide-from)); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
 * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

@@ -121,7 +121,12 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
           cy={wheelR}
           r={Math.max(0, r - aDiskGap)}
           fill={aDiskColor}
-          style={{ pointerEvents: "none" }}
+          style={{
+            pointerEvents: "none",
+            opacity: 0,
+            "--disk-slide-from": `${mirrored ? "" : "-"}${wheelR}px`,
+            animation: "arc-disk-slide 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+          } as React.CSSProperties}
         />
         {items.map(({ i }, idx) => {
           const name = humanoids[i]?.name ?? String(i).padStart(2, "0");
