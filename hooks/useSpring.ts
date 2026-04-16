@@ -76,6 +76,20 @@ export function useSpring(s: number, d: number) {
 
   const jumpTo = useCallback((idx: number) => { targetRef.current = Math.max(0, Math.min(humanoids.length - 1, idx)); start(); }, [start]);
 
+  // Synchronous snap — no RAF, no animation. Use for URL hydration so React
+  // state is consistent from the very first render cycle.
+  const snapTo = useCallback((idx: number) => {
+    const clamped = Math.max(0, Math.min(humanoids.length - 1, idx));
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; }
+    targetRef.current = clamped;
+    posRef.current = clamped;
+    velRef.current = 0;
+    nudgeRef.current = 0;
+    indexRef.current = clamped;
+    setIndex(clamped);
+    notify(clamped);
+  }, [notify]);
+
   const subscribe = useCallback((cb: (p: number) => void) => {
     subscribersRef.current.add(cb);
     cb(posRef.current + nudgeRef.current);
@@ -94,5 +108,5 @@ export function useSpring(s: number, d: number) {
     return () => { if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; } };
   }, [notify]);
 
-  return { index, subscribe, getPos, getVel, go, nudge, jumpTo, targetRef };
+  return { index, subscribe, getPos, getVel, go, nudge, jumpTo, snapTo, targetRef };
 }
