@@ -223,6 +223,24 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
   );
 }
 
+// ─── Share URL params ──────────────────────────────────────────
+// Single bot:  ?h=<id>
+// Compare:     ?compare=<leftId>,<rightId>
+// IDs come straight from humanoids.ts; compare takes precedence on hydration.
+function parseShareParams(): { leftId: string | null; compareIds: string[] } {
+  if (typeof window === "undefined") return { leftId: null, compareIds: [] };
+  const p = new URLSearchParams(window.location.search);
+  const compareRaw = p.get("compare");
+  const compareIds = compareRaw ? compareRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  return { leftId: p.get("h"), compareIds };
+}
+
+function findHumanoidIndex(id: string | null | undefined): number | null {
+  if (!id) return null;
+  const i = humanoids.findIndex((h) => h.id === id);
+  return i >= 0 ? i : null;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
@@ -603,6 +621,45 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   }, [addHintNonce]);
   const exitCompare = () => { setComparing(false); setActiveSide("left"); setSplitHover(false); };
 
+  // ── Hydrate spring positions from share URL on mount ──
+  useEffect(() => {
+    const { leftId, compareIds } = parseShareParams();
+    if (compareIds.length >= 2) {
+      const l = findHumanoidIndex(compareIds[0]);
+      const r = findHumanoidIndex(compareIds[1]);
+      if (l != null) springL.jumpTo(l);
+      if (r != null) {
+        springR.jumpTo(r);
+        setComparing(true);
+        setActiveSide("right");
+      }
+      return;
+    }
+    const leftIdx = findHumanoidIndex(leftId);
+    if (leftIdx != null) springL.jumpTo(leftIdx);
+    // run only on mount; springs are stable refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Write selection to URL when it settles on a new bot ──
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    if (comparing) {
+      const leftId = humanoids[springL.index]?.id;
+      const rightId = humanoids[springR.index]?.id;
+      if (leftId && rightId) p.set("compare", `${leftId},${rightId}`);
+      p.delete("h");
+    } else {
+      const leftId = humanoids[springL.index]?.id;
+      if (leftId) p.set("h", leftId);
+      p.delete("compare");
+    }
+    const qs = p.toString();
+    const url = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+    window.history.replaceState(null, "", url);
+  }, [springL.index, springR.index, comparing]);
+
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
   const distL = Math.abs(springL.getPos() - springL.targetRef.current);
@@ -927,7 +984,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         maxHeight: isOpen ? 140 : 0,
                         opacity: isOpen ? 1 : 0,
                         overflow: "hidden",
-                        transition: `max-height 0.45s ${ease}, opacity 0.35s ${ease}`,
+                        transition: `max-height 0.35s ${ease}, opacity 0.28s ${ease}`,
                       }}>
                         <div className="pb-2 pl-[22.5px]">{s.detail}</div>
                       </div>
@@ -1234,7 +1291,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         maxHeight: isOpen ? 140 : 0,
                         opacity: isOpen ? 1 : 0,
                         overflow: "hidden",
-                        transition: `max-height 0.45s ${ease}, opacity 0.35s ${ease}`,
+                        transition: `max-height 0.35s ${ease}, opacity 0.28s ${ease}`,
                       }}>
                         <div className="pb-2">{s.detail}</div>
                       </div>
@@ -2013,18 +2070,20 @@ export default function Home() {
       {/* ── Nav ── */}
       {introDone && (
         <div className="intro-nav fixed inset-0 z-[999] pointer-events-none select-none">
-          <LayoutSwitcher
-            active={layout}
-            onChange={setLayout}
-            navStyle={navStyle}
-            onNavStyleChange={setNavStyle}
-            switcherStyle={switcherStyle}
-            onRandomHumanoid={onRandomHumanoid}
-            luckyNonce={luckyNonce}
-            hintNonce={hintNonce}
-            indexView={indexView}
-            onIndexViewChange={setIndexView}
-          />
+          <div className="nav-slide w-full h-full">
+            <LayoutSwitcher
+              active={layout}
+              onChange={setLayout}
+              navStyle={navStyle}
+              onNavStyleChange={setNavStyle}
+              switcherStyle={switcherStyle}
+              onRandomHumanoid={onRandomHumanoid}
+              luckyNonce={luckyNonce}
+              hintNonce={hintNonce}
+              indexView={indexView}
+              onIndexViewChange={setIndexView}
+            />
+          </div>
         </div>
       )}
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Humanoid } from "@/data/humanoids";
 
 interface GridViewProps {
@@ -11,15 +11,54 @@ interface GridViewProps {
 
 const MIN_COLS = 2;
 const MAX_COLS = 8;
+const HIDE_OFFSET = "-96px";
+const HIDE_ACCUM = 80;
+const SHOW_ACCUM = 24;
 
 export default function GridView({ humanoids }: GridViewProps) {
   const cardRadius = 28;
-  const [cols, setCols] = useState(5);
+  const [cols, setCols] = useState(3);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    let lastY = el.scrollTop;
+    let accum = 0;
+    let hidden = false;
+    const setHidden = (v: boolean) => {
+      if (v === hidden) return;
+      hidden = v;
+      root.style.setProperty("--nav-hide-y", v ? HIDE_OFFSET : "0px");
+      root.style.setProperty("--nav-hide-delay", v ? "260ms" : "0ms");
+    };
+    const onScroll = () => {
+      const y = el.scrollTop;
+      const dy = y - lastY;
+      lastY = y;
+      if (y < 40) {
+        accum = 0;
+        setHidden(false);
+        return;
+      }
+      if ((dy > 0) !== (accum > 0)) accum = 0;
+      accum += dy;
+      if (accum > HIDE_ACCUM) setHidden(true);
+      else if (accum < -SHOW_ACCUM) setHidden(false);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      root.style.setProperty("--nav-hide-y", "0px");
+      root.style.setProperty("--nav-hide-delay", "0ms");
+    };
+  }, []);
 
   return (
-    <div className="w-full h-screen overflow-y-auto bg-white pt-24 pb-16 px-6 md:px-10 lg:px-16 scrollbar-hide">
+    <div ref={scrollRef} className="w-full h-screen overflow-y-auto bg-white pt-24 pb-16 px-6 md:px-10 lg:px-16 scrollbar-hide">
       <div
-        className="fixed z-40 flex items-center gap-2 pointer-events-auto px-3 py-2 rounded-full"
+        className="nav-slide fixed z-40 flex items-center gap-2 pointer-events-auto px-3 py-2 rounded-full"
         style={{
           top: "var(--nav-top, 4px)",
           right: "var(--arc-logo-x, 24px)",
