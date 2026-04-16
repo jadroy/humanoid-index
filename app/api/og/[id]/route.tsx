@@ -142,7 +142,7 @@ function SingleCard({
       </div>
 
       <div style={{ position: "absolute", bottom: 28, right: 40, display: "flex", fontSize: 16, color: "#ccc", letterSpacing: 0.5 }}>
-        humanoidindex.com
+        humanoid-index.com
       </div>
     </div>
   );
@@ -279,7 +279,7 @@ function CompareCard({
       <CompareSide bot={right} imgSrc={rightImg} />
 
       <div style={{ position: "absolute", bottom: 28, right: 40, display: "flex", fontSize: 16, color: "#ccc", letterSpacing: 0.5 }}>
-        humanoidindex.com
+        humanoid-index.com
       </div>
     </div>
   );

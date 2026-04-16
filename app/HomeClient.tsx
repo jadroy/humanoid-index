@@ -2151,10 +2151,10 @@ export default function HomeClient() {
 
       {/* Bottom-center share button */}
       <div className={introDone ? "intro-nav" : "opacity-0"}>
-        <div ref={shareMenuRef} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
+        <div ref={shareMenuRef} className="fixed bottom-6 left-1/2 z-50 pointer-events-auto" style={{ width: 36, marginLeft: -18 }}>
           <button
-            className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
-            style={{ background: shareMenuOpen ? "var(--c-ink)" : "#F7F7F7", color: shareMenuOpen ? "white" : "#999" }}
+            className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-[1.06]"
+            style={{ background: "#F7F7F7", color: "#999" }}
             onClick={() => setShareMenuOpen((v) => !v)}
             aria-label="Share"
           >
@@ -2164,39 +2164,29 @@ export default function HomeClient() {
               <line x1="12" y1="2" x2="12" y2="15" />
             </svg>
           </button>
-          {/* Share menu */}
           {shareMenuOpen && (
             <div
-              className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col overflow-hidden"
+              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex flex-col py-1"
               style={{
-                background: "#fff",
-                borderRadius: 14,
-                boxShadow: "0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)",
-                border: "1px solid #f0f0f0",
-                minWidth: 180,
-                animation: "chat-rise 0.2s cubic-bezier(0.16, 1, 0.3, 1) both",
+                background: "#F7F7F7",
+                borderRadius: 12,
+                minWidth: 160,
+                animation: "chat-rise 0.15s cubic-bezier(0.16, 1, 0.3, 1) both",
               }}
             >
               <button
-                className="flex items-center gap-3 px-4 py-3 text-left cursor-pointer transition-colors duration-100 hover:bg-neutral-50"
+                className="px-4 py-2 text-[13px] text-left cursor-pointer transition-colors duration-100 hover:bg-black/[0.04]"
+                style={{ color: "#1d1d1f" }}
                 onClick={() => copyUrl(typeof window !== "undefined" ? window.location.origin : "", "Site link copied")}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-                <span className="text-[13px]" style={{ color: "#333" }}>Share site</span>
+                Share site
               </button>
-              <div style={{ height: 1, background: "#f0f0f0" }} />
               <button
-                className="flex items-center gap-3 px-4 py-3 text-left cursor-pointer transition-colors duration-100 hover:bg-neutral-50"
+                className="px-4 py-2 text-[13px] text-left cursor-pointer transition-colors duration-100 hover:bg-black/[0.04]"
+                style={{ color: "#1d1d1f" }}
                 onClick={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied")}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                </svg>
-                <span className="text-[13px]" style={{ color: "#333" }}>Share current view</span>
+                Share current view
               </button>
             </div>
           )}
