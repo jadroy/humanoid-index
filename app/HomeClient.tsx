@@ -480,8 +480,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
   // External navigation from chat
   useEffect(() => {
-    if (goToIndex != null) springL.jumpTo(goToIndex);
-  }, [goToIndex, springL.jumpTo]);
+    if (goToIndex != null) springL.snapTo(goToIndex);
+  }, [goToIndex, springL.snapTo]);
 
   // Wheel accumulators for each side
   const accL = useRef(0);
