@@ -244,7 +244,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, introDone = false }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; introDone?: boolean }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, introDone = false, shareUrlRef }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string> }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -480,8 +480,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
   // External navigation from chat
   useEffect(() => {
-    if (goToIndex != null) springL.snapTo(goToIndex);
-  }, [goToIndex, springL.snapTo]);
+    if (goToIndex != null) springL.jumpTo(goToIndex);
+  }, [goToIndex, springL.jumpTo]);
 
   // Wheel accumulators for each side
   const accL = useRef(0);
@@ -641,32 +641,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Write selection to URL when it settles on a new bot ──
-  // Skip the first invocation so we never clobber the hydrated URL with stale
-  // state captured during the mount render cycle.
-  const didInitURLSync = useRef(false);
+  // ── Keep share URL ref in sync for parent to read ──
   useEffect(() => {
-    if (!didInitURLSync.current) {
-      didInitURLSync.current = true;
-      return;
-    }
-    if (typeof window === "undefined") return;
-    const p = new URLSearchParams(window.location.search);
+    if (typeof window === "undefined" || !shareUrlRef) return;
+    const origin = window.location.origin;
     if (comparing) {
       const leftId = humanoids[springL.index]?.id;
       const rightId = humanoids[springR.index]?.id;
-      if (leftId && rightId) p.set("compare", `${leftId},${rightId}`);
-      p.delete("h");
+      shareUrlRef.current = leftId && rightId ? `${origin}/?compare=${leftId},${rightId}` : origin;
     } else {
       const leftId = humanoids[springL.index]?.id;
-      if (leftId) p.set("h", leftId);
-      p.delete("compare");
+      shareUrlRef.current = leftId ? `${origin}/?h=${leftId}` : origin;
     }
-    // URLSearchParams encodes commas to %2C — decode them back for readability.
-    const qs = p.toString().replace(/%2C/g, ",");
-    const url = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
-    window.history.replaceState(null, "", url);
-  }, [springL.index, springR.index, comparing]);
+  }, [springL.index, springR.index, comparing, shareUrlRef]);
 
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
@@ -1859,8 +1846,8 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
   };
 
   return (
-    <div className="fixed bottom-20 z-40 pointer-events-none" style={{ right: "var(--arc-logo-x, 24px)" }}>
-      <div className="w-[min(420px,calc(100vw-48px))] rounded-2xl overflow-hidden pointer-events-auto animate-slide-from-bottom" style={{ background: "white", border: "1px solid #e8e8e8", boxShadow: "0 8px 32px rgba(0,0,0,0.08)" }}>
+    <div className="fixed bottom-16 z-40 pointer-events-none" style={{ right: "var(--arc-logo-x, 24px)" }}>
+      <div className="w-[min(420px,calc(100vw-48px))] rounded-2xl overflow-hidden pointer-events-auto" style={{ background: "white", border: "1px solid #e8e8e8", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", animation: "chat-rise 0.3s cubic-bezier(0.16, 1, 0.3, 1) both" }}>
         {/* Messages */}
         <div ref={scrollRef} className="max-h-[300px] overflow-y-auto p-4 space-y-3 scrollbar-hide">
           {messages.map((m, i) => (
@@ -1929,6 +1916,30 @@ export default function HomeClient() {
   const [hintNonce, setHintNonce] = useState(0);
   const [addHintNonce, setAddHintNonce] = useState(0);
   const [comparingUsed, setComparingUsed] = useState(false);
+
+  // Share URL — Browse writes to this ref, Home's share button reads it
+  const shareUrlRef = useRef("");
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [shareToast, setShareToast] = useState<string | false>(false);
+  const shareToastTimer = useRef<ReturnType<typeof setTimeout>>(null);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
+  const copyUrl = useCallback((url: string, label: string) => {
+    navigator.clipboard.writeText(url);
+    setShareMenuOpen(false);
+    setShareToast(label);
+    if (shareToastTimer.current) clearTimeout(shareToastTimer.current);
+    shareToastTimer.current = setTimeout(() => setShareToast(false), 1600);
+  }, []);
+
+  // Close share menu on outside click
+  useEffect(() => {
+    if (!shareMenuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) setShareMenuOpen(false);
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [shareMenuOpen]);
   const [fontIdx, setFontIdx] = useState(0);
   const [textDim, setTextDim] = useState(0);
   const [showFontToast, setShowFontToast] = useState(false);
@@ -1989,12 +2000,12 @@ export default function HomeClient() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const handleSelectHumanoid = (idx: number) => {
+  const handleSelectHumanoid = useCallback((idx: number) => {
     setLayout("E");
     setGoToIndex(idx);
     setChatOpen(false);
     setTimeout(() => setGoToIndex(null), 100);
-  };
+  }, []);
 
   const onRandomHumanoid = useCallback(() => {
     if (layout !== "E") setLayout("E");
@@ -2099,9 +2110,9 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} introDone={introDone} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} introDone={introDone} shareUrlRef={shareUrlRef} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel />}
-        {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} onSelect={handleSelectHumanoid} />}
+        {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
 
       {/* Font toast */}
@@ -2138,7 +2149,61 @@ export default function HomeClient() {
         </div>
       )}
 
-      {/* Bottom ? button */}
+      {/* Bottom-center share button */}
+      <div className={introDone ? "intro-nav" : "opacity-0"}>
+        <div ref={shareMenuRef} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
+          <button
+            className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
+            style={{ background: shareMenuOpen ? "var(--c-ink)" : "#F7F7F7", color: shareMenuOpen ? "white" : "#999" }}
+            onClick={() => setShareMenuOpen((v) => !v)}
+            aria-label="Share"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+          </button>
+          {/* Share menu */}
+          {shareMenuOpen && (
+            <div
+              className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col overflow-hidden"
+              style={{
+                background: "#fff",
+                borderRadius: 14,
+                boxShadow: "0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)",
+                border: "1px solid #f0f0f0",
+                minWidth: 180,
+                animation: "chat-rise 0.2s cubic-bezier(0.16, 1, 0.3, 1) both",
+              }}
+            >
+              <button
+                className="flex items-center gap-3 px-4 py-3 text-left cursor-pointer transition-colors duration-100 hover:bg-neutral-50"
+                onClick={() => copyUrl(typeof window !== "undefined" ? window.location.origin : "", "Site link copied")}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+                <span className="text-[13px]" style={{ color: "#333" }}>Share site</span>
+              </button>
+              <div style={{ height: 1, background: "#f0f0f0" }} />
+              <button
+                className="flex items-center gap-3 px-4 py-3 text-left cursor-pointer transition-colors duration-100 hover:bg-neutral-50"
+                onClick={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied")}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                </svg>
+                <span className="text-[13px]" style={{ color: "#333" }}>Share current view</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom-right help button */}
       <div className={introDone ? "intro-nav" : "opacity-0"}>
         <button
           className="fixed bottom-6 z-50 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
@@ -2148,6 +2213,18 @@ export default function HomeClient() {
           <span className="text-[14px] font-medium">{chatOpen ? "×" : "?"}</span>
         </button>
       </div>
+
+      {/* Share toast */}
+      {shareToast && (
+        <div
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg animate-blur-fade"
+          style={{ background: "rgba(0,0,0,0.06)", backdropFilter: "blur(12px)" }}
+        >
+          <p className="text-[11px] tracking-wide" style={{ color: "#737373", fontWeight: 500 }}>
+            {shareToast}
+          </p>
+        </div>
+      )}
 
       {chatOpen && <GuideChat onSelect={handleSelectHumanoid} />}
 

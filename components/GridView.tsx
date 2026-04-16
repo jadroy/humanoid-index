@@ -6,7 +6,7 @@ import type { Humanoid } from "@/data/humanoids";
 
 interface GridViewProps {
   humanoids: Humanoid[];
-  onSelect?: (index: number) => void;
+  onSelect?: (idOrIdx: string | number) => void;
 }
 
 const MIN_COLS = 2;
@@ -15,7 +15,7 @@ const HIDE_OFFSET = "-96px";
 const HIDE_ACCUM = 80;
 const SHOW_ACCUM = 24;
 
-export default function GridView({ humanoids, onSelect }: GridViewProps) {
+export default function GridView({ humanoids }: GridViewProps) {
   const cardRadius = 28;
   const [cols, setCols] = useState(3);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -84,8 +84,7 @@ export default function GridView({ humanoids, onSelect }: GridViewProps) {
         {humanoids.map((h, i) => (
           <div
             key={h.id}
-            className="group block cursor-pointer"
-            onClick={() => onSelect?.(i)}
+            className="group block"
           >
             <div
               className="relative w-full overflow-hidden flex items-center justify-center"
