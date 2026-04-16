@@ -39,43 +39,63 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
   const wheelR = aWheelR;
   const r = wheelR - aTextGap;
   const items: { i: number }[] = [];
-  for (let n = index - 14; n <= index + 15; n++) {
+  for (let n = index - 10; n <= index + 10; n++) {
     if (n >= 0 && n < humanoids.length) items.push({ i: n });
   }
   const textRefs = useRef<Array<SVGTextElement | null>>([]);
+  const groupRefs = useRef<Array<SVGGElement | null>>([]);
+
+  // Configure text once per items window. Per-frame work only sets
+  // transform + opacity on the group.
+  useLayoutEffect(() => {
+    for (let idx = 0; idx < items.length; idx++) {
+      const text = textRefs.current[idx];
+      if (!text) continue;
+      text.setAttribute("x", "0");
+      text.setAttribute("y", "0");
+      text.style.fontSize = `${aFsMax}px`;
+      text.style.fontWeight = "500";
+      text.style.fill = "var(--c-ink)";
+    }
+  }, [items, aFsMax]);
 
   useLayoutEffect(() => {
+    const baseAngle = mirrored ? Math.PI : 0;
+    const stepRad = (aStepDeg * Math.PI) / 180;
+    const mir = mirrored ? -1 : 1;
+    const rotOff = mirrored ? 180 : 0;
+    const lastT = new Array<string>(items.length).fill("");
+    const lastO = new Array<number>(items.length).fill(-1);
+
     const update = (pos: number) => {
       for (let idx = 0; idx < items.length; idx++) {
-        const el = textRefs.current[idx];
-        if (!el) continue;
-        const i = items[idx].i;
-        const misc = isMisc(humanoids[i]);
-        const o = i - pos;
-        const deg = o * aStepDeg;
-        const rad = (deg * Math.PI) / 180;
-        const baseAngle = mirrored ? Math.PI : 0;
-        const theta = baseAngle + (mirrored ? -rad : rad);
+        const g = groupRefs.current[idx];
+        if (!g) continue;
+        const o = items[idx].i - pos;
+        const dist = o < 0 ? -o : o;
+        const isAct = dist < 0.5;
+        const t = dist > 7 ? 1 : dist / 7;
+        const fade = isAct ? 1 : Math.pow(1 - t, 1.2);
+        const alpha = isAct ? 1 : 0.15 + (1 - t) * 0.25;
+        const op = isAct ? 1 : alpha * fade;
+        const clampedOp = op < 0.04 ? 0.04 : op;
+
+        const theta = baseAngle + mir * o * stepRad;
         const cx = wheelR + Math.cos(theta) * r;
         const cy = wheelR + Math.sin(theta) * r;
-        const tangentDeg = (theta * 180) / Math.PI + (mirrored ? 180 : 0);
-        const dist = Math.abs(o);
-        const isAct = dist < 0.5;
-        const t = Math.min(dist / 7, 1);
-        const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
-        const fw = isAct ? 500 : 400;
-        const op = Math.max(0.05, Math.pow(1 - t, 1.2));
-        const fill = misc
-          ? (isAct ? `rgb(${MISC_GOLD})` : `rgba(${MISC_GOLD},${0.3 + (1 - t) * 0.45})`)
-          : (isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`);
+        const tangentDeg = (theta * 180) / Math.PI + rotOff;
+        const fs = isAct ? aFsMax : aFsMax - 4 - dist * 1.2;
+        const scale = (fs < aFsMin ? aFsMin : fs) / aFsMax;
 
-        el.setAttribute("x", String(cx));
-        el.setAttribute("y", String(cy));
-        el.setAttribute("transform", `rotate(${tangentDeg}, ${cx}, ${cy})`);
-        el.style.fontSize = `${fs}px`;
-        el.style.fontWeight = String(fw);
-        el.style.fill = fill;
-        el.style.opacity = String(op);
+        const tf = `translate(${cx}px,${cy}px) rotate(${tangentDeg}deg) scale(${scale})`;
+        if (tf !== lastT[idx]) {
+          g.style.transform = tf;
+          lastT[idx] = tf;
+        }
+        if (clampedOp !== lastO[idx]) {
+          g.style.opacity = String(clampedOp);
+          lastO[idx] = clampedOp;
+        }
       }
     };
     return subscribe(update);
@@ -95,25 +115,40 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
         }}
         viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
       >
-        <circle cx={wheelR} cy={wheelR} r={r} fill="none" stroke="#ebebeb" strokeWidth="0.5" style={{ opacity: aLineOp }} />
+        <circle
+          cx={wheelR}
+          cy={wheelR}
+          r={r - 26}
+          fill="#f5f5f5"
+          style={{ pointerEvents: "none" }}
+        />
         {items.map(({ i }, idx) => {
           const name = humanoids[i]?.name ?? String(i).padStart(2, "0");
           return (
-            <text
+            <g
               key={i}
-              ref={(el) => { textRefs.current[idx] = el; }}
-              className="cursor-pointer"
-              textAnchor={mirrored ? "end" : "start"}
-              dominantBaseline="middle"
-              onClick={() => onClickItem(i)}
+              ref={(el) => { groupRefs.current[idx] = el; }}
               style={{
-                fontFamily: "inherit",
-                letterSpacing: "-0.02em",
                 transition: "opacity 0.15s ease",
+                willChange: "transform, opacity",
+                transformBox: "view-box",
+                transformOrigin: "0 0",
               }}
             >
-              {name}
-            </text>
+              <text
+                ref={(el) => { textRefs.current[idx] = el; }}
+                className="cursor-pointer"
+                textAnchor={mirrored ? "end" : "start"}
+                dominantBaseline="middle"
+                onClick={() => onClickItem(i)}
+                style={{
+                  fontFamily: "inherit",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {name}
+              </text>
+            </g>
           );
         })}
       </svg>
