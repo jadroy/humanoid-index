@@ -282,6 +282,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [arcLineOp, setArcLineOp] = useState(0.5);
   const [arcFsMax, setArcFsMax] = useState(22);
   const [arcFsMin, setArcFsMin] = useState(10);
+  const [arcDiskGap, setArcDiskGap] = useState(26);
+  const [arcDiskColor, setArcDiskColor] = useState("#f5f5f5");
   // Per-card gallery index: keyed by humanoid index
   const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
   const galleryScrollRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -692,6 +694,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcLineOp={arcLineOp}
           arcFsMax={arcFsMax}
           arcFsMin={arcFsMin}
+          arcDiskGap={arcDiskGap}
+          arcDiskColor={arcDiskColor}
         />
       </div>
       {/* Right arc nav */}
@@ -721,6 +725,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             arcLineOp={arcLineOp}
             arcFsMax={arcFsMax}
             arcFsMin={arcFsMin}
+            arcDiskGap={arcDiskGap}
+            arcDiskColor={arcDiskColor}
           />
         </div>
       )}
@@ -1695,6 +1701,32 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Line opacity <span className="tabular-nums text-neutral-400">{arcLineOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(arcLineOp * 100)} onChange={(e) => setArcLineOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Font max <span className="tabular-nums text-neutral-400">{arcFsMax}px</span></label><input type="range" min={12} max={40} value={arcFsMax} onChange={(e) => setArcFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{arcFsMin}px</span></label><input type="range" min={6} max={20} value={arcFsMin} onChange={(e) => setArcFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Disk gap <span className="tabular-nums text-neutral-400">{arcDiskGap}px</span></label><input type="range" min={0} max={280} value={arcDiskGap} onChange={(e) => setArcDiskGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Disk color <span className="tabular-nums text-neutral-400">{arcDiskColor}</span></label>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                {["#ffffff", "#fafafa", "#f5f5f5", "#ececec", "#f4f1eb", "#e8e4dc", "transparent"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setArcDiskColor(c)}
+                    className="w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110"
+                    style={{
+                      background: c === "transparent" ? "repeating-conic-gradient(#e5e5e5 0% 25%, #fff 0% 50%) 50% / 8px 8px" : c,
+                      border: arcDiskColor === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5",
+                    }}
+                    aria-label={c}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={arcDiskColor === "transparent" ? "#f5f5f5" : arcDiskColor}
+                  onChange={(e) => setArcDiskColor(e.target.value)}
+                  className="w-5 h-5 rounded-full cursor-pointer border border-neutral-200 ml-1"
+                  style={{ padding: 0 }}
+                  aria-label="Custom color"
+                />
+              </div>
+            </div>
           </div>
           )}
         </div>
