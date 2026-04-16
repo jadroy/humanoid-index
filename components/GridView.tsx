@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { Humanoid } from "@/data/humanoids";
 
 interface GridViewProps {
   humanoids: Humanoid[];
+  onSelect?: (index: number) => void;
 }
 
 const MIN_COLS = 2;
@@ -15,7 +15,7 @@ const HIDE_OFFSET = "-96px";
 const HIDE_ACCUM = 80;
 const SHOW_ACCUM = 24;
 
-export default function GridView({ humanoids }: GridViewProps) {
+export default function GridView({ humanoids, onSelect }: GridViewProps) {
   const cardRadius = 28;
   const [cols, setCols] = useState(3);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -81,11 +81,11 @@ export default function GridView({ humanoids }: GridViewProps) {
       </div>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-        {humanoids.map((h) => (
-          <Link
+        {humanoids.map((h, i) => (
+          <div
             key={h.id}
-            href={`/robot/${h.id}`}
-            className="group block"
+            className="group block cursor-pointer"
+            onClick={() => onSelect?.(i)}
           >
             <div
               className="relative w-full overflow-hidden flex items-center justify-center"
@@ -143,7 +143,7 @@ export default function GridView({ humanoids }: GridViewProps) {
                 </p>
               </div>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
     </div>
