@@ -41,6 +41,7 @@ const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
   Prototype: { bg: "#f3f4f6", fg: "#6b7280" },
   Concept: { bg: "#fef3c7", fg: "#92400e" },
   Discontinued: { bg: "#f3f4f6", fg: "#9ca3af" },
+  Anticipated: { bg: "#f3e8ff", fg: "#6d28d9" },
 };
 
 // ── Single bot card ──────────────────────────────────────────

@@ -39,6 +39,7 @@ export default async function EmbedPage({
     Prototype: "#6b7280",
     Concept: "#92400e",
     Discontinued: "#9ca3af",
+    Anticipated: "#6d28d9",
   };
 
   return (

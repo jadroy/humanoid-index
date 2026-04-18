@@ -37,7 +37,11 @@ function CarouselCard({ humanoid: h, isNew, width = CARD_W }: { humanoid: Humano
             </div>
           </div>
         )}
-        {h.imageUrl ? (
+        {h.status === "Anticipated" ? (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-[9px] tracking-[0.2em] uppercase" style={{ color: "#a3a3a3" }}>Coming Soon</span>
+          </div>
+        ) : h.imageUrl ? (
           <Image
             src={h.imageUrl}
             alt={h.name}

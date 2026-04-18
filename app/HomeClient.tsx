@@ -294,14 +294,28 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [luckyShakeCycles, setLuckyShakeCycles] = useState(2);
   const luckyTapSettingsRef = useRef({ style: luckyTapStyle, dur: luckyTapDur, angle: luckyTapAngle, depth: luckyTapDepth, originY: luckyTapOriginY, shakePx: luckyShakePx, shakeCycles: luckyShakeCycles });
   luckyTapSettingsRef.current = { style: luckyTapStyle, dur: luckyTapDur, angle: luckyTapAngle, depth: luckyTapDepth, originY: luckyTapOriginY, shakePx: luckyShakePx, shakeCycles: luckyShakeCycles };
-  const [arcWheelR, setArcWheelR] = useState(300);
-  const [arcStepDeg, setArcStepDeg] = useState(5.1);
+  const [arcWheelR, setArcWheelR] = useState(181);
+  const [arcStepDeg, setArcStepDeg] = useState(8);
   const [arcTextGap, setArcTextGap] = useState(2);
   const [arcLineOp, setArcLineOp] = useState(0.5);
   const [arcFsMax, setArcFsMax] = useState(22);
   const [arcFsMin, setArcFsMin] = useState(10);
   const [arcDiskGap, setArcDiskGap] = useState(26);
   const [arcDiskColor, setArcDiskColor] = useState("#f5f5f5");
+  // Arc-tag tuning
+  const [tagFsMin, setTagFsMin] = useState(11);
+  const [tagFsMax, setTagFsMax] = useState(14);
+  const [tagOpMin, setTagOpMin] = useState(0.58);
+  const [tagOpMax, setTagOpMax] = useState(1);
+  const [tagGreyMin, setTagGreyMin] = useState(64);
+  const [tagGreyMax, setTagGreyMax] = useState(213);
+  const [tagPillOp, setTagPillOp] = useState(0.03);
+  const [tagFalloff, setTagFalloff] = useState(2);
+  const [tagPadX, setTagPadX] = useState(0);
+  const [tagPadY, setTagPadY] = useState(0);
+  const [tagRadius, setTagRadius] = useState(20);
+  const [tagMarkerSize, setTagMarkerSize] = useState(4);
+  const [tagMarkerOp, setTagMarkerOp] = useState(0.32);
   // Per-card gallery index: keyed by humanoid index
   const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
   const galleryScrollRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -749,6 +763,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcDiskGap={arcDiskGap}
           arcDiskColor={arcDiskColor}
           entered={introDone}
+          tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
+          tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
+          tagPadX={tagPadX} tagPadY={tagPadY} tagRadius={tagRadius} tagMarkerSize={tagMarkerSize} tagMarkerOp={tagMarkerOp}
         />
       </div>
       {/* Right arc nav */}
@@ -781,6 +798,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             arcDiskGap={arcDiskGap}
             arcDiskColor={arcDiskColor}
             entered={introDone}
+            tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
+            tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
+            tagPadX={tagPadX} tagPadY={tagPadY} tagRadius={tagRadius} tagMarkerSize={tagMarkerSize} tagMarkerOp={tagMarkerOp}
           />
         </div>
       )}
@@ -836,7 +856,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         const weightPct = Math.min(((h.weight ?? 0) / 120) * 100, 100);
         const dofPct = Math.min(((h.dof ?? 0) / 50) * 100, 100);
         const speedPct = Math.min(((h.maxSpeed ?? 0) / 5) * 100, 100);
-        const statusColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : "#a3a3a3";
+        const statusColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : h.status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
 
         const barViz = (label: string, value: string, pct: number, delay: number) => (
           <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -930,7 +950,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 </span>
                 <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.status}</p>
               </div>
-              <p className="text-[11px] mt-2" style={{ color: "#999" }}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : "No longer in active production."}</p>
+              <p className="text-[11px] mt-2" style={{ color: "#999" }}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : h.status === "Anticipated" ? "Teased for future release — details not yet revealed." : "No longer in active production."}</p>
             </div>
           ) },
         ];
@@ -1104,7 +1124,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           const weightL = hL.weight ?? 0, weightR = hR.weight ?? 0;
           const dofL = hL.dof ?? 0, dofR = hR.dof ?? 0;
           const speedL = hL.maxSpeed ?? 0, speedR = hR.maxSpeed ?? 0;
-          const statusColor = (status?: string) => status === "In Production" ? "#22c55e" : status === "Prototype" ? "#eab308" : status === "Concept" ? "#3b82f6" : "#a3a3a3";
+          const statusColor = (status?: string) => status === "In Production" ? "#22c55e" : status === "Prototype" ? "#eab308" : status === "Concept" ? "#3b82f6" : status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
 
           const compareRow = (label: string, valL: string | null, valR: string | null, lWin: boolean, rWin: boolean) => (
             <div className="flex items-baseline justify-between gap-2" style={{ marginTop: 6 }}>
@@ -1333,7 +1353,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 }}
                 onScroll={mHasGallery ? onScroll : undefined}
               >
-                {mImages.length > 0 ? mImages.map((src, i) => (
+                {mh.status === "Anticipated" ? (
+                  <div className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
+                    <span className="text-[11px] tracking-[0.22em] uppercase" style={{ color: "#a3a3a3" }}>Coming Soon</span>
+                  </div>
+                ) : mImages.length > 0 ? mImages.map((src, i) => (
                   <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: mh.imageFit === "cover" ? 0 : mh.imagePosition === "bottom" ? "24px 24px 0 24px" : 24 }}>
                     <div className="relative w-full h-full">
                       <Image src={src} alt={`${mh.name} ${i + 1}`} fill className={mh.imageFit === "cover" ? "object-cover" : "object-contain"} style={mh.imagePosition ? { objectPosition: mh.imagePosition } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
@@ -1731,7 +1755,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake amount <span className="tabular-nums text-neutral-400">{luckyShakePx}px</span></label><input type="range" min={0} max={14} value={luckyShakePx} onChange={(e) => setLuckyShakePx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake cycles <span className="tabular-nums text-neutral-400">{luckyShakeCycles}</span></label><input type="range" min={1} max={8} value={luckyShakeCycles} onChange={(e) => setLuckyShakeCycles(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
-          {(arcStyle === "crown" || arcStyle === "arc-timeline") && (
+          {(arcStyle === "crown" || arcStyle === "arc-timeline" || arcStyle === "arc-tag") && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(70); }}>Reset</button></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Angle <span className="tabular-nums text-neutral-400">{drumAngle}°</span></label><input type="range" min={8} max={45} value={drumAngle} onChange={(e) => setDrumAngle(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -1781,6 +1805,24 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 />
               </div>
             </div>
+          </div>
+          )}
+          {arcStyle === "arc-tag" && (
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Tag</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setTagFsMin(11); setTagFsMax(14); setTagOpMin(0.58); setTagOpMax(1); setTagGreyMin(64); setTagGreyMax(213); setTagPillOp(0.03); setTagFalloff(2); setTagPadX(0); setTagPadY(0); setTagRadius(20); setTagMarkerSize(4); setTagMarkerOp(0.32); }}>Reset</button></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{tagFsMin}px</span></label><input type="range" min={8} max={20} value={tagFsMin} onChange={(e) => setTagFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Font max <span className="tabular-nums text-neutral-400">{tagFsMax}px</span></label><input type="range" min={12} max={32} value={tagFsMax} onChange={(e) => setTagFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Opacity min <span className="tabular-nums text-neutral-400">{tagOpMin.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagOpMin * 100)} onChange={(e) => setTagOpMin(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Opacity max <span className="tabular-nums text-neutral-400">{tagOpMax.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagOpMax * 100)} onChange={(e) => setTagOpMax(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Color dark <span className="tabular-nums text-neutral-400">{tagGreyMin}</span></label><input type="range" min={0} max={120} value={tagGreyMin} onChange={(e) => setTagGreyMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Color light <span className="tabular-nums text-neutral-400">{tagGreyMax}</span></label><input type="range" min={120} max={240} value={tagGreyMax} onChange={(e) => setTagGreyMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Falloff <span className="tabular-nums text-neutral-400">{tagFalloff}</span></label><input type="range" min={2} max={20} value={tagFalloff} onChange={(e) => setTagFalloff(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Pill opacity <span className="tabular-nums text-neutral-400">{tagPillOp.toFixed(2)}</span></label><input type="range" min={0} max={50} value={Math.round(tagPillOp * 100)} onChange={(e) => setTagPillOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Pad X <span className="tabular-nums text-neutral-400">{tagPadX}px</span></label><input type="range" min={0} max={20} value={tagPadX} onChange={(e) => setTagPadX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Pad Y <span className="tabular-nums text-neutral-400">{tagPadY}px</span></label><input type="range" min={0} max={15} value={tagPadY} onChange={(e) => setTagPadY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Pill radius <span className="tabular-nums text-neutral-400">{tagRadius}px</span></label><input type="range" min={0} max={20} value={tagRadius} onChange={(e) => setTagRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Marker size <span className="tabular-nums text-neutral-400">{tagMarkerSize}px</span></label><input type="range" min={0} max={16} value={tagMarkerSize} onChange={(e) => setTagMarkerSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Marker opacity <span className="tabular-nums text-neutral-400">{tagMarkerOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagMarkerOp * 100)} onChange={(e) => setTagMarkerOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           )}
         </div>
@@ -2165,8 +2207,9 @@ export default function HomeClient() {
             </svg>
           </button>
           {shareMenuOpen && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2">
             <div
-              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex flex-col py-1"
+              className="flex flex-col py-1"
               style={{
                 background: "#F7F7F7",
                 borderRadius: 12,
@@ -2189,8 +2232,24 @@ export default function HomeClient() {
                 Share current view
               </button>
             </div>
+            </div>
           )}
         </div>
+      </div>
+
+      {/* Top-right share button (outlined, larger) */}
+      <div className={introDone ? "intro-nav" : "opacity-0"}>
+        <button
+          className="fixed top-6 right-6 z-[1000] w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-[1.06]"
+          style={{ background: "transparent", border: "1px solid #d4d4d4", color: "#999" }}
+          onClick={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied")}
+          aria-label="Copy link"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>
+        </button>
       </div>
 
       {/* Bottom-right help button */}

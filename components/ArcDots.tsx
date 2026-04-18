@@ -9,14 +9,14 @@ import type { SpringSubscribe } from "@/hooks/useSpring";
 // ═══════════════════════════════════════════════════════════════
 export const ARC_STYLES = [
   // core
-  "crown", "arc-timeline", "pills", "classic", "ticks", "minimal",
+  "crown", "arc-timeline", "arc-tag", "pills", "classic", "ticks", "minimal",
   // pill + number hybrids
   "h-clean", "h-stacked", "h-reveal", "h-flush", "h-mono",
   "h-light", "h-bold", "h-spaced", "h-underline", "h-tag",
 ] as const;
 export type ArcStyle = (typeof ARC_STYLES)[number];
 export const arcStyleLabels: Record<ArcStyle, string> = {
-  crown: "Crown", "arc-timeline": "Arc", pills: "Pills", classic: "Classic", ticks: "Ticks", minimal: "Minimal",
+  crown: "Crown", "arc-timeline": "Arc", "arc-tag": "Arc Tag", pills: "Pills", classic: "Classic", ticks: "Ticks", minimal: "Minimal",
   "h-clean": "Clean", "h-stacked": "Stacked", "h-reveal": "Reveal", "h-flush": "Flush", "h-mono": "Mono",
   "h-light": "Light", "h-bold": "Bold", "h-spaced": "Spaced", "h-underline": "Underline", "h-tag": "Tag",
 };
@@ -164,10 +164,141 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
   );
 }
 
-export function ArcDots({ index, subscribe, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10, arcDiskGap: aDiskGap = 26, arcDiskColor: aDiskColor = "#f5f5f5", entered }: { index: number; subscribe: SpringSubscribe; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number; arcDiskGap?: number; arcDiskColor?: string; entered?: boolean }) {
-  // arc-timeline takes the imperative path to avoid React reconciliation per frame
+// ── Arc-tag wheel: arc-timeline positioning with tag-styled numbers ──
+function ArcTagWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR, aStepDeg, aTextGap, aDiskGap, aDiskColor, entered, tagFsMin = 11, tagFsMax = 14, tagOpMin = 0.58, tagOpMax = 1, tagGreyMin = 64, tagGreyMax = 213, tagPillOp = 0.03, tagFalloff = 2, tagPadX = 0, tagPadY = 0, tagRadius = 20, tagMarkerSize = 4, tagMarkerOp = 0.32 }: {
+  index: number;
+  subscribe: SpringSubscribe;
+  mirrored?: boolean;
+  onClickItem: (idx: number) => void;
+  aInset: number; aWheelR: number; aStepDeg: number; aTextGap: number;
+  aDiskGap: number; aDiskColor: string; entered?: boolean;
+  tagFsMin?: number; tagFsMax?: number; tagOpMin?: number; tagOpMax?: number;
+  tagGreyMin?: number; tagGreyMax?: number; tagPillOp?: number; tagFalloff?: number;
+  tagPadX?: number; tagPadY?: number; tagRadius?: number;
+  tagMarkerSize?: number; tagMarkerOp?: number;
+}) {
+  const wheelR = aWheelR;
+  const r = wheelR - aTextGap;
+  const items: { i: number }[] = [];
+  for (let n = index - 10; n <= index + 10; n++) {
+    if (n >= 0 && n < humanoids.length) items.push({ i: n });
+  }
+  const elRefs = useRef<Array<HTMLDivElement | null>>([]);
+
+  useLayoutEffect(() => {
+    const baseAngle = mirrored ? Math.PI : 0;
+    const stepRad = (aStepDeg * Math.PI) / 180;
+    const mir = mirrored ? -1 : 1;
+
+    const update = (pos: number) => {
+      for (let idx = 0; idx < items.length; idx++) {
+        const el = elRefs.current[idx];
+        if (!el) continue;
+        const o = items[idx].i - pos;
+        const dist = Math.abs(o);
+        const prox = Math.max(0, 1 - dist / tagFalloff);
+        const op = tagOpMin + prox * (tagOpMax - tagOpMin);
+
+        const theta = baseAngle + mir * o * stepRad;
+        const cx = wheelR + Math.cos(theta) * r;
+        const cy = wheelR + Math.sin(theta) * r;
+        const tangentDeg = (theta * 180) / Math.PI + (mirrored ? 180 : 0);
+
+        el.style.transform = `translate(${cx}px,${cy}px) rotate(${tangentDeg}deg) translate(0,-50%)`;
+        el.style.opacity = String(op);
+
+        const tag = el.firstElementChild as HTMLElement | null;
+        if (tag) {
+          const fs = tagFsMin + prox * (tagFsMax - tagFsMin);
+          const grey = Math.round(tagGreyMax - prox * (tagGreyMax - tagGreyMin));
+          tag.style.fontSize = `${fs}px`;
+          tag.style.fontWeight = prox > 0.7 ? "500" : "400";
+          tag.style.color = `rgb(${grey},${grey},${grey})`;
+          tag.style.background = `rgba(0,0,0,${prox > 0.5 ? (prox - 0.5) * 2 * tagPillOp : 0})`;
+          tag.style.padding = `${2 + prox * tagPadY}px ${5 + prox * tagPadX}px`;
+          tag.style.borderRadius = `${tagRadius}px`;
+        }
+      }
+    };
+    return subscribe(update);
+  }, [items, subscribe, mirrored, wheelR, r, aStepDeg, tagFsMin, tagFsMax, tagOpMin, tagOpMax, tagGreyMin, tagGreyMax, tagPillOp, tagFalloff, tagPadX, tagPadY, tagRadius]);
+
+  return (
+    <div
+      className="absolute inset-0 overflow-visible pointer-events-auto"
+      style={entered ? {
+        "--disk-slide-from": `${mirrored ? "" : "-"}${aInset + 40}px`,
+        animation: "arc-disk-slide 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards",
+        opacity: 0,
+      } as React.CSSProperties : { opacity: 0 }}
+    >
+      {/* Disk */}
+      <svg
+        className="absolute overflow-visible pointer-events-none"
+        style={{
+          width: wheelR * 2,
+          height: wheelR * 2,
+          top: "50%",
+          ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
+          transform: "translateY(-50%)",
+          transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+        viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
+      >
+        <circle cx={wheelR} cy={wheelR} r={Math.max(0, r - aDiskGap)} fill={aDiskColor} />
+      </svg>
+      {/* Tag items */}
+      <div
+        className="absolute overflow-visible pointer-events-auto"
+        style={{
+          width: wheelR * 2,
+          height: wheelR * 2,
+          top: "50%",
+          ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
+          transform: "translateY(-50%)",
+          transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+      >
+        {items.map(({ i }, idx) => {
+          const num = String(i + 1).padStart(2, "0");
+          return (
+            <div
+              key={i}
+              ref={(el) => { elRefs.current[idx] = el; }}
+              className="absolute cursor-pointer"
+              style={{ left: 0, top: 0, willChange: "transform, opacity", transformOrigin: "0 50%" }}
+              onClick={() => onClickItem(i)}
+            >
+              <span className="tabular-nums whitespace-nowrap" style={{ lineHeight: 1, letterSpacing: "-0.02em", borderRadius: 8, transition: "font-size 0.15s, padding 0.15s, background 0.15s", display: "inline-block", transform: mirrored ? "scaleX(-1)" : undefined }}>{num}</span>
+            </div>
+          );
+        })}
+      </div>
+      {/* Center marker */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          top: "50%",
+          ...(mirrored ? { right: aInset - 10 } : { left: aInset - 10 }),
+          transform: "translateY(-50%)",
+          transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+      >
+        <svg width={tagMarkerSize} height={tagMarkerSize * 2} viewBox="0 0 6 12" fill="none">
+          <path d={mirrored ? "M6,0 L0,6 L6,12" : "M0,0 L6,6 L0,12"} fill="#222" opacity={tagMarkerOp} />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+export function ArcDots({ index, subscribe, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10, arcDiskGap: aDiskGap = 26, arcDiskColor: aDiskColor = "#f5f5f5", entered, tagFsMin: tFsMin = 11, tagFsMax: tFsMax = 14, tagOpMin: tOpMin = 1, tagOpMax: tOpMax = 1, tagGreyMin: tGreyMin = 64, tagGreyMax: tGreyMax = 213, tagPillOp: tPillOp = 0.03, tagFalloff: tFalloff = 2, tagPadX: tPadX = 0, tagPadY: tPadY = 0, tagRadius: tRadius = 20, tagMarkerSize: tMarkerSize = 4, tagMarkerOp: tMarkerOp = 0.32 }: { index: number; subscribe: SpringSubscribe; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number; arcDiskGap?: number; arcDiskColor?: string; entered?: boolean; tagFsMin?: number; tagFsMax?: number; tagOpMin?: number; tagOpMax?: number; tagGreyMin?: number; tagGreyMax?: number; tagPillOp?: number; tagFalloff?: number; tagPadX?: number; tagPadY?: number; tagRadius?: number; tagMarkerSize?: number; tagMarkerOp?: number }) {
+  // arc-timeline / arc-tag take the imperative path to avoid React reconciliation per frame
   if (variant === "arc-timeline") {
     return <ArcTimelineWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} aDiskGap={aDiskGap} aDiskColor={aDiskColor} entered={entered} />;
+  }
+  if (variant === "arc-tag") {
+    return <ArcTagWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aDiskGap={aDiskGap} aDiskColor={aDiskColor} entered={entered} tagFsMin={tFsMin} tagFsMax={tFsMax} tagOpMin={tOpMin} tagOpMax={tOpMax} tagGreyMin={tGreyMin} tagGreyMax={tGreyMax} tagPillOp={tPillOp} tagFalloff={tFalloff} tagPadX={tPadX} tagPadY={tPadY} tagRadius={tRadius} tagMarkerSize={tMarkerSize} tagMarkerOp={tMarkerOp} />;
   }
 
   // Other variants: subscribe locally so fractional updates stay contained

@@ -11,7 +11,7 @@ export interface Humanoid {
   manufacturer: string;
   year?: number;
   cost?: string; // Cost in a displayable format (e.g., "$50K", "$150K", "N/A")
-  status?: "In Production" | "Prototype" | "Concept" | "Discontinued";
+  status?: "In Production" | "Prototype" | "Concept" | "Discontinued" | "Anticipated";
   height?: number; // in cm
   weight?: number; // in kg
   dof?: number; // degrees of freedom
@@ -27,6 +27,19 @@ export interface Humanoid {
 }
 
 export const humanoids: Humanoid[] = [
+  // 2026 (anticipated)
+  {
+    id: "27",
+    name: "Optimus Gen 3",
+    manufacturer: "Tesla",
+    logoUrl: "/robots/Tesla-logo.png",
+    manufacturerUrl: "https://www.tesla.com",
+    imageUrl: "/robots/optimus.png",
+    year: 2026,
+    cost: "N/A",
+    status: "Anticipated",
+    description: "Tesla's next-generation humanoid — teased for unveil, details not yet public.",
+  },
   // 2025
   {
     id: "3",
@@ -58,6 +71,20 @@ export const humanoids: Humanoid[] = [
       { type: 'image', url: '/robots/oli-side.png', caption: 'Side profile' },
       { type: 'image', url: '/robots/oli-wave.webp', caption: 'Waving' },
     ],
+  },
+  {
+    id: "16",
+    name: "K2",
+    manufacturer: "Kepler Robotics",
+    logoUrl: "/robots/Kepler-robotics.svg",
+    year: 2025,
+    cost: "$30K",
+    status: "Prototype",
+    height: 178,
+    weight: 85,
+    dof: 40,
+    imageUrl: "/robots/k2.png",
+    description: "Affordable general-purpose humanoid for manufacturing and logistics.",
   },
   // 2024
   {
@@ -202,6 +229,7 @@ export const humanoids: Humanoid[] = [
     id: "15",
     name: "Astribot S1",
     manufacturer: "Astribot",
+    imageUrl: "/robots/s1.png",
     logoUrl: "/robots/Astribot.png",
     year: 2024,
     cost: "N/A",
@@ -210,19 +238,6 @@ export const humanoids: Humanoid[] = [
     weight: 60,
     dof: 32,
     description: "Highly dexterous humanoid capable of complex tasks like cooking and pouring drinks.",
-  },
-  {
-    id: "16",
-    name: "Kepler Forerunner",
-    manufacturer: "Kepler Robotics",
-    logoUrl: "/robots/Kepler-robotics.svg",
-    year: 2024,
-    cost: "$30K",
-    status: "Prototype",
-    height: 178,
-    weight: 85,
-    dof: 40,
-    description: "Affordable general-purpose humanoid for manufacturing and logistics.",
   },
   {
     id: "17",
@@ -236,17 +251,21 @@ export const humanoids: Humanoid[] = [
     weight: 43,
     dof: 42,
     maxSpeed: 2.0,
+    imageUrl: "/robots/tiangong.png",
     description: "China's national humanoid project with advanced whole-body motion control.",
   },
   {
     id: "18",
     name: "Menteebot",
     manufacturer: "Mentee Robotics",
+    logoUrl: "/robots/Mentee-robotics.png",
+    manufacturerUrl: "https://www.menteebot.com",
     year: 2024,
     cost: "N/A",
     status: "Prototype",
     height: 160,
     weight: 45,
+    imageUrl: "/robots/menteebot.png",
     description: "AI-native humanoid for natural language interaction and household tasks.",
   },
   // 2023
@@ -312,6 +331,7 @@ export const humanoids: Humanoid[] = [
     height: 186,
     weight: 86,
     maxSpeed: 1.4,
+    imageUrl: "/robots/eve.avif",
     description: "Wheeled humanoid for security and commercial applications.",
   },
   // 2021
@@ -324,7 +344,12 @@ export const humanoids: Humanoid[] = [
     status: "In Production",
     height: 180,
     dof: 52,
+    imageUrl: "/robots/ameca.png",
+    imagePosition: "bottom",
     description: "Advanced human-shaped robot for interaction research and entertainment.",
+    media: [
+      { type: 'image', url: '/robots/ameca-2.png' },
+    ],
   },
   // 2018
   {
@@ -347,6 +372,8 @@ export const humanoids: Humanoid[] = [
     id: "24",
     name: "Talos",
     manufacturer: "PAL Robotics",
+    manufacturerUrl: "https://pal-robotics.com",
+    imageUrl: "/robots/TALOS.png",
     year: 2017,
     cost: "$350K",
     status: "In Production",
@@ -388,6 +415,7 @@ export const humanoids: Humanoid[] = [
     manufacturer: "Boston Dynamics",
     logoUrl: "/robots/Boston_Dynamics-logo.svg",
     manufacturerUrl: "https://www.bostondynamics.com",
+    imageUrl: "/robots/hydraulic-atlas.png",
     year: 2013,
     cost: "N/A",
     status: "Discontinued",
@@ -397,15 +425,16 @@ export const humanoids: Humanoid[] = [
     maxSpeed: 1.5,
     description: "DARPA Robotics Challenge pioneer famous for parkour and backflips. Retired in April 2024 in favor of the Electric Atlas.",
   },
-  {
-    id: "22",
-    name: "Nadine",
-    manufacturer: "NTU Singapore",
-    year: 2013,
-    status: "Prototype",
-    height: 170,
-    description: "Lifelike social robot with realistic skin and expressions for HRI research.",
-  },
+  // Hidden: no non-creepy photos available
+  // {
+  //   id: "22",
+  //   name: "Nadine",
+  //   manufacturer: "NTU Singapore",
+  //   year: 2013,
+  //   status: "Prototype",
+  //   height: 170,
+  //   description: "Lifelike social robot with realistic skin and expressions for HRI research.",
+  // },
   {
     id: "25",
     name: "Roboy",
