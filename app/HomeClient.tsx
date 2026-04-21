@@ -2238,14 +2238,27 @@ export default function HomeClient() {
       </div>
 
       {/* Top-right share button (outlined, larger) */}
-      <div className={introDone ? "intro-nav" : "opacity-0"}>
+      <div
+        className="group fixed top-6 right-6 z-[1000] flex items-center gap-3"
+        style={{
+          opacity: introDone ? 1 : 0,
+          transform: introDone ? "translateY(0)" : "translateY(-12px)",
+          transition: "opacity 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s, transform 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s",
+        }}
+      >
+        <span
+          className="text-[12px] tracking-wide opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+          style={{ color: "#999" }}
+        >
+          Share view
+        </span>
         <button
-          className="fixed top-6 right-6 z-[1000] w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-[1.06]"
-          style={{ background: "transparent", border: "1px solid #d4d4d4", color: "#999" }}
+          className="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer hover:scale-[1.06] transition-transform duration-200"
+          style={{ background: "transparent", border: "1px solid #e0e0e0", color: "#b4b4b4" }}
           onClick={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied")}
           aria-label="Copy link"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
