@@ -21,6 +21,16 @@ export const arcStyleLabels: Record<ArcStyle, string> = {
   "h-light": "Light", "h-bold": "Bold", "h-spaced": "Spaced", "h-underline": "Underline", "h-tag": "Tag",
 };
 
+// Per-variant arc tuner presets. Picking a variant resets the shared arc
+// sliders to that variant's canonical values. Only variants whose look
+// depends on the arc-* params need an entry; the rest (crown, pills, etc.)
+// read their own controls.
+export const ARC_PRESETS: Partial<Record<ArcStyle, { wheelR: number; stepDeg: number; textGap: number; diskGap?: number }>> = {
+  "arc-names": { wheelR: 700, stepDeg: 3.5, textGap: 15 },
+  "arc-timeline": { wheelR: 181, stepDeg: 8, textGap: 2, diskGap: 26 },
+  "arc-tag": { wheelR: 181, stepDeg: 8, textGap: 2, diskGap: 26 },
+};
+
 // Miscellaneous tint — older / legend entries get a gold fill in the arc timeline
 export const MISC_GOLD = "176,141,87"; // rgb parts of #b08d57
 export const isMisc = (h: typeof humanoids[0] | undefined) =>
