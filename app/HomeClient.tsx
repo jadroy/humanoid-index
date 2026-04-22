@@ -336,7 +336,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // Below-label refs — trailing spin driven by spring velocity
   const leftLabelRef = useRef<HTMLDivElement | null>(null);
   const rightLabelRef = useRef<HTMLDivElement | null>(null);
-  const [openStat, setOpenStat] = useState<string | null>(null);
+  const [openStat, setOpenStat] = useState<Set<string>>(new Set());
   // Layout dimensions
   const [robotW, setRobotW] = useState(30);       // vw
   const [robotH, setRobotH] = useState(60);       // vh
@@ -856,11 +856,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         const icoSpeed = ico("M12 12l4-8M19.07 4.93A10 10 0 1 0 20.45 13");
         const icoStatus = ico("M22 12h-4l-3 9L9 3l-3 9H2");
 
-        const chevron = (open: boolean) => (
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: `transform 0.42s ${ease}`, transform: open ? "rotate(180deg)" : "rotate(0)" }}>
-            <polyline points="2,3.5 5,6.5 8,3.5" />
+        const plusMinus = (open: boolean) => (
+          <svg width="10" height="10" viewBox="0 0 10 10" style={{ flexShrink: 0, overflow: "visible" }}>
+            <line x1="1.5" y1="5" x2="8.5" y2="5" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round" />
+            <line x1="5" y1="1.5" x2="5" y2="8.5" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round"
+              style={{ transformOrigin: "5px 5px", transition: `transform 0.42s ${ease}`, transform: open ? "rotate(90deg)" : "rotate(0deg)" }} />
           </svg>
         );
+
+        const toggleStat = (key: string) => setOpenStat((prev) => {
+          const next = new Set(prev);
+          if (next.has(key)) next.delete(key); else next.add(key);
+          return next;
+        });
 
         const statSections = (h: typeof humanoids[0]) => {
         const heightPct = Math.min(((h.height ?? 0) / 200) * 100, 100);
@@ -874,7 +882,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <p className="text-[10px] w-[32px] text-right flex-shrink-0" style={{ color: "#aaa" }}>{label}</p>
             <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "#EFEFEF" }}>
               <div className="h-full rounded-full" style={{
-                width: openStat === "overview" ? `${pct}%` : "0%",
+                width: openStat.has("overview") ? `${pct}%` : "0%",
                 background: "#c4c4c4",
                 transition: `width 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
               }} />
@@ -916,7 +924,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     <div key={i} className="rounded-full" style={{
                       width: 6, height: 6,
                       background: i < Math.round((h.dof ?? 0) / 5) ? "#c4c4c4" : "#EFEFEF",
-                      transform: openStat === "dof" ? "scale(1)" : "scale(0)",
+                      transform: openStat.has("dof") ? "scale(1)" : "scale(0)",
                       transition: `transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) ${0.03 * i}s`,
                     }} />
                   ))}
@@ -938,7 +946,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   <path d="M4 20 A16 16 0 0 1 36 20" fill="none" stroke="#EFEFEF" strokeWidth="2.5" strokeLinecap="round" />
                   <path d="M4 20 A16 16 0 0 1 36 20" fill="none" stroke="#c4c4c4" strokeWidth="2.5" strokeLinecap="round"
                     strokeDasharray="50.3"
-                    strokeDashoffset={openStat === "speed" ? 50.3 * (1 - speedPct / 100) : 50.3}
+                    strokeDashoffset={openStat.has("speed") ? 50.3 * (1 - speedPct / 100) : 50.3}
                     style={{ transition: `stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s` }}
                   />
                 </svg>
@@ -994,19 +1002,24 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   {h.id.startsWith("legend") && <span className="flex-shrink-0 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
                 </div>
               )}
-              {/* Stats — lighter container, spaced out */}
-              <div className="flex flex-col pointer-events-auto" style={{ padding: "6px 12px", borderRadius: cardRadius, background: "#FCFCFC", position: "relative", zIndex: 11 }}>
+              {/* Stats — individual pill containers */}
+              <div className="flex flex-col pointer-events-auto" style={{ gap: 4, position: "relative", zIndex: 11 }}>
                 {sections.filter((s) => s.show && s.label).map((s) => {
-                  const isOpen = openStat === s.key;
+                  const isOpen = openStat.has(s.key);
                   return (
-                    <div key={s.key}>
+                    <div key={s.key} style={{
+                      background: "#FCFCFC",
+                      borderRadius: 999,
+                      padding: "0 16px",
+                      overflow: "hidden",
+                    }}>
                       <button
-                        className="w-full flex items-center justify-between cursor-pointer py-2"
-                        style={{ background: "none", border: "none", padding: "8px 0" }}
-                        onClick={() => setOpenStat(isOpen ? null : s.key)}
+                        className="w-full flex items-center justify-between cursor-pointer"
+                        style={{ background: "none", border: "none", padding: "10px 0" }}
+                        onClick={() => toggleStat(s.key)}
                       >
                         {s.label}
-                        {chevron(isOpen)}
+                        {plusMinus(isOpen)}
                       </button>
                       <div style={{
                         maxHeight: isOpen ? 140 : 0,
@@ -1014,7 +1027,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         overflow: "hidden",
                         transition: `max-height 0.35s ${ease}, opacity 0.28s ${ease}`,
                       }}>
-                        <div className="pb-2 pl-[22.5px]">{s.detail}</div>
+                        <div className="pb-3 pl-[22.5px]">{s.detail}</div>
                       </div>
                     </div>
                   );
@@ -1302,18 +1315,23 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   </div>
                 );
               })()}
-              <div className="flex flex-col pointer-events-auto" style={{ padding: "6px 12px", borderRadius: cardRadius, background: "#FCFCFC", position: "relative", zIndex: 11 }}>
+              <div className="flex flex-col pointer-events-auto" style={{ gap: 4, position: "relative", zIndex: 11 }}>
                 {sections.filter((s) => s.show).map((s) => {
-                  const isOpen = openStat === s.key;
+                  const isOpen = openStat.has(s.key);
                   return (
-                    <div key={s.key}>
+                    <div key={s.key} style={{
+                      background: "#FCFCFC",
+                      borderRadius: 999,
+                      padding: "0 16px",
+                      overflow: "hidden",
+                    }}>
                       <button
-                        className="w-full flex items-center justify-between cursor-pointer py-2"
-                        style={{ background: "none", border: "none", padding: "8px 0" }}
-                        onClick={() => setOpenStat(isOpen ? null : s.key)}
+                        className="w-full flex items-center justify-between cursor-pointer"
+                        style={{ background: "none", border: "none", padding: "10px 0" }}
+                        onClick={() => toggleStat(s.key)}
                       >
                         {s.label}
-                        {chevron(isOpen)}
+                        {plusMinus(isOpen)}
                       </button>
                       <div style={{
                         maxHeight: isOpen ? 140 : 0,
@@ -1321,7 +1339,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         overflow: "hidden",
                         transition: `max-height 0.35s ${ease}, opacity 0.28s ${ease}`,
                       }}>
-                        <div className="pb-2">{s.detail}</div>
+                        <div className="pb-3">{s.detail}</div>
                       </div>
                     </div>
                   );
