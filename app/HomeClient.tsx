@@ -261,7 +261,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
-  const [arcStyle, setArcStyle] = useState<ArcStyle>("arc-timeline");
+  const [arcStyle, setArcStyle] = useState<ArcStyle>("arc-names");
 
   // Crown drum config
   const [drumAngle, setDrumAngle] = useState(14);
@@ -294,9 +294,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [luckyShakeCycles, setLuckyShakeCycles] = useState(2);
   const luckyTapSettingsRef = useRef({ style: luckyTapStyle, dur: luckyTapDur, angle: luckyTapAngle, depth: luckyTapDepth, originY: luckyTapOriginY, shakePx: luckyShakePx, shakeCycles: luckyShakeCycles });
   luckyTapSettingsRef.current = { style: luckyTapStyle, dur: luckyTapDur, angle: luckyTapAngle, depth: luckyTapDepth, originY: luckyTapOriginY, shakePx: luckyShakePx, shakeCycles: luckyShakeCycles };
-  const [arcWheelR, setArcWheelR] = useState(181);
-  const [arcStepDeg, setArcStepDeg] = useState(8);
-  const [arcTextGap, setArcTextGap] = useState(2);
+  const [arcWheelR, setArcWheelR] = useState(700);
+  const [arcStepDeg, setArcStepDeg] = useState(3.5);
+  const [arcTextGap, setArcTextGap] = useState(15);
   const [arcLineOp, setArcLineOp] = useState(0.5);
   const [arcFsMax, setArcFsMax] = useState(22);
   const [arcFsMin, setArcFsMin] = useState(10);
@@ -1755,7 +1755,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake amount <span className="tabular-nums text-neutral-400">{luckyShakePx}px</span></label><input type="range" min={0} max={14} value={luckyShakePx} onChange={(e) => setLuckyShakePx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake cycles <span className="tabular-nums text-neutral-400">{luckyShakeCycles}</span></label><input type="range" min={1} max={8} value={luckyShakeCycles} onChange={(e) => setLuckyShakeCycles(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
-          {(arcStyle === "crown" || arcStyle === "arc-timeline" || arcStyle === "arc-tag") && (
+          {(arcStyle === "crown" || arcStyle === "arc-timeline" || arcStyle === "arc-names" || arcStyle === "arc-tag") && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(70); }}>Reset</button></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Angle <span className="tabular-nums text-neutral-400">{drumAngle}°</span></label><input type="range" min={8} max={45} value={drumAngle} onChange={(e) => setDrumAngle(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>

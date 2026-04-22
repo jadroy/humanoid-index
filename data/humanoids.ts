@@ -27,19 +27,19 @@ export interface Humanoid {
 }
 
 export const humanoids: Humanoid[] = [
-  // 2026 (anticipated)
-  {
-    id: "27",
-    name: "Optimus Gen 3",
-    manufacturer: "Tesla",
-    logoUrl: "/robots/Tesla-logo.png",
-    manufacturerUrl: "https://www.tesla.com",
-    imageUrl: "/robots/optimus.png",
-    year: 2026,
-    cost: "N/A",
-    status: "Anticipated",
-    description: "Tesla's next-generation humanoid — teased for unveil, details not yet public.",
-  },
+  // 2026 (anticipated) — hidden until details are public
+  // {
+  //   id: "27",
+  //   name: "Optimus Gen 3",
+  //   manufacturer: "Tesla",
+  //   logoUrl: "/robots/Tesla-logo.png",
+  //   manufacturerUrl: "https://www.tesla.com",
+  //   imageUrl: "/robots/optimus.png",
+  //   year: 2026,
+  //   cost: "N/A",
+  //   status: "Anticipated",
+  //   description: "Tesla's next-generation humanoid — teased for unveil, details not yet public.",
+  // },
   // 2025
   {
     id: "3",
