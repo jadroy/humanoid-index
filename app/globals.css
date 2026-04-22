@@ -5,6 +5,78 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Epetri (Atypography) — cuts mapped to named families so we can A/B them. */
+@font-face {
+  font-family: 'Epetri';
+  src: url('/fonts/Epetri-AIRY-regular1.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Epetri';
+  src: url('/fonts/Epetri-AIRY-bold1.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Epetri';
+  src: url('/fonts/Epetri-AIRY-anorexic1.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Condensed width axis */
+@font-face {
+  font-family: 'Epetri Tite';
+  src: url('/fonts/Epetri-TITE-regular1.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Epetri Tite';
+  src: url('/fonts/Epetri-TITE-anorexic1.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Purpose-built numeric cuts — perfect for Humanoid *Index* */
+@font-face {
+  font-family: 'Epetri Index';
+  src: url('/fonts/Epetri-AIRY-bold1-index.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Epetri CFIndex';
+  src: url('/fonts/Epetri-AIRY-bold1-CFIndex.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Decorative / display */
+@font-face {
+  font-family: 'Epetri Pixel';
+  src: url('/fonts/Epetri-AIRY-pixelcrack.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-epetri: 'Epetri', ui-monospace, SFMono-Regular, monospace;
+  --font-epetri-tite: 'Epetri Tite', 'Epetri', ui-monospace, monospace;
+  --font-epetri-index: 'Epetri Index', 'Epetri', ui-monospace, monospace;
+  --font-epetri-cfindex: 'Epetri CFIndex', 'Epetri Index', 'Epetri', ui-monospace, monospace;
+  --font-epetri-pixel: 'Epetri Pixel', 'Epetri', ui-monospace, monospace;
+}
+
 @keyframes arc-disk-slide {
   0% { opacity: 0; transform: translateX(var(--disk-slide-from)); }
   100% { opacity: 1; transform: translateX(0); }
