@@ -25,16 +25,11 @@ export const arcStyleLabels: Record<ArcStyle, string> = {
 // sliders to that variant's canonical values. Only variants whose look
 // depends on the arc-* params need an entry; the rest (crown, pills, etc.)
 // read their own controls.
-export const ARC_PRESETS: Partial<Record<ArcStyle, { wheelR: number; stepDeg: number; textGap: number; diskGap?: number }>> = {
-  "arc-names": { wheelR: 700, stepDeg: 3.5, textGap: 15 },
+export const ARC_PRESETS: Partial<Record<ArcStyle, { wheelR: number; stepDeg: number; textGap: number; diskGap?: number; lineOp?: number }>> = {
+  "arc-names": { wheelR: 700, stepDeg: 3.5, textGap: 15, lineOp: 0 },
   "arc-timeline": { wheelR: 181, stepDeg: 8, textGap: 2, diskGap: 26 },
   "arc-tag": { wheelR: 181, stepDeg: 8, textGap: 2, diskGap: 26 },
 };
-
-// Miscellaneous tint — older / legend entries get a gold fill in the arc timeline
-export const MISC_GOLD = "176,141,87"; // rgb parts of #b08d57
-export const isMisc = (h: typeof humanoids[0] | undefined) =>
-  !!h && (h.id.startsWith("legend-") || (h.year ?? 0) < 2020);
 
 // Imperative arc-timeline wheel: renders text nodes once per window, then
 // updates their x/y/transform/fontSize/opacity directly in response to spring
@@ -198,7 +193,6 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         const el = textRefs.current[idx];
         if (!el) continue;
         const i = items[idx].i;
-        const misc = isMisc(humanoids[i]);
         const o = i - pos;
         const deg = o * aStepDeg;
         const rad = (deg * Math.PI) / 180;
@@ -213,9 +207,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
         const fw = isAct ? 500 : 400;
         const op = Math.max(0.08, 1 - t * 0.9);
-        const fill = misc
-          ? (isAct ? `rgb(${MISC_GOLD})` : `rgba(${MISC_GOLD},${0.3 + (1 - t) * 0.45})`)
-          : (isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`);
+        const fill = isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`;
 
         el.setAttribute("x", String(cx));
         el.setAttribute("y", String(cy));
