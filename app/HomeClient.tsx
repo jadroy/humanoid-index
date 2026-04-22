@@ -256,6 +256,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [showTuner, setShowTuner] = useState(false);
   const [buyLayout, setBuyLayout] = useState<"card" | "chip">("card");
   const [buyCardStyle, setBuyCardStyle] = useState<"split" | "dark">("split");
+  const [hideUnbuyable, setHideUnbuyable] = useState(false);
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
@@ -345,6 +346,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(8);     // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(28);  // px
+  // Stat-pill tuners
+  const [statPillRadius, setStatPillRadius] = useState(40);  // px — 40+ reads as full stadium at closed height
+  const [statPillGap, setStatPillGap] = useState(4);         // px — gap between pills
+  const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
+  const [statPillPadY, setStatPillPadY] = useState(10);      // px — vertical button padding (sets closed height)
+  const [statPillBg, setStatPillBg] = useState("#FCFCFC");
+  const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("pill");
 
   // Compare-header split tuner
   const [showSplitTuner, setShowSplitTuner] = useState(false);
@@ -1003,32 +1011,40 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 </div>
               )}
               {/* Stats — individual pill containers */}
-              <div className="flex flex-col pointer-events-auto" style={{ gap: 4, position: "relative", zIndex: 11 }}>
+              <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11 }}>
                 {sections.filter((s) => s.show && s.label).map((s) => {
+                  const forcedOpen = s.key === "desc" && infoMode !== "pill";
+                  const hideLabel = s.key === "desc" && infoMode === "bare";
                   const isOpen = openStat.has(s.key);
                   return (
                     <div key={s.key} style={{
-                      background: "#FCFCFC",
-                      borderRadius: 999,
-                      padding: "0 16px",
+                      background: statPillBg,
+                      borderRadius: statPillRadius,
+                      padding: `0 ${statPillPadX}px`,
                       overflow: "hidden",
                     }}>
-                      <button
-                        className="w-full flex items-center justify-between cursor-pointer"
-                        style={{ background: "none", border: "none", padding: "10px 0" }}
-                        onClick={() => toggleStat(s.key)}
-                      >
-                        {s.label}
-                        {plusMinus(isOpen)}
-                      </button>
-                      <div style={{
-                        maxHeight: isOpen ? 140 : 0,
-                        opacity: isOpen ? 1 : 0,
-                        overflow: "hidden",
-                        transition: `max-height 0.35s ${ease}, opacity 0.28s ${ease}`,
-                      }}>
-                        <div className="pb-3 pl-[22.5px]">{s.detail}</div>
-                      </div>
+                      {!hideLabel && (
+                        <button
+                          className="w-full flex items-center justify-between"
+                          style={{ background: "none", border: "none", padding: `${statPillPadY}px 0`, cursor: forcedOpen ? "default" : "pointer" }}
+                          onClick={forcedOpen ? undefined : () => toggleStat(s.key)}
+                        >
+                          {s.label}
+                          {!forcedOpen && plusMinus(isOpen)}
+                        </button>
+                      )}
+                      {forcedOpen ? (
+                        <div className={hideLabel ? "" : "pl-[22.5px]"} style={{ padding: hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0" }}>{s.detail}</div>
+                      ) : (
+                        <div style={{
+                          maxHeight: isOpen ? 140 : 0,
+                          opacity: isOpen ? 1 : 0,
+                          overflow: "hidden",
+                          transition: `max-height 0.35s ${ease}, opacity 0.28s ${ease}`,
+                        }}>
+                          <div className="pb-3 pl-[22.5px]">{s.detail}</div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1039,6 +1055,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         };
 
         const renderBuyCard = (h: typeof humanoids[0]) => {
+          if (hideUnbuyable && !h.purchaseUrl) return null;
           const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
           const leadIn = h.status === "In Production" ? "From" : "Est.";
           const href = h.purchaseUrl;
@@ -1315,32 +1332,40 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   </div>
                 );
               })()}
-              <div className="flex flex-col pointer-events-auto" style={{ gap: 4, position: "relative", zIndex: 11 }}>
+              <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11 }}>
                 {sections.filter((s) => s.show).map((s) => {
+                  const forcedOpen = s.key === "desc" && infoMode !== "pill";
+                  const hideLabel = s.key === "desc" && infoMode === "bare";
                   const isOpen = openStat.has(s.key);
                   return (
                     <div key={s.key} style={{
-                      background: "#FCFCFC",
-                      borderRadius: 999,
-                      padding: "0 16px",
+                      background: statPillBg,
+                      borderRadius: statPillRadius,
+                      padding: `0 ${statPillPadX}px`,
                       overflow: "hidden",
                     }}>
-                      <button
-                        className="w-full flex items-center justify-between cursor-pointer"
-                        style={{ background: "none", border: "none", padding: "10px 0" }}
-                        onClick={() => toggleStat(s.key)}
-                      >
-                        {s.label}
-                        {plusMinus(isOpen)}
-                      </button>
-                      <div style={{
-                        maxHeight: isOpen ? 140 : 0,
-                        opacity: isOpen ? 1 : 0,
-                        overflow: "hidden",
-                        transition: `max-height 0.35s ${ease}, opacity 0.28s ${ease}`,
-                      }}>
-                        <div className="pb-3">{s.detail}</div>
-                      </div>
+                      {!hideLabel && (
+                        <button
+                          className="w-full flex items-center justify-between"
+                          style={{ background: "none", border: "none", padding: `${statPillPadY}px 0`, cursor: forcedOpen ? "default" : "pointer" }}
+                          onClick={forcedOpen ? undefined : () => toggleStat(s.key)}
+                        >
+                          {s.label}
+                          {!forcedOpen && plusMinus(isOpen)}
+                        </button>
+                      )}
+                      {forcedOpen ? (
+                        <div style={{ padding: hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0" }}>{s.detail}</div>
+                      ) : (
+                        <div style={{
+                          maxHeight: isOpen ? 140 : 0,
+                          opacity: isOpen ? 1 : 0,
+                          overflow: "hidden",
+                          transition: `max-height 0.35s ${ease}, opacity 0.28s ${ease}`,
+                        }}>
+                          <div className="pb-3">{s.detail}</div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1749,6 +1774,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ))}
               </div>
             )}
+            {buyLayout === "card" && (
+              <div className="mt-2 flex items-center gap-2">
+                <label className="text-[10px] text-neutral-500 flex-1">Hide when unbuyable</label>
+                <button
+                  className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${hideUnbuyable ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+                  onClick={() => setHideUnbuyable(!hideUnbuyable)}
+                >
+                  {hideUnbuyable ? "On" : "Off"}
+                </button>
+              </div>
+            )}
           </div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => pickArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Nav</p>
@@ -1783,6 +1819,52 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Pivot Y <span className="tabular-nums text-neutral-400">{luckyTapOriginY}%</span></label><input type="range" min={0} max={100} value={luckyTapOriginY} onChange={(e) => setLuckyTapOriginY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake amount <span className="tabular-nums text-neutral-400">{luckyShakePx}px</span></label><input type="range" min={0} max={14} value={luckyShakePx} onChange={(e) => setLuckyShakePx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake cycles <span className="tabular-nums text-neutral-400">{luckyShakeCycles}</span></label><input type="range" min={1} max={8} value={luckyShakeCycles} onChange={(e) => setLuckyShakeCycles(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+          </div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Stat Pills</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setStatPillRadius(40); setStatPillGap(4); setStatPillPadX(16); setStatPillPadY(10); setStatPillBg("#FCFCFC"); setInfoMode("pill"); }}>Reset</button></div>
+            <div>
+              <p className="text-[10px] text-neutral-500 mb-1.5">Info</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(["pill", "open", "bare"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setInfoMode(v)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${infoMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{statPillRadius}px</span></label><input type="range" min={0} max={40} value={statPillRadius} onChange={(e) => setStatPillRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{statPillGap}px</span></label><input type="range" min={0} max={16} value={statPillGap} onChange={(e) => setStatPillGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Padding X <span className="tabular-nums text-neutral-400">{statPillPadX}px</span></label><input type="range" min={6} max={28} value={statPillPadX} onChange={(e) => setStatPillPadX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Padding Y <span className="tabular-nums text-neutral-400">{statPillPadY}px</span></label><input type="range" min={4} max={18} value={statPillPadY} onChange={(e) => setStatPillPadY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Background <span className="tabular-nums text-neutral-400">{statPillBg}</span></label>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                {["#ffffff", "#fcfcfc", "#fafafa", "#f5f5f5", "#efefef", "#f4f1eb", "transparent"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setStatPillBg(c)}
+                    className="w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110"
+                    style={{
+                      background: c === "transparent" ? "repeating-conic-gradient(#e5e5e5 0% 25%, #fff 0% 50%) 50% / 8px 8px" : c,
+                      border: statPillBg === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5",
+                    }}
+                    aria-label={c}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={statPillBg === "transparent" ? "#fcfcfc" : statPillBg}
+                  onChange={(e) => setStatPillBg(e.target.value)}
+                  className="w-5 h-5 rounded-full cursor-pointer border border-neutral-200 ml-1"
+                  style={{ padding: 0 }}
+                  aria-label="Custom color"
+                />
+              </div>
+            </div>
           </div>
           {(arcStyle === "crown" || arcStyle === "arc-timeline" || arcStyle === "arc-names" || arcStyle === "arc-tag") && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">

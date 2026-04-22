@@ -15,7 +15,7 @@ const sortedBots = [...humanoids].sort((a, b) =>
   `${a.manufacturer} ${a.name}`.localeCompare(`${b.manufacturer} ${b.name}`)
 );
 
-function encodeKnobs(obj: Record<string, unknown>, defaults: Record<string, unknown>) {
+function encodeKnobs<T extends Record<string, unknown>>(obj: T, defaults: T) {
   const sp = new URLSearchParams();
   for (const key of Object.keys(obj)) {
     const v = obj[key];
@@ -45,18 +45,12 @@ export default function ThumbnailsClient() {
 
   const url = useMemo(() => {
     if (mode === "single") {
-      const sp = encodeKnobs(
-        single as unknown as Record<string, unknown>,
-        SINGLE_DEFAULTS as unknown as Record<string, unknown>
-      );
+      const sp = encodeKnobs(single, SINGLE_DEFAULTS);
       sp.set("_", String(bust));
       const qs = sp.toString();
       return `/api/og/${leftId}${qs ? `?${qs}` : ""}`;
     } else {
-      const sp = encodeKnobs(
-        compare as unknown as Record<string, unknown>,
-        COMPARE_DEFAULTS as unknown as Record<string, unknown>
-      );
+      const sp = encodeKnobs(compare, COMPARE_DEFAULTS);
       sp.set("compare", rightId);
       sp.set("_", String(bust));
       return `/api/og/${leftId}?${sp.toString()}`;

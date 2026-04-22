@@ -62,9 +62,6 @@ function parseNum(v: string | null, fallback: number): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
 }
-function parseStr(v: string | null, fallback: string): string {
-  return v == null ? fallback : v;
-}
 
 function readSingleKnobs(sp: URLSearchParams): SingleKnobs {
   if (process.env.NODE_ENV !== "development") return SINGLE_DEFAULTS;
@@ -72,7 +69,7 @@ function readSingleKnobs(sp: URLSearchParams): SingleKnobs {
     showStats: parseBool(sp.get("showStats"), SINGLE_DEFAULTS.showStats),
     showBadge: parseBool(sp.get("showBadge"), SINGLE_DEFAULTS.showBadge),
     showLogo: parseBool(sp.get("showLogo"), SINGLE_DEFAULTS.showLogo),
-    imagePanelBg: parseStr(sp.get("imagePanelBg"), SINGLE_DEFAULTS.imagePanelBg),
+    imagePanelBg: sp.get("imagePanelBg") ?? SINGLE_DEFAULTS.imagePanelBg,
     imagePanelW: parseNum(sp.get("imagePanelW"), SINGLE_DEFAULTS.imagePanelW),
     imageW: parseNum(sp.get("imageW"), SINGLE_DEFAULTS.imageW),
     imageH: parseNum(sp.get("imageH"), SINGLE_DEFAULTS.imageH),

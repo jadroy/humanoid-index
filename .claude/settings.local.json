@@ -60,7 +60,14 @@
       "Bash(mdls -name kMDItemNumberOfPages -name kMDItemPageWidth -name kMDItemPageHeight /Users/royjad/Downloads/humanoid-index-epetri.pdf)",
       "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless=new --disable-gpu --no-pdf-header-footer --virtual-time-budget=8000 --hide-scrollbars --run-all-compositor-stages-before-draw --window-size=1280,3680 --print-to-pdf=/Users/royjad/Downloads/humanoid-index-epetri.pdf 'http://localhost:3000/epetri?pdf=1')",
       "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless=new --disable-gpu --no-pdf-header-footer --virtual-time-budget=8000 --hide-scrollbars --run-all-compositor-stages-before-draw --print-to-pdf=/Users/royjad/Downloads/humanoid-index-epetri.pdf http://localhost:3000/epetri)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(git push *)",
+      "Bash(git fetch *)",
+      "Bash(git config *)",
+      "Bash(gh api *)",
+      "Bash(gh pr *)",
+      "Bash(grep -r \"parseBool\\\\|parseNum\\\\|parseStr\" /Users/royjad/CODE/humanoid-index --include=\"*.ts\" --include=\"*.tsx\" ! -path \"*/node_modules/*\")",
+      "Bash(echo \"EXIT $?\")"
     ],
     "deny": [],
     "ask": []
