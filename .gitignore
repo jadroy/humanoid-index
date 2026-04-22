@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# font source archives — ship the extracted .otf/.woff2, not the zip
+public/fonts/*.zip

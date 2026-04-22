@@ -35,7 +35,14 @@ export default function EpetriPreview() {
 
   return (
     <div className="min-h-screen w-full bg-[#fafafa] text-neutral-800 px-10 py-14">
-      <style>{`html, body { overflow: auto !important; overscroll-behavior: auto !important; }`}</style>
+      <style>{`
+        html, body { overflow: auto !important; overscroll-behavior: auto !important; }
+        @media print {
+          @page { size: 1280px 3680px; margin: 0; }
+          html, body { background: #fafafa !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      `}</style>
       <div className="max-w-[1180px] mx-auto">
         <header className="mb-14">
           <div style={epetri} className="text-[11px] uppercase text-neutral-400 mb-2">

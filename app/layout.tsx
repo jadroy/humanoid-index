@@ -25,6 +25,7 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import SearchModal from "@/components/SearchModal";
+import DevAnnotate from "@/components/DevAnnotate";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const b612 = B612({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-b612" });
@@ -94,6 +95,7 @@ export default function RootLayout({
       <body className={`${GeistSans.className} antialiased bg-white text-neutral-700`}>
         {children}
         <SearchModal />
+        {process.env.NODE_ENV === "development" && <DevAnnotate />}
       </body>
     </html>
   );

@@ -44,16 +44,72 @@ const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
   Anticipated: { bg: "#f3e8ff", fg: "#6d28d9" },
 };
 
+// ── Knobs (dev-only overrides) ───────────────────────────────
+
+import {
+  SINGLE_DEFAULTS,
+  COMPARE_DEFAULTS,
+  type SingleKnobs,
+  type CompareKnobs,
+} from "./knobs";
+
+function parseBool(v: string | null, fallback: boolean): boolean {
+  if (v == null) return fallback;
+  return v === "1" || v === "true";
+}
+function parseNum(v: string | null, fallback: number): number {
+  if (v == null) return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+function parseStr(v: string | null, fallback: string): string {
+  return v == null ? fallback : v;
+}
+
+function readSingleKnobs(sp: URLSearchParams): SingleKnobs {
+  if (process.env.NODE_ENV !== "development") return SINGLE_DEFAULTS;
+  return {
+    showStats: parseBool(sp.get("showStats"), SINGLE_DEFAULTS.showStats),
+    showBadge: parseBool(sp.get("showBadge"), SINGLE_DEFAULTS.showBadge),
+    showLogo: parseBool(sp.get("showLogo"), SINGLE_DEFAULTS.showLogo),
+    imagePanelBg: parseStr(sp.get("imagePanelBg"), SINGLE_DEFAULTS.imagePanelBg),
+    imagePanelW: parseNum(sp.get("imagePanelW"), SINGLE_DEFAULTS.imagePanelW),
+    imageW: parseNum(sp.get("imageW"), SINGLE_DEFAULTS.imageW),
+    imageH: parseNum(sp.get("imageH"), SINGLE_DEFAULTS.imageH),
+    nameSize: parseNum(sp.get("nameSize"), SINGLE_DEFAULTS.nameSize),
+    manufacturerSize: parseNum(sp.get("manufacturerSize"), SINGLE_DEFAULTS.manufacturerSize),
+    statLabelSize: parseNum(sp.get("statLabelSize"), SINGLE_DEFAULTS.statLabelSize),
+    statValueSize: parseNum(sp.get("statValueSize"), SINGLE_DEFAULTS.statValueSize),
+  };
+}
+
+function readCompareKnobs(sp: URLSearchParams): CompareKnobs {
+  if (process.env.NODE_ENV !== "development") return COMPARE_DEFAULTS;
+  return {
+    showStats: parseBool(sp.get("showStats"), COMPARE_DEFAULTS.showStats),
+    imageW: parseNum(sp.get("imageW"), COMPARE_DEFAULTS.imageW),
+    imageH: parseNum(sp.get("imageH"), COMPARE_DEFAULTS.imageH),
+    nameSize: parseNum(sp.get("nameSize"), COMPARE_DEFAULTS.nameSize),
+    manufacturerSize: parseNum(sp.get("manufacturerSize"), COMPARE_DEFAULTS.manufacturerSize),
+    statLabelSize: parseNum(sp.get("statLabelSize"), COMPARE_DEFAULTS.statLabelSize),
+    statValueSize: parseNum(sp.get("statValueSize"), COMPARE_DEFAULTS.statValueSize),
+    showVsBubble: parseBool(sp.get("showVsBubble"), COMPARE_DEFAULTS.showVsBubble),
+    showDivider: parseBool(sp.get("showDivider"), COMPARE_DEFAULTS.showDivider),
+  };
+}
+
 // ── Single bot card ──────────────────────────────────────────
 
 function SingleCard({
   bot,
   imgSrc,
   logoSrc,
+  k,
 }: {
   bot: Humanoid;
   imgSrc: string | null;
   logoSrc: string | null;
+  k: SingleKnobs;
 }) {
   const stats = getStats(bot);
   const badge = bot.status ? STATUS_COLORS[bot.status] ?? { bg: "#f3f4f6", fg: "#6b7280" } : null;
@@ -72,17 +128,17 @@ function SingleCard({
     >
       <div
         style={{
-          width: 480,
+          width: k.imagePanelW,
           height: 630,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           padding: 40,
-          background: "#fafafa",
+          background: k.imagePanelBg,
         }}
       >
         {imgSrc ? (
-          <img src={imgSrc} width={400} height={540} style={{ objectFit: "contain" }} />
+          <img src={imgSrc} width={k.imageW} height={k.imageH} style={{ objectFit: "contain" }} />
         ) : (
           <div
             style={{
@@ -112,28 +168,28 @@ function SingleCard({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          {logoSrc && <img src={logoSrc} width={28} height={28} style={{ borderRadius: 4 }} />}
-          <span style={{ fontSize: 20, color: "#888", letterSpacing: 0.5 }}>
-            {bot.manufacturer}{bot.year ? ` \u00b7 ${bot.year}` : ""}
+          {k.showLogo && logoSrc && <img src={logoSrc} width={28} height={28} style={{ borderRadius: 4 }} />}
+          <span style={{ fontSize: k.manufacturerSize, color: "#888", letterSpacing: 0.5 }}>
+            {bot.manufacturer}{bot.year ? ` · ${bot.year}` : ""}
           </span>
         </div>
 
-        <div style={{ fontSize: 64, fontWeight: 700, lineHeight: 1.1, marginBottom: 36, letterSpacing: -1, color: "#111" }}>
+        <div style={{ fontSize: k.nameSize, fontWeight: 700, lineHeight: 1.1, marginBottom: 36, letterSpacing: -1, color: "#111" }}>
           {bot.name}
         </div>
 
-        {stats.length > 0 && (
+        {k.showStats && stats.length > 0 && (
           <div style={{ display: "flex", gap: 36 }}>
             {stats.map((s) => (
               <div key={s.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontSize: 13, color: "#aaa", letterSpacing: 1.5, textTransform: "uppercase" }}>{s.label}</span>
-                <span style={{ fontSize: 28, fontWeight: 600, color: "#333" }}>{s.value}</span>
+                <span style={{ fontSize: k.statLabelSize, color: "#aaa", letterSpacing: 1.5, textTransform: "uppercase" }}>{s.label}</span>
+                <span style={{ fontSize: k.statValueSize, fontWeight: 600, color: "#333" }}>{s.value}</span>
               </div>
             ))}
           </div>
         )}
 
-        {badge && bot.status && (
+        {k.showBadge && badge && bot.status && (
           <div style={{ marginTop: 32, display: "flex" }}>
             <span style={{ fontSize: 14, padding: "6px 18px", borderRadius: 999, background: badge.bg, color: badge.fg, letterSpacing: 0.5 }}>
               {bot.status}
@@ -154,9 +210,11 @@ function SingleCard({
 function CompareSide({
   bot,
   imgSrc,
+  k,
 }: {
   bot: Humanoid;
   imgSrc: string | null;
+  k: CompareKnobs;
 }) {
   const stats = getStats(bot);
   return (
@@ -171,10 +229,9 @@ function CompareSide({
         gap: 16,
       }}
     >
-      {/* Image */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
         {imgSrc ? (
-          <img src={imgSrc} width={240} height={300} style={{ objectFit: "contain" }} />
+          <img src={imgSrc} width={k.imageW} height={k.imageH} style={{ objectFit: "contain" }} />
         ) : (
           <div
             style={{
@@ -194,23 +251,20 @@ function CompareSide({
         )}
       </div>
 
-      {/* Manufacturer + Year */}
-      <span style={{ fontSize: 14, color: "#999", letterSpacing: 0.5 }}>
-        {bot.manufacturer}{bot.year ? ` \u00b7 ${bot.year}` : ""}
+      <span style={{ fontSize: k.manufacturerSize, color: "#999", letterSpacing: 0.5 }}>
+        {bot.manufacturer}{bot.year ? ` · ${bot.year}` : ""}
       </span>
 
-      {/* Name */}
-      <div style={{ fontSize: 36, fontWeight: 700, lineHeight: 1.1, letterSpacing: -0.5, color: "#111", textAlign: "center" }}>
+      <div style={{ fontSize: k.nameSize, fontWeight: 700, lineHeight: 1.1, letterSpacing: -0.5, color: "#111", textAlign: "center" }}>
         {bot.name}
       </div>
 
-      {/* Stats — compact 2×2 */}
-      {stats.length > 0 && (
+      {k.showStats && stats.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 28px", marginTop: 4 }}>
           {stats.map((s) => (
             <div key={s.label} style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-              <span style={{ fontSize: 11, color: "#bbb", letterSpacing: 1, textTransform: "uppercase" }}>{s.label}</span>
-              <span style={{ fontSize: 20, fontWeight: 600, color: "#333" }}>{s.value}</span>
+              <span style={{ fontSize: k.statLabelSize, color: "#bbb", letterSpacing: 1, textTransform: "uppercase" }}>{s.label}</span>
+              <span style={{ fontSize: k.statValueSize, fontWeight: 600, color: "#333" }}>{s.value}</span>
             </div>
           ))}
         </div>
@@ -224,11 +278,13 @@ function CompareCard({
   right,
   leftImg,
   rightImg,
+  k,
 }: {
   left: Humanoid;
   right: Humanoid;
   leftImg: string | null;
   rightImg: string | null;
+  k: CompareKnobs;
 }) {
   return (
     <div
@@ -242,42 +298,43 @@ function CompareCard({
         position: "relative",
       }}
     >
-      <CompareSide bot={left} imgSrc={leftImg} />
+      <CompareSide bot={left} imgSrc={leftImg} k={k} />
 
-      {/* Center divider + "vs" */}
       <div
         style={{
-          width: 1,
+          width: k.showDivider ? 1 : 0,
           height: 630,
-          background: "#e8e8e8",
+          background: k.showDivider ? "#e8e8e8" : "transparent",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           position: "relative",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            background: "#fff",
-            border: "1px solid #e8e8e8",
-            fontSize: 16,
-            fontWeight: 600,
-            color: "#bbb",
-            letterSpacing: 1,
-          }}
-        >
-          vs
-        </div>
+        {k.showVsBubble && (
+          <div
+            style={{
+              position: "absolute",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              background: "#fff",
+              border: "1px solid #e8e8e8",
+              fontSize: 16,
+              fontWeight: 600,
+              color: "#bbb",
+              letterSpacing: 1,
+            }}
+          >
+            vs
+          </div>
+        )}
       </div>
 
-      <CompareSide bot={right} imgSrc={rightImg} />
+      <CompareSide bot={right} imgSrc={rightImg} k={k} />
 
       <div style={{ position: "absolute", bottom: 28, right: 40, display: "flex", fontSize: 16, color: "#ccc", letterSpacing: 0.5 }}>
         humanoid-index.com
@@ -300,13 +357,19 @@ export async function GET(
   const compareId = url.searchParams.get("compare");
   const rightBot = compareId ? humanoids.find((h) => h.id === compareId) : null;
 
-  // Compare mode
   if (rightBot) {
+    const k = readCompareKnobs(url.searchParams);
     const [leftImg, rightImg] = await Promise.all([loadBotImage(bot), loadBotImage(rightBot)]);
-    return new ImageResponse(<CompareCard left={bot} right={rightBot} leftImg={leftImg} rightImg={rightImg} />, { width: 1200, height: 630 });
+    return new ImageResponse(
+      <CompareCard left={bot} right={rightBot} leftImg={leftImg} rightImg={rightImg} k={k} />,
+      { width: 1200, height: 630 }
+    );
   }
 
-  // Single bot
+  const k = readSingleKnobs(url.searchParams);
   const [imgSrc, logoSrc] = await Promise.all([loadBotImage(bot), loadBotLogo(bot)]);
-  return new ImageResponse(<SingleCard bot={bot} imgSrc={imgSrc} logoSrc={logoSrc} />, { width: 1200, height: 630 });
+  return new ImageResponse(<SingleCard bot={bot} imgSrc={imgSrc} logoSrc={logoSrc} k={k} />, {
+    width: 1200,
+    height: 630,
+  });
 }
