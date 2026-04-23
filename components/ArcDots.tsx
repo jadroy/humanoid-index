@@ -186,6 +186,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
     if (n >= 0 && n < humanoids.length) items.push({ i: n });
   }
   const textRefs = useRef<Array<SVGTextElement | null>>([]);
+  const yearRefs = useRef<Array<SVGTSpanElement | null>>([]);
 
   useLayoutEffect(() => {
     const update = (pos: number) => {
@@ -216,6 +217,18 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         el.style.fontWeight = String(fw);
         el.style.fill = fill;
         el.style.opacity = String(op);
+
+        const yearEl = yearRefs.current[idx];
+        if (yearEl) {
+          if (isAct && humanoids[i]?.year) {
+            yearEl.style.display = "inline";
+            yearEl.style.fontSize = `${Math.round(aFsMax * 0.55)}px`;
+            yearEl.style.fontWeight = "400";
+            yearEl.style.opacity = "0.35";
+          } else {
+            yearEl.style.display = "none";
+          }
+        }
       }
     };
     return subscribe(update);
@@ -237,7 +250,9 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
       >
         <circle cx={wheelR} cy={wheelR} r={r} fill="none" stroke="#ebebeb" strokeWidth="0.5" style={{ opacity: aLineOp }} />
         {items.map(({ i }, idx) => {
-          const name = humanoids[i]?.name ?? String(i).padStart(2, "0");
+          const h = humanoids[i];
+          const name = h?.name ?? String(i).padStart(2, "0");
+          const year = h?.year;
           return (
             <text
               key={i}
@@ -252,7 +267,10 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
                 transition: "opacity 0.15s ease",
               }}
             >
-              {name}
+              <tspan ref={(el) => { yearRefs.current[idx] = el; }} style={{ display: "none" }}>
+                {year ? `${year} ` : ""}
+              </tspan>
+              <tspan>{name}</tspan>
             </text>
           );
         })}

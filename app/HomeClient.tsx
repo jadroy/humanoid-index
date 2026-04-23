@@ -19,6 +19,7 @@ import {
 } from "@/components/LayoutSwitcher";
 import { useSpring, SCROLL_PRESETS, type PresetKey } from "@/hooks/useSpring";
 import { ArcDots, ARC_STYLES, ARC_PRESETS, arcStyleLabels, type ArcStyle } from "@/components/ArcDots";
+import OptionsMenu, { MenuStyleSwitcher, type MenuStyle } from "@/components/OptionsMenu";
 import { FONTS } from "@/lib/fonts";
 import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSettings } from "@/lib/cardPhysics";
 
@@ -2072,27 +2073,14 @@ export default function HomeClient() {
 
   // Share URL — Browse writes to this ref, Home's share button reads it
   const shareUrlRef = useRef("");
-  const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [shareToast, setShareToast] = useState<string | false>(false);
   const shareToastTimer = useRef<ReturnType<typeof setTimeout>>(null);
-  const shareMenuRef = useRef<HTMLDivElement>(null);
   const copyUrl = useCallback((url: string, label: string) => {
     navigator.clipboard.writeText(url);
-    setShareMenuOpen(false);
     setShareToast(label);
     if (shareToastTimer.current) clearTimeout(shareToastTimer.current);
     shareToastTimer.current = setTimeout(() => setShareToast(false), 1600);
   }, []);
-
-  // Close share menu on outside click
-  useEffect(() => {
-    if (!shareMenuOpen) return;
-    const onClick = (e: MouseEvent) => {
-      if (shareMenuRef.current && !shareMenuRef.current.contains(e.target as Node)) setShareMenuOpen(false);
-    };
-    window.addEventListener("mousedown", onClick);
-    return () => window.removeEventListener("mousedown", onClick);
-  }, [shareMenuOpen]);
   const [fontIdx, setFontIdx] = useState(0);
   const [textDim, setTextDim] = useState(0);
   const [showFontToast, setShowFontToast] = useState(false);
@@ -2103,6 +2091,7 @@ export default function HomeClient() {
   const [introPhase, setIntroPhase] = useState<"logo" | "exit" | "done">("logo");
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeStyle, setWelcomeStyle] = useState<WelcomeStyle>("minimal");
+  const [menuStyle, setMenuStyle] = useState<MenuStyle>("dropdown");
 
   useEffect(() => {
     // Phase 1: logo sits for a beat, then exits
@@ -2302,52 +2291,6 @@ export default function HomeClient() {
         </div>
       )}
 
-      {/* Bottom-center share button */}
-      <div className={introDone ? "intro-nav" : "opacity-0"}>
-        <div ref={shareMenuRef} className="fixed bottom-6 left-1/2 z-50 pointer-events-auto" style={{ width: 36, marginLeft: -18 }}>
-          <button
-            className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-[1.06]"
-            style={{ background: "#F7F7F7", color: "#999" }}
-            onClick={() => setShareMenuOpen((v) => !v)}
-            aria-label="Share"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-              <polyline points="16 6 12 2 8 6" />
-              <line x1="12" y1="2" x2="12" y2="15" />
-            </svg>
-          </button>
-          {shareMenuOpen && (
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2">
-            <div
-              className="flex flex-col py-1"
-              style={{
-                background: "#F7F7F7",
-                borderRadius: 12,
-                minWidth: 160,
-                animation: "chat-rise 0.15s cubic-bezier(0.16, 1, 0.3, 1) both",
-              }}
-            >
-              <button
-                className="px-4 py-2 text-[13px] text-left cursor-pointer transition-colors duration-100 hover:bg-black/[0.04]"
-                style={{ color: "#1d1d1f" }}
-                onClick={() => copyUrl(typeof window !== "undefined" ? window.location.origin : "", "Site link copied")}
-              >
-                Share site
-              </button>
-              <button
-                className="px-4 py-2 text-[13px] text-left cursor-pointer transition-colors duration-100 hover:bg-black/[0.04]"
-                style={{ color: "#1d1d1f" }}
-                onClick={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied")}
-              >
-                Share current view
-              </button>
-            </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Top-right share button (outlined, larger) */}
       <div
         className="group fixed top-6 right-6 z-[1000] flex items-center gap-3"
@@ -2376,16 +2319,15 @@ export default function HomeClient() {
         </button>
       </div>
 
-      {/* Bottom-right help button */}
-      <div className={introDone ? "intro-nav" : "opacity-0"}>
-        <button
-          className="fixed bottom-6 z-50 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200"
-          style={{ right: "var(--arc-logo-x, 24px)", background: chatOpen ? "var(--c-ink)" : "#F7F7F7", color: chatOpen ? "white" : "#999" }}
-          onClick={() => setChatOpen(!chatOpen)}
-        >
-          <span className="text-[14px] font-medium">{chatOpen ? "×" : "?"}</span>
-        </button>
-      </div>
+      <OptionsMenu
+        style={menuStyle}
+        chatOpen={chatOpen}
+        setChatOpen={setChatOpen}
+        onShareSite={() => copyUrl(typeof window !== "undefined" ? window.location.origin : "", "Site link copied")}
+        onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied")}
+        visible={introDone}
+      />
+      {introDone && <MenuStyleSwitcher style={menuStyle} onChange={setMenuStyle} />}
 
       {/* Share toast */}
       {shareToast && (
