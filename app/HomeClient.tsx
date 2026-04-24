@@ -19,7 +19,7 @@ import {
 } from "@/components/LayoutSwitcher";
 import { useSpring, SCROLL_PRESETS, type PresetKey } from "@/hooks/useSpring";
 import { ArcDots, ARC_STYLES, ARC_PRESETS, arcStyleLabels, type ArcStyle } from "@/components/ArcDots";
-import OptionsMenu, { MenuStyleSwitcher, type MenuStyle } from "@/components/OptionsMenu";
+import OptionsMenu, { BUTTON_VARIANTS, BUTTON_LABELS, type ButtonVariant } from "@/components/OptionsMenu";
 import { FONTS } from "@/lib/fonts";
 import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSettings } from "@/lib/cardPhysics";
 
@@ -245,7 +245,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, introDone = false, shareUrlRef }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string> }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, introDone = false, shareUrlRef, buttonVariant, onButtonVariantChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -339,6 +339,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const leftLabelRef = useRef<HTMLDivElement | null>(null);
   const rightLabelRef = useRef<HTMLDivElement | null>(null);
   const [openStat, setOpenStat] = useState<Set<string>>(new Set());
+  // Flash overlay — increments on every pill tap so the keyed overlay remounts
+  // and replays its animation. statKey scopes the flash to a single pill.
+  const [pillFlash, setPillFlash] = useState<{ statKey: string; id: number }>({ statKey: "", id: 0 });
   // Layout dimensions
   const [robotW, setRobotW] = useState(30);       // vw
   const [robotH, setRobotH] = useState(60);       // vh
@@ -364,6 +367,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [splitShadowOp, setSplitShadowOp] = useState(0.12);
   const [splitDur, setSplitDur] = useState(320); // ms
   const [labelPosition, setLabelPosition] = useState<"stack" | "below" | "above">("below");
+  const [statsAlign, setStatsAlign] = useState<"top" | "center" | "bottom">("top");
 
   // Adaptive arc positioning
   const [windowWidth, setWindowWidth] = useState(1920);
@@ -866,18 +870,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         const icoStatus = ico("M22 12h-4l-3 9L9 3l-3 9H2");
 
         const plusMinus = (open: boolean) => (
-          <svg width="10" height="10" viewBox="0 0 10 10" style={{ flexShrink: 0, overflow: "visible" }}>
-            <line x1="1.5" y1="5" x2="8.5" y2="5" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round" />
+          <svg width="14" height="14" viewBox="0 0 10 10" style={{ flexShrink: 0, overflow: "visible" }}>
+            <line x1="1.5" y1="5" x2="8.5" y2="5" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round"
+              style={{ transition: `opacity 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)`, opacity: open ? 0 : 1 }} />
             <line x1="5" y1="1.5" x2="5" y2="8.5" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round"
-              style={{ transformOrigin: "5px 5px", transition: `transform 0.42s ${ease}`, transform: open ? "rotate(90deg)" : "rotate(0deg)" }} />
+              style={{ transformOrigin: "5px 5px", transition: `transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)`, transform: open ? "rotate(90deg)" : "rotate(0deg)", opacity: open ? 0 : 1 }} />
           </svg>
         );
 
-        const toggleStat = (key: string) => setOpenStat((prev) => {
-          const next = new Set(prev);
-          if (next.has(key)) next.delete(key); else next.add(key);
-          return next;
-        });
+        const toggleStat = (key: string) => {
+          setOpenStat((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+          });
+          setPillFlash((f) => ({ statKey: key, id: f.id + 1 }));
+        };
 
         const statSections = (h: typeof humanoids[0]) => {
         const heightPct = Math.min(((h.height ?? 0) / 200) * 100, 100);
@@ -902,18 +910,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         return [
           { key: "desc", show: !!h.description, label: (
-            <div className="flex items-center gap-2.5">
-              {icoInfo}
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Info</p>
-            </div>
+            <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Info</p>
           ), detail: (
             <p className="text-[12px] leading-relaxed" style={{ color: "#999" }}>{h.description}</p>
           ) },
           { key: "overview", show: !!(h.height || h.weight), label: (
-            <div className="flex items-center gap-2.5">
-              {icoRuler}
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Overview</p>
-            </div>
+            <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Overview</p>
           ), detail: (
             <div>
               {h.height ? barViz("Height", `${h.height} cm`, heightPct, 0.05) : null}
@@ -921,10 +923,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "dof", show: !!h.dof, label: (
-            <div className="flex items-center gap-2.5">
-              {icoDof}
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
-            </div>
+            <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -944,10 +943,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "speed", show: !!h.maxSpeed, label: (
-            <div className="flex items-center gap-2.5">
-              {icoSpeed}
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Speed</p>
-            </div>
+            <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Speed</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -965,10 +961,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "status", show: !!h.status, label: (
-            <div className="flex items-center gap-2.5">
-              {icoStatus}
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status</p>
-            </div>
+            <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2.5" style={{ marginTop: 4 }}>
@@ -986,10 +979,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         const cardMorph = "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), padding 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), margin-bottom 0.45s cubic-bezier(0.16, 1, 0.3, 1)";
 
+        const alignJustify = statsAlign === "center" ? "center" : statsAlign === "bottom" ? "flex-end" : "flex-start";
+
         const renderStats = (h: typeof humanoids[0]) => {
           const sections = statSections(h);
           return (
-            <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
+            <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
               {labelPosition === "stack" && (
                 <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
                   <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
@@ -1011,42 +1006,81 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   {h.id.startsWith("legend") && <span className="flex-shrink-0 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
                 </div>
               )}
-              {/* Stats — individual pill containers */}
+              {/* Stats — individual pill containers. Always render every section so the
+                  column height stays stable across humanoids; missing data renders dim/disabled. */}
               <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11 }}>
-                {sections.filter((s) => s.show && s.label).map((s) => {
-                  const forcedOpen = s.key === "desc" && infoMode !== "pill";
+                {sections.map((s) => {
+                  const empty = !s.show;
                   const hideLabel = s.key === "desc" && infoMode === "bare";
-                  const isOpen = openStat.has(s.key);
+                  if (empty && hideLabel) return null;
+                  const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
+                  const isOpen = !empty && openStat.has(s.key);
+                  const interactive = !forcedOpen && !empty;
+                  const Tag: "button" | "div" = interactive ? "button" : "div";
                   return (
-                    <div key={s.key} style={{
-                      background: statPillBg,
-                      borderRadius: statPillRadius,
-                      padding: `0 ${statPillPadX}px`,
-                      overflow: "hidden",
-                    }}>
-                      {!hideLabel && (
-                        <button
-                          className="w-full flex items-center justify-between"
-                          style={{ background: "none", border: "none", padding: `${statPillPadY}px 0`, cursor: forcedOpen ? "default" : "pointer" }}
-                          onClick={forcedOpen ? undefined : () => toggleStat(s.key)}
-                        >
-                          {s.label}
-                          {!forcedOpen && plusMinus(isOpen)}
-                        </button>
+                    <Tag
+                      key={s.key}
+                      onClick={interactive ? () => toggleStat(s.key) : undefined}
+                      {...(interactive ? { type: "button" as const } : {})}
+                      className={interactive ? "pill-button w-full text-left" : "w-full text-left"}
+                      style={{
+                        ["--pill-bg" as string]: statPillBg,
+                        background: interactive ? undefined : statPillBg,
+                        border: "none",
+                        borderRadius: statPillRadius,
+                        padding: `0 ${statPillPadX}px`,
+                        overflow: "hidden",
+                        opacity: empty ? 0.45 : 1,
+                        cursor: interactive ? "pointer" : "default",
+                        position: "relative",
+                        display: "block",
+                        transition: "opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1)",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      {interactive && pillFlash.statKey === s.key && (
+                        <span
+                          key={`flash-${pillFlash.id}`}
+                          aria-hidden
+                          className="pill-flash"
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            borderRadius: statPillRadius,
+                            pointerEvents: "none",
+                          }}
+                        />
                       )}
-                      {forcedOpen ? (
-                        <div className={hideLabel ? "" : "pl-[22.5px]"} style={{ padding: hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0" }}>{s.detail}</div>
-                      ) : (
-                        <div style={{
-                          maxHeight: isOpen ? 140 : 0,
-                          opacity: isOpen ? 1 : 0,
-                          overflow: "hidden",
-                          transition: `max-height 0.35s ${ease}, opacity 0.28s ${ease}`,
-                        }}>
-                          <div className="pb-3 pl-[22.5px]">{s.detail}</div>
+                      {!hideLabel && (
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative" }}>
+                          {s.label}
+                          {!forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
                         </div>
                       )}
-                    </div>
+                      {forcedOpen ? (
+                        <div style={{ padding: hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0", position: "relative" }}>{s.detail}</div>
+                      ) : (
+                        <div style={{
+                          display: "grid",
+                          gridTemplateRows: isOpen ? "1fr" : "0fr",
+                          transition: "grid-template-rows 0.32s cubic-bezier(0.32, 0.72, 0, 1)",
+                          position: "relative",
+                        }}>
+                          <div style={{ overflow: "hidden", minHeight: 0 }}>
+                            <div
+                              className="pb-3"
+                              style={{
+                                opacity: isOpen ? 1 : 0,
+                                transform: isOpen ? "translateY(0)" : "translateY(-4px)",
+                                transition: "opacity 0.22s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+                              }}
+                            >
+                              {s.detail}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </Tag>
                   );
                 })}
               </div>
@@ -1181,10 +1215,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "overview",
               show: !!(heightL || weightL || heightR || weightR),
               label: (
-                <div className="flex items-center gap-2.5">
-                  {icoRuler}
-                  <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Overview</p>
-                </div>
+                <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Overview</p>
               ),
               detail: (
                 <div>
@@ -1197,10 +1228,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "dof",
               show: !!(dofL || dofR),
               label: (
-                <div className="flex items-center gap-2.5">
-                  {icoDof}
-                  <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
-                </div>
+                <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
               ),
               detail: compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null, dofL > dofR && dofL > 0, dofR > dofL && dofR > 0),
             },
@@ -1208,10 +1236,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "speed",
               show: !!(speedL || speedR),
               label: (
-                <div className="flex items-center gap-2.5">
-                  {icoSpeed}
-                  <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Speed</p>
-                </div>
+                <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Speed</p>
               ),
               detail: compareRow("Speed", speedL ? `${speedL} m/s` : null, speedR ? `${speedR} m/s` : null, speedL > speedR && speedL > 0, speedR > speedL && speedR > 0),
             },
@@ -1219,10 +1244,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "status",
               show: !!(hL.status || hR.status),
               label: (
-                <div className="flex items-center gap-2.5">
-                  {icoStatus}
-                  <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status</p>
-                </div>
+                <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status</p>
               ),
               detail: (
                 <div className="flex items-center gap-3" style={{ marginTop: 6 }}>
@@ -1259,7 +1281,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           );
 
           return (
-            <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap }}>
+            <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
               {labelPosition === "stack" && (() => {
                 const active = splitHover;
                 const sDur = `${splitDur}ms`;
@@ -1334,40 +1356,78 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 );
               })()}
               <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11 }}>
-                {sections.filter((s) => s.show).map((s) => {
-                  const forcedOpen = s.key === "desc" && infoMode !== "pill";
+                {sections.map((s) => {
+                  const empty = !s.show;
                   const hideLabel = s.key === "desc" && infoMode === "bare";
-                  const isOpen = openStat.has(s.key);
+                  if (empty && hideLabel) return null;
+                  const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
+                  const isOpen = !empty && openStat.has(s.key);
+                  const interactive = !forcedOpen && !empty;
+                  const Tag: "button" | "div" = interactive ? "button" : "div";
                   return (
-                    <div key={s.key} style={{
-                      background: statPillBg,
-                      borderRadius: statPillRadius,
-                      padding: `0 ${statPillPadX}px`,
-                      overflow: "hidden",
-                    }}>
-                      {!hideLabel && (
-                        <button
-                          className="w-full flex items-center justify-between"
-                          style={{ background: "none", border: "none", padding: `${statPillPadY}px 0`, cursor: forcedOpen ? "default" : "pointer" }}
-                          onClick={forcedOpen ? undefined : () => toggleStat(s.key)}
-                        >
-                          {s.label}
-                          {!forcedOpen && plusMinus(isOpen)}
-                        </button>
+                    <Tag
+                      key={s.key}
+                      onClick={interactive ? () => toggleStat(s.key) : undefined}
+                      {...(interactive ? { type: "button" as const } : {})}
+                      className={interactive ? "pill-button w-full text-left" : "w-full text-left"}
+                      style={{
+                        ["--pill-bg" as string]: statPillBg,
+                        background: interactive ? undefined : statPillBg,
+                        border: "none",
+                        borderRadius: statPillRadius,
+                        padding: `0 ${statPillPadX}px`,
+                        overflow: "hidden",
+                        opacity: empty ? 0.45 : 1,
+                        cursor: interactive ? "pointer" : "default",
+                        position: "relative",
+                        display: "block",
+                        transition: "opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1)",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      {interactive && pillFlash.statKey === s.key && (
+                        <span
+                          key={`flash-${pillFlash.id}`}
+                          aria-hidden
+                          className="pill-flash"
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            borderRadius: statPillRadius,
+                            pointerEvents: "none",
+                          }}
+                        />
                       )}
-                      {forcedOpen ? (
-                        <div style={{ padding: hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0" }}>{s.detail}</div>
-                      ) : (
-                        <div style={{
-                          maxHeight: isOpen ? 140 : 0,
-                          opacity: isOpen ? 1 : 0,
-                          overflow: "hidden",
-                          transition: `max-height 0.35s ${ease}, opacity 0.28s ${ease}`,
-                        }}>
-                          <div className="pb-3">{s.detail}</div>
+                      {!hideLabel && (
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative" }}>
+                          {s.label}
+                          {!forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
                         </div>
                       )}
-                    </div>
+                      {forcedOpen ? (
+                        <div style={{ padding: hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0", position: "relative" }}>{s.detail}</div>
+                      ) : (
+                        <div style={{
+                          display: "grid",
+                          gridTemplateRows: isOpen ? "1fr" : "0fr",
+                          transition: "grid-template-rows 0.32s cubic-bezier(0.32, 0.72, 0, 1)",
+                          position: "relative",
+                        }}>
+                          <div style={{ overflow: "hidden", minHeight: 0 }}>
+                            <div
+                              className="pb-3"
+                              style={{
+                                opacity: isOpen ? 1 : 0,
+                                transform: isOpen ? "translateY(0)" : "translateY(-4px)",
+                                transition: "opacity 0.22s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+                              }}
+                            >
+                              {s.detail}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </Tag>
                   );
                 })}
               </div>
@@ -1623,14 +1683,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   {renderMergedStats()}
                 </div>
 
-                {/* Exit compare — hover zone overlaying dual header; minus sits on divider */}
+                {/* Exit compare — narrow hover strip at the seam between the two halves */}
                 {comparing && (
                   <div
                     className="absolute cursor-pointer pointer-events-auto flex items-center justify-center"
                     style={{
                       top: 0,
-                      left: 0,
-                      right: 0,
+                      left: "50%",
+                      width: 80,
+                      marginLeft: -40,
                       height: 48,
                       zIndex: 12,
                     }}
@@ -1688,6 +1749,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   key={v}
                   onClick={() => setLabelPosition(v)}
                   className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${labelPosition === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Stats Align</p>
+            <div className="flex gap-1.5">
+              {(["top", "center", "bottom"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setStatsAlign(v)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${statsAlign === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                 >
                   {v}
                 </button>
@@ -1788,6 +1863,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             )}
           </div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => pickArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Nav</p>
             <div><p className="text-[10px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             {navStyle === "underline" && (
@@ -2000,7 +2076,7 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
   };
 
   return (
-    <div className="fixed bottom-16 z-40 pointer-events-none" style={{ right: "var(--arc-logo-x, 24px)" }}>
+    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
       <div className="w-[min(420px,calc(100vw-48px))] rounded-2xl overflow-hidden pointer-events-auto" style={{ background: "white", border: "1px solid #e8e8e8", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", animation: "chat-rise 0.3s cubic-bezier(0.16, 1, 0.3, 1) both" }}>
         {/* Messages */}
         <div ref={scrollRef} className="max-h-[300px] overflow-y-auto p-4 space-y-3 scrollbar-hide">
@@ -2074,6 +2150,7 @@ export default function HomeClient() {
   // Share URL — Browse writes to this ref, Home's share button reads it
   const shareUrlRef = useRef("");
   const [shareToast, setShareToast] = useState<string | false>(false);
+  const [shareCopyFilled, setShareCopyFilled] = useState(false);
   const shareToastTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const copyUrl = useCallback((url: string, label: string) => {
     navigator.clipboard.writeText(url);
@@ -2091,7 +2168,7 @@ export default function HomeClient() {
   const [introPhase, setIntroPhase] = useState<"logo" | "exit" | "done">("logo");
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeStyle, setWelcomeStyle] = useState<WelcomeStyle>("minimal");
-  const [menuStyle, setMenuStyle] = useState<MenuStyle>("dropdown");
+  const [buttonVariant, setButtonVariant] = useState<ButtonVariant>("semicircle");
 
   useEffect(() => {
     // Phase 1: logo sits for a beat, then exits
@@ -2252,7 +2329,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} introDone={introDone} shareUrlRef={shareUrlRef} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} introDone={introDone} shareUrlRef={shareUrlRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -2307,9 +2384,18 @@ export default function HomeClient() {
           Share view
         </span>
         <button
-          className="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer hover:scale-[1.06] transition-transform duration-200"
-          style={{ background: "transparent", border: "1px solid #e0e0e0", color: "#b4b4b4" }}
-          onClick={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied")}
+          className="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer hover:scale-[1.06]"
+          style={{
+            background: shareCopyFilled ? "var(--c-ink)" : "transparent",
+            border: `1px solid ${shareCopyFilled ? "var(--c-ink)" : "#e0e0e0"}`,
+            color: shareCopyFilled ? "white" : "#b4b4b4",
+            transition: "transform 200ms, background 220ms ease, border-color 220ms ease, color 220ms ease",
+          }}
+          onClick={() => {
+            copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied");
+            setShareCopyFilled(true);
+          }}
+          onMouseLeave={() => setShareCopyFilled(false)}
           aria-label="Copy link"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2320,14 +2406,13 @@ export default function HomeClient() {
       </div>
 
       <OptionsMenu
-        style={menuStyle}
+        variant={buttonVariant}
         chatOpen={chatOpen}
         setChatOpen={setChatOpen}
         onShareSite={() => copyUrl(typeof window !== "undefined" ? window.location.origin : "", "Site link copied")}
         onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied")}
         visible={introDone}
       />
-      {introDone && <MenuStyleSwitcher style={menuStyle} onChange={setMenuStyle} />}
 
       {/* Share toast */}
       {shareToast && (

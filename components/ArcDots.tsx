@@ -186,13 +186,35 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
     if (n >= 0 && n < humanoids.length) items.push({ i: n });
   }
   const textRefs = useRef<Array<SVGTextElement | null>>([]);
+  const nameRefs = useRef<Array<SVGTSpanElement | null>>([]);
   const yearRefs = useRef<Array<SVGTSpanElement | null>>([]);
+  const hitRefs = useRef<Array<SVGRectElement | null>>([]);
+  const [hoveredI, setHoveredI] = useState<number | null>(null);
+  const leaveTimerRef = useRef<number | null>(null);
+  // Tangent distance to the adjacent item — used to size hover/click rects so they tile.
+  const stepH = r * Math.sin((aStepDeg * Math.PI) / 180);
+
+  const enterItem = (i: number) => {
+    if (leaveTimerRef.current !== null) {
+      window.clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+    setHoveredI(i);
+  };
+  const leaveItem = (i: number) => {
+    if (leaveTimerRef.current !== null) window.clearTimeout(leaveTimerRef.current);
+    leaveTimerRef.current = window.setTimeout(() => {
+      setHoveredI((prev) => (prev === i ? null : prev));
+      leaveTimerRef.current = null;
+    }, 420);
+  };
 
   useLayoutEffect(() => {
     const update = (pos: number) => {
       for (let idx = 0; idx < items.length; idx++) {
         const el = textRefs.current[idx];
-        if (!el) continue;
+        const nameEl = nameRefs.current[idx];
+        if (!el || !nameEl) continue;
         const i = items[idx].i;
         const o = i - pos;
         const deg = o * aStepDeg;
@@ -210,29 +232,34 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         const op = Math.max(0.08, 1 - t * 0.9);
         const fill = isAct ? "var(--c-ink)" : `rgba(0,0,0,${0.15 + (1 - t) * 0.25})`;
 
-        el.setAttribute("x", String(cx));
         el.setAttribute("y", String(cy));
         el.setAttribute("transform", `rotate(${tangentDeg}, ${cx}, ${cy})`);
         el.style.fontSize = `${fs}px`;
         el.style.fontWeight = String(fw);
-        el.style.fill = fill;
-        el.style.opacity = String(op);
+        // Apply dist-based fade to the name tspan only — keeps the year's opacity/fill
+        // independent of where on the arc it's hovered.
+        nameEl.style.fill = fill;
+        nameEl.style.opacity = String(op);
+        nameEl.setAttribute("x", String(cx));
 
         const yearEl = yearRefs.current[idx];
         if (yearEl) {
-          if (isAct && humanoids[i]?.year) {
-            yearEl.style.display = "inline";
-            yearEl.style.fontSize = `${Math.round(aFsMax * 0.55)}px`;
-            yearEl.style.fontWeight = "400";
-            yearEl.style.opacity = "0.35";
-          } else {
-            yearEl.style.display = "none";
-          }
+          const gap = 8;
+          const xOffset = mirrored ? nameEl.getComputedTextLength() + gap : gap;
+          yearEl.setAttribute("x", String(cx - xOffset));
+        }
+
+        // Hit zone — sized to the tangent step so adjacent items tile without gaps.
+        const rectEl = hitRefs.current[idx];
+        if (rectEl) {
+          rectEl.setAttribute("x", String(mirrored ? cx - 220 : cx - 40));
+          rectEl.setAttribute("y", String(cy - stepH / 2));
+          rectEl.setAttribute("transform", `rotate(${tangentDeg}, ${cx}, ${cy})`);
         }
       }
     };
     return subscribe(update);
-  }, [items, subscribe, mirrored, wheelR, r, aStepDeg, aFsMax, aFsMin]);
+  }, [items, subscribe, mirrored, wheelR, r, aStepDeg, aFsMax, aFsMin, stepH]);
 
   return (
     <div className="absolute inset-0 overflow-visible pointer-events-auto">
@@ -254,24 +281,55 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
           const name = h?.name ?? String(i).padStart(2, "0");
           const year = h?.year;
           return (
-            <text
+            <g
               key={i}
-              ref={(el) => { textRefs.current[idx] = el; }}
               className="cursor-pointer"
-              textAnchor={mirrored ? "end" : "start"}
-              dominantBaseline="middle"
               onClick={() => onClickItem(i)}
-              style={{
-                fontFamily: "inherit",
-                letterSpacing: "-0.02em",
-                transition: "opacity 0.15s ease",
-              }}
+              onMouseEnter={() => enterItem(i)}
+              onMouseLeave={() => leaveItem(i)}
             >
-              <tspan ref={(el) => { yearRefs.current[idx] = el; }} style={{ display: "none" }}>
-                {year ? `${year} ` : ""}
-              </tspan>
-              <tspan>{name}</tspan>
-            </text>
+              <rect
+                ref={(el) => { hitRefs.current[idx] = el; }}
+                width={260}
+                height={stepH}
+                fill="transparent"
+                pointerEvents="all"
+              />
+              <text
+                ref={(el) => { textRefs.current[idx] = el; }}
+                dominantBaseline="middle"
+                style={{
+                  fontFamily: "inherit",
+                  letterSpacing: "-0.02em",
+                  transition: "opacity 0.15s ease",
+                  pointerEvents: "none",
+                }}
+              >
+                {year && (
+                  <tspan
+                    ref={(el) => { yearRefs.current[idx] = el; }}
+                    textAnchor="end"
+                    style={{
+                      opacity: hoveredI === i ? 0.2 : 0,
+                      fontSize: Math.round(aFsMax * 0.85),
+                      fontWeight: 400,
+                      fill: "var(--c-ink)",
+                      transition: hoveredI === i
+                        ? "opacity 0s"
+                        : "opacity 0.7s cubic-bezier(0.2, 0, 0, 1)",
+                    }}
+                  >
+                    {year}
+                  </tspan>
+                )}
+                <tspan
+                  ref={(el) => { nameRefs.current[idx] = el; }}
+                  textAnchor={mirrored ? "end" : "start"}
+                >
+                  {name}
+                </tspan>
+              </text>
+            </g>
           );
         })}
       </svg>

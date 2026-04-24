@@ -286,6 +286,34 @@ h1, h2, h3, h4, h5, h6 {
   animation: add-nudge-double 1400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* Stat pill tap flash — the surface is a transparent sheet with a backdrop
+   brightness filter; fading its opacity crossfades the filter's strength in
+   and out, so the pill reads as briefly catching light rather than being
+   painted white. Text/icons render above the sheet and stay unaffected. */
+@keyframes pill-flash {
+  0%   { opacity: 0; }
+  18%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.pill-flash {
+  animation: pill-flash 240ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  backdrop-filter: brightness(1.14);
+  -webkit-backdrop-filter: brightness(1.14);
+}
+
+/* Liquid-glass stat pill — hover lifts the base toward white, active gently
+   compresses. Uses --pill-bg so inline tuner overrides flow through. */
+.pill-button {
+  background: var(--pill-bg, #FCFCFC);
+}
+.pill-button:hover {
+  background: color-mix(in srgb, var(--pill-bg, #FCFCFC) 78%, white 22%);
+}
+.pill-button:active {
+  background: color-mix(in srgb, var(--pill-bg, #FCFCFC) 65%, white 35%);
+  transform: scale(0.988);
+}
+
 /* ═══════════════════════════════════════
    TEXT DIMMING — controlled by --text-dim (0–70)
    ═══════════════════════════════════════ */
