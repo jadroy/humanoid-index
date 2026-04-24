@@ -41,6 +41,7 @@ type Props = {
   onShareSite: () => void;
   onShareView: () => void;
   visible: boolean;
+  shareViewLabel?: string;
 };
 
 // ── Icons ────────────────────────────────────────────────────
@@ -125,6 +126,7 @@ export default function OptionsMenu({
   onShareSite,
   onShareView,
   visible,
+  shareViewLabel = "Share current view",
 }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -147,8 +149,8 @@ export default function OptionsMenu({
   }, [variant]);
 
   const items = [
-    { key: "site", label: "Share site", Icon: IconShare, onClick: () => { onShareSite(); setOpen(false); } },
-    { key: "view", label: "Share current view", Icon: IconLink, onClick: () => { onShareView(); setOpen(false); } },
+    { key: "site", label: "Share site", Icon: IconLink, onClick: () => { onShareSite(); setOpen(false); } },
+    { key: "view", label: shareViewLabel, Icon: IconLink, onClick: () => { onShareView(); setOpen(false); } },
     { key: "help", label: "Help", Icon: IconHelp, onClick: () => { setOpen(false); setChatOpen(true); } },
   ];
 
@@ -161,8 +163,8 @@ export default function OptionsMenu({
   const sheetBottom = variant === "semicircle" ? 52 : 80;
 
   return (
-    <div className={visible ? "intro-nav" : "opacity-0"}>
-      <div ref={rootRef}>
+    <div className={`${visible ? "intro-nav" : "opacity-0"} fixed inset-0 pointer-events-none z-[48]`}>
+      <div ref={rootRef} className="pointer-events-auto">
         <TriggerButton variant={variant} chatOpen={chatOpen} open={open} onClick={onTriggerClick} />
         {open && !chatOpen && (
           <div
@@ -311,9 +313,12 @@ function TriggerButton({
   } else if (variant === "outlined") {
     style = {
       ...base36,
-      background: chatOpen ? "var(--c-ink)" : "transparent",
-      color: chatOpen ? "white" : "#a8a8a8",
-      border: chatOpen ? "1px solid transparent" : "1px solid #e0e0e0",
+      background: chatOpen ? "var(--c-ink)" : open ? "#ffffff" : "transparent",
+      color: chatOpen ? "white" : open ? "var(--c-ink)" : "#a8a8a8",
+      border: chatOpen ? "1px solid transparent" : `1px solid ${open ? "#d4d4d4" : "#e0e0e0"}`,
+      // Subtle inset hairline when open — feels like a gently seated button,
+      // more tactile than a floating drop shadow.
+      boxShadow: open ? "inset 0 0 0 1px rgba(0,0,0,0.025), inset 0 1px 1px rgba(0,0,0,0.03)" : "none",
     };
     inner = chatOpen ? closeGlyph : <IconDots />;
   } else if (variant === "glass") {

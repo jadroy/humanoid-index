@@ -236,8 +236,9 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         el.setAttribute("transform", `rotate(${tangentDeg}, ${cx}, ${cy})`);
         el.style.fontSize = `${fs}px`;
         el.style.fontWeight = String(fw);
-        // Apply dist-based fade to the name tspan only — keeps the year's opacity/fill
-        // independent of where on the arc it's hovered.
+        // Parent stays fully opaque — dist-based fade is applied to the name tspan only,
+        // so the year tspan's opacity isn't multiplied by it.
+        el.style.opacity = "1";
         nameEl.style.fill = fill;
         nameEl.style.opacity = String(op);
         nameEl.setAttribute("x", String(cx));
@@ -310,13 +311,13 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
                     ref={(el) => { yearRefs.current[idx] = el; }}
                     textAnchor="end"
                     style={{
-                      opacity: hoveredI === i ? 0.2 : 0,
+                      opacity: hoveredI === i ? 0.09 : 0,
                       fontSize: Math.round(aFsMax * 0.85),
                       fontWeight: 400,
                       fill: "var(--c-ink)",
                       transition: hoveredI === i
                         ? "opacity 0s"
-                        : "opacity 0.7s cubic-bezier(0.2, 0, 0, 1)",
+                        : "opacity 1.6s cubic-bezier(0.2, 0, 0, 1)",
                     }}
                   >
                     {year}

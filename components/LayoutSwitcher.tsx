@@ -244,10 +244,10 @@ export function LayoutSwitcher({
   // ── Style: floating (original — island with border) ──
   if (navStyle === "floating") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-      <div className="flex justify-center">
-        <div className="pointer-events-auto flex items-center gap-3">
-          {mark}
-          <div className="px-5 py-2.5 rounded-sm border border-neutral-200/60" style={frost}>
+      <div className="flex items-center gap-4">
+        <div className="pointer-events-auto">{mark}</div>
+        <div className="flex-1 flex justify-center">
+          <div className="pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60" style={frost}>
             <div className="flex items-center gap-0.5">
               {ALL_LAYOUTS.map((l) => (
                 <button key={l} onClick={() => onChange(l)}
@@ -260,6 +260,7 @@ export function LayoutSwitcher({
             </div>
           </div>
         </div>
+        <div style={{ width: 20 }} />
       </div>
     </nav>
   );
@@ -267,10 +268,10 @@ export function LayoutSwitcher({
   // ── Style: pill — rounded capsule, tinted active state ──
   else if (navStyle === "pill") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-      <div className="flex justify-center">
-        <div className="pointer-events-auto flex items-center gap-3">
-          {mark}
-          <div className="px-3 py-2 rounded-2xl" style={frost}>
+      <div className="flex items-center gap-4">
+        <div className="pointer-events-auto">{mark}</div>
+        <div className="flex-1 flex justify-center">
+          <div className="pointer-events-auto px-3 py-2 rounded-2xl" style={frost}>
             <div className="flex items-center gap-1">
               {ALL_LAYOUTS.map((l) => (
                 <button key={l} onClick={() => onChange(l)}
@@ -287,6 +288,7 @@ export function LayoutSwitcher({
             </div>
           </div>
         </div>
+        <div style={{ width: 20 }} />
       </div>
     </nav>
   );
@@ -476,27 +478,15 @@ export function LayoutSwitcher({
 
     navEl = (
       <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 4px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-        <div className="flex justify-center">
-          <div
-            className="pointer-events-auto flex items-center gap-3"
-            style={{
-              padding: "6px 14px",
-              border: "1px solid #e8e8e8",
-              borderRadius: 999,
-              background: "rgba(255,255,255,0.78)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-            }}
-          >
-            {mark}
-            <span style={{ fontSize: 12, letterSpacing: 0.2, color: "var(--c-ink)", fontWeight: 500 }}>
-              Humanoid Index
-            </span>
-            <div className="flex items-center">
+        <div className="flex items-center gap-4">
+          <div className="pointer-events-auto">{mark}</div>
+          <div className="flex-1 flex justify-center">
+            <div className="pointer-events-auto flex items-center">
               {switcherEl}
               {switcherStyle !== "pill" && switcherStyle !== "drag" && subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
             </div>
           </div>
+          <div style={{ width: 20 }} />
         </div>
       </nav>
     );
@@ -505,9 +495,9 @@ export function LayoutSwitcher({
   // ── Style: bordered — full-width top bar with bottom border ──
   else if (navStyle === "bordered") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={{ ...frost, paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-      <div className="flex justify-center pb-3">
-        <div className="flex items-center gap-3">
-          {mark}
+      <div className="flex items-center gap-4 pb-3">
+        <div>{mark}</div>
+        <div className="flex-1 flex justify-center">
           <div className="flex items-center gap-1">
             {ALL_LAYOUTS.map((l) => (
               <button key={l} onClick={() => onChange(l)}
@@ -519,6 +509,7 @@ export function LayoutSwitcher({
             {subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
           </div>
         </div>
+        <div style={{ width: 20 }} />
       </div>
     </nav>
   );
@@ -526,10 +517,10 @@ export function LayoutSwitcher({
   // ── Style: minimal — just text, no container, no border ──
   else if (navStyle === "minimal") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-      <div className="flex justify-center">
-        <div className="pointer-events-auto flex items-center gap-3">
-          {mark}
-          <div className="px-4 py-2.5 rounded-sm" style={frost}>
+      <div className="flex items-center gap-4">
+        <div className="pointer-events-auto">{mark}</div>
+        <div className="flex-1 flex justify-center">
+          <div className="pointer-events-auto px-4 py-2.5 rounded-sm" style={frost}>
             <div className="flex items-center gap-3">
               {ALL_LAYOUTS.map((l) => (
                 <button key={l} onClick={() => onChange(l)}
@@ -542,6 +533,7 @@ export function LayoutSwitcher({
             </div>
           </div>
         </div>
+        <div style={{ width: 20 }} />
       </div>
     </nav>
   );
@@ -549,10 +541,10 @@ export function LayoutSwitcher({
   // ── Style: solid — dark bar, inverted text ──
   else navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-      <div className="flex justify-center">
-        <div className="pointer-events-auto flex items-center gap-3">
-          {solidMark}
-          <div className="px-5 py-2.5 rounded-sm" style={{ background: "rgba(23,23,23,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+      <div className="flex items-center gap-4">
+        <div className="pointer-events-auto">{solidMark}</div>
+        <div className="flex-1 flex justify-center">
+          <div className="pointer-events-auto px-5 py-2.5 rounded-sm" style={{ background: "rgba(23,23,23,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
             <div className="flex items-center gap-0.5">
               {ALL_LAYOUTS.map((l) => (
                 <button key={l} onClick={() => onChange(l)}
@@ -565,6 +557,7 @@ export function LayoutSwitcher({
             </div>
           </div>
         </div>
+        <div style={{ width: 20 }} />
       </div>
     </nav>
   );

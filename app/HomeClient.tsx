@@ -245,7 +245,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, introDone = false, shareUrlRef, buttonVariant, onButtonVariantChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -354,9 +354,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillRadius, setStatPillRadius] = useState(40);  // px — 40+ reads as full stadium at closed height
   const [statPillGap, setStatPillGap] = useState(4);         // px — gap between pills
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
-  const [statPillPadY, setStatPillPadY] = useState(10);      // px — vertical button padding (sets closed height)
+  const [statPillPadY, setStatPillPadY] = useState(11);      // px — vertical button padding (sets closed height)
   const [statPillBg, setStatPillBg] = useState("#FCFCFC");
-  const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("pill");
+  const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
 
   // Compare-header split tuner
   const [showSplitTuner, setShowSplitTuner] = useState(false);
@@ -367,7 +367,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [splitShadowOp, setSplitShadowOp] = useState(0.12);
   const [splitDur, setSplitDur] = useState(320); // ms
   const [labelPosition, setLabelPosition] = useState<"stack" | "below" | "above">("below");
-  const [statsAlign, setStatsAlign] = useState<"top" | "center" | "bottom">("top");
+  const [statsAlign, setStatsAlign] = useState<"top" | "center" | "bottom">("bottom");
 
   // Adaptive arc positioning
   const [windowWidth, setWindowWidth] = useState(1920);
@@ -683,15 +683,33 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   useEffect(() => {
     if (typeof window === "undefined" || !shareUrlRef) return;
     const origin = window.location.origin;
+    const leftId = humanoids[springL.index]?.id;
+    const rightId = humanoids[springR.index]?.id;
     if (comparing) {
-      const leftId = humanoids[springL.index]?.id;
-      const rightId = humanoids[springR.index]?.id;
       shareUrlRef.current = leftId && rightId ? `${origin}/?compare=${leftId},${rightId}` : origin;
     } else {
-      const leftId = humanoids[springL.index]?.id;
       shareUrlRef.current = leftId ? `${origin}/?h=${leftId}` : origin;
     }
-  }, [springL.index, springR.index, comparing, shareUrlRef]);
+    if (shareOgRef) {
+      const og = comparing
+        ? (leftId && rightId ? `${origin}/api/og/${leftId}?compare=${rightId}` : "")
+        : (leftId ? `${origin}/api/og/${leftId}` : "");
+      shareOgRef.current = og;
+      // Silent preload so the toast thumbnail is already cached by the time it's clicked.
+      if (og) { const img = new window.Image(); img.src = og; }
+    }
+  }, [springL.index, springR.index, comparing, shareUrlRef, shareOgRef]);
+
+  useEffect(() => {
+    if (!onShareViewLabelChange) return;
+    const leftName = humanoids[springL.index]?.name;
+    const rightName = humanoids[springR.index]?.name;
+    if (comparing && leftName && rightName) {
+      onShareViewLabelChange(`Share ${leftName} vs ${rightName}`);
+    } else if (leftName) {
+      onShareViewLabelChange(`Share ${leftName}`);
+    }
+  }, [comparing, springL.index, springR.index, onShareViewLabelChange]);
 
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
@@ -871,10 +889,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         const plusMinus = (open: boolean) => (
           <svg width="14" height="14" viewBox="0 0 10 10" style={{ flexShrink: 0, overflow: "visible" }}>
-            <line x1="1.5" y1="5" x2="8.5" y2="5" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round"
-              style={{ transition: `opacity 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)`, opacity: open ? 0 : 1 }} />
+            <line x1="1.5" y1="5" x2="8.5" y2="5" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round" />
             <line x1="5" y1="1.5" x2="5" y2="8.5" stroke="#aaa" strokeWidth="1.3" strokeLinecap="round"
-              style={{ transformOrigin: "5px 5px", transition: `transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)`, transform: open ? "rotate(90deg)" : "rotate(0deg)", opacity: open ? 0 : 1 }} />
+              style={{ transformOrigin: "5px 5px", transition: `transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1)`, transform: open ? "rotate(90deg)" : "rotate(0deg)" }} />
           </svg>
         );
 
@@ -886,6 +903,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           });
           setPillFlash((f) => ({ statKey: key, id: f.id + 1 }));
         };
+
 
         const statSections = (h: typeof humanoids[0]) => {
         const heightPct = Math.min(((h.height ?? 0) / 200) * 100, 100);
@@ -912,7 +930,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           { key: "desc", show: !!h.description, label: (
             <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Info</p>
           ), detail: (
-            <p className="text-[12px] leading-relaxed" style={{ color: "#999" }}>{h.description}</p>
+            <p
+              key={h.id}
+              className="text-[12px] leading-relaxed info-fade-in"
+              style={{
+                color: "#999",
+                fontWeight: 450,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {h.description}
+            </p>
           ) },
           { key: "overview", show: !!(h.height || h.weight), label: (
             <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Overview</p>
@@ -939,7 +970,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 </div>
                 <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.dof}</p>
               </div>
-              <p className="text-[11px] mt-2" style={{ color: "#999" }}>{(h.dof ?? 0) >= 40 ? "High dexterity — suited for complex manipulation." : (h.dof ?? 0) >= 25 ? "Moderate articulation for general mobility." : "Streamlined with fewer active joints."}</p>
+              <p key={h.id} className="text-[11px] mt-2 info-fade-in" style={{ color: "#999", fontWeight: 450 }}>{(h.dof ?? 0) >= 40 ? "High dexterity — suited for complex manipulation." : (h.dof ?? 0) >= 25 ? "Moderate articulation for general mobility." : "Streamlined with fewer active joints."}</p>
             </div>
           ) },
           { key: "speed", show: !!h.maxSpeed, label: (
@@ -957,7 +988,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 </svg>
                 <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.maxSpeed} m/s</p>
               </div>
-              <p className="text-[11px] mt-2" style={{ color: "#999" }}>{(h.maxSpeed ?? 0) >= 3.0 ? "Exceeds typical human walking speed." : (h.maxSpeed ?? 0) >= 2.0 ? "Comparable to human walking pace." : "Designed for precision over speed."}</p>
+              <p key={h.id} className="text-[11px] mt-2 info-fade-in" style={{ color: "#999", fontWeight: 450 }}>{(h.maxSpeed ?? 0) >= 3.0 ? "Exceeds typical human walking speed." : (h.maxSpeed ?? 0) >= 2.0 ? "Comparable to human walking pace." : "Designed for precision over speed."}</p>
             </div>
           ) },
           { key: "status", show: !!h.status, label: (
@@ -971,9 +1002,55 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 </span>
                 <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.status}</p>
               </div>
-              <p className="text-[11px] mt-2" style={{ color: "#999" }}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : h.status === "Anticipated" ? "Teased for future release — details not yet revealed." : "No longer in active production."}</p>
+              <p key={h.id} className="text-[11px] mt-2 info-fade-in" style={{ color: "#999", fontWeight: 450 }}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : h.status === "Anticipated" ? "Teased for future release — details not yet revealed." : "No longer in active production."}</p>
             </div>
           ) },
+          // Purchase — collapsed by default so price/buy info opts in like every
+          // other pill, keeping the initial column quiet. Only added when buy
+          // layout is "card" (the "chip" variant lives on the image itself).
+          ...(buyLayout === "card" ? [{
+            key: "purchase",
+            show: true,
+            label: (
+              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Price</p>
+            ),
+            detail: (() => {
+              const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
+              const leadIn = h.status === "In Production" ? "From" : "Est.";
+              const href = h.purchaseUrl;
+              const label = priceLabel ? leadIn : "Price";
+              const value = href ? (priceLabel || "Inquire") : (priceLabel || "Not listed");
+              return (
+                <div key={h.id} className="info-fade-in flex items-center gap-3" style={{ marginTop: 2 }}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{label}</p>
+                    <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>{value}</p>
+                  </div>
+                  {href ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`Buy ${h.name}`}
+                      className="flex items-center justify-center flex-shrink-0 hover:bg-neutral-100 transition-colors"
+                      style={{ width: 36, height: 36, borderRadius: 999, background: "rgba(0,0,0,0.04)", textDecoration: "none" }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#1d1d1f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
+                      </svg>
+                    </a>
+                  ) : (
+                    <div className="flex items-center justify-center flex-shrink-0" style={{ width: 36, height: 36, opacity: 0.3 }}>
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#1d1d1f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              );
+            })(),
+          }] : []),
         ];
         };
 
@@ -1030,11 +1107,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
                         overflow: "hidden",
-                        opacity: empty ? 0.45 : 1,
                         cursor: interactive ? "pointer" : "default",
                         position: "relative",
                         display: "block",
-                        transition: "opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1)",
+                        transition: "background 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.24s cubic-bezier(0.4, 0, 0.2, 1)",
                         WebkitTapHighlightColor: "transparent",
                       }}
                     >
@@ -1084,7 +1160,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   );
                 })}
               </div>
-              {buyLayout === "card" && renderBuyCard(h)}
             </div>
           );
         };
@@ -1107,20 +1182,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 minHeight: 52,
                 opacity: disabled ? 0.4 : 1,
               }}>
-                {disabled ? (
-                  <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.01em" }}>
-                    Not purchaseable
-                  </p>
-                ) : (
-                  <div className="min-w-0">
-                    <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
-                      {priceLabel ? leadIn : "Price"}
-                    </p>
-                    <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                      {priceLabel || "Inquire"}
-                    </p>
-                  </div>
-                )}
+                {(() => {
+                  const label = priceLabel ? leadIn : "Price";
+                  const value = disabled
+                    ? (priceLabel || "Not listed")
+                    : (priceLabel || "Inquire");
+                  return (
+                    <div className="min-w-0">
+                      <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                        {label}
+                      </p>
+                      <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                        {value}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             );
             const circleStyle: React.CSSProperties = {
@@ -1377,11 +1454,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
                         overflow: "hidden",
-                        opacity: empty ? 0.45 : 1,
                         cursor: interactive ? "pointer" : "default",
                         position: "relative",
                         display: "block",
-                        transition: "opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1)",
+                        transition: "background 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.24s cubic-bezier(0.4, 0, 0.2, 1)",
                         WebkitTapHighlightColor: "transparent",
                       }}
                     >
@@ -1550,7 +1626,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           };
 
           const cardLabel = (
-            <div className="flex items-center gap-2 px-0.5">
+            <div key={h.id} className="flex items-center gap-2 px-0.5 info-fade-in">
               <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
                 {h.logoUrl ? (
                   <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="22px" />
@@ -1683,16 +1759,18 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   {renderMergedStats()}
                 </div>
 
-                {/* Exit compare — narrow hover strip at the seam between the two halves */}
+                {/* Exit compare — wide hover zone above the bottom-aligned pills.
+                    Minus sits pinned near the top so it reads as a top-of-column
+                    affordance even while the zone extends well below it. */}
                 {comparing && (
                   <div
-                    className="absolute cursor-pointer pointer-events-auto flex items-center justify-center"
+                    className="absolute cursor-pointer pointer-events-auto flex items-start justify-center"
                     style={{
                       top: 0,
-                      left: "50%",
-                      width: 80,
-                      marginLeft: -40,
-                      height: 48,
+                      left: 0,
+                      right: 0,
+                      height: 120,
+                      paddingTop: 14,
                       zIndex: 12,
                     }}
                     onClick={exitCompare}
@@ -1898,7 +1976,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake cycles <span className="tabular-nums text-neutral-400">{luckyShakeCycles}</span></label><input type="range" min={1} max={8} value={luckyShakeCycles} onChange={(e) => setLuckyShakeCycles(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Stat Pills</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setStatPillRadius(40); setStatPillGap(4); setStatPillPadX(16); setStatPillPadY(10); setStatPillBg("#FCFCFC"); setInfoMode("pill"); }}>Reset</button></div>
+            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Stat Pills</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setStatPillRadius(40); setStatPillGap(4); setStatPillPadX(16); setStatPillPadY(11); setStatPillBg("#FCFCFC"); setInfoMode("bare"); }}>Reset</button></div>
             <div>
               <p className="text-[10px] text-neutral-500 mb-1.5">Info</p>
               <div className="flex flex-wrap gap-1.5">
@@ -2146,15 +2224,17 @@ export default function HomeClient() {
   const [hintNonce, setHintNonce] = useState(0);
   const [addHintNonce, setAddHintNonce] = useState(0);
   const [comparingUsed, setComparingUsed] = useState(false);
+  const [shareViewLabel, setShareViewLabel] = useState("Share current view");
 
   // Share URL — Browse writes to this ref, Home's share button reads it
   const shareUrlRef = useRef("");
-  const [shareToast, setShareToast] = useState<string | false>(false);
+  const shareOgRef = useRef("");
+  const [shareToast, setShareToast] = useState<{ label: string; ogUrl?: string } | false>(false);
   const [shareCopyFilled, setShareCopyFilled] = useState(false);
   const shareToastTimer = useRef<ReturnType<typeof setTimeout>>(null);
-  const copyUrl = useCallback((url: string, label: string) => {
+  const copyUrl = useCallback((url: string, label: string, ogUrl?: string) => {
     navigator.clipboard.writeText(url);
-    setShareToast(label);
+    setShareToast({ label, ogUrl });
     if (shareToastTimer.current) clearTimeout(shareToastTimer.current);
     shareToastTimer.current = setTimeout(() => setShareToast(false), 1600);
   }, []);
@@ -2168,7 +2248,7 @@ export default function HomeClient() {
   const [introPhase, setIntroPhase] = useState<"logo" | "exit" | "done">("logo");
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeStyle, setWelcomeStyle] = useState<WelcomeStyle>("minimal");
-  const [buttonVariant, setButtonVariant] = useState<ButtonVariant>("semicircle");
+  const [buttonVariant, setButtonVariant] = useState<ButtonVariant>("outlined");
 
   useEffect(() => {
     // Phase 1: logo sits for a beat, then exits
@@ -2329,7 +2409,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} introDone={introDone} shareUrlRef={shareUrlRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -2392,7 +2472,7 @@ export default function HomeClient() {
             transition: "transform 200ms, background 220ms ease, border-color 220ms ease, color 220ms ease",
           }}
           onClick={() => {
-            copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied");
+            copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current);
             setShareCopyFilled(true);
           }}
           onMouseLeave={() => setShareCopyFilled(false)}
@@ -2410,18 +2490,29 @@ export default function HomeClient() {
         chatOpen={chatOpen}
         setChatOpen={setChatOpen}
         onShareSite={() => copyUrl(typeof window !== "undefined" ? window.location.origin : "", "Site link copied")}
-        onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied")}
+        onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
         visible={introDone}
+        shareViewLabel={shareViewLabel}
       />
 
       {/* Share toast */}
       {shareToast && (
         <div
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg animate-blur-fade"
-          style={{ background: "rgba(0,0,0,0.06)", backdropFilter: "blur(12px)" }}
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] rounded-lg animate-blur-fade flex items-center gap-3"
+          style={{ background: "rgba(0,0,0,0.06)", backdropFilter: "blur(12px)", padding: shareToast.ogUrl ? "8px 12px 8px 8px" : "8px 16px" }}
         >
+          {shareToast.ogUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={shareToast.ogUrl}
+              alt=""
+              width={96}
+              height={50}
+              style={{ display: "block", borderRadius: 6, objectFit: "cover", background: "rgba(0,0,0,0.04)" }}
+            />
+          )}
           <p className="text-[11px] tracking-wide" style={{ color: "#737373", fontWeight: 500 }}>
-            {shareToast}
+            {shareToast.label}
           </p>
         </div>
       )}
