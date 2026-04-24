@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { humanoids } from "@/data/humanoids";
 import type { SpringSubscribe } from "@/hooks/useSpring";
 
@@ -172,6 +172,69 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
 // ── Arc-names wheel: original pre-disk look/motion (commit 5e99d4c) ──
 // Thin stroke ring, wider window, linear fade over 10, misc-gold tint,
 // per-frame fontSize updates (no CSS scale), no entrance animation.
+function ArcYearMarker({ subscribe, mirrored, aInset, aTextGap, aFsMax }: {
+  subscribe: SpringSubscribe;
+  mirrored?: boolean;
+  aInset: number;
+  aTextGap: number;
+  aFsMax: number;
+}) {
+  const [year, setYear] = useState<number | null>(null);
+  const lastYearRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return subscribe((pos) => {
+      const idx = Math.max(0, Math.min(humanoids.length - 1, Math.round(pos)));
+      const next = humanoids[idx]?.year ?? null;
+      if (next !== lastYearRef.current) {
+        lastYearRef.current = next;
+        setYear(next);
+      }
+    });
+  }, [subscribe]);
+
+  // Active name's edge (left edge when arc is on the left, right edge when mirrored)
+  // sits at aInset - aTextGap from the matching container side. Marker's inner edge
+  // lands a gap shy of that, translated outward by its own width so it tucks
+  // tastefully next to the name without overlapping.
+  const gap = 18;
+  const anchor = aInset - aTextGap - gap;
+  const side = mirrored ? "right" : "left";
+  const translate = mirrored ? "translateX(100%)" : "translateX(-100%)";
+  const size = Math.round(aFsMax * 0.72);
+
+  return (
+    <div
+      aria-hidden
+      className="absolute pointer-events-none select-none tabular-nums"
+      style={{
+        top: "50%",
+        [side]: anchor,
+        transform: `translateY(-50%) ${translate}`,
+        fontSize: size,
+        fontWeight: 400,
+        letterSpacing: "-0.01em",
+        color: "var(--c-ink)",
+        opacity: year == null ? 0 : 0.28,
+        transition: "opacity 400ms cubic-bezier(0.2, 0, 0, 1), left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+        perspective: 600,
+      }}
+    >
+      <span
+        key={year ?? "none"}
+        style={{
+          display: "inline-block",
+          transformOrigin: "center",
+          backfaceVisibility: "hidden",
+          animation: "year-flip-in 280ms cubic-bezier(0.22, 0.9, 0.28, 1) both",
+        }}
+      >
+        {year ?? ""}
+      </span>
+    </div>
+  );
+}
+
 function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR, aStepDeg, aTextGap, aLineOp, aFsMax, aFsMin }: {
   index: number;
   subscribe: SpringSubscribe;
@@ -187,27 +250,9 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
   }
   const textRefs = useRef<Array<SVGTextElement | null>>([]);
   const nameRefs = useRef<Array<SVGTSpanElement | null>>([]);
-  const yearRefs = useRef<Array<SVGTSpanElement | null>>([]);
   const hitRefs = useRef<Array<SVGRectElement | null>>([]);
-  const [hoveredI, setHoveredI] = useState<number | null>(null);
-  const leaveTimerRef = useRef<number | null>(null);
-  // Tangent distance to the adjacent item — used to size hover/click rects so they tile.
+  // Tangent distance to the adjacent item — used to size click rects so they tile.
   const stepH = r * Math.sin((aStepDeg * Math.PI) / 180);
-
-  const enterItem = (i: number) => {
-    if (leaveTimerRef.current !== null) {
-      window.clearTimeout(leaveTimerRef.current);
-      leaveTimerRef.current = null;
-    }
-    setHoveredI(i);
-  };
-  const leaveItem = (i: number) => {
-    if (leaveTimerRef.current !== null) window.clearTimeout(leaveTimerRef.current);
-    leaveTimerRef.current = window.setTimeout(() => {
-      setHoveredI((prev) => (prev === i ? null : prev));
-      leaveTimerRef.current = null;
-    }, 420);
-  };
 
   useLayoutEffect(() => {
     const update = (pos: number) => {
@@ -236,19 +281,9 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         el.setAttribute("transform", `rotate(${tangentDeg}, ${cx}, ${cy})`);
         el.style.fontSize = `${fs}px`;
         el.style.fontWeight = String(fw);
-        // Parent stays fully opaque — dist-based fade is applied to the name tspan only,
-        // so the year tspan's opacity isn't multiplied by it.
-        el.style.opacity = "1";
         nameEl.style.fill = fill;
         nameEl.style.opacity = String(op);
         nameEl.setAttribute("x", String(cx));
-
-        const yearEl = yearRefs.current[idx];
-        if (yearEl) {
-          const gap = 8;
-          const xOffset = mirrored ? nameEl.getComputedTextLength() + gap : gap;
-          yearEl.setAttribute("x", String(cx - xOffset));
-        }
 
         // Hit zone — sized to the tangent step so adjacent items tile without gaps.
         const rectEl = hitRefs.current[idx];
@@ -264,6 +299,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
 
   return (
     <div className="absolute inset-0 overflow-visible pointer-events-auto">
+      <ArcYearMarker subscribe={subscribe} mirrored={mirrored} aInset={aInset} aTextGap={aTextGap} aFsMax={aFsMax} />
       <svg
         className="absolute overflow-visible pointer-events-auto"
         style={{
@@ -280,15 +316,8 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         {items.map(({ i }, idx) => {
           const h = humanoids[i];
           const name = h?.name ?? String(i).padStart(2, "0");
-          const year = h?.year;
           return (
-            <g
-              key={i}
-              className="cursor-pointer"
-              onClick={() => onClickItem(i)}
-              onMouseEnter={() => enterItem(i)}
-              onMouseLeave={() => leaveItem(i)}
-            >
+            <g key={i} className="cursor-pointer" onClick={() => onClickItem(i)}>
               <rect
                 ref={(el) => { hitRefs.current[idx] = el; }}
                 width={260}
@@ -306,23 +335,6 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
                   pointerEvents: "none",
                 }}
               >
-                {year && (
-                  <tspan
-                    ref={(el) => { yearRefs.current[idx] = el; }}
-                    textAnchor="end"
-                    style={{
-                      opacity: hoveredI === i ? 0.09 : 0,
-                      fontSize: Math.round(aFsMax * 0.85),
-                      fontWeight: 400,
-                      fill: "var(--c-ink)",
-                      transition: hoveredI === i
-                        ? "opacity 0s"
-                        : "opacity 1.6s cubic-bezier(0.2, 0, 0, 1)",
-                    }}
-                  >
-                    {year}
-                  </tspan>
-                )}
                 <tspan
                   ref={(el) => { nameRefs.current[idx] = el; }}
                   textAnchor={mirrored ? "end" : "start"}
