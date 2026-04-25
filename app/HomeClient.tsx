@@ -373,6 +373,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [windowWidth, setWindowWidth] = useState(1920);
   const [autoArcInset, setAutoArcInset] = useState(true);
 
+  // Arc text font: false = inherit (Geist Sans), true = Geist Mono
+  const [arcFontMono, setArcFontMono] = useState(false);
+  const arcFontFamily = arcFontMono ? "var(--font-geist-mono)" : undefined;
+
   useEffect(() => {
     setWindowWidth(window.innerWidth);
     let raf: number;
@@ -804,6 +808,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcFsMin={arcFsMin}
           arcDiskGap={arcDiskGap}
           arcDiskColor={arcDiskColor}
+          arcFontFamily={arcFontFamily}
           entered={introDone}
           tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
           tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -2038,6 +2043,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Mini radius <span className="tabular-nums text-neutral-400">{miniCrownRadius}px</span></label><input type="range" min={20} max={100} value={miniCrownRadius} onChange={(e) => setMiniCrownRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Scroll threshold <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={100} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Auto position</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${autoArcInset ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoArcInset(!autoArcInset)}>{autoArcInset ? "On" : "Off"}</button><span className="text-[9px] tabular-nums text-neutral-300">{effectiveArcInset}px</span></div>
+            <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Geist Mono</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${arcFontMono ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setArcFontMono(!arcFontMono)}>{arcFontMono ? "On" : "Off"}</button></div>
             <div style={{ opacity: autoArcInset ? 0.3 : 1 }}><label className="text-[10px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => { setArcInset(Number(e.target.value)); setAutoArcInset(false); }} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Arc radius <span className="tabular-nums text-neutral-400">{arcWheelR}px</span></label><input type="range" min={80} max={1500} value={arcWheelR} onChange={(e) => setArcWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Step angle <span className="tabular-nums text-neutral-400">{arcStepDeg.toFixed(1)}°</span></label><input type="range" min={10} max={80} value={Math.round(arcStepDeg * 10)} onChange={(e) => setArcStepDeg(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
