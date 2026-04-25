@@ -67,7 +67,8 @@
       "Bash(gh api *)",
       "Bash(gh pr *)",
       "Bash(grep -r \"parseBool\\\\|parseNum\\\\|parseStr\" /Users/royjad/CODE/humanoid-index --include=\"*.ts\" --include=\"*.tsx\" ! -path \"*/node_modules/*\")",
-      "Bash(echo \"EXIT $?\")"
+      "Bash(echo \"EXIT $?\")",
+      "Bash(awk '/^function Browse/,/^function [A-Z]/' /Users/royjad/CODE/humanoid-index/app/HomeClient.tsx)"
     ],
     "deny": [],
     "ask": []

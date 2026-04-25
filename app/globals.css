@@ -69,12 +69,50 @@
   font-display: swap;
 }
 
+/* Geist Pixel — 5 stylistic variants */
+@font-face {
+  font-family: 'Geist Pixel Square';
+  src: url('/fonts/GeistPixel-Square.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Pixel Grid';
+  src: url('/fonts/GeistPixel-Grid.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Pixel Line';
+  src: url('/fonts/GeistPixel-Line.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Pixel Circle';
+  src: url('/fonts/GeistPixel-Circle.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Pixel Triangle';
+  src: url('/fonts/GeistPixel-Triangle.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --font-epetri: 'Epetri', ui-monospace, SFMono-Regular, monospace;
   --font-epetri-tite: 'Epetri Tite', 'Epetri', ui-monospace, monospace;
   --font-epetri-index: 'Epetri Index', 'Epetri', ui-monospace, monospace;
   --font-epetri-cfindex: 'Epetri CFIndex', 'Epetri Index', 'Epetri', ui-monospace, monospace;
   --font-epetri-pixel: 'Epetri Pixel', 'Epetri', ui-monospace, monospace;
+  --font-geist-pixel: 'Geist Pixel Square', ui-monospace, monospace;
 }
 
 @keyframes arc-disk-slide {

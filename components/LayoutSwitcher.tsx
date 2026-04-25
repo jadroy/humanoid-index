@@ -240,56 +240,59 @@ export function LayoutSwitcher({
       </div>
     ) : null;
 
+  // Every nav variant uses a 3-column row — mark on the left, content centered,
+  // a 20px gutter on the right that balances the mark's visual weight so the
+  // centered content reads as centered.
+  const navRow = (markSlot: React.ReactNode, center: React.ReactNode, markInteractive = true) => (
+    <div className="flex items-center gap-4">
+      <div className={markInteractive ? "pointer-events-auto" : undefined}>{markSlot}</div>
+      <div className="flex-1 flex justify-center">{center}</div>
+      <div style={{ width: 20 }} />
+    </div>
+  );
+
   let navEl: React.ReactElement;
   // ── Style: floating (original — island with border) ──
   if (navStyle === "floating") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-      <div className="flex items-center gap-4">
-        <div className="pointer-events-auto">{mark}</div>
-        <div className="flex-1 flex justify-center">
-          <div className="pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60" style={frost}>
-            <div className="flex items-center gap-0.5">
-              {ALL_LAYOUTS.map((l) => (
-                <button key={l} onClick={() => onChange(l)}
-                  className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
-                  style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
-                  {layoutLabels[l]}
-                </button>
-              ))}
-              {subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
-            </div>
+      {navRow(mark, (
+        <div className="pointer-events-auto px-5 py-2.5 rounded-sm border border-neutral-200/60" style={frost}>
+          <div className="flex items-center gap-0.5">
+            {ALL_LAYOUTS.map((l) => (
+              <button key={l} onClick={() => onChange(l)}
+                className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
+                {layoutLabels[l]}
+              </button>
+            ))}
+            {subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
           </div>
         </div>
-        <div style={{ width: 20 }} />
-      </div>
+      ))}
     </nav>
   );
 
   // ── Style: pill — rounded capsule, tinted active state ──
   else if (navStyle === "pill") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-      <div className="flex items-center gap-4">
-        <div className="pointer-events-auto">{mark}</div>
-        <div className="flex-1 flex justify-center">
-          <div className="pointer-events-auto px-3 py-2 rounded-2xl" style={frost}>
-            <div className="flex items-center gap-1">
-              {ALL_LAYOUTS.map((l) => (
-                <button key={l} onClick={() => onChange(l)}
-                  className="px-3 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer rounded-full"
-                  style={{
-                    color: active === l ? "#fff" : "#999",
-                    background: active === l ? "var(--c-ink)" : "transparent",
-                    fontWeight: active === l ? 500 : 400,
-                  }}>
-                  {layoutLabels[l]}
-                </button>
-              ))}
-              {subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
-            </div>
+      {navRow(mark, (
+        <div className="pointer-events-auto px-3 py-2 rounded-2xl" style={frost}>
+          <div className="flex items-center gap-1">
+            {ALL_LAYOUTS.map((l) => (
+              <button key={l} onClick={() => onChange(l)}
+                className="px-3 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer rounded-full"
+                style={{
+                  color: active === l ? "#fff" : "#999",
+                  background: active === l ? "var(--c-ink)" : "transparent",
+                  fontWeight: active === l ? 500 : 400,
+                }}>
+                {layoutLabels[l]}
+              </button>
+            ))}
+            {subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
           </div>
         </div>
-        <div style={{ width: 20 }} />
-      </div>
+      ))}
     </nav>
   );
 
@@ -478,16 +481,12 @@ export function LayoutSwitcher({
 
     navEl = (
       <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 4px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-        <div className="flex items-center gap-4">
-          <div className="pointer-events-auto">{mark}</div>
-          <div className="flex-1 flex justify-center">
-            <div className="pointer-events-auto flex items-center">
-              {switcherEl}
-              {switcherStyle !== "pill" && switcherStyle !== "drag" && subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
-            </div>
+        {navRow(mark, (
+          <div className="pointer-events-auto flex items-center">
+            {switcherEl}
+            {switcherStyle !== "pill" && switcherStyle !== "drag" && subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
           </div>
-          <div style={{ width: 20 }} />
-        </div>
+        ))}
       </nav>
     );
   }
@@ -495,9 +494,8 @@ export function LayoutSwitcher({
   // ── Style: bordered — full-width top bar with bottom border ──
   else if (navStyle === "bordered") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={{ ...frost, paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-      <div className="flex items-center gap-4 pb-3">
-        <div>{mark}</div>
-        <div className="flex-1 flex justify-center">
+      <div className="pb-3">
+        {navRow(mark, (
           <div className="flex items-center gap-1">
             {ALL_LAYOUTS.map((l) => (
               <button key={l} onClick={() => onChange(l)}
@@ -508,8 +506,7 @@ export function LayoutSwitcher({
             ))}
             {subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
           </div>
-        </div>
-        <div style={{ width: 20 }} />
+        ), false)}
       </div>
     </nav>
   );
@@ -517,48 +514,40 @@ export function LayoutSwitcher({
   // ── Style: minimal — just text, no container, no border ──
   else if (navStyle === "minimal") navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-      <div className="flex items-center gap-4">
-        <div className="pointer-events-auto">{mark}</div>
-        <div className="flex-1 flex justify-center">
-          <div className="pointer-events-auto px-4 py-2.5 rounded-sm" style={frost}>
-            <div className="flex items-center gap-3">
-              {ALL_LAYOUTS.map((l) => (
-                <button key={l} onClick={() => onChange(l)}
-                  className="px-1 py-0.5 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
-                  style={{ color: active === l ? "var(--c-ink)" : "#d4d4d4", fontWeight: active === l ? 600 : 400 }}>
-                  {layoutLabels[l]}
-                </button>
-              ))}
-              {subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
-            </div>
+      {navRow(mark, (
+        <div className="pointer-events-auto px-4 py-2.5 rounded-sm" style={frost}>
+          <div className="flex items-center gap-3">
+            {ALL_LAYOUTS.map((l) => (
+              <button key={l} onClick={() => onChange(l)}
+                className="px-1 py-0.5 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                style={{ color: active === l ? "var(--c-ink)" : "#d4d4d4", fontWeight: active === l ? 600 : 400 }}>
+                {layoutLabels[l]}
+              </button>
+            ))}
+            {subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
           </div>
         </div>
-        <div style={{ width: 20 }} />
-      </div>
+      ))}
     </nav>
   );
 
   // ── Style: solid — dark bar, inverted text ──
   else navEl = (
     <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
-      <div className="flex items-center gap-4">
-        <div className="pointer-events-auto">{solidMark}</div>
-        <div className="flex-1 flex justify-center">
-          <div className="pointer-events-auto px-5 py-2.5 rounded-sm" style={{ background: "rgba(23,23,23,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
-            <div className="flex items-center gap-0.5">
-              {ALL_LAYOUTS.map((l) => (
-                <button key={l} onClick={() => onChange(l)}
-                  className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
-                  style={{ color: active === l ? "#fff" : "#666", fontWeight: active === l ? 500 : 400 }}>
-                  {layoutLabels[l]}
-                </button>
-              ))}
-              {subInline("#fff", "#666", "rgba(255,255,255,0.15)")}
-            </div>
+      {navRow(solidMark, (
+        <div className="pointer-events-auto px-5 py-2.5 rounded-sm" style={{ background: "rgba(23,23,23,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+          <div className="flex items-center gap-0.5">
+            {ALL_LAYOUTS.map((l) => (
+              <button key={l} onClick={() => onChange(l)}
+                className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                style={{ color: active === l ? "#fff" : "#666", fontWeight: active === l ? 500 : 400 }}>
+                {layoutLabels[l]}
+              </button>
+            ))}
+            {subInline("#fff", "#666", "rgba(255,255,255,0.15)")}
           </div>
         </div>
-        <div style={{ width: 20 }} />
-      </div>
+      ))}
     </nav>
   );
 

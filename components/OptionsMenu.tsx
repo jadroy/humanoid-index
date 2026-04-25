@@ -311,15 +311,14 @@ function TriggerButton({
     style = { ...base36, background: dim ?? "#F7F7F7", color: fg };
     inner = chatOpen ? closeGlyph : <IconPlusX rotated={open} />;
   } else if (variant === "outlined") {
-    style = {
-      ...base36,
-      background: chatOpen ? "var(--c-ink)" : open ? "#ffffff" : "transparent",
-      color: chatOpen ? "white" : open ? "var(--c-ink)" : "#a8a8a8",
-      border: chatOpen ? "1px solid transparent" : `1px solid ${open ? "#d4d4d4" : "#e0e0e0"}`,
-      // Subtle inset hairline when open — feels like a gently seated button,
-      // more tactile than a floating drop shadow.
-      boxShadow: open ? "inset 0 0 0 1px rgba(0,0,0,0.025), inset 0 1px 1px rgba(0,0,0,0.03)" : "none",
-    };
+    // Three visual states — chat takes precedence over the open sheet.
+    // Inset hairline (not drop shadow) gives the "seated button" feel when open.
+    const outlined = chatOpen
+      ? { background: "var(--c-ink)", color: "white", border: "1px solid transparent", boxShadow: "none" }
+      : open
+        ? { background: "#ffffff", color: "var(--c-ink)", border: "1px solid #d4d4d4", boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.025), inset 0 1px 1px rgba(0,0,0,0.03)" }
+        : { background: "transparent", color: "#a8a8a8", border: "1px solid #e0e0e0", boxShadow: "none" };
+    style = { ...base36, ...outlined };
     inner = chatOpen ? closeGlyph : <IconDots />;
   } else if (variant === "glass") {
     style = {

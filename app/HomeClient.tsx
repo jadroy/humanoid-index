@@ -19,6 +19,7 @@ import {
 } from "@/components/LayoutSwitcher";
 import { useSpring, SCROLL_PRESETS, type PresetKey } from "@/hooks/useSpring";
 import { ArcDots, ARC_STYLES, ARC_PRESETS, arcStyleLabels, type ArcStyle } from "@/components/ArcDots";
+import LabelWheel from "@/components/LabelWheel";
 import OptionsMenu, { BUTTON_VARIANTS, BUTTON_LABELS, type ButtonVariant } from "@/components/OptionsMenu";
 import { FONTS } from "@/lib/fonts";
 import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSettings } from "@/lib/cardPhysics";
@@ -242,6 +243,26 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
   return i >= 0 ? i : null;
 }
 
+// Shared price-display fields for both the Purchase stat-pill and the Buy card.
+// Purchaseable → "Inquire" when no price listed; otherwise "Not listed".
+function getPriceDisplay(h: typeof humanoids[0]): { label: string; value: string; href: string | undefined } {
+  const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
+  const leadIn = h.status === "In Production" ? "From" : "Est.";
+  const href = h.purchaseUrl;
+  return {
+    label: priceLabel ? leadIn : "Price",
+    value: href ? (priceLabel || "Inquire") : (priceLabel || "Not listed"),
+    href,
+  };
+}
+
+// The small diagonal-arrow glyph used on every "buy" affordance.
+const BuyArrowIcon = ({ size = 13 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="#1d1d1f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
+  </svg>
+);
+
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
@@ -368,10 +389,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [splitDur, setSplitDur] = useState(320); // ms
   const [labelPosition, setLabelPosition] = useState<"stack" | "below" | "above">("below");
   const [statsAlign, setStatsAlign] = useState<"top" | "center" | "bottom">("bottom");
+  const [wheelLayout, setWheelLayout] = useState(true);
 
   // Adaptive arc positioning
   const [windowWidth, setWindowWidth] = useState(1920);
   const [autoArcInset, setAutoArcInset] = useState(true);
+
+  // Arc text font: false = inherit (Geist Sans), true = Geist Mono
+  const [arcFontMono, setArcFontMono] = useState(false);
+  const arcFontFamily = arcFontMono ? "var(--font-geist-mono)" : undefined;
 
   useEffect(() => {
     setWindowWidth(window.innerWidth);
@@ -680,6 +706,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   }, []);
 
   // ── Keep share URL ref in sync for parent to read ──
+  const preloadedOgRef = useRef<string>("");
   useEffect(() => {
     if (typeof window === "undefined" || !shareUrlRef) return;
     const origin = window.location.origin;
@@ -695,8 +722,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         ? (leftId && rightId ? `${origin}/api/og/${leftId}?compare=${rightId}` : "")
         : (leftId ? `${origin}/api/og/${leftId}` : "");
       shareOgRef.current = og;
-      // Silent preload so the toast thumbnail is already cached by the time it's clicked.
-      if (og) { const img = new window.Image(); img.src = og; }
+      // Silent preload so the toast thumbnail is cached before the click. Guarded
+      // against rapid scroll — only fetch when the OG URL actually changes.
+      if (og && og !== preloadedOgRef.current) {
+        preloadedOgRef.current = og;
+        const img = new window.Image();
+        img.src = og;
+      }
     }
   }, [springL.index, springR.index, comparing, shareUrlRef, shareOgRef]);
 
@@ -778,6 +810,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       </div>
 
       {/* Left arc nav */}
+      {!wheelLayout && (
       <div className="fixed top-0 bottom-0 left-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
         <ArcDots
           index={springL.index}
@@ -804,14 +837,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcFsMin={arcFsMin}
           arcDiskGap={arcDiskGap}
           arcDiskColor={arcDiskColor}
+          arcFontFamily={arcFontFamily}
           entered={introDone}
           tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
           tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
           tagPadX={tagPadX} tagPadY={tagPadY} tagRadius={tagRadius} tagMarkerSize={tagMarkerSize} tagMarkerOp={tagMarkerOp}
         />
       </div>
+      )}
       {/* Right arc nav */}
-      {comparing && (
+      {!wheelLayout && comparing && (
         <div className="fixed top-0 bottom-0 right-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
           <ArcDots
             index={springR.index}
@@ -903,7 +938,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           });
           setPillFlash((f) => ({ statKey: key, id: f.id + 1 }));
         };
-
 
         const statSections = (h: typeof humanoids[0]) => {
         const heightPct = Math.min(((h.height ?? 0) / 200) * 100, 100);
@@ -1015,11 +1049,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Price</p>
             ),
             detail: (() => {
-              const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
-              const leadIn = h.status === "In Production" ? "From" : "Est.";
-              const href = h.purchaseUrl;
-              const label = priceLabel ? leadIn : "Price";
-              const value = href ? (priceLabel || "Inquire") : (priceLabel || "Not listed");
+              const { label, value, href } = getPriceDisplay(h);
               return (
                 <div key={h.id} className="info-fade-in flex items-center gap-3" style={{ marginTop: 2 }}>
                   <div className="flex-1 min-w-0">
@@ -1036,15 +1066,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       className="flex items-center justify-center flex-shrink-0 hover:bg-neutral-100 transition-colors"
                       style={{ width: 36, height: 36, borderRadius: 999, background: "rgba(0,0,0,0.04)", textDecoration: "none" }}
                     >
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#1d1d1f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
-                      </svg>
+                      <BuyArrowIcon />
                     </a>
                   ) : (
                     <div className="flex items-center justify-center flex-shrink-0" style={{ width: 36, height: 36, opacity: 0.3 }}>
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#1d1d1f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
-                      </svg>
+                      <BuyArrowIcon />
                     </div>
                   )}
                 </div>
@@ -1102,7 +1128,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       className={interactive ? "pill-button w-full text-left" : "w-full text-left"}
                       style={{
                         ["--pill-bg" as string]: statPillBg,
-                        background: interactive ? undefined : statPillBg,
+                        background: interactive ? undefined : (hideLabel ? "white" : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
@@ -1166,9 +1192,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         const renderBuyCard = (h: typeof humanoids[0]) => {
           if (hideUnbuyable && !h.purchaseUrl) return null;
-          const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
-          const leadIn = h.status === "In Production" ? "From" : "Est.";
-          const href = h.purchaseUrl;
+          const { label, value, href } = getPriceDisplay(h);
 
           if (buyCardStyle === "split") {
             const disabled = !href;
@@ -1182,22 +1206,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 minHeight: 52,
                 opacity: disabled ? 0.4 : 1,
               }}>
-                {(() => {
-                  const label = priceLabel ? leadIn : "Price";
-                  const value = disabled
-                    ? (priceLabel || "Not listed")
-                    : (priceLabel || "Inquire");
-                  return (
-                    <div className="min-w-0">
-                      <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
-                        {label}
-                      </p>
-                      <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                        {value}
-                      </p>
-                    </div>
-                  );
-                })()}
+                <div className="min-w-0">
+                  <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                    {label}
+                  </p>
+                  <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                    {value}
+                  </p>
+                </div>
               </div>
             );
             const circleStyle: React.CSSProperties = {
@@ -1207,11 +1223,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               background: "#FAFAFA",
               flexShrink: 0,
             };
-            const circleIcon = (
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#1d1d1f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
-              </svg>
-            );
             const linkCircle = href ? (
               <a
                 href={href}
@@ -1221,11 +1232,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 className="flex items-center justify-center pointer-events-auto transition-colors hover:bg-neutral-100"
                 style={{ ...circleStyle, textDecoration: "none" }}
               >
-                {circleIcon}
+                <BuyArrowIcon size={15} />
               </a>
             ) : (
               <div className="flex items-center justify-center pointer-events-auto" style={{ ...circleStyle, opacity: 0.4 }}>
-                {circleIcon}
+                <BuyArrowIcon size={15} />
               </div>
             );
             return (
@@ -1236,7 +1247,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             );
           }
 
-          // "dark" — slim sleek premium CTA
+          // "dark" — slim sleek premium CTA (uses a smaller 12px arrow glyph with
+          // lower opacity, so it keeps its own inline svg below).
+          const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
           if (!href && !priceLabel) return null;
           const darkBody = (
             <>
@@ -1449,7 +1462,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       className={interactive ? "pill-button w-full text-left" : "w-full text-left"}
                       style={{
                         ["--pill-bg" as string]: statPillBg,
-                        background: interactive ? undefined : statPillBg,
+                        background: interactive ? undefined : (hideLabel ? "white" : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
@@ -1644,9 +1657,26 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           );
 
+          const effectiveLabelPosition = wheelLayout ? "above" : labelPosition;
+          const spring = isFirst ? springL : springR;
+          const wheelMirrored = wheelLayout && comparing && !isFirst;
+
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
-            {labelPosition === "above" && <div className="mb-2">{cardLabel}</div>}
+            {effectiveLabelPosition === "above" && (
+              <div className="mb-2 relative">
+                {wheelLayout && (
+                  <LabelWheel
+                    index={spring.index}
+                    subscribe={spring.subscribe}
+                    onClickItem={(idx) => spring.jumpTo(idx)}
+                    direction="above"
+                    mirrored={wheelMirrored}
+                  />
+                )}
+                {cardLabel}
+              </div>
+            )}
             {/* Inner card */}
             <div
               ref={isFirst ? leftCardRef : rightCardRef}
@@ -1692,7 +1722,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
             </div>
 
-            {labelPosition === "below" && (
+            {wheelLayout && (
+              <div className="mt-2 relative" style={{ height: 0 }}>
+                <LabelWheel
+                  index={spring.index}
+                  subscribe={spring.subscribe}
+                  onClickItem={(idx) => spring.jumpTo(idx)}
+                  direction="below"
+                  mirrored={wheelMirrored}
+                />
+              </div>
+            )}
+
+            {!wheelLayout && labelPosition === "below" && (
               <div
                 ref={isFirst ? leftLabelRef : rightLabelRef}
                 className="mt-2 relative"
@@ -1820,13 +1862,28 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       {showSplitTuner && (
         <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
           <div>
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Wheel Layout</p>
+            <div className="flex gap-1.5">
+              {([["on", true], ["off", false]] as const).map(([label, v]) => (
+                <button
+                  key={label}
+                  onClick={() => setWheelLayout(v)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${wheelLayout === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Label Position</p>
             <div className="flex gap-1.5">
               {(["stack", "above", "below"] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setLabelPosition(v)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${labelPosition === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  disabled={wheelLayout}
+                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${labelPosition === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"} ${wheelLayout ? "opacity-40 cursor-not-allowed" : ""}`}
                 >
                   {v}
                 </button>
@@ -2038,6 +2095,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Mini radius <span className="tabular-nums text-neutral-400">{miniCrownRadius}px</span></label><input type="range" min={20} max={100} value={miniCrownRadius} onChange={(e) => setMiniCrownRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Scroll threshold <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={100} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Auto position</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${autoArcInset ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoArcInset(!autoArcInset)}>{autoArcInset ? "On" : "Off"}</button><span className="text-[9px] tabular-nums text-neutral-300">{effectiveArcInset}px</span></div>
+            <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Geist Mono</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${arcFontMono ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setArcFontMono(!arcFontMono)}>{arcFontMono ? "On" : "Off"}</button></div>
             <div style={{ opacity: autoArcInset ? 0.3 : 1 }}><label className="text-[10px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => { setArcInset(Number(e.target.value)); setAutoArcInset(false); }} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Arc radius <span className="tabular-nums text-neutral-400">{arcWheelR}px</span></label><input type="range" min={80} max={1500} value={arcWheelR} onChange={(e) => setArcWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Step angle <span className="tabular-nums text-neutral-400">{arcStepDeg.toFixed(1)}°</span></label><input type="range" min={10} max={80} value={Math.round(arcStepDeg * 10)} onChange={(e) => setArcStepDeg(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
