@@ -1106,8 +1106,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       {...(interactive ? { type: "button" as const } : {})}
                       className={interactive ? "pill-button w-full text-left" : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: statPillBg,
-                        background: interactive ? undefined : statPillBg,
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
+                        background: s.key === "desc" ? "transparent" : (interactive ? undefined : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
@@ -1453,8 +1453,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       {...(interactive ? { type: "button" as const } : {})}
                       className={interactive ? "pill-button w-full text-left" : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: statPillBg,
-                        background: interactive ? undefined : statPillBg,
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
+                        background: s.key === "desc" ? "transparent" : (interactive ? undefined : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
