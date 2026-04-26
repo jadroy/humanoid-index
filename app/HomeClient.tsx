@@ -8,6 +8,7 @@ import GridView from "@/components/GridView";
 import MobileView from "@/components/MobileView";
 import { WelcomeModal, WelcomeStyleSwitcher, type WelcomeStyle } from "@/components/WelcomeModal";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
+import { getCompareBlurb } from "@/lib/compareBlurb";
 import {
   LayoutSwitcher,
   NAV_STYLES,
@@ -1292,7 +1293,26 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           );
 
+          const compareBlurb = getCompareBlurb(hL, hR);
+
           const sections = [
+            {
+              key: "desc",
+              show: true,
+              label: null,
+              detail: (
+                <p
+                  key={`blurb-${hL.id}-${hR.id}`}
+                  className="text-[12px] leading-relaxed info-fade-in"
+                  style={{
+                    color: compareBlurb.isGenerated ? "#999" : "#bbb",
+                    fontWeight: 450,
+                  }}
+                >
+                  {compareBlurb.text}
+                </p>
+              ),
+            },
             {
               key: "overview",
               show: !!(heightL || weightL || heightR || weightR),
