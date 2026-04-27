@@ -265,7 +265,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [addHover, setAddHover] = useState(false);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("arc-names");
-  const [arcMarkerVariant, setArcMarkerVariant] = useState(1);
+  const [arcMarkerVariant, setArcMarkerVariant] = useState(0);
+  const [arcMarkerColor, setArcMarkerColor] = useState("#FF6B35");
   // Apply the variant's canonical arc-tuner values when picking a style.
   const pickArcStyle = (next: ArcStyle) => {
     setArcStyle(next);
@@ -813,6 +814,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcFontFamily={arcFontFamily}
           arcAllCaps={allCaps}
           arcMarkerVariant={arcMarkerVariant}
+          arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
           entered={introDone}
           tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
           tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -851,6 +853,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             arcFontFamily={arcFontFamily}
             arcAllCaps={allCaps}
             arcMarkerVariant={arcMarkerVariant}
+            arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
             entered={introDone}
             tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
             tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -1972,7 +1975,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             )}
           </div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => pickArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
-          {arcStyle === "arc-names" && <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Marker</p><div className="flex flex-wrap gap-1.5">{MARKER_VARIANTS.map((m) => (<button key={m.id} onClick={() => setArcMarkerVariant(m.id)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcMarkerVariant === m.id ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{m.label}</button>))}</div></div>}
+          {arcStyle === "arc-names" && (
+            <div className="pt-2 border-t border-neutral-100">
+              <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Marker</p>
+              <div className="flex flex-wrap gap-1.5"><button onClick={() => setArcMarkerVariant(0)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcMarkerVariant === 0 ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>None</button>{MARKER_VARIANTS.map((m) => (<button key={m.id} onClick={() => setArcMarkerVariant(m.id)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcMarkerVariant === m.id ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{m.label}</button>))}</div>
+              {arcMarkerVariant === 22 && (
+                <div className="flex items-center gap-2.5 mt-2.5">
+                  <label className="cursor-pointer flex-shrink-0" style={{ width: 22, height: 22, borderRadius: 6, background: arcMarkerColor, border: "1.5px solid rgba(0,0,0,0.08)", display: "block" }}>
+                    <input type="color" value={arcMarkerColor} onChange={e => setArcMarkerColor(e.target.value)} className="sr-only" />
+                  </label>
+                  <span className="text-[11px] text-neutral-400 tabular-nums uppercase tracking-wider">{arcMarkerColor}</span>
+                </div>
+              )}
+            </div>
+          )}
           <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Nav</p>
             <div><p className="text-[10px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>

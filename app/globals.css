@@ -158,6 +158,11 @@ h1, h2, h3, h4, h5, h6 {
   100% { opacity: 1; filter: blur(0); }
 }
 
+@keyframes marker-pulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(1.35); }
+}
+
 @keyframes year-flip-in {
   0%   { opacity: 0; transform: rotateX(-92deg); }
   55%  { opacity: 1; }
