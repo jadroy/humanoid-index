@@ -19,7 +19,7 @@ import {
   type SwitcherStyle,
 } from "@/components/LayoutSwitcher";
 import { useSpring, SCROLL_PRESETS, type PresetKey } from "@/hooks/useSpring";
-import { ArcDots, ARC_STYLES, ARC_PRESETS, arcStyleLabels, type ArcStyle } from "@/components/ArcDots";
+import { ArcDots, ARC_STYLES, ARC_PRESETS, arcStyleLabels, MARKER_VARIANTS, type ArcStyle } from "@/components/ArcDots";
 import OptionsMenu, { BUTTON_VARIANTS, BUTTON_LABELS, type ButtonVariant } from "@/components/OptionsMenu";
 import { FONTS } from "@/lib/fonts";
 import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSettings } from "@/lib/cardPhysics";
@@ -246,7 +246,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -265,6 +265,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [addHover, setAddHover] = useState(false);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("arc-names");
+  const [arcMarkerVariant, setArcMarkerVariant] = useState(1);
   // Apply the variant's canonical arc-tuner values when picking a style.
   const pickArcStyle = (next: ArcStyle) => {
     setArcStyle(next);
@@ -810,6 +811,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcDiskGap={arcDiskGap}
           arcDiskColor={arcDiskColor}
           arcFontFamily={arcFontFamily}
+          arcAllCaps={allCaps}
+          arcMarkerVariant={arcMarkerVariant}
           entered={introDone}
           tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
           tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -845,6 +848,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             arcFsMin={arcFsMin}
             arcDiskGap={arcDiskGap}
             arcDiskColor={arcDiskColor}
+            arcFontFamily={arcFontFamily}
+            arcAllCaps={allCaps}
+            arcMarkerVariant={arcMarkerVariant}
             entered={introDone}
             tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
             tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -1081,7 +1087,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
+                    <p className="text-[15px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
                     <p className="text-[10px] tracking-widest uppercase font-medium mt-0.5 truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
                       {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
                     </p>
@@ -1134,7 +1140,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative" }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: allCaps ? "uppercase" : undefined }}>
                           {s.label}
                           {!forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
                         </div>
@@ -1500,7 +1506,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative" }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: allCaps ? "uppercase" : undefined }}>
                           {s.label}
                           {!forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
                         </div>
@@ -1966,6 +1972,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             )}
           </div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => pickArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
+          {arcStyle === "arc-names" && <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Marker</p><div className="flex flex-wrap gap-1.5">{MARKER_VARIANTS.map((m) => (<button key={m.id} onClick={() => setArcMarkerVariant(m.id)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcMarkerVariant === m.id ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{m.label}</button>))}</div></div>}
           <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Nav</p>
             <div><p className="text-[10px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
@@ -2064,6 +2071,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Scroll threshold <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={100} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Auto position</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${autoArcInset ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoArcInset(!autoArcInset)}>{autoArcInset ? "On" : "Off"}</button><span className="text-[9px] tabular-nums text-neutral-300">{effectiveArcInset}px</span></div>
             <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Geist Mono</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${arcFontMono ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setArcFontMono(!arcFontMono)}>{arcFontMono ? "On" : "Off"}</button></div>
+            <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">All Caps</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${allCaps ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => onAllCapsChange?.(!allCaps)}>{allCaps ? "On" : "Off"}</button></div>
             <div style={{ opacity: autoArcInset ? 0.3 : 1 }}><label className="text-[10px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => { setArcInset(Number(e.target.value)); setAutoArcInset(false); }} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Arc radius <span className="tabular-nums text-neutral-400">{arcWheelR}px</span></label><input type="range" min={80} max={1500} value={arcWheelR} onChange={(e) => setArcWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Step angle <span className="tabular-nums text-neutral-400">{arcStepDeg.toFixed(1)}°</span></label><input type="range" min={10} max={80} value={Math.round(arcStepDeg * 10)} onChange={(e) => setArcStepDeg(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
@@ -2264,6 +2272,8 @@ export default function HomeClient() {
     if (shareToastTimer.current) clearTimeout(shareToastTimer.current);
     shareToastTimer.current = setTimeout(() => setShareToast(false), 1600);
   }, []);
+  const [allCaps, setAllCaps] = useState(false);
+
   const [fontIdx, setFontIdx] = useState(0);
   const [textDim, setTextDim] = useState(0);
   const [showFontToast, setShowFontToast] = useState(false);
@@ -2435,8 +2445,8 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} />}
-        {layout === "Z" && indexView === "timeline" && <EllipticalCarousel />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} />}
+        {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
 

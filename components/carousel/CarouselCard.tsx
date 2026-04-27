@@ -16,7 +16,7 @@ function PlaceholderMark() {
   );
 }
 
-function CarouselCard({ humanoid: h, isNew, width = CARD_W }: { humanoid: Humanoid; isNew: boolean; width?: number }) {
+function CarouselCard({ humanoid: h, isNew, width = CARD_W, allCaps }: { humanoid: Humanoid; isNew: boolean; width?: number; allCaps?: boolean }) {
   return (
     <div className="group flex flex-col gap-1.5 cursor-pointer" style={{ width }}>
       {/* Image */}
@@ -68,7 +68,7 @@ function CarouselCard({ humanoid: h, isNew, width = CARD_W }: { humanoid: Humano
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
+          <p className="text-[11px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
           <p className="text-[8px] tracking-widest uppercase font-medium truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
         </div>
       </div>

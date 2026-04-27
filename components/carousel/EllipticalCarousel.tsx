@@ -7,7 +7,7 @@ import { useWheelInput } from "./useWheelInput";
 import CarouselCard from "./CarouselCard";
 import { CARD_W, CARD_GAP, MAX_COLS } from "./carouselMath";
 
-export default function EllipticalCarousel() {
+export default function EllipticalCarousel({ allCaps }: { allCaps?: boolean }) {
   // ── Tunable parameters ──
   const [wheelR, setWheelR] = useState(800);
   const [arcSpread, setArcSpread] = useState(0.45);   // fraction of π
@@ -109,7 +109,7 @@ export default function EllipticalCarousel() {
               }}
             >
               {floorEntries.map((h) => (
-                <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} width={floorLayout.cardW} />
+                <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} width={floorLayout.cardW} allCaps={allCaps} />
               ))}
             </div>
             {!sameIdx && frac > 0.001 && (
@@ -130,7 +130,7 @@ export default function EllipticalCarousel() {
                   }}
                 >
                   {ceilEntries.map((h) => (
-                    <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} width={ceilLayout.cardW} />
+                    <CarouselCard key={h.id} humanoid={h} isNew={h.year === newestYear} width={ceilLayout.cardW} allCaps={allCaps} />
                   ))}
                 </div>
               </div>

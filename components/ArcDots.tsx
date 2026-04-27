@@ -172,78 +172,70 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
 // ── Arc-names wheel: original pre-disk look/motion (commit 5e99d4c) ──
 // Thin stroke ring, wider window, linear fade over 10, misc-gold tint,
 // per-frame fontSize updates (no CSS scale), no entrance animation.
-function ArcYearMarker({ subscribe, mirrored, aInset, aTextGap, aFsMax, aFontFamily }: {
-  subscribe: SpringSubscribe;
+export const MARKER_VARIANTS: Array<{ id: number; label: string; el: React.ReactNode }> = [
+  { id: 1,  label: "Hairline",    el: <div style={{ width: 0.5, height: 16, background: "currentColor", borderRadius: 0.5 }} /> },
+  { id: 2,  label: "Pip",         el: <div style={{ width: 2.5, height: 10, background: "currentColor", borderRadius: 2 }} /> },
+  { id: 3,  label: "Block",       el: <div style={{ width: 4, height: 14, background: "currentColor", borderRadius: 2 }} /> },
+  { id: 4,  label: "Chevron",     el: <svg width={7} height={12} viewBox="0 0 7 12" fill="none"><path d="M1 1L6 6L1 11" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/></svg> },
+  { id: 5,  label: "Dbl Chevron", el: <svg width={10} height={12} viewBox="0 0 10 12" fill="none"><path d="M1 1L5 6L1 11" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/><path d="M5 1L9 6L5 11" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" strokeOpacity={0.4}/></svg> },
+  { id: 6,  label: "Corner",      el: <svg width={8} height={10} viewBox="0 0 8 10" fill="none"><path d="M1 1L1 9L8 9" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/></svg> },
+  { id: 7,  label: "Bracket",     el: <svg width={6} height={12} viewBox="0 0 6 12" fill="none"><path d="M6 1L1 1L1 11L6 11" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/></svg> },
+  { id: 8,  label: "Bullseye",    el: <div style={{ position: "relative", width: 9, height: 9, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ position: "absolute", width: 9, height: 9, borderRadius: "50%", border: "1.5px solid currentColor" }}/><div style={{ width: 3, height: 3, borderRadius: "50%", background: "currentColor" }}/></div> },
+  { id: 9,  label: "Pulse",       el: <div style={{ width: 8, height: 8, borderRadius: "50%", border: "1.5px solid currentColor", animation: "marker-pulse 2s ease-in-out infinite" }} /> },
+  { id: 10, label: "Dot Trail",   el: <div style={{ display: "flex", alignItems: "center", gap: 3 }}><div style={{ width: 2, height: 2, borderRadius: "50%", background: "currentColor", opacity: 0.25 }}/><div style={{ width: 3.5, height: 3.5, borderRadius: "50%", background: "currentColor", opacity: 0.6 }}/><div style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }}/></div> },
+  { id: 11, label: "Scan",        el: <div style={{ width: 20, height: 1.5, borderRadius: 1, background: "linear-gradient(to right, currentColor 0%, transparent 100%)" }} /> },
+  { id: 12, label: "Fade Pip",    el: <div style={{ width: 2, height: 14, borderRadius: 1, background: "linear-gradient(to bottom, transparent, currentColor 40%, currentColor 60%, transparent)" }} /> },
+  { id: 13, label: "Dashed Ring", el: <svg width={11} height={11} viewBox="0 0 11 11" fill="none"><circle cx={5.5} cy={5.5} r={4} stroke="currentColor" strokeWidth={1.2} strokeDasharray="3 2.2" strokeLinecap="round"/></svg> },
+  { id: 14, label: "Crosshair",   el: <svg width={11} height={11} viewBox="0 0 11 11" fill="none"><line x1={5.5} y1={1} x2={5.5} y2={10} stroke="currentColor" strokeWidth={1} strokeLinecap="round"/><line x1={1} y1={5.5} x2={10} y2={5.5} stroke="currentColor" strokeWidth={1} strokeLinecap="round"/></svg> },
+  { id: 15, label: "Hollow Tri",  el: <svg width={8} height={11} viewBox="0 0 8 11" fill="none"><path d="M1 1L7 5.5L1 10Z" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round"/></svg> },
+  { id: 16, label: "Arc",         el: <svg width={7} height={13} viewBox="0 0 7 13" fill="none"><path d="M1 1Q7 6.5 1 12" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"/></svg> },
+  { id: 17, label: "S-Curve",     el: <svg width={8} height={14} viewBox="0 0 8 14" fill="none"><path d="M6 1C1 1 7 7 2 7C-3 7 5 13 2 13" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" fill="none"/></svg> },
+  { id: 18, label: "Graduated",   el: <div style={{ display: "flex", flexDirection: "column", gap: 2.5, alignItems: "flex-start" }}><div style={{ width: 6, height: 1.5, background: "currentColor", borderRadius: 1, opacity: 0.35 }}/><div style={{ width: 11, height: 1.5, background: "currentColor", borderRadius: 1 }}/><div style={{ width: 6, height: 1.5, background: "currentColor", borderRadius: 1, opacity: 0.35 }}/></div> },
+  { id: 19, label: "Serif ›",     el: <span style={{ fontSize: 16, lineHeight: 1, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}>›</span> },
+  { id: 20, label: "Radar",       el: <svg width={12} height={12} viewBox="0 0 12 12" fill="none">{[0,45,90,135].map(d => { const r=(d*Math.PI)/180; return <line key={d} x1={6+1.5*Math.cos(r)} y1={6+1.5*Math.sin(r)} x2={6+5.5*Math.cos(r)} y2={6+5.5*Math.sin(r)} stroke="currentColor" strokeWidth={1} strokeLinecap="round"/>; })}</svg> },
+  { id: 21, label: "Stacked",     el: <div style={{ display: "flex", flexDirection: "column", gap: 3.5 }}><div style={{ width: 10, height: 1.5, background: "currentColor", borderRadius: 1 }}/><div style={{ width: 10, height: 1.5, background: "currentColor", borderRadius: 1 }}/></div> },
+];
+
+function ArcCurrentMarker({ markerVariant = 1, mirrored, aInset, aTextGap }: {
+  markerVariant?: number;
   mirrored?: boolean;
   aInset: number;
   aTextGap: number;
-  aFsMax: number;
-  aFontFamily?: string;
 }) {
-  const [year, setYear] = useState<number | null>(null);
-  const lastYearRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return subscribe((pos) => {
-      const idx = Math.max(0, Math.min(humanoids.length - 1, Math.round(pos)));
-      const next = humanoids[idx]?.year ?? null;
-      if (next !== lastYearRef.current) {
-        lastYearRef.current = next;
-        setYear(next);
-      }
-    });
-  }, [subscribe]);
-
-  // Active name's edge (left edge when arc is on the left, right edge when mirrored)
-  // sits at aInset - aTextGap from the matching container side. Marker's inner edge
-  // lands a gap shy of that, translated outward by its own width so it tucks
-  // tastefully next to the name without overlapping.
-  const gap = 18;
-  const anchor = aInset - aTextGap - gap;
+  const anchor = aInset - aTextGap - 18;
   const side = mirrored ? "right" : "left";
   const translate = mirrored ? "translateX(100%)" : "translateX(-100%)";
-  const size = Math.round(aFsMax * 0.72);
+  const marker = MARKER_VARIANTS.find(m => m.id === markerVariant) ?? MARKER_VARIANTS[0];
 
   return (
     <div
       aria-hidden
-      className="absolute pointer-events-none select-none tabular-nums"
+      className="absolute pointer-events-none select-none"
       style={{
         top: "50%",
         [side]: anchor,
         transform: `translateY(-50%) ${translate}`,
-        ...(aFontFamily ? { fontFamily: aFontFamily } : {}),
-        fontSize: size,
-        fontWeight: 400,
-        letterSpacing: "-0.01em",
         color: "var(--c-ink)",
-        opacity: year == null ? 0 : 0.28,
-        transition: "opacity 400ms cubic-bezier(0.2, 0, 0, 1), left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
-        perspective: 600,
+        opacity: 0.5,
+        display: "flex",
+        alignItems: "center",
+        transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
     >
-      <span
-        key={year ?? "none"}
-        style={{
-          display: "inline-block",
-          transformOrigin: "center",
-          backfaceVisibility: "hidden",
-          animation: "year-flip-in 280ms cubic-bezier(0.22, 0.9, 0.28, 1) both",
-        }}
-      >
-        {year ?? ""}
-      </span>
+      {marker.el}
     </div>
   );
 }
 
-function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR, aStepDeg, aTextGap, aLineOp, aFsMax, aFsMin, aFontFamily }: {
+function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR, aStepDeg, aTextGap, aLineOp, aFsMax, aFsMin, aFontFamily, aAllCaps, markerVariant }: {
   index: number;
   subscribe: SpringSubscribe;
   mirrored?: boolean;
   onClickItem: (idx: number) => void;
   aInset: number; aWheelR: number; aStepDeg: number; aTextGap: number; aLineOp: number; aFsMax: number; aFsMin: number;
   aFontFamily?: string;
+  aAllCaps?: boolean;
+  markerVariant?: number;
 }) {
   const wheelR = aWheelR;
   const r = wheelR - aTextGap;
@@ -302,7 +294,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
 
   return (
     <div className="absolute inset-0 overflow-visible pointer-events-auto">
-      <ArcYearMarker subscribe={subscribe} mirrored={mirrored} aInset={aInset} aTextGap={aTextGap} aFsMax={aFsMax} aFontFamily={aFontFamily} />
+      <ArcCurrentMarker markerVariant={markerVariant} mirrored={mirrored} aInset={aInset} aTextGap={aTextGap} />
       <svg
         className="absolute overflow-visible pointer-events-auto"
         style={{
@@ -336,6 +328,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
                   letterSpacing: "-0.02em",
                   transition: "opacity 0.15s ease",
                   pointerEvents: "none",
+                  ...(aAllCaps ? { textTransform: "uppercase" } : {}),
                 }}
               >
                 <tspan
@@ -481,13 +474,13 @@ function ArcTagWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR,
   );
 }
 
-export function ArcDots({ index, subscribe, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10, arcDiskGap: aDiskGap = 26, arcDiskColor: aDiskColor = "#f5f5f5", arcFontFamily: aFontFamily, entered, tagFsMin: tFsMin = 11, tagFsMax: tFsMax = 14, tagOpMin: tOpMin = 1, tagOpMax: tOpMax = 1, tagGreyMin: tGreyMin = 64, tagGreyMax: tGreyMax = 213, tagPillOp: tPillOp = 0.03, tagFalloff: tFalloff = 2, tagPadX: tPadX = 0, tagPadY: tPadY = 0, tagRadius: tRadius = 20, tagMarkerSize: tMarkerSize = 4, tagMarkerOp: tMarkerOp = 0.32 }: { index: number; subscribe: SpringSubscribe; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number; arcDiskGap?: number; arcDiskColor?: string; arcFontFamily?: string; entered?: boolean; tagFsMin?: number; tagFsMax?: number; tagOpMin?: number; tagOpMax?: number; tagGreyMin?: number; tagGreyMax?: number; tagPillOp?: number; tagFalloff?: number; tagPadX?: number; tagPadY?: number; tagRadius?: number; tagMarkerSize?: number; tagMarkerOp?: number }) {
+export function ArcDots({ index, subscribe, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10, arcDiskGap: aDiskGap = 26, arcDiskColor: aDiskColor = "#f5f5f5", arcFontFamily: aFontFamily, arcAllCaps: aAllCaps, arcMarkerVariant = 1, entered, tagFsMin: tFsMin = 11, tagFsMax: tFsMax = 14, tagOpMin: tOpMin = 1, tagOpMax: tOpMax = 1, tagGreyMin: tGreyMin = 64, tagGreyMax: tGreyMax = 213, tagPillOp: tPillOp = 0.03, tagFalloff: tFalloff = 2, tagPadX: tPadX = 0, tagPadY: tPadY = 0, tagRadius: tRadius = 20, tagMarkerSize: tMarkerSize = 4, tagMarkerOp: tMarkerOp = 0.32 }: { index: number; subscribe: SpringSubscribe; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number; arcDiskGap?: number; arcDiskColor?: string; arcFontFamily?: string; arcAllCaps?: boolean; arcMarkerVariant?: number; entered?: boolean; tagFsMin?: number; tagFsMax?: number; tagOpMin?: number; tagOpMax?: number; tagGreyMin?: number; tagGreyMax?: number; tagPillOp?: number; tagFalloff?: number; tagPadX?: number; tagPadY?: number; tagRadius?: number; tagMarkerSize?: number; tagMarkerOp?: number }) {
   // arc-timeline / arc-names / arc-tag take the imperative path to avoid React reconciliation per frame
   if (variant === "arc-timeline") {
     return <ArcTimelineWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} aDiskGap={aDiskGap} aDiskColor={aDiskColor} entered={entered} />;
   }
   if (variant === "arc-names") {
-    return <ArcNamesWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} aFontFamily={aFontFamily} />;
+    return <ArcNamesWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} aFontFamily={aFontFamily} aAllCaps={aAllCaps} markerVariant={arcMarkerVariant} />;
   }
   if (variant === "arc-tag") {
     return <ArcTagWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aDiskGap={aDiskGap} aDiskColor={aDiskColor} entered={entered} tagFsMin={tFsMin} tagFsMax={tFsMax} tagOpMin={tOpMin} tagOpMax={tOpMax} tagGreyMin={tGreyMin} tagGreyMax={tGreyMax} tagPillOp={tPillOp} tagFalloff={tFalloff} tagPadX={tPadX} tagPadY={tPadY} tagRadius={tRadius} tagMarkerSize={tMarkerSize} tagMarkerOp={tMarkerOp} />;
