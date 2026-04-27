@@ -915,11 +915,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         );
 
         const toggleStat = (key: string) => {
-          setOpenStat((prev) => {
-            const next = new Set(prev);
-            if (next.has(key)) next.delete(key); else next.add(key);
-            return next;
-          });
+          setOpenStat((prev) => prev.has(key) ? new Set() : new Set([key]));
           setPillFlash((f) => ({ statKey: key, id: f.id + 1 }));
         };
 
