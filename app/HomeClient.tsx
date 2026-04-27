@@ -246,7 +246,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void }) {
+function Browse({ goToIndex, compareNonce, compareTarget, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner }: { goToIndex?: number | null; compareNonce?: number; compareTarget?: { leftIdx: number; rightIdx: number } | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -529,6 +529,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   useEffect(() => {
     if (goToIndex != null) springL.jumpTo(goToIndex);
   }, [goToIndex, springL.jumpTo]);
+
+  // External compare trigger from chat
+  useEffect(() => {
+    if (!compareNonce || !compareTarget) return;
+    springL.jumpTo(compareTarget.leftIdx);
+    springR.jumpTo(compareTarget.rightIdx);
+    setComparing(true);
+    setActiveSide("right");
+    onEnterCompare?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareNonce]);
 
   // Wheel accumulators for each side
   const accL = useRef(0);
@@ -943,7 +954,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         return [
           { key: "desc", show: !!h.description, label: (
-            <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Info</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Info</p>
           ), detail: (
             <p
               key={h.id}
@@ -961,7 +972,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </p>
           ) },
           { key: "overview", show: !!(h.height || h.weight), label: (
-            <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Overview</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Overview</p>
           ), detail: (
             <div>
               {h.height ? barViz("Height", `${h.height} cm`, heightPct, 0.05) : null}
@@ -969,7 +980,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "dof", show: !!h.dof, label: (
-            <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Degrees of Freedom</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -989,7 +1000,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "speed", show: !!h.maxSpeed, label: (
-            <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Speed</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Speed</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -1007,7 +1018,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "status", show: !!h.status, label: (
-            <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Status</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Status</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2.5" style={{ marginTop: 4 }}>
@@ -1027,7 +1038,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             key: "purchase",
             show: true,
             label: (
-              <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Price</p>
+              <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Price</p>
             ),
             detail: (() => {
               const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
@@ -1143,7 +1154,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: allCaps ? "uppercase" : undefined }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: "uppercase", fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882" }}>
                           {s.label}
                           {!forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
                         </div>
@@ -1327,7 +1338,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "overview",
               show: !!(heightL || weightL || heightR || weightR),
               label: (
-                <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Overview</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Overview</p>
               ),
               detail: (
                 <div>
@@ -1340,7 +1351,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "dof",
               show: !!(dofL || dofR),
               label: (
-                <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Degrees of Freedom</p>
               ),
               detail: compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null, dofL > dofR && dofL > 0, dofR > dofL && dofR > 0),
             },
@@ -1348,7 +1359,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "speed",
               show: !!(speedL || speedR),
               label: (
-                <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Speed</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Speed</p>
               ),
               detail: compareRow("Speed", speedL ? `${speedL} m/s` : null, speedR ? `${speedR} m/s` : null, speedL > speedR && speedL > 0, speedR > speedL && speedR > 0),
             },
@@ -1356,7 +1367,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "status",
               show: !!(hL.status || hR.status),
               label: (
-                <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Status</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Status</p>
               ),
               detail: (
                 <div className="flex items-center gap-3" style={{ marginTop: 6 }}>
@@ -1510,7 +1521,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: allCaps ? "uppercase" : undefined }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: "uppercase", fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882" }}>
                           {s.label}
                           {!forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
                         </div>
@@ -2182,51 +2193,155 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 // ═══════════════════════════════════════════════════════════════
 type ChatConfig = { bgOpacity: number; blur: number; radius: number; width: number; shadowOp: number; guideStyle: "plain" | "bubble"; userStyle: "dark" | "tint" | "outline"; fontSize: number; inputRadius: number; };
 
-function GuideChat({ onSelect, config }: { onSelect: (idx: number) => void; config: ChatConfig }) {
+// ── Intent parser ────────────────────────────────────────────
+type SortKey = "maxSpeed" | "cost" | "height" | "weight" | "dof";
+const WORD_COUNTS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, a: 1, couple: 2, few: 3, some: 3 };
+
+const SORTS: { terms: string[]; field: SortKey; dir: "asc" | "desc"; label: string }[] = [
+  { terms: ["fast", "speed", "quick", "mph", "m/s"], field: "maxSpeed", dir: "desc", label: "fastest" },
+  { terms: ["cheap", "affordable", "budget", "inexpensive", "price", "cost"], field: "cost", dir: "asc", label: "cheapest" },
+  { terms: ["expensive", "premium", "pricey"], field: "cost", dir: "desc", label: "most expensive" },
+  { terms: ["tall", "height", "big", "large"], field: "height", dir: "desc", label: "tallest" },
+  { terms: ["short", "small", "compact"], field: "height", dir: "asc", label: "shortest" },
+  { terms: ["light", "lightweight"], field: "weight", dir: "asc", label: "lightest" },
+  { terms: ["heavy", "heavier", "heaviest"], field: "weight", dir: "desc", label: "heaviest" },
+  { terms: ["dexterous", "dof", "flexible", "finger", "hand"], field: "dof", dir: "desc", label: "most dexterous" },
+];
+
+const FILTERS: { terms: string[]; fn: (h: typeof humanoids[0]) => boolean; label: string }[] = [
+  { terms: ["available", "production", "buy", "ship", "order"], fn: (h) => h.status === "In Production", label: "available to buy" },
+  { terms: ["home", "domestic", "household", "consumer"], fn: (h) => !!h.description?.toLowerCase().match(/home|household|domestic|consumer/), label: "home use" },
+  { terms: ["warehouse", "logistics", "industrial", "factory", "commercial"], fn: (h) => !!h.description?.toLowerCase().match(/warehouse|logistics|industrial|factory|commercial/), label: "industrial" },
+  { terms: ["research", "lab", "academic"], fn: (h) => !!h.description?.toLowerCase().match(/research|lab|academ/), label: "research" },
+];
+
+function parseChat(raw: string): { reply: string; results: typeof humanoids; compare: boolean } {
+  const q = raw.toLowerCase().trim();
+
+  // Count — digit or word ("2", "two", "top 3", "a few")
+  let count = 3;
+  const digitMatch = q.match(/\b(top\s*)?(\d+)\b/);
+  if (digitMatch) count = Math.min(parseInt(digitMatch[2]), 8);
+  else {
+    for (const [word, n] of Object.entries(WORD_COUNTS)) {
+      if (new RegExp(`\\b${word}\\b`).test(q)) { count = n; break; }
+    }
+  }
+
+  // Compare intent — "compare", "vs", "versus", "against"
+  const wantsCompare = /\bcompare\b|\bvs\b|\bversus\b|\bagainst\b/.test(q);
+  if (wantsCompare) count = Math.max(count, 2);
+
+  // Direct name / manufacturer match
+  const nameHits = humanoids.filter((h) =>
+    h.name.toLowerCase().split(/\s+/).some((w) => q.includes(w) && w.length > 2) ||
+    h.manufacturer.toLowerCase().split(/\s+/).some((w) => q.includes(w) && w.length > 3)
+  );
+
+  // Sort attribute
+  const sort = SORTS.find((s) => s.terms.some((t) => q.includes(t)));
+
+  // Use-case / status filter
+  const filter = FILTERS.find((f) => f.terms.some((t) => q.includes(t)));
+
+  // Build result set
+  let pool = nameHits.length > 0 && !sort && !filter ? nameHits : [...humanoids];
+  if (filter) pool = pool.filter(filter.fn);
+  if (sort) {
+    pool = pool
+      .filter((h) => h[sort.field] != null)
+      .sort((a, b) => {
+        const av = sort.field === "cost" ? parseFloat(String(a.cost ?? "").replace(/[^0-9.]/g, "")) || 9999 : (a[sort.field] as number) ?? 0;
+        const bv = sort.field === "cost" ? parseFloat(String(b.cost ?? "").replace(/[^0-9.]/g, "")) || 9999 : (b[sort.field] as number) ?? 0;
+        return sort.dir === "asc" ? av - bv : bv - av;
+      });
+  }
+
+  const results = pool.slice(0, count);
+
+  // Build reply text
+  let reply = "";
+  if (results.length === 0) {
+    reply = "No matches — try asking about speed, price, height, availability, or a robot name.";
+  } else if (wantsCompare && results.length >= 2) {
+    const names = results.slice(0, 2).map((h) => h.name).join(" and ");
+    reply = `Here's ${names}${sort ? ` (${sort.label})` : ""}. Tap one to navigate, then hit Compare to put them side by side.`;
+  } else if (sort && filter) {
+    reply = `${results.length === 1 ? "Top pick" : `Top ${results.length}`} that ${filter.label}, sorted by ${sort.label}:`;
+  } else if (sort) {
+    reply = `${results.length === 1 ? "Top pick" : `Top ${results.length}`} by ${sort.label}:`;
+  } else if (filter) {
+    reply = `${results.length} humanoid${results.length > 1 ? "s" : ""} for ${filter.label}:`;
+  } else if (nameHits.length > 0) {
+    reply = results.length === 1 ? `Found ${results[0].name}:` : `Found ${results.length} match${results.length > 1 ? "es" : ""}:`;
+  } else {
+    reply = `Here are ${results.length} humanoid${results.length > 1 ? "s" : ""}:`;
+  }
+
+  return { reply, results, compare: wantsCompare && results.length >= 2 };
+}
+
+type ChatMessage = { role: "user" | "guide"; text: string; suggestions?: typeof humanoids };
+
+function GuideChat({ onSelect, onCompare, config }: { onSelect: (idx: number) => void; onCompare?: (leftIdx: number, rightIdx: number) => void; config: ChatConfig }) {
   const [query, setQuery] = useState("");
-  const [messages, setMessages] = useState<{ role: "user" | "guide"; text: string; suggestions?: typeof humanoids }[]>([
-    { role: "guide", text: "What kind of humanoid are you looking for? I can help you narrow it down." },
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: "guide", text: "What kind of humanoid are you looking for?" },
   ]);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
-  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages]);
+  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages, loading]);
 
-  const handleSubmit = () => {
-    if (!query.trim()) return;
-    const q = query.toLowerCase();
-    setMessages((prev) => [...prev, { role: "user", text: query }]);
+  const handleSubmit = async () => {
+    if (!query.trim() || loading) return;
+    const text = query;
+    setMessages((prev) => [...prev, { role: "user", text }]);
     setQuery("");
+    setLoading(true);
 
-    // Simple keyword matching
-    let results = humanoids;
-    if (q.includes("cheap") || q.includes("affordable") || q.includes("budget")) {
-      results = humanoids.filter((h) => h.cost && h.cost !== "N/A").sort((a, b) => parseInt(a.cost || "999") - parseInt(b.cost || "999"));
-    } else if (q.includes("fast") || q.includes("speed")) {
-      results = humanoids.filter((h) => h.maxSpeed).sort((a, b) => (b.maxSpeed || 0) - (a.maxSpeed || 0));
-    } else if (q.includes("tall") || q.includes("height")) {
-      results = humanoids.filter((h) => h.height).sort((a, b) => (b.height || 0) - (a.height || 0));
-    } else if (q.includes("light") || q.includes("lightweight")) {
-      results = humanoids.filter((h) => h.weight).sort((a, b) => (a.weight || 999) - (b.weight || 999));
-    } else if (q.includes("production") || q.includes("available") || q.includes("buy")) {
-      results = humanoids.filter((h) => h.status === "In Production");
-    } else if (q.includes("dexterous") || q.includes("dof") || q.includes("flexible")) {
-      results = humanoids.filter((h) => h.dof).sort((a, b) => (b.dof || 0) - (a.dof || 0));
-    } else if (q.includes("home") || q.includes("domestic") || q.includes("household")) {
-      results = humanoids.filter((h) => h.description?.toLowerCase().includes("home") || h.description?.toLowerCase().includes("household") || h.description?.toLowerCase().includes("domestic"));
-    } else if (q.includes("warehouse") || q.includes("logistics") || q.includes("industrial")) {
-      results = humanoids.filter((h) => h.description?.toLowerCase().includes("warehouse") || h.description?.toLowerCase().includes("logistics") || h.description?.toLowerCase().includes("industrial"));
-    } else {
-      // Name/manufacturer search
-      results = humanoids.filter((h) => h.name.toLowerCase().includes(q) || h.manufacturer.toLowerCase().includes(q));
-    }
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: text }),
+      });
 
-    const top = results.slice(0, 3);
-    if (top.length > 0) {
-      setMessages((prev) => [...prev, { role: "guide", text: `Here are ${top.length} match${top.length > 1 ? "es" : ""}:`, suggestions: top }]);
-    } else {
-      setMessages((prev) => [...prev, { role: "guide", text: "No matches found. Try asking about speed, price, height, or use case (home, warehouse, etc)." }]);
+      if (res.status === 429) {
+        // Rate limited — silently fall back to local parser
+        const { reply, results } = parseChat(text);
+        setMessages((prev) => [...prev, { role: "guide", text: reply, suggestions: results.length > 0 ? results : undefined }]);
+        return;
+      }
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      const { reply, action, ids } = data as { reply: string; action: string; ids: string[] };
+
+      const matched = ids
+        .map((id) => humanoids.find((h) => h.id === id))
+        .filter((h): h is typeof humanoids[0] => h != null);
+
+      setMessages((prev) => [...prev, { role: "guide", text: reply, suggestions: matched.length > 0 ? matched : undefined }]);
+
+      if (action === "compare" && matched.length >= 2 && onCompare) {
+        const leftIdx = humanoids.findIndex((h) => h.id === ids[0]);
+        const rightIdx = humanoids.findIndex((h) => h.id === ids[1]);
+        if (leftIdx >= 0 && rightIdx >= 0) {
+          setTimeout(() => onCompare(leftIdx, rightIdx), 400);
+        }
+      } else if (action === "show" && matched.length === 1 && ids[0]) {
+        const idx = humanoids.findIndex((h) => h.id === ids[0]);
+        if (idx >= 0) setTimeout(() => onSelect(idx), 400);
+      }
+    } catch {
+      const { reply, results } = parseChat(text);
+      setMessages((prev) => [...prev, { role: "guide", text: reply, suggestions: results.length > 0 ? results : undefined }]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -2294,6 +2409,13 @@ function GuideChat({ onSelect, config }: { onSelect: (idx: number) => void; conf
               )}
             </div>
           ))}
+          {loading && (
+            <div className="flex gap-1 items-center" style={{ paddingBottom: 4 }}>
+              {[0, 1, 2].map((i) => (
+                <span key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "#d0d0d0", display: "inline-block", animation: `chat-dot 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Input */}
@@ -2358,6 +2480,16 @@ export default function HomeClient() {
   const [addHintNonce, setAddHintNonce] = useState(0);
   const [comparingUsed, setComparingUsed] = useState(false);
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
+  const [compareNonce, setCompareNonce] = useState(0);
+  const [compareTarget, setCompareTarget] = useState<{ leftIdx: number; rightIdx: number } | null>(null);
+
+  const handleChatCompare = useCallback((leftIdx: number, rightIdx: number) => {
+    setLayout("E");
+    setChatOpen(false);
+    setCompareTarget({ leftIdx, rightIdx });
+    setCompareNonce((n) => n + 1);
+    setComparingUsed(true);
+  }, []);
 
   // Share URL — Browse writes to this ref, Home's share button reads it
   const shareUrlRef = useRef("");
@@ -2544,7 +2676,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} compareNonce={compareNonce} compareTarget={compareTarget} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -2717,7 +2849,7 @@ export default function HomeClient() {
         </div>
       )}
 
-      {chatOpen && <GuideChat onSelect={handleSelectHumanoid} config={chatConfig} />}
+      {chatOpen && <GuideChat onSelect={handleSelectHumanoid} onCompare={handleChatCompare} config={chatConfig} />}
 
       {showWelcome && (
         <>
