@@ -246,7 +246,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, compareNonce, compareTarget, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner }: { goToIndex?: number | null; compareNonce?: number; compareTarget?: { leftIdx: number; rightIdx: number } | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -529,17 +529,6 @@ function Browse({ goToIndex, compareNonce, compareTarget, navStyle, onNavStyleCh
   useEffect(() => {
     if (goToIndex != null) springL.jumpTo(goToIndex);
   }, [goToIndex, springL.jumpTo]);
-
-  // External compare trigger from chat
-  useEffect(() => {
-    if (!compareNonce || !compareTarget) return;
-    springL.jumpTo(compareTarget.leftIdx);
-    springR.jumpTo(compareTarget.rightIdx);
-    setComparing(true);
-    setActiveSide("right");
-    onEnterCompare?.();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compareNonce]);
 
   // Wheel accumulators for each side
   const accL = useRef(0);
@@ -1037,45 +1026,16 @@ function Browse({ goToIndex, compareNonce, compareTarget, navStyle, onNavStyleCh
           ...(buyLayout === "card" ? [{
             key: "purchase",
             show: true,
-            label: (
-              <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Price</p>
-            ),
-            detail: (() => {
-              const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
-              const leadIn = h.status === "In Production" ? "From" : "Est.";
-              const href = h.purchaseUrl;
-              const label = priceLabel ? leadIn : "Price";
-              const value = href ? (priceLabel || "Inquire") : (priceLabel || "Not listed");
+            href: h.purchaseUrl || undefined,
+            label: (() => {
+              const hasCost = h.cost && h.cost !== "N/A";
+              const hasUrl = !!h.purchaseUrl;
+              const text = hasCost ? h.cost! : (hasUrl ? "Buy" : "Not for sale");
               return (
-                <div key={h.id} className="info-fade-in flex items-center gap-3" style={{ marginTop: 2 }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{label}</p>
-                    <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>{value}</p>
-                  </div>
-                  {href ? (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label={`Buy ${h.name}`}
-                      className="flex items-center justify-center flex-shrink-0 hover:bg-neutral-100 transition-colors"
-                      style={{ width: 36, height: 36, borderRadius: 999, background: "rgba(0,0,0,0.04)", textDecoration: "none" }}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#1d1d1f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
-                      </svg>
-                    </a>
-                  ) : (
-                    <div className="flex items-center justify-center flex-shrink-0" style={{ width: 36, height: 36, opacity: 0.3 }}>
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#1d1d1f" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: hasUrl ? "#c4a882" : "#d0d0d0", textTransform: "uppercase" as const }}>{text}</p>
               );
             })(),
+            detail: null as React.ReactNode,
           }] : []),
         ];
         };
@@ -1118,22 +1078,25 @@ function Browse({ goToIndex, compareNonce, compareTarget, navStyle, onNavStyleCh
                   if (empty && hideLabel) return null;
                   const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
-                  const interactive = !forcedOpen && !empty;
-                  const Tag: "button" | "div" = interactive ? "button" : "div";
+                  const isLink = !!((s as { href?: string }).href);
+                  const interactive = !forcedOpen && !empty && !isLink;
+                  const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
                   return (
                     <Tag
                       key={s.key}
-                      onClick={interactive ? () => toggleStat(s.key) : undefined}
-                      {...(interactive ? { type: "button" as const } : {})}
-                      className={interactive ? "pill-button w-full text-left" : "w-full text-left"}
+                      {...(isLink
+                        ? { href: (s as any).href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
+                        : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
+                      className={(isLink || interactive) ? "pill-button w-full text-left" : "w-full text-left"}
                       style={{
                         ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
-                        background: s.key === "desc" ? "transparent" : (interactive ? undefined : statPillBg),
+                        background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
                         overflow: "hidden",
-                        cursor: interactive ? "pointer" : "default",
+                        cursor: (isLink || interactive) ? "pointer" : "default",
+                        textDecoration: "none",
                         position: "relative",
                         display: "block",
                         transition: "background 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.24s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -1156,7 +1119,11 @@ function Browse({ goToIndex, compareNonce, compareTarget, navStyle, onNavStyleCh
                       {!hideLabel && (
                         <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: "uppercase", fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882" }}>
                           {s.label}
-                          {!forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
+                          {isLink ? (
+                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}>
+                              <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
+                            </svg>
+                          ) : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
                         </div>
                       )}
                       {forcedOpen ? (
@@ -1485,22 +1452,25 @@ function Browse({ goToIndex, compareNonce, compareTarget, navStyle, onNavStyleCh
                   if (empty && hideLabel) return null;
                   const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
-                  const interactive = !forcedOpen && !empty;
-                  const Tag: "button" | "div" = interactive ? "button" : "div";
+                  const isLink = !!((s as { href?: string }).href);
+                  const interactive = !forcedOpen && !empty && !isLink;
+                  const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
                   return (
                     <Tag
                       key={s.key}
-                      onClick={interactive ? () => toggleStat(s.key) : undefined}
-                      {...(interactive ? { type: "button" as const } : {})}
-                      className={interactive ? "pill-button w-full text-left" : "w-full text-left"}
+                      {...(isLink
+                        ? { href: (s as any).href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
+                        : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
+                      className={(isLink || interactive) ? "pill-button w-full text-left" : "w-full text-left"}
                       style={{
                         ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
-                        background: s.key === "desc" ? "transparent" : (interactive ? undefined : statPillBg),
+                        background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
                         overflow: "hidden",
-                        cursor: interactive ? "pointer" : "default",
+                        cursor: (isLink || interactive) ? "pointer" : "default",
+                        textDecoration: "none",
                         position: "relative",
                         display: "block",
                         transition: "background 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.24s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -1523,7 +1493,11 @@ function Browse({ goToIndex, compareNonce, compareTarget, navStyle, onNavStyleCh
                       {!hideLabel && (
                         <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: "uppercase", fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882" }}>
                           {s.label}
-                          {!forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
+                          {isLink ? (
+                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}>
+                              <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
+                            </svg>
+                          ) : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
                         </div>
                       )}
                       {forcedOpen ? (
@@ -2281,68 +2255,24 @@ function parseChat(raw: string): { reply: string; results: typeof humanoids; com
   return { reply, results, compare: wantsCompare && results.length >= 2 };
 }
 
-type ChatMessage = { role: "user" | "guide"; text: string; suggestions?: typeof humanoids };
-
-function GuideChat({ onSelect, onCompare, config }: { onSelect: (idx: number) => void; onCompare?: (leftIdx: number, rightIdx: number) => void; config: ChatConfig }) {
+function GuideChat({ onSelect, config }: { onSelect: (idx: number) => void; config: ChatConfig }) {
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "guide", text: "What kind of humanoid are you looking for?" },
+  const [messages, setMessages] = useState<{ role: "user" | "guide"; text: string; suggestions?: typeof humanoids }[]>([
+    { role: "guide", text: "What kind of humanoid are you looking for? I can help you narrow it down." },
   ]);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
-  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages, loading]);
+  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages]);
 
-  const handleSubmit = async () => {
-    if (!query.trim() || loading) return;
+  const handleSubmit = () => {
+    if (!query.trim()) return;
     const text = query;
     setMessages((prev) => [...prev, { role: "user", text }]);
     setQuery("");
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: text }),
-      });
-
-      if (res.status === 429) {
-        // Rate limited — silently fall back to local parser
-        const { reply, results } = parseChat(text);
-        setMessages((prev) => [...prev, { role: "guide", text: reply, suggestions: results.length > 0 ? results : undefined }]);
-        return;
-      }
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const data = await res.json();
-      const { reply, action, ids } = data as { reply: string; action: string; ids: string[] };
-
-      const matched = ids
-        .map((id) => humanoids.find((h) => h.id === id))
-        .filter((h): h is typeof humanoids[0] => h != null);
-
-      setMessages((prev) => [...prev, { role: "guide", text: reply, suggestions: matched.length > 0 ? matched : undefined }]);
-
-      if (action === "compare" && matched.length >= 2 && onCompare) {
-        const leftIdx = humanoids.findIndex((h) => h.id === ids[0]);
-        const rightIdx = humanoids.findIndex((h) => h.id === ids[1]);
-        if (leftIdx >= 0 && rightIdx >= 0) {
-          setTimeout(() => onCompare(leftIdx, rightIdx), 400);
-        }
-      } else if (action === "show" && matched.length === 1 && ids[0]) {
-        const idx = humanoids.findIndex((h) => h.id === ids[0]);
-        if (idx >= 0) setTimeout(() => onSelect(idx), 400);
-      }
-    } catch {
-      const { reply, results } = parseChat(text);
-      setMessages((prev) => [...prev, { role: "guide", text: reply, suggestions: results.length > 0 ? results : undefined }]);
-    } finally {
-      setLoading(false);
-    }
+    const { reply, results } = parseChat(text);
+    setMessages((prev) => [...prev, { role: "guide", text: reply, suggestions: results.length > 0 ? results : undefined }]);
   };
 
   const userBubbleStyle = (): React.CSSProperties => {
@@ -2409,13 +2339,6 @@ function GuideChat({ onSelect, onCompare, config }: { onSelect: (idx: number) =>
               )}
             </div>
           ))}
-          {loading && (
-            <div className="flex gap-1 items-center" style={{ paddingBottom: 4 }}>
-              {[0, 1, 2].map((i) => (
-                <span key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "#d0d0d0", display: "inline-block", animation: `chat-dot 1.2s ease-in-out ${i * 0.2}s infinite` }} />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Input */}
@@ -2480,16 +2403,6 @@ export default function HomeClient() {
   const [addHintNonce, setAddHintNonce] = useState(0);
   const [comparingUsed, setComparingUsed] = useState(false);
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
-  const [compareNonce, setCompareNonce] = useState(0);
-  const [compareTarget, setCompareTarget] = useState<{ leftIdx: number; rightIdx: number } | null>(null);
-
-  const handleChatCompare = useCallback((leftIdx: number, rightIdx: number) => {
-    setLayout("E");
-    setChatOpen(false);
-    setCompareTarget({ leftIdx, rightIdx });
-    setCompareNonce((n) => n + 1);
-    setComparingUsed(true);
-  }, []);
 
   // Share URL — Browse writes to this ref, Home's share button reads it
   const shareUrlRef = useRef("");
@@ -2676,7 +2589,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} compareNonce={compareNonce} compareTarget={compareTarget} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -2849,7 +2762,7 @@ export default function HomeClient() {
         </div>
       )}
 
-      {chatOpen && <GuideChat onSelect={handleSelectHumanoid} onCompare={handleChatCompare} config={chatConfig} />}
+      {chatOpen && <GuideChat onSelect={handleSelectHumanoid} config={chatConfig} />}
 
       {showWelcome && (
         <>

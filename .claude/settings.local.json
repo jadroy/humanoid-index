@@ -68,7 +68,9 @@
       "Bash(gh pr *)",
       "Bash(grep -r \"parseBool\\\\|parseNum\\\\|parseStr\" /Users/royjad/CODE/humanoid-index --include=\"*.ts\" --include=\"*.tsx\" ! -path \"*/node_modules/*\")",
       "Bash(echo \"EXIT $?\")",
-      "Bash(npx tsx *)"
+      "Bash(npx tsx *)",
+      "Bash(awk NR>=249 && NR<=260 *)",
+      "Bash(node *)"
     ],
     "deny": [],
     "ask": []
