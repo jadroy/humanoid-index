@@ -2624,7 +2624,7 @@ export default function HomeClient() {
 
       {/* Chat tuner panel */}
       {showChatTuner && (
-        <div className="fixed bottom-14 right-6 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[70vh] overflow-y-auto scrollbar-hide">
+        <div data-tuner className="fixed bottom-14 right-6 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[70vh] overflow-y-auto scrollbar-hide">
           <div>
             <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Guide Style</p>
             <div className="flex gap-1.5">
