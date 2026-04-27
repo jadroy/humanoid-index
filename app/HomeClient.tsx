@@ -956,10 +956,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 fontSize: blurbFontSize,
                 color: "#999",
                 fontWeight: 450,
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
               }}
             >
               {robotDesc.text}
@@ -1051,8 +1047,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         const renderStats = (h: typeof humanoids[0]) => {
           const sections = statSections(h);
+          const robotDesc = getRobotDescription(h);
           return (
             <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
+              {blurbFloat && robotDesc.text && (
+                <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11 }}>
+                  <p
+                    key={`blurb-float-${h.id}`}
+                    className="leading-relaxed info-fade-in"
+                    style={{ fontSize: blurbFontSize, color: "#999", fontWeight: 450 }}
+                  >
+                    {robotDesc.text}
+                  </p>
+                </div>
+              )}
               {labelPosition === "stack" && (
                 <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
                   <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
@@ -1076,8 +1084,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               )}
               {/* Stats — individual pill containers. Always render every section so the
                   column height stays stable across humanoids; missing data renders dim/disabled. */}
-              <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11 }}>
+              <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11, marginTop: blurbFloat ? "auto" : undefined }}>
                 {sections.map((s) => {
+                  if (blurbFloat && s.key === "desc") return null;
                   const empty = !s.show;
                   const hideLabel = s.key === "desc" && infoMode === "bare";
                   if (empty && hideLabel) return null;

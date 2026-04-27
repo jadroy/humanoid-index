@@ -41,7 +41,7 @@ function buildPrompt(h: (typeof humanoids)[0]) {
     h.maxSpeed ? `${h.maxSpeed} m/s` : null,
   ].filter(Boolean).join(", ");
 
-  return `Write exactly 2 punchy sentences about this humanoid robot. Short, sharp, interesting — like a caption that makes someone want to know more. Max 12 words per sentence. Plain language, no jargon (no: bipedal, articulation, locomotion, dexterity, paradigm). Lead with what's interesting or unusual about it.
+  return `Write exactly 2 punchy sentences about this humanoid robot. Each sentence max 8 words — short, sharp, like a caption. Plain language, no jargon (no: bipedal, articulation, locomotion, dexterity, paradigm). Lead with what's interesting or unusual about it.
 
 Robot: ${h.name} by ${h.manufacturer}${h.year ? `, ${h.year}` : ""}${h.status ? `, ${h.status}` : ""}.
 ${stats ? `Stats: ${stats}.` : ""}
