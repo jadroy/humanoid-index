@@ -1,9 +1,10 @@
 /**
- * Generates one-sentence comparison blurbs for every pair of humanoid robots.
- * Run with:  npx tsx scripts/generate-compare-blurbs.ts
+ * Generates comparison blurbs for every pair of humanoid robots.
  *
- * Reads existing blurbs and only generates missing pairs, so it's safe to re-run
- * when new robots are added.
+ * Usage:
+ *   npx tsx scripts/generate-compare-blurbs.ts           → generate all missing pairs
+ *   npx tsx scripts/generate-compare-blurbs.ts --preview → generate 8 sample pairs to check style
+ *   npx tsx scripts/generate-compare-blurbs.ts --force   → clear and regenerate everything
  *
  * Requires ANTHROPIC_API_KEY in your environment (or .env.local).
  */
@@ -26,6 +27,21 @@ import { humanoids } from "../data/humanoids";
 
 const OUT = path.join(process.cwd(), "data/compare-blurbs.json");
 const CONCURRENCY = 5;
+const args = process.argv.slice(2);
+const PREVIEW = args.includes("--preview");
+const FORCE = args.includes("--force");
+
+// Hand-pick varied preview pairs to stress-test the prompt style
+const PREVIEW_PAIRS = [
+  ["legend-1", "1"],       // ASIMO vs Optimus Gen 2
+  ["26", "2"],             // Hydraulic Atlas vs Electric Atlas
+  ["21", "7"],             // Pepper vs Figure 02
+  ["25", "11"],            // Roboy vs G1
+  ["20", "5"],             // Ameca vs Digit
+  ["4", "17"],             // Neo vs Tiangong
+  ["12", "legend-1"],      // H1 vs ASIMO
+  ["legend-2", "8"],       // Sophia vs Phoenix
+];
 
 function pairKey(a: string, b: string) {
   return [a, b].sort().join("|");
@@ -45,6 +61,17 @@ function robotSummary(h: (typeof humanoids)[0]) {
   return parts.join(", ") + desc;
 }
 
+// ─── EDIT THIS PROMPT TO TUNE STYLE ────────────────────────────────────────
+function buildPrompt(a: (typeof humanoids)[0], b: (typeof humanoids)[0]) {
+  return `Compare these two humanoid robots in exactly 2 sentences, max 12 words each. Write like you're explaining it to a curious teenager — simple, direct, no jargon. Each sentence says something specific about one robot. Don't summarize with "one does X, the other does Y." No words like: bipedal, articulation, prioritizes, locomotion, dexterity, paradigm.
+
+Robot A: ${robotSummary(a)}
+Robot B: ${robotSummary(b)}
+
+Reply with the 2 sentences only. No quotes, no explanation.`;
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 async function generateBlurb(
   client: Anthropic,
   a: (typeof humanoids)[0],
@@ -52,23 +79,11 @@ async function generateBlurb(
 ): Promise<string> {
   const msg = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 30,
-    messages: [
-      {
-        role: "user",
-        content: `Write one sentence of exactly 10–12 words comparing these two humanoid robots for a design-forward robotics index. Capture what's genuinely interesting — history, technology, scale, or philosophy. Precise and neutral. Don't open with either robot's name.
-
-Robot A: ${robotSummary(a)}
-Robot B: ${robotSummary(b)}
-
-Reply with the sentence only. No quotes, no explanation.`,
-      },
-    ],
+    max_tokens: 80,
+    messages: [{ role: "user", content: buildPrompt(a, b) }],
   });
   const text = msg.content[0].type === "text" ? msg.content[0].text.trim() : "";
-  // Take only the first line in case the model reasons before answering
-  const firstLine = text.split("\n")[0].trim();
-  return firstLine.replace(/^["']|["']$/g, "");
+  return text.replace(/^["']|["']$/g, "");
 }
 
 async function run() {
@@ -79,11 +94,22 @@ async function run() {
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const existing: Record<string, string> = fs.existsSync(OUT)
+  if (PREVIEW) {
+    console.log("── PREVIEW MODE (8 sample pairs) ──\n");
+    for (const [idA, idB] of PREVIEW_PAIRS) {
+      const a = humanoids.find(h => h.id === idA);
+      const b = humanoids.find(h => h.id === idB);
+      if (!a || !b) { console.log(`skipping unknown pair: ${idA} / ${idB}`); continue; }
+      const blurb = await generateBlurb(client, a, b);
+      console.log(`${a.name} × ${b.name} (${blurb.length}c):\n  ${blurb}\n`);
+    }
+    return;
+  }
+
+  const existing: Record<string, string> = (!FORCE && fs.existsSync(OUT))
     ? JSON.parse(fs.readFileSync(OUT, "utf8"))
     : {};
 
-  // Build list of missing pairs
   const missing: [typeof humanoids[0], typeof humanoids[0]][] = [];
   for (let i = 0; i < humanoids.length; i++) {
     for (let j = i + 1; j < humanoids.length; j++) {
@@ -117,7 +143,6 @@ async function run() {
         }
       })
     );
-    // Write incrementally so progress isn't lost on interruption
     fs.writeFileSync(OUT, JSON.stringify(results, null, 2));
   }
 

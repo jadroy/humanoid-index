@@ -246,7 +246,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -360,6 +360,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillPadY, setStatPillPadY] = useState(11);      // px — vertical button padding (sets closed height)
   const [statPillBg, setStatPillBg] = useState("#FCFCFC");
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
+  const [blurbFontSize, setBlurbFontSize] = useState(12);
+  const [pillLabelFontSize, setPillLabelFontSize] = useState(13);
 
   // Compare-header split tuner
   const [showSplitTuner, setShowSplitTuner] = useState(false);
@@ -642,6 +644,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
       if (e.key === "s") { pickArcStyle(ARC_STYLES[(ARC_STYLES.indexOf(arcStyle) + 1) % ARC_STYLES.length]); return; }
+      if (e.key === "t") { setShowTuner((v) => !v); return; }
+      if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
       if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); activeGo(1); }
       else if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); activeGo(-1); }
     };
@@ -943,7 +947,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         return [
           { key: "desc", show: !!h.description, label: (
-            <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Info</p>
+            <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Info</p>
           ), detail: (
             <p
               key={h.id}
@@ -961,7 +965,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </p>
           ) },
           { key: "overview", show: !!(h.height || h.weight), label: (
-            <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Overview</p>
+            <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Overview</p>
           ), detail: (
             <div>
               {h.height ? barViz("Height", `${h.height} cm`, heightPct, 0.05) : null}
@@ -969,7 +973,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "dof", show: !!h.dof, label: (
-            <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
+            <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -989,7 +993,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "speed", show: !!h.maxSpeed, label: (
-            <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Speed</p>
+            <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Speed</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -1007,7 +1011,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "status", show: !!h.status, label: (
-            <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status</p>
+            <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Status</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2.5" style={{ marginTop: 4 }}>
@@ -1027,7 +1031,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             key: "purchase",
             show: true,
             label: (
-              <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Price</p>
+              <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Price</p>
             ),
             detail: (() => {
               const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
@@ -1312,8 +1316,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               detail: (
                 <p
                   key={`blurb-${hL.id}-${hR.id}`}
-                  className="text-[12px] leading-relaxed info-fade-in"
+                  className="leading-relaxed info-fade-in"
                   style={{
+                    fontSize: blurbFontSize,
                     color: compareBlurb.isGenerated ? "#999" : "#bbb",
                     fontWeight: 450,
                   }}
@@ -1326,7 +1331,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "overview",
               show: !!(heightL || weightL || heightR || weightR),
               label: (
-                <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Overview</p>
+                <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Overview</p>
               ),
               detail: (
                 <div>
@@ -1339,7 +1344,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "dof",
               show: !!(dofL || dofR),
               label: (
-                <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
+                <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Degrees of Freedom</p>
               ),
               detail: compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null, dofL > dofR && dofL > 0, dofR > dofL && dofR > 0),
             },
@@ -1347,7 +1352,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "speed",
               show: !!(speedL || speedR),
               label: (
-                <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Speed</p>
+                <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Speed</p>
               ),
               detail: compareRow("Speed", speedL ? `${speedL} m/s` : null, speedR ? `${speedR} m/s` : null, speedL > speedR && speedL > 0, speedR > speedL && speedR > 0),
             },
@@ -1355,7 +1360,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "status",
               show: !!(hL.status || hR.status),
               label: (
-                <p className="text-[13px] font-medium" style={{ color: "var(--c-ink-body)" }}>Status</p>
+                <p className="font-medium" style={{ fontSize: pillLabelFontSize, color: "var(--c-ink-body)" }}>Status</p>
               ),
               detail: (
                 <div className="flex items-center gap-3" style={{ marginTop: 6 }}>
@@ -1847,10 +1852,32 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         );
       })()}
 
-      {/* ── Tuner ── */}
-      <button className="absolute top-20 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowTuner(!showTuner)}>{showTuner ? "Close" : "Tune"}</button>
-
-      <button className="absolute top-32 right-5 z-50 text-[11px] text-neutral-300 hover:text-neutral-500 cursor-pointer transition-colors" onClick={() => setShowSplitTuner(!showSplitTuner)}>{showSplitTuner ? "Close" : "Split"}</button>
+      {/* ── Dev toggle (bottom-right, subtle) ── */}
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-1.5">
+        <button
+          onClick={() => setShowTuner(!showTuner)}
+          className="cursor-pointer transition-colors duration-150"
+          style={{ fontSize: 10, color: showTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+        >
+          T
+        </button>
+        <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
+        <button
+          onClick={() => setShowSplitTuner(!showSplitTuner)}
+          className="cursor-pointer transition-colors duration-150"
+          style={{ fontSize: 10, color: showSplitTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+        >
+          S
+        </button>
+        <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
+        <button
+          onClick={() => onToggleChatTuner?.()}
+          className="cursor-pointer transition-colors duration-150"
+          style={{ fontSize: 10, color: showChatTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+        >
+          C
+        </button>
+      </div>
       {showSplitTuner && (
         <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
           <div>
@@ -2039,6 +2066,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ))}
               </div>
             </div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Pill label size <span className="tabular-nums text-neutral-400">{pillLabelFontSize}px</span></label><input type="range" min={9} max={18} value={pillLabelFontSize} onChange={(e) => setPillLabelFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Blurb size <span className="tabular-nums text-neutral-400">{blurbFontSize}px</span></label><input type="range" min={9} max={16} value={blurbFontSize} onChange={(e) => setBlurbFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{statPillRadius}px</span></label><input type="range" min={0} max={40} value={statPillRadius} onChange={(e) => setStatPillRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{statPillGap}px</span></label><input type="range" min={0} max={16} value={statPillGap} onChange={(e) => setStatPillGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Padding X <span className="tabular-nums text-neutral-400">{statPillPadX}px</span></label><input type="range" min={6} max={28} value={statPillPadX} onChange={(e) => setStatPillPadX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -2155,7 +2184,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 // ═══════════════════════════════════════════════════════════════
 // Guide chat — keyword matching to help find the right humanoid
 // ═══════════════════════════════════════════════════════════════
-function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
+type ChatConfig = { bgOpacity: number; blur: number; radius: number; width: number; shadowOp: number; guideStyle: "plain" | "bubble"; userStyle: "dark" | "tint" | "outline"; fontSize: number; inputRadius: number; };
+
+function GuideChat({ onSelect, config }: { onSelect: (idx: number) => void; config: ChatConfig }) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<{ role: "user" | "guide"; text: string; suggestions?: typeof humanoids }[]>([
     { role: "guide", text: "What kind of humanoid are you looking for? I can help you narrow it down." },
@@ -2203,32 +2234,62 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
     }
   };
 
+  const userBubbleStyle = (): React.CSSProperties => {
+    const base: React.CSSProperties = { fontSize: config.fontSize, maxWidth: "80%", lineHeight: 1.5 };
+    if (config.userStyle === "dark") return { ...base, background: "var(--c-ink)", color: "white" };
+    if (config.userStyle === "outline") return { ...base, background: "transparent", border: "1px solid rgba(0,0,0,0.14)", color: "#1d1d1f" };
+    return { ...base, background: "rgba(0,0,0,0.07)", color: "#1d1d1f" };
+  };
+
   return (
     <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
-      <div className="w-[min(420px,calc(100vw-48px))] rounded-2xl overflow-hidden pointer-events-auto" style={{ background: "white", border: "1px solid #e8e8e8", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", animation: "chat-rise 0.3s cubic-bezier(0.16, 1, 0.3, 1) both" }}>
+      <div
+        className="overflow-hidden pointer-events-auto"
+        style={{
+          width: `min(${config.width}px, calc(100vw - 48px))`,
+          borderRadius: config.radius,
+          background: `rgba(255,255,255,${config.bgOpacity / 100})`,
+          backdropFilter: `blur(${config.blur}px) saturate(1.4)`,
+          WebkitBackdropFilter: `blur(${config.blur}px) saturate(1.4)`,
+          border: "1px solid rgba(0,0,0,0.06)",
+          boxShadow: `0 24px 64px rgba(0,0,0,${config.shadowOp / 100}), 0 4px 16px rgba(0,0,0,${config.shadowOp / 200})`,
+          animation: "chat-rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both",
+        }}
+      >
         {/* Messages */}
-        <div ref={scrollRef} className="max-h-[300px] overflow-y-auto p-4 space-y-3 scrollbar-hide">
+        <div ref={scrollRef} className="max-h-[280px] overflow-y-auto px-5 pt-5 pb-3 space-y-4 scrollbar-hide">
           {messages.map((m, i) => (
             <div key={i}>
-              <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <p className={`text-[13px] leading-relaxed max-w-[85%] px-3 py-2 rounded-2xl ${m.role === "user" ? "text-white" : ""}`}
-                  style={m.role === "user" ? { background: "var(--c-ink)", color: "white" } : { background: "#f5f5f5", color: "var(--c-ink-medium)" }}>
-                  {m.text}
-                </p>
-              </div>
+              {m.role === "guide" ? (
+                config.guideStyle === "bubble" ? (
+                  <div style={{ display: "inline-block", background: "rgba(0,0,0,0.05)", borderRadius: 14, padding: "8px 12px", fontSize: config.fontSize, color: "#555", lineHeight: 1.5 }}>
+                    {m.text}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: config.fontSize, color: "#737373", lineHeight: 1.6 }}>{m.text}</p>
+                )
+              ) : (
+                <div className="flex justify-end">
+                  <p className="px-3.5 py-2 rounded-2xl" style={userBubbleStyle()}>{m.text}</p>
+                </div>
+              )}
               {m.suggestions && (
-                <div className="flex gap-2 mt-2 ml-1">
+                <div className="flex flex-wrap gap-2 mt-3">
                   {m.suggestions.map((h) => {
                     const idx = humanoids.findIndex((x) => x.id === h.id);
                     return (
-                      <button key={h.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl cursor-pointer transition-all hover:scale-105" style={{ background: "#f5f5f5" }}
-                        onClick={() => onSelect(idx)}>
-                        <div className="relative w-6 h-8 flex-shrink-0">
-                          {h.imageUrl ? <Image src={h.imageUrl} alt={h.name} fill className="object-contain" sizes="24px" /> : <PlaceholderLogo />}
+                      <button
+                        key={h.id}
+                        onClick={() => onSelect(idx)}
+                        className="flex items-center gap-2 px-3 py-2 rounded-2xl cursor-pointer transition-all hover:scale-[1.03]"
+                        style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}
+                      >
+                        <div className="relative w-5 h-7 flex-shrink-0">
+                          {h.imageUrl ? <Image src={h.imageUrl} alt={h.name} fill className="object-contain" sizes="20px" /> : <PlaceholderLogo />}
                         </div>
                         <div className="text-left">
-                          <p className="text-[11px] font-medium" style={{ color: "var(--c-ink)" }}>{h.name}</p>
-                          <p className="text-[9px]" style={{ color: "var(--c-ink-body)" }}>{h.manufacturer}</p>
+                          <p style={{ fontSize: config.fontSize - 2, fontWeight: 500, color: "#1d1d1f" }}>{h.name}</p>
+                          <p style={{ fontSize: config.fontSize - 3, color: "#a0a0a0" }}>{h.manufacturer}</p>
                         </div>
                       </button>
                     );
@@ -2238,19 +2299,33 @@ function GuideChat({ onSelect }: { onSelect: (idx: number) => void }) {
             </div>
           ))}
         </div>
+
         {/* Input */}
-        <div className="flex items-center gap-2 px-4 py-3" style={{ borderTop: "1px solid #f0f0f0" }}>
+        <div className="flex items-center gap-3 px-5 py-4" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            placeholder="e.g. fastest, cheapest, for warehouse..."
-            className="flex-1 text-[13px] outline-none bg-transparent"
-            style={{ color: "var(--c-ink)" }}
+            placeholder="fastest, cheapest, for home…"
+            className="flex-1 outline-none bg-transparent"
+            style={{ fontSize: config.fontSize, color: "#1d1d1f" }}
           />
-          <button onClick={handleSubmit} className="text-[13px] font-medium cursor-pointer" style={{ color: query ? "var(--c-ink)" : "#c4c4c4" }}>
-            Send
+          <button
+            onClick={handleSubmit}
+            className="flex-shrink-0 flex items-center justify-center w-7 h-7 cursor-pointer"
+            style={{
+              borderRadius: config.inputRadius,
+              background: query.trim() ? "rgba(0,0,0,0.08)" : "transparent",
+              color: query.trim() ? "#555" : "#c8c8c8",
+              transition: "background 200ms, color 200ms",
+            }}
+            aria-label="Send"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5" />
+              <polyline points="5 12 12 5 19 12" />
+            </svg>
           </button>
         </div>
       </div>
@@ -2268,13 +2343,25 @@ export default function HomeClient() {
   const [navStyle, setNavStyle] = useState<NavStyle>("underline");
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("drag");
   const [chatOpen, setChatOpen] = useState(false);
+  const [showChatTuner, setShowChatTuner] = useState(false);
+  const [chatConfig, setChatConfig] = useState({
+    bgOpacity: 92,
+    blur: 24,
+    radius: 24,
+    width: 400,
+    shadowOp: 10,
+    guideStyle: "plain" as "plain" | "bubble",
+    userStyle: "tint" as "dark" | "tint" | "outline",
+    fontSize: 13,
+    inputRadius: 99,
+  });
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
   const [luckyNonce, setLuckyNonce] = useState(0);
   const [luckyUsed, setLuckyUsed] = useState(false);
   const [hintNonce, setHintNonce] = useState(0);
   const [addHintNonce, setAddHintNonce] = useState(0);
   const [comparingUsed, setComparingUsed] = useState(false);
-  const [shareViewLabel, setShareViewLabel] = useState("Share current view");
+  const [shareViewLabel, setShareViewLabel] = useState("Share view");
 
   // Share URL — Browse writes to this ref, Home's share button reads it
   const shareUrlRef = useRef("");
@@ -2461,7 +2548,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -2500,28 +2587,30 @@ export default function HomeClient() {
         </div>
       )}
 
-      {/* Top-right share button (outlined, larger) */}
+      {/* Top-right share button */}
       <div
-        className="group fixed top-6 right-6 z-[1000] flex items-center gap-3"
+        className="group fixed z-[1000] flex items-center gap-2"
         style={{
+          top: "var(--nav-top, 8px)",
+          right: "var(--arc-logo-x, 24px)",
           opacity: introDone ? 1 : 0,
           transform: introDone ? "translateY(0)" : "translateY(-12px)",
           transition: "opacity 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s, transform 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s",
         }}
       >
         <span
-          className="text-[12px] tracking-wide opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
-          style={{ color: "#999" }}
+          className="text-[11px] tracking-wide opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+          style={{ color: "#b4b4b4" }}
         >
-          Share view
+          {shareViewLabel}
         </span>
         <button
-          className="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer hover:scale-[1.06]"
+          className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer hover:scale-[1.06]"
           style={{
-            background: shareCopyFilled ? "var(--c-ink)" : "transparent",
-            border: `1px solid ${shareCopyFilled ? "var(--c-ink)" : "#e0e0e0"}`,
-            color: shareCopyFilled ? "white" : "#b4b4b4",
-            transition: "transform 200ms, background 220ms ease, border-color 220ms ease, color 220ms ease",
+            background: "transparent",
+            border: `1px solid ${shareCopyFilled ? "#aaa" : "#e0e0e0"}`,
+            color: shareCopyFilled ? "#555" : "#b4b4b4",
+            transition: "border-color 220ms ease, color 220ms ease",
           }}
           onClick={() => {
             copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current);
@@ -2530,21 +2619,84 @@ export default function HomeClient() {
           onMouseLeave={() => setShareCopyFilled(false)}
           aria-label="Copy link"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
         </button>
       </div>
 
+      {/* Chat tuner panel */}
+      {showChatTuner && (
+        <div className="fixed bottom-14 right-6 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[70vh] overflow-y-auto scrollbar-hide">
+          <div>
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Guide Style</p>
+            <div className="flex gap-1.5">
+              {(["plain", "bubble"] as const).map((v) => (
+                <button key={v} onClick={() => setChatConfig((c) => ({ ...c, guideStyle: v }))}
+                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${chatConfig.guideStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">User Bubble</p>
+            <div className="flex gap-1.5">
+              {(["tint", "dark", "outline"] as const).map((v) => (
+                <button key={v} onClick={() => setChatConfig((c) => ({ ...c, userStyle: v }))}
+                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${chatConfig.userStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400">Container</p>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Background <span className="tabular-nums text-neutral-400">{chatConfig.bgOpacity}%</span></label>
+              <input type="range" min={0} max={100} value={chatConfig.bgOpacity} onChange={(e) => setChatConfig((c) => ({ ...c, bgOpacity: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Blur <span className="tabular-nums text-neutral-400">{chatConfig.blur}px</span></label>
+              <input type="range" min={0} max={40} value={chatConfig.blur} onChange={(e) => setChatConfig((c) => ({ ...c, blur: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{chatConfig.radius}px</span></label>
+              <input type="range" min={0} max={40} value={chatConfig.radius} onChange={(e) => setChatConfig((c) => ({ ...c, radius: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Width <span className="tabular-nums text-neutral-400">{chatConfig.width}px</span></label>
+              <input type="range" min={280} max={520} value={chatConfig.width} onChange={(e) => setChatConfig((c) => ({ ...c, width: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Shadow <span className="tabular-nums text-neutral-400">{chatConfig.shadowOp}%</span></label>
+              <input type="range" min={0} max={30} value={chatConfig.shadowOp} onChange={(e) => setChatConfig((c) => ({ ...c, shadowOp: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
+            </div>
+          </div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400">Typography</p>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Font size <span className="tabular-nums text-neutral-400">{chatConfig.fontSize}px</span></label>
+              <input type="range" min={11} max={16} value={chatConfig.fontSize} onChange={(e) => setChatConfig((c) => ({ ...c, fontSize: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Input radius <span className="tabular-nums text-neutral-400">{chatConfig.inputRadius}px</span></label>
+              <input type="range" min={0} max={99} value={chatConfig.inputRadius} onChange={(e) => setChatConfig((c) => ({ ...c, inputRadius: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
+            </div>
+          </div>
+          <button onClick={() => setChatConfig({ bgOpacity: 92, blur: 24, radius: 24, width: 400, shadowOp: 10, guideStyle: "plain", userStyle: "tint", fontSize: 13, inputRadius: 99 })}
+            className="text-[11px] text-neutral-400 hover:text-neutral-600 cursor-pointer transition-colors">
+            Reset
+          </button>
+        </div>
+      )}
+
       <OptionsMenu
         variant={buttonVariant}
         chatOpen={chatOpen}
         setChatOpen={setChatOpen}
-        onShareSite={() => copyUrl(typeof window !== "undefined" ? window.location.origin : "", "Site link copied")}
-        onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
         visible={introDone}
-        shareViewLabel={shareViewLabel}
       />
 
       {/* Share toast */}
@@ -2569,7 +2721,7 @@ export default function HomeClient() {
         </div>
       )}
 
-      {chatOpen && <GuideChat onSelect={handleSelectHumanoid} />}
+      {chatOpen && <GuideChat onSelect={handleSelectHumanoid} config={chatConfig} />}
 
       {showWelcome && (
         <>
