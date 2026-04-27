@@ -9,6 +9,7 @@ import MobileView from "@/components/MobileView";
 import { WelcomeModal, WelcomeStyleSwitcher, type WelcomeStyle } from "@/components/WelcomeModal";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
+import { getRobotDescription } from "@/lib/robotDescription";
 import {
   LayoutSwitcher,
   NAV_STYLES,
@@ -361,6 +362,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillBg, setStatPillBg] = useState("#FCFCFC");
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
   const [blurbFontSize, setBlurbFontSize] = useState(12);
+  const [blurbFloat, setBlurbFloat] = useState(false);
   const [pillLabelFontSize, setPillLabelFontSize] = useState(13);
 
   // Compare-header split tuner
@@ -641,6 +643,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // Keyboard — arrows control active side, tab switches, esc exits
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
       if (e.key === "s") { pickArcStyle(ARC_STYLES[(ARC_STYLES.indexOf(arcStyle) + 1) % ARC_STYLES.length]); return; }
@@ -941,14 +944,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           </div>
         );
 
+        const robotDesc = getRobotDescription(h);
         return [
-          { key: "desc", show: !!h.description, label: (
+          { key: "desc", show: !!robotDesc.text, label: (
             <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Info</p>
           ), detail: (
             <p
               key={h.id}
-              className="text-[12px] leading-relaxed info-fade-in"
+              className="leading-relaxed info-fade-in"
               style={{
+                fontSize: blurbFontSize,
                 color: "#999",
                 fontWeight: 450,
                 display: "-webkit-box",
@@ -957,7 +962,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 overflow: "hidden",
               }}
             >
-              {h.description}
+              {robotDesc.text}
             </p>
           ) },
           { key: "overview", show: !!(h.height || h.weight), label: (
@@ -1372,6 +1377,21 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
           return (
             <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
+              {blurbFloat && (
+                <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11 }}>
+                  <p
+                    key={`blurb-float-${hL.id}-${hR.id}`}
+                    className="leading-relaxed info-fade-in"
+                    style={{
+                      fontSize: blurbFontSize,
+                      color: compareBlurb.isGenerated ? "#999" : "#bbb",
+                      fontWeight: 450,
+                    }}
+                  >
+                    {compareBlurb.text}
+                  </p>
+                </div>
+              )}
               {labelPosition === "stack" && (() => {
                 const active = splitHover;
                 const sDur = `${splitDur}ms`;
@@ -1445,8 +1465,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   </div>
                 );
               })()}
-              <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11 }}>
+              <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11, marginTop: blurbFloat ? "auto" : undefined }}>
                 {sections.map((s) => {
+                  if (blurbFloat && s.key === "desc") return null;
                   const empty = !s.show;
                   const hideLabel = s.key === "desc" && infoMode === "bare";
                   if (empty && hideLabel) return null;
@@ -2048,7 +2069,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             </div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Pill label size <span className="tabular-nums text-neutral-400">{pillLabelFontSize}px</span></label><input type="range" min={9} max={18} value={pillLabelFontSize} onChange={(e) => setPillLabelFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Blurb size <span className="tabular-nums text-neutral-400">{blurbFontSize}px</span></label><input type="range" min={9} max={16} value={blurbFontSize} onChange={(e) => setBlurbFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Blurb size <span className="tabular-nums text-neutral-400">{blurbFontSize}px</span></label>
+              <input type="range" min={9} max={16} value={blurbFontSize} onChange={(e) => setBlurbFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => setBlurbFloat((v) => !v)}
+                  className="text-[10px] px-2 py-1 rounded transition-colors"
+                  style={{ background: blurbFloat ? "#1a1a1a" : "#f0f0f0", color: blurbFloat ? "#fff" : "#666", border: "none", cursor: "pointer" }}
+                >
+                  Float to top
+                </button>
+              </div>
+            </div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{statPillRadius}px</span></label><input type="range" min={0} max={40} value={statPillRadius} onChange={(e) => setStatPillRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{statPillGap}px</span></label><input type="range" min={0} max={16} value={statPillGap} onChange={(e) => setStatPillGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Padding X <span className="tabular-nums text-neutral-400">{statPillPadX}px</span></label><input type="range" min={6} max={28} value={statPillPadX} onChange={(e) => setStatPillPadX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
