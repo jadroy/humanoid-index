@@ -51,22 +51,24 @@ async function generateBlurb(
   b: (typeof humanoids)[0]
 ): Promise<string> {
   const msg = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 120,
+    model: "claude-sonnet-4-6",
+    max_tokens: 30,
     messages: [
       {
         role: "user",
-        content: `Write a single sentence (max 160 characters) comparing these two humanoid robots for a design-forward robotics index. Highlight what's genuinely interesting about this specific pairing — their relationship in history, technology, scale, or philosophy. Be precise and neutral. No fluff, no marketing. Don't start with either robot's name. Don't use the word "while".
+        content: `Write one sentence of exactly 10–12 words comparing these two humanoid robots for a design-forward robotics index. Capture what's genuinely interesting — history, technology, scale, or philosophy. Precise and neutral. Don't open with either robot's name.
 
 Robot A: ${robotSummary(a)}
 Robot B: ${robotSummary(b)}
 
-Reply with only the sentence, no quotes.`,
+Reply with the sentence only. No quotes, no explanation.`,
       },
     ],
   });
   const text = msg.content[0].type === "text" ? msg.content[0].text.trim() : "";
-  return text.replace(/^["']|["']$/g, "");
+  // Take only the first line in case the model reasons before answering
+  const firstLine = text.split("\n")[0].trim();
+  return firstLine.replace(/^["']|["']$/g, "");
 }
 
 async function run() {
