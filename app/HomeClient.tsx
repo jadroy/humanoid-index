@@ -364,6 +364,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [blurbFontSize, setBlurbFontSize] = useState(12);
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [pillLabelFontSize, setPillLabelFontSize] = useState(13);
+  const [pillLabelFont, setPillLabelFont] = useState<string>("var(--font-geist-mono)");
+  const [pillLabelLetterSpacing, setPillLabelLetterSpacing] = useState(0.06);
+  const [pillLabelWeight, setPillLabelWeight] = useState(700);
+  const [pillLabelUppercase, setPillLabelUppercase] = useState(true);
 
   // Compare-header split tuner
   const [showSplitTuner, setShowSplitTuner] = useState(false);
@@ -947,7 +951,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         const robotDesc = getRobotDescription(h);
         return [
           { key: "desc", show: !!robotDesc.text, label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Info</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Info</p>
           ), detail: (
             <p
               key={h.id}
@@ -956,13 +960,18 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 fontSize: blurbFontSize,
                 color: "#999",
                 fontWeight: 450,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                textOverflow: "clip",
               }}
             >
               {robotDesc.text}
             </p>
           ) },
           { key: "overview", show: !!(h.height || h.weight), label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Overview</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Overview</p>
           ), detail: (
             <div>
               {h.height ? barViz("Height", `${h.height} cm`, heightPct, 0.05) : null}
@@ -970,7 +979,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "dof", show: !!h.dof, label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Degrees of Freedom</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Degrees of Freedom</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -990,7 +999,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "speed", show: !!h.maxSpeed, label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Speed</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Speed</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -1008,7 +1017,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "status", show: !!h.status, label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Status</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Status</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2.5" style={{ marginTop: 4 }}>
@@ -1033,7 +1042,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               const hasUrl = !!h.purchaseUrl;
               const text = hasCost ? h.cost! : (hasUrl ? "Buy" : "Not for sale");
               return (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: hasUrl ? "#c4a882" : "#d0d0d0", textTransform: "uppercase" as const }}>{text}</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: hasUrl ? "#888" : "#c0c0c0", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>{text}</p>
               );
             })(),
             detail: null as React.ReactNode,
@@ -1051,7 +1060,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           return (
             <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
               {blurbFloat && robotDesc.text && (
-                <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11 }}>
+                <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11, padding: `${statPillPadY}px ${statPillPadX}px 12px` }}>
                   <p
                     key={`blurb-float-${h.id}`}
                     className="leading-relaxed info-fade-in"
@@ -1131,7 +1140,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: "uppercase", fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882" }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888" }}>
                           {s.label}
                           {isLink ? (
                             <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}>
@@ -1319,7 +1328,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "overview",
               show: !!(heightL || weightL || heightR || weightR),
               label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Overview</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Overview</p>
               ),
               detail: (
                 <div>
@@ -1332,7 +1341,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "dof",
               show: !!(dofL || dofR),
               label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Degrees of Freedom</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Degrees of Freedom</p>
               ),
               detail: compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null, dofL > dofR && dofL > 0, dofR > dofL && dofR > 0),
             },
@@ -1340,7 +1349,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "speed",
               show: !!(speedL || speedR),
               label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Speed</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Speed</p>
               ),
               detail: compareRow("Speed", speedL ? `${speedL} m/s` : null, speedR ? `${speedR} m/s` : null, speedL > speedR && speedL > 0, speedR > speedL && speedR > 0),
             },
@@ -1348,7 +1357,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "status",
               show: !!(hL.status || hR.status),
               label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882", textTransform: "uppercase" as const }}>Status</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Status</p>
               ),
               detail: (
                 <div className="flex items-center gap-3" style={{ marginTop: 6 }}>
@@ -1387,7 +1396,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           return (
             <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
               {blurbFloat && (
-                <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11 }}>
+                <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11, padding: `${statPillPadY}px ${statPillPadX}px 12px` }}>
                   <p
                     key={`blurb-float-${hL.id}-${hR.id}`}
                     className="leading-relaxed info-fade-in"
@@ -1521,7 +1530,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: "uppercase", fontFamily: "var(--font-geist-mono)", fontWeight: 700, letterSpacing: "0.12em", color: "#c4a882" }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888" }}>
                           {s.label}
                           {isLink ? (
                             <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}>
@@ -2078,6 +2087,50 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             </div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Pill label size <span className="tabular-nums text-neutral-400">{pillLabelFontSize}px</span></label><input type="range" min={9} max={18} value={pillLabelFontSize} onChange={(e) => setPillLabelFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div>
+              <label className="text-[10px] text-neutral-500">Pill label font</label>
+              <div className="flex flex-col gap-1 mt-1.5">
+                {([
+                  { label: "Geist Mono", value: "var(--font-geist-mono)" },
+                  { label: "Square", value: "var(--font-geist-pixel-square)" },
+                  { label: "Grid", value: "var(--font-geist-pixel-grid)" },
+                  { label: "Circle", value: "var(--font-geist-pixel-circle)" },
+                  { label: "Triangle", value: "var(--font-geist-pixel-triangle)" },
+                  { label: "Line", value: "var(--font-geist-pixel-line)" },
+                ] as const).map(({ label, value }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setPillLabelFont(value)}
+                    className="text-left px-2 py-1 rounded transition-colors"
+                    style={{ background: pillLabelFont === value ? "#1a1a1a" : "#f0f0f0", color: pillLabelFont === value ? "#fff" : "#666", border: "none", cursor: "pointer", fontSize: pillLabelFontSize, fontFamily: value, letterSpacing: "0.06em" }}
+                  >
+                    INFO · OVERVIEW · STATUS
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Letter spacing <span className="tabular-nums text-neutral-400">{pillLabelLetterSpacing.toFixed(2)}em</span></label><input type="range" min={0} max={0.3} step={0.01} value={pillLabelLetterSpacing} onChange={(e) => setPillLabelLetterSpacing(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Weight</label>
+              <div className="flex gap-1 mt-1.5 flex-wrap">
+                {[300, 400, 500, 600, 700, 800].map((w) => (
+                  <button key={w} type="button" onClick={() => setPillLabelWeight(w)}
+                    className="text-[10px] px-2 py-1 rounded transition-colors tabular-nums"
+                    style={{ background: pillLabelWeight === w ? "#1a1a1a" : "#f0f0f0", color: pillLabelWeight === w ? "#fff" : "#666", border: "none", cursor: "pointer", fontWeight: w }}>
+                    {w}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-neutral-500">Uppercase</label>
+              <button type="button" onClick={() => setPillLabelUppercase((v) => !v)}
+                className="text-[10px] px-2 py-1 rounded transition-colors"
+                style={{ background: pillLabelUppercase ? "#1a1a1a" : "#f0f0f0", color: pillLabelUppercase ? "#fff" : "#666", border: "none", cursor: "pointer" }}>
+                {pillLabelUppercase ? "ON" : "OFF"}
+              </button>
+            </div>
             <div>
               <label className="text-[10px] text-neutral-500 flex justify-between">Blurb size <span className="tabular-nums text-neutral-400">{blurbFontSize}px</span></label>
               <input type="range" min={9} max={16} value={blurbFontSize} onChange={(e) => setBlurbFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />

@@ -41,13 +41,13 @@ function buildPrompt(h: (typeof humanoids)[0]) {
     h.maxSpeed ? `${h.maxSpeed} m/s` : null,
   ].filter(Boolean).join(", ");
 
-  return `Write exactly 2 punchy sentences about this humanoid robot. Each sentence max 8 words — short, sharp, like a caption. Plain language, no jargon (no: bipedal, articulation, locomotion, dexterity, paradigm). Lead with what's interesting or unusual about it.
+  return `Write exactly 2 sentences about this robot for a design-forward robotics index. Apple copy style — confident and direct, not dramatic or poetic. Each sentence max 40 characters. Each sentence must be a complete, specific thought. Don't use brand names the reader won't recognise. No jargon, no metaphors.
 
 Robot: ${h.name} by ${h.manufacturer}${h.year ? `, ${h.year}` : ""}${h.status ? `, ${h.status}` : ""}.
 ${stats ? `Stats: ${stats}.` : ""}
 ${h.description ? `Context: ${h.description}` : ""}
 
-Reply with the 2 sentences only. No quotes, no explanation.`;
+Exactly 2 sentences only. No quotes, no explanation.`;
 }
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ async function generateDescription(
   h: (typeof humanoids)[0]
 ): Promise<string> {
   const msg = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-opus-4-7",
     max_tokens: 70,
     messages: [{ role: "user", content: buildPrompt(h) }],
   });

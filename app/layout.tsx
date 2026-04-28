@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { GeistPixelSquare, GeistPixelGrid, GeistPixelCircle, GeistPixelTriangle, GeistPixelLine } from "geist/font/pixel";
 import {
   Inter,
   B612,
@@ -51,6 +52,11 @@ const syne = Syne({ subsets: ["latin"], variable: "--font-syne" });
 const fontVars = [
   GeistSans.variable,
   GeistMono.variable,
+  GeistPixelSquare.variable,
+  GeistPixelGrid.variable,
+  GeistPixelCircle.variable,
+  GeistPixelTriangle.variable,
+  GeistPixelLine.variable,
   inter.variable,
   b612.variable,
   b612Mono.variable,
