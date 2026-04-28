@@ -78,7 +78,8 @@
       "Bash(awk '/name:/{name=$0} /^    media:/{print name}' /Users/royjad/CODE/humanoid-index/data/humanoids.ts)",
       "Bash(sips -g pixelWidth -g pixelHeight /Users/royjad/CODE/humanoid-index/public/robots/TALOS.png)",
       "Bash(sips -g pixelWidth -g pixelHeight /Users/royjad/CODE/humanoid-index/public/robots/walker-x.png)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(git update-index *)"
     ],
     "deny": [],
     "ask": []

@@ -2,7 +2,10 @@
   "1": "It walks at 2.5 meters per second.\nIts hands now grip with more control.",
   "2": "It moves at 2.5 meters per second.\n28 joints give it full-body control.",
   "3": "Memo handles chores on two arms and wheels.\nAt 122 cm, it fits most home spaces.",
-  "4": "A bipedal humanoid built for the home.\nLight, quick, and safe around people.",
+  "4": {
+    "short": "A bipedal humanoid built for the home.\nLight, quick, and safe around people.",
+    "long": "A bipedal humanoid built for the home. Light, quick, and safe around people. 1X designed Neo around soft surfaces and compliant joints so it can move freely without becoming a hazard, betting that the first useful home robots will need to feel approachable before they feel impressive."
+  },
   "5": "It walks, lifts, and works warehouse floors.\nAmazon runs it in live facilities now.",
   "7": "It stands 167 cm and weighs 70 kg.\n40 joints give it precise hand control.",
   "8": "Stands 170 cm tall, weighs 70 kg.\nBuilt for general tasks, not one job.",

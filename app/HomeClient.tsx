@@ -1219,9 +1219,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
                       className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : (isAction ? "#FFFFFF" : statPillBg),
                         background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
+                        boxShadow: isAction ? "inset 0 0 0 1px #ECECEC" : undefined,
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
                         overflow: "hidden",
@@ -1411,25 +1412,57 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           );
 
           const compareBlurb = getCompareBlurb(hL, hR);
+          const compareBlurbId = `${hL.id}|${hR.id}`;
 
           const sections = [
             {
               key: "desc",
               show: true,
               label: null,
-              detail: (
-                <p
-                  key={`blurb-${hL.id}-${hR.id}`}
-                  className="leading-relaxed info-fade-in"
-                  style={{
-                    fontSize: blurbFontSize,
-                    color: compareBlurb.isGenerated ? "#999" : "#bbb",
-                    fontWeight: 450,
-                  }}
-                >
-                  {compareBlurb.text}
-                </p>
-              ),
+              detail: (() => {
+                const isExpanded = expandedBlurbs.has(compareBlurbId);
+                const canExpand = !!compareBlurb.long;
+                const text = isExpanded && canExpand ? compareBlurb.long : compareBlurb.text;
+                return (
+                  <div key={compareBlurbId} className="info-fade-in">
+                    <p
+                      className="leading-relaxed"
+                      style={{
+                        fontSize: blurbFontSize,
+                        color: compareBlurb.isGenerated ? "#999" : "#bbb",
+                        fontWeight: 450,
+                        ...(isExpanded ? {} : {
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          textOverflow: "clip",
+                        }),
+                      }}
+                    >
+                      {text}
+                    </p>
+                    {canExpand && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleBlurbExpand(compareBlurbId); }}
+                        style={{
+                          fontSize: Math.max(10, blurbFontSize - 1),
+                          color: "#bbb",
+                          fontWeight: 450,
+                          marginTop: 4,
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {isExpanded ? "Less" : "More"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })(),
             },
             {
               key: "overview",
@@ -1502,21 +1535,51 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
           return (
             <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
-              {blurbFloat && (
-                <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11, padding: `${statPillPadY}px ${statPillPadX}px 12px` }}>
-                  <p
-                    key={`blurb-float-${hL.id}-${hR.id}`}
-                    className="leading-relaxed info-fade-in"
-                    style={{
-                      fontSize: blurbFontSize,
-                      color: compareBlurb.isGenerated ? "#999" : "#bbb",
-                      fontWeight: 450,
-                    }}
-                  >
-                    {compareBlurb.text}
-                  </p>
-                </div>
-              )}
+              {blurbFloat && (() => {
+                const isExpanded = expandedBlurbs.has(compareBlurbId);
+                const canExpand = !!compareBlurb.long;
+                const text = isExpanded && canExpand ? compareBlurb.long : compareBlurb.text;
+                return (
+                  <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11, padding: `${statPillPadY}px ${statPillPadX}px 12px` }}>
+                    <p
+                      key={`blurb-float-${compareBlurbId}`}
+                      className="leading-relaxed info-fade-in"
+                      style={{
+                        fontSize: blurbFontSize,
+                        color: compareBlurb.isGenerated ? "#999" : "#bbb",
+                        fontWeight: 450,
+                        ...(isExpanded ? {} : {
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          textOverflow: "clip",
+                        }),
+                      }}
+                    >
+                      {text}
+                    </p>
+                    {canExpand && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleBlurbExpand(compareBlurbId); }}
+                        style={{
+                          fontSize: Math.max(10, blurbFontSize - 1),
+                          color: "#bbb",
+                          fontWeight: 450,
+                          marginTop: 4,
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {isExpanded ? "Less" : "More"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
               {labelPosition === "stack" && (() => {
                 const active = splitHover;
                 const sDur = `${splitDur}ms`;
@@ -1632,9 +1695,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
                       className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : (isAction ? "#FFFFFF" : statPillBg),
                         background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
+                        boxShadow: isAction ? "inset 0 0 0 1px #ECECEC" : undefined,
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
                         overflow: "hidden",

@@ -185,7 +185,10 @@
   "12|25": "H1 is a fast-moving robot built to work in factories and warehouses.\nRoboy copies how human muscles and tendons work to help scientists study movement.",
   "12|26": "H1 can sprint at over 3 meters per second, making it super fast. Atlas could do backflips and parkour, but it weighed as much as a heavy adult.",
   "12|legend-2": "H1 can run fast and lift things, built for real factory work.\nSophia makes lifelike faces and is famous for becoming a legal citizen.",
-  "12|legend-1": "H1 is built for industrial speed, while ASIMO pioneered humanoid finesse.",
+  "12|legend-1": {
+    "short": "H1 is built for industrial speed, while ASIMO pioneered humanoid finesse.",
+    "long": "H1 is built for industrial speed, while ASIMO pioneered humanoid finesse. Honda spent two decades teaching ASIMO to walk, climb stairs, and run — research that quietly shaped every humanoid that came after. H1 inherits that lineage but trades the showroom for the factory floor, sprinting at 3.3 m/s with a price tag labs can actually afford."
+  },
   "12|21": "H1 by Unitree moves fast and is built to handle tough physical work. Pepper by SoftBank is small, friendly, and designed to chat with people.",
   "15|5": "Astribot S1 can cook meals and pour drinks with very human-like hands.\nDigit already works real shifts moving packages inside Amazon warehouses.",
   "15|9": "Astribot S1 can pour your drink and cook you a meal.\nWalker X is built to walk rough ground fast in factories.",

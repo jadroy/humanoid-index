@@ -1,6 +1,8 @@
 import blurbs from "@/data/compare-blurbs.json";
 import type { Humanoid } from "@/data/humanoids";
 
+type Entry = string | { short: string; long?: string };
+
 function pairKey(a: string, b: string) {
   return [a, b].sort().join("|");
 }
@@ -35,9 +37,14 @@ function fallback(a: Humanoid, b: Humanoid): string {
   return `${a.name} by ${a.manufacturer} and ${b.name} by ${b.manufacturer}.`;
 }
 
-export function getCompareBlurb(a: Humanoid, b: Humanoid): { text: string; isGenerated: boolean } {
+export function getCompareBlurb(a: Humanoid, b: Humanoid): { text: string; long: string; isGenerated: boolean } {
   const key = pairKey(a.id, b.id);
-  const stored = (blurbs as Record<string, string>)[key];
-  if (stored) return { text: stored, isGenerated: true };
-  return { text: fallback(a, b), isGenerated: false };
+  const stored = (blurbs as Record<string, Entry>)[key];
+  if (stored) {
+    if (typeof stored === "string") return { text: stored, long: "", isGenerated: true };
+    return { text: stored.short, long: stored.long ?? "", isGenerated: true };
+  }
+  return { text: fallback(a, b), long: "", isGenerated: false };
 }
+
+export { pairKey as comparePairKey };
