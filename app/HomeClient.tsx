@@ -561,6 +561,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // Global wheel — velocity-aware stepping + elastic pre-threshold feedback
   const activeSideRef = useRef(activeSide); activeSideRef.current = activeSide;
   const comparingRef = useRef(comparing); comparingRef.current = comparing;
+  const mouseXRef = useRef<number | null>(null);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => { mouseXRef.current = e.clientX; };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
 
   // "I'm feeling lucky" — react to Home bumping the nonce. Skip the initial 0.
   useEffect(() => {
@@ -653,12 +659,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       if (e.key === "s") { pickArcStyle(ARC_STYLES[(ARC_STYLES.indexOf(arcStyle) + 1) % ARC_STYLES.length]); return; }
       if (e.key === "t") { setShowTuner((v) => !v); return; }
       if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
-      if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); activeGo(1); }
-      else if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); activeGo(-1); }
+      const isDown = e.key === "ArrowDown" || e.key === "ArrowRight";
+      const isUp = e.key === "ArrowUp" || e.key === "ArrowLeft";
+      if (isDown || isUp) {
+        e.preventDefault();
+        const x = mouseXRef.current;
+        const go = comparing && x != null
+          ? (x < window.innerWidth / 2 ? springL.go : springR.go)
+          : activeGo;
+        go(isDown ? 1 : -1);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeGo, comparing, arcStyle]);
+  }, [activeGo, comparing, arcStyle, springL.go, springR.go]);
 
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
