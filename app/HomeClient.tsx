@@ -264,6 +264,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [comparing, setComparing] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
+  const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("hover");
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("arc-names");
   const [arcMarkerVariant, setArcMarkerVariant] = useState(0);
@@ -695,11 +696,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [addHintVisible, setAddHintVisible] = useState(false);
   useEffect(() => {
     if (!addHintNonce) return;
+    if (addCtaMode === "always") return;
     setAddNudgeKey((k) => k + 1);
     setAddHintVisible(true);
     const t = setTimeout(() => setAddHintVisible(false), 1400);
     return () => clearTimeout(t);
-  }, [addHintNonce]);
+  }, [addHintNonce, addCtaMode]);
   const exitCompare = () => { setComparing(false); setActiveSide("left"); setSplitHover(false); };
 
   // ── Hydrate spring positions from share URL on mount ──
@@ -900,7 +902,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
       {/* ── Add compare button — hover zone right of center ── */}
       {!comparing && (() => {
-        const addShown = addHover || addHintVisible;
+        const alwaysMode = addCtaMode === "always";
+        const addShown = alwaysMode || addHover || addHintVisible;
+        const opacity = alwaysMode ? (addHover ? 1 : 0.35) : (addShown ? 1 : 0);
+        const scale = alwaysMode ? 1 : (addShown ? 1 : 0.75);
         return (
           <div
             className="absolute top-0 bottom-0 right-0 flex items-center justify-center cursor-pointer"
@@ -915,8 +920,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 width: 40,
                 height: 40,
                 background: "#ebebeb",
-                opacity: addShown ? 1 : 0,
-                transform: `scale(${addShown ? 1 : 0.75})`,
+                opacity,
+                transform: `scale(${scale})`,
               }}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
@@ -1212,9 +1217,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       {...(isLink
                         ? { href: (s as any).href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
                         : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
-                      className={(isLink || interactive) ? "pill-button w-full text-left" : "w-full text-left"}
+                      className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : (isAction ? "#FAFAFA" : statPillBg),
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
                         background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
@@ -1242,10 +1247,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${isAction ? 8 : statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
                           {s.label}
                           {isLink ? (
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
+                            <svg className={isAction ? "pill-arrow" : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                             </svg>
                           ) : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
@@ -1625,9 +1630,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       {...(isLink
                         ? { href: (s as any).href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
                         : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
-                      className={(isLink || interactive) ? "pill-button w-full text-left" : "w-full text-left"}
+                      className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : (isAction ? "#FAFAFA" : statPillBg),
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
                         background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
@@ -1655,10 +1660,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${isAction ? 8 : statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
                           {s.label}
                           {isLink ? (
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
+                            <svg className={isAction ? "pill-arrow" : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                             </svg>
                           ) : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
@@ -2161,6 +2166,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               )}
             </div>
           )}
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Nav</p>
             <div><p className="text-[10px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
