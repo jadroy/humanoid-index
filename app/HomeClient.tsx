@@ -377,6 +377,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [pillLabelWeight, setPillLabelWeight] = useState(500);
   const [pillLabelUppercase, setPillLabelUppercase] = useState(false);
   const [pillLabelColor, setPillLabelColor] = useState("var(--c-ink-body)");
+  // Action-pill variant — "pill" matches the data rows; "text" reads as a footer text-link.
+  const [actionVariant, setActionVariant] = useState<"pill" | "text">("pill");
 
   // Compare-header split tuner
   const [showSplitTuner, setShowSplitTuner] = useState(false);
@@ -1094,6 +1096,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "purchase",
               show: true,
               href,
+              text,
               label: (
                 <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: hasUrl ? pillLabelColor : "#c0c0c0", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>{text}</p>
               ),
@@ -1180,6 +1183,28 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const isLink = !!((s as { href?: string }).href);
                   const interactive = !forcedOpen && !empty && !isLink;
                   const isAction = s.key === "purchase" && isLink;
+                  // Text-link variant: render the action as plain inline text + arrow,
+                  // sitting at the bottom of the column where the pill would otherwise live.
+                  if (isAction && actionVariant === "text") {
+                    const href = (s as any).href as string;
+                    const text = (s as { text?: string }).text ?? "";
+                    return (
+                      <a
+                        key={s.key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center"
+                        style={{ gap: 4, padding: `8px ${statPillPadX}px`, color: "#999", fontSize: 11, fontWeight: 450, textDecoration: "none", alignSelf: "flex-start" }}
+                      >
+                        {text}
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+                          <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
+                        </svg>
+                      </a>
+                    );
+                  }
                   const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
                   return (
                     <Tag
@@ -1571,6 +1596,28 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const isLink = !!((s as { href?: string }).href);
                   const interactive = !forcedOpen && !empty && !isLink;
                   const isAction = s.key === "purchase" && isLink;
+                  // Text-link variant: render the action as plain inline text + arrow,
+                  // sitting at the bottom of the column where the pill would otherwise live.
+                  if (isAction && actionVariant === "text") {
+                    const href = (s as any).href as string;
+                    const text = (s as { text?: string }).text ?? "";
+                    return (
+                      <a
+                        key={s.key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center"
+                        style={{ gap: 4, padding: `8px ${statPillPadX}px`, color: "#999", fontSize: 11, fontWeight: 450, textDecoration: "none", alignSelf: "flex-start" }}
+                      >
+                        {text}
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+                          <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
+                        </svg>
+                      </a>
+                    );
+                  }
                   const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
                   return (
                     <Tag
@@ -2204,6 +2251,21 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   </button>
                 );
               })()}
+            </div>
+            <div>
+              <label className="text-[10px] text-neutral-500 mb-1.5 block">Action variant</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(["pill", "text"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setActionVariant(v)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${actionVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
             </div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Pill label size <span className="tabular-nums text-neutral-400">{pillLabelFontSize}px</span></label><input type="range" min={9} max={18} value={pillLabelFontSize} onChange={(e) => setPillLabelFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
