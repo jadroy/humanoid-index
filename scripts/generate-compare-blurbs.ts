@@ -63,7 +63,7 @@ function robotSummary(h: (typeof humanoids)[0]) {
 
 // ─── EDIT THIS PROMPT TO TUNE STYLE ────────────────────────────────────────
 function buildPrompt(a: (typeof humanoids)[0], b: (typeof humanoids)[0]) {
-  return `Compare these two humanoid robots in exactly 2 sentences, max 12 words each. Write like you're explaining it to a curious teenager — simple, direct, no jargon. Each sentence says something specific about one robot. Don't summarize with "one does X, the other does Y." No words like: bipedal, articulation, prioritizes, locomotion, dexterity, paradigm.
+  return `Write 2 sentences comparing these two robots for a design-forward robotics index. Tone: casual and informative — like a knowledgeable friend giving you the quick version, not a narrator trying to land a punchline. Each sentence should say something real and specific about the comparison. No dramatic endings, no contrived contrasts, no poetic flourishes. Each sentence max 55 characters. No jargon.
 
 Robot A: ${robotSummary(a)}
 Robot B: ${robotSummary(b)}
@@ -79,7 +79,7 @@ async function generateBlurb(
 ): Promise<string> {
   const msg = await client.messages.create({
     model: "claude-opus-4-7",
-    max_tokens: 80,
+    max_tokens: 120,
     messages: [{ role: "user", content: buildPrompt(a, b) }],
   });
   const text = msg.content[0].type === "text" ? msg.content[0].text.trim() : "";

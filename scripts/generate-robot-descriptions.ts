@@ -32,15 +32,18 @@ const FORCE = args.includes("--force");
 
 const PREVIEW_IDS = ["legend-1", "26", "21", "1", "20", "25", "11", "8"];
 
-// ─── EDIT THIS PROMPT TO TUNE STYLE ────────────────────────────────────────
-function buildPrompt(h: (typeof humanoids)[0]) {
-  const stats = [
+// ─── EDIT THESE PROMPTS TO TUNE STYLE ──────────────────────────────────────
+function statsLine(h: (typeof humanoids)[0]) {
+  return [
     h.height ? `${h.height} cm` : null,
     h.weight ? `${h.weight} kg` : null,
     h.dof ? `${h.dof} DOF` : null,
     h.maxSpeed ? `${h.maxSpeed} m/s` : null,
   ].filter(Boolean).join(", ");
+}
 
+function buildShortPrompt(h: (typeof humanoids)[0]) {
+  const stats = statsLine(h);
   return `Write exactly 2 sentences about this robot for a design-forward robotics index. Apple copy style — confident and direct, not dramatic or poetic. Each sentence max 40 characters. Each sentence must be a complete, specific thought. Don't use brand names the reader won't recognise. No jargon, no metaphors.
 
 Robot: ${h.name} by ${h.manufacturer}${h.year ? `, ${h.year}` : ""}${h.status ? `, ${h.status}` : ""}.
@@ -49,19 +52,44 @@ ${h.description ? `Context: ${h.description}` : ""}
 
 Exactly 2 sentences only. No quotes, no explanation.`;
 }
+
+function buildLongPrompt(h: (typeof humanoids)[0], short: string) {
+  const stats = statsLine(h);
+  return `Write a short paragraph (3–4 sentences, ~280–360 characters total) about this robot for a design-forward robotics index. Apple copy style — confident, direct, never dramatic or poetic. Each sentence is a complete, specific thought. Avoid jargon, avoid metaphors, avoid brand names the reader won't recognise. Don't pile up stats — give context, intent, what makes the robot distinct, what stage it's at, who it's for.
+
+Robot: ${h.name} by ${h.manufacturer}${h.year ? `, ${h.year}` : ""}${h.status ? `, ${h.status}` : ""}.
+${stats ? `Stats: ${stats}.` : ""}
+${h.description ? `Context: ${h.description}` : ""}
+Short blurb already shown above this paragraph: "${short}"
+
+The paragraph should expand on the short blurb without repeating its exact phrases. Output the paragraph only — no quotes, no preamble, no headings.`;
+}
 // ────────────────────────────────────────────────────────────────────────────
 
-async function generateDescription(
-  client: Anthropic,
-  h: (typeof humanoids)[0]
-): Promise<string> {
+type Entry = { short: string; long: string };
+
+async function callOpus(client: Anthropic, prompt: string, maxTokens: number): Promise<string> {
   const msg = await client.messages.create({
     model: "claude-opus-4-7",
-    max_tokens: 70,
-    messages: [{ role: "user", content: buildPrompt(h) }],
+    max_tokens: maxTokens,
+    messages: [{ role: "user", content: prompt }],
   });
   const text = msg.content[0].type === "text" ? msg.content[0].text.trim() : "";
   return text.replace(/^["']|["']$/g, "");
+}
+
+async function generateShort(client: Anthropic, h: (typeof humanoids)[0]): Promise<string> {
+  return callOpus(client, buildShortPrompt(h), 70);
+}
+
+async function generateLong(client: Anthropic, h: (typeof humanoids)[0], short: string): Promise<string> {
+  return callOpus(client, buildLongPrompt(h, short), 220);
+}
+
+function normalizeEntry(raw: string | Entry | undefined): Entry {
+  if (!raw) return { short: "", long: "" };
+  if (typeof raw === "string") return { short: raw, long: "" };
+  return { short: raw.short ?? "", long: raw.long ?? "" };
 }
 
 async function run() {
@@ -76,43 +104,62 @@ async function run() {
     console.log("── PREVIEW MODE ──\n");
     const samples = PREVIEW_IDS.map(id => humanoids.find(h => h.id === id)).filter(Boolean) as typeof humanoids;
     for (const h of samples) {
-      const text = await generateDescription(client, h);
-      console.log(`${h.name} (${text.length}c):\n  ${text}\n`);
+      const short = await generateShort(client, h);
+      const long = await generateLong(client, h, short);
+      console.log(`${h.name}\n  short (${short.length}c): ${short}\n  long  (${long.length}c): ${long}\n`);
     }
     return;
   }
 
-  const existing: Record<string, string> = (!FORCE && fs.existsSync(OUT))
+  const raw: Record<string, string | Entry> = (!FORCE && fs.existsSync(OUT))
     ? JSON.parse(fs.readFileSync(OUT, "utf8"))
     : {};
 
-  const missing = humanoids.filter(h => !existing[h.id]);
+  const results: Record<string, Entry> = {};
+  for (const h of humanoids) {
+    results[h.id] = normalizeEntry(raw[h.id]);
+  }
 
-  if (missing.length === 0) {
+  const work = humanoids.flatMap(h => {
+    const tasks: Array<{ h: typeof humanoids[0]; field: "short" | "long" }> = [];
+    if (!results[h.id].short) tasks.push({ h, field: "short" });
+    if (!results[h.id].long) tasks.push({ h, field: "long" });
+    return tasks;
+  });
+
+  if (work.length === 0) {
     console.log("All descriptions already generated.");
     return;
   }
 
-  console.log(`Generating ${missing.length} descriptions…`);
-  const results = { ...existing };
+  console.log(`Generating ${work.length} fields (${work.filter(w => w.field === "short").length} short, ${work.filter(w => w.field === "long").length} long)…`);
   let done = 0;
 
-  for (let i = 0; i < missing.length; i += CONCURRENCY) {
-    const batch = missing.slice(i, i + CONCURRENCY);
-    await Promise.all(batch.map(async (h) => {
+  for (let i = 0; i < work.length; i += CONCURRENCY) {
+    const batch = work.slice(i, i + CONCURRENCY);
+    await Promise.all(batch.map(async ({ h, field }) => {
       try {
-        const text = await generateDescription(client, h);
-        results[h.id] = text;
+        if (field === "short") {
+          const text = await generateShort(client, h);
+          results[h.id].short = text;
+        } else {
+          // Long depends on short — make sure short exists first.
+          if (!results[h.id].short) {
+            results[h.id].short = await generateShort(client, h);
+          }
+          const text = await generateLong(client, h, results[h.id].short);
+          results[h.id].long = text;
+        }
         done++;
-        console.log(`[${done}/${missing.length}] ${h.name}: ${text}`);
+        console.log(`[${done}/${work.length}] ${h.name} · ${field}: ${results[h.id][field]}`);
       } catch (err) {
-        console.error(`  ✗ ${h.name}:`, err);
+        console.error(`  ✗ ${h.name} · ${field}:`, err);
       }
     }));
     fs.writeFileSync(OUT, JSON.stringify(results, null, 2));
   }
 
-  console.log(`\nDone. ${done} descriptions written to data/robot-descriptions.json`);
+  console.log(`\nDone. ${done} fields written to data/robot-descriptions.json`);
 }
 
 run().catch(console.error);
