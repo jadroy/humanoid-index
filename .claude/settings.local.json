@@ -74,7 +74,8 @@
       "Bash(grep *)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:vercel.com)",
-      "Bash(npm show *)"
+      "Bash(npm show *)",
+      "Bash(awk '/name:/{name=$0} /^    media:/{print name}' /Users/royjad/CODE/humanoid-index/data/humanoids.ts)"
     ],
     "deny": [],
     "ask": []

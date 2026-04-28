@@ -372,11 +372,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     });
   };
   const [pillLabelFontSize, setPillLabelFontSize] = useState(13);
-  const [pillLabelFont, setPillLabelFont] = useState<string>("var(--font-geist-mono)");
-  const [pillLabelLetterSpacing, setPillLabelLetterSpacing] = useState(0.06);
-  const [pillLabelWeight, setPillLabelWeight] = useState(700);
-  const [pillLabelUppercase, setPillLabelUppercase] = useState(true);
-  const [pillLabelColor, setPillLabelColor] = useState("#888");
+  const [pillLabelFont, setPillLabelFont] = useState<string>("var(--font-geist-sans)");
+  const [pillLabelLetterSpacing, setPillLabelLetterSpacing] = useState(-0.01);
+  const [pillLabelWeight, setPillLabelWeight] = useState(500);
+  const [pillLabelUppercase, setPillLabelUppercase] = useState(false);
+  const [pillLabelColor, setPillLabelColor] = useState("var(--c-ink-body)");
 
   // Compare-header split tuner
   const [showSplitTuner, setShowSplitTuner] = useState(false);
@@ -1089,7 +1089,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             const href = isSundayBeta ? "https://www.sunday.ai/beta-program" : (h.purchaseUrl || undefined);
             const hasCost = h.cost && h.cost !== "N/A";
             const hasUrl = !!href;
-            const text = isSundayBeta ? "Apply for Beta" : (hasCost ? h.cost! : (hasUrl ? "Buy" : "Not for sale"));
+            const text = isSundayBeta ? "Apply to the 2026 Beta" : (hasCost ? h.cost! : (hasUrl ? "Buy" : "Not for sale"));
             return {
               key: "purchase",
               show: true,
@@ -1179,47 +1179,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
                   const interactive = !forcedOpen && !empty && !isLink;
-                  // Split layout for the purchase action pill: label pill + adjacent icon circle.
-                  // Reads as a CTA without breaking the column's quiet rhythm — the gap does the work.
-                  if (s.key === "purchase" && isLink) {
-                    const href = (s as any).href as string;
-                    return (
-                      <a
-                        key={s.key}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-stretch w-full"
-                        style={{ gap: 4, textDecoration: "none" }}
-                      >
-                        <span
-                          className="pill-button flex-1 flex items-center"
-                          style={{
-                            ["--pill-bg" as string]: "#FAFAFA",
-                            borderRadius: statPillRadius,
-                            padding: `${statPillPadY}px ${statPillPadX}px`,
-                            color: pillLabelColor,
-                          }}
-                        >
-                          {s.label}
-                        </span>
-                        <span
-                          className="pill-button flex items-center justify-center flex-shrink-0"
-                          style={{
-                            ["--pill-bg" as string]: "#F2F2F2",
-                            aspectRatio: "1 / 1",
-                            borderRadius: 9999,
-                            color: pillLabelColor,
-                          }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.65 }}>
-                            <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
-                          </svg>
-                        </span>
-                      </a>
-                    );
-                  }
+                  const isAction = s.key === "purchase" && isLink;
                   const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
                   return (
                     <Tag
@@ -1229,7 +1189,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
                       className={(isLink || interactive) ? "pill-button w-full text-left" : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : (isAction ? "#FAFAFA" : statPillBg),
                         background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
@@ -1257,7 +1217,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${isAction ? 8 : statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
                           {s.label}
                           {isLink ? (
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
@@ -1610,47 +1570,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
                   const interactive = !forcedOpen && !empty && !isLink;
-                  // Split layout for the purchase action pill: label pill + adjacent icon circle.
-                  // Reads as a CTA without breaking the column's quiet rhythm — the gap does the work.
-                  if (s.key === "purchase" && isLink) {
-                    const href = (s as any).href as string;
-                    return (
-                      <a
-                        key={s.key}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-stretch w-full"
-                        style={{ gap: 4, textDecoration: "none" }}
-                      >
-                        <span
-                          className="pill-button flex-1 flex items-center"
-                          style={{
-                            ["--pill-bg" as string]: "#FAFAFA",
-                            borderRadius: statPillRadius,
-                            padding: `${statPillPadY}px ${statPillPadX}px`,
-                            color: pillLabelColor,
-                          }}
-                        >
-                          {s.label}
-                        </span>
-                        <span
-                          className="pill-button flex items-center justify-center flex-shrink-0"
-                          style={{
-                            ["--pill-bg" as string]: "#F2F2F2",
-                            aspectRatio: "1 / 1",
-                            borderRadius: 9999,
-                            color: pillLabelColor,
-                          }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.65 }}>
-                            <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
-                          </svg>
-                        </span>
-                      </a>
-                    );
-                  }
+                  const isAction = s.key === "purchase" && isLink;
                   const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
                   return (
                     <Tag
@@ -1660,7 +1580,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
                       className={(isLink || interactive) ? "pill-button w-full text-left" : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : (isAction ? "#FAFAFA" : statPillBg),
                         background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
@@ -1688,7 +1608,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${isAction ? 8 : statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
                           {s.label}
                           {isLink ? (
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
