@@ -378,6 +378,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [pillLabelWeight, setPillLabelWeight] = useState(500);
   const [pillLabelUppercase, setPillLabelUppercase] = useState(false);
   const [pillLabelColor, setPillLabelColor] = useState("var(--c-ink-body)");
+  const [labelLogoSize, setLabelLogoSize] = useState(22);
   // Action-pill variant — "pill" matches the data rows; "text" reads as a footer text-link.
   const [actionVariant, setActionVariant] = useState<"pill" | "text">("pill");
 
@@ -985,26 +986,26 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           ), detail: (() => {
             const isExpanded = expandedBlurbs.has(h.id);
             const canExpand = !!robotDesc.long;
-            const text = isExpanded && canExpand ? robotDesc.long : robotDesc.text;
+            const fullText = canExpand ? robotDesc.long : robotDesc.text;
+            const collapsedH = blurbFontSize * 1.625 * 2 + 4;
             return (
               <div key={h.id} className="info-fade-in">
-                <p
-                  className="leading-relaxed"
+                <div
                   style={{
-                    fontSize: blurbFontSize,
-                    color: "#999",
-                    fontWeight: 450,
-                    ...(isExpanded ? {} : {
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                      textOverflow: "clip",
-                    }),
+                    maxHeight: isExpanded ? 320 : collapsedH,
+                    overflow: "hidden",
+                    transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
+                    WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
+                    maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
                   }}
                 >
-                  {text}
-                </p>
+                  <p
+                    className="leading-relaxed"
+                    style={{ fontSize: blurbFontSize, color: "#999", fontWeight: 450 }}
+                  >
+                    {fullText}
+                  </p>
+                </div>
                 {canExpand && (
                   <button
                     type="button"
@@ -1013,14 +1014,33 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       fontSize: Math.max(10, blurbFontSize - 1),
                       color: "#bbb",
                       fontWeight: 450,
-                      marginTop: 4,
+                      marginTop: 6,
                       background: "none",
                       border: "none",
                       padding: 0,
                       cursor: "pointer",
                     }}
                   >
-                    {isExpanded ? "Less" : "More"}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)", transform: isExpanded ? "rotate(180deg)" : "none" }}>
+                        {isExpanded ? (
+                          <>
+                            <polyline points="2 4.5 4.5 4.5 4.5 2" />
+                            <polyline points="10 7.5 7.5 7.5 7.5 10" />
+                            <line x1="4.5" y1="4.5" x2="2" y2="2" />
+                            <line x1="7.5" y1="7.5" x2="10" y2="10" />
+                          </>
+                        ) : (
+                          <>
+                            <polyline points="7.5 2 10 2 10 4.5" />
+                            <polyline points="4.5 10 2 10 2 7.5" />
+                            <line x1="10" y1="2" x2="6.8" y2="5.2" />
+                            <line x1="2" y1="10" x2="5.2" y2="6.8" />
+                          </>
+                        )}
+                      </svg>
+                      {isExpanded ? "Collapse" : "Expand"}
+                    </span>
                   </button>
                 )}
               </div>
@@ -1123,16 +1143,27 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               {blurbFloat && robotDesc.text && (() => {
                 const isExpanded = expandedBlurbs.has(h.id);
                 const canExpand = !!robotDesc.long;
-                const text = isExpanded && canExpand ? robotDesc.long : robotDesc.text;
+                const fullText = canExpand ? robotDesc.long : robotDesc.text;
+                const collapsedH = blurbFontSize * 1.625 * 2 + 4;
                 return (
                   <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11, padding: `${statPillPadY}px ${statPillPadX}px 12px` }}>
-                    <p
-                      key={`blurb-float-${h.id}`}
-                      className="leading-relaxed info-fade-in"
-                      style={{ fontSize: blurbFontSize, color: "#999", fontWeight: 450 }}
+                    <div
+                      style={{
+                        maxHeight: isExpanded ? 320 : collapsedH,
+                        overflow: "hidden",
+                        transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
+                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
+                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
+                      }}
                     >
-                      {text}
-                    </p>
+                      <p
+                        key={`blurb-float-${h.id}`}
+                        className="leading-relaxed info-fade-in"
+                        style={{ fontSize: blurbFontSize, color: "#999", fontWeight: 450 }}
+                      >
+                        {fullText}
+                      </p>
+                    </div>
                     {canExpand && (
                       <button
                         type="button"
@@ -1141,14 +1172,33 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           fontSize: Math.max(10, blurbFontSize - 1),
                           color: "#bbb",
                           fontWeight: 450,
-                          marginTop: 4,
+                          marginTop: 6,
                           background: "none",
                           border: "none",
                           padding: 0,
                           cursor: "pointer",
                         }}
                       >
-                        {isExpanded ? "Less" : "More"}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)", transform: isExpanded ? "rotate(180deg)" : "none" }}>
+                            {isExpanded ? (
+                              <>
+                                <polyline points="2 4.5 4.5 4.5 4.5 2" />
+                                <polyline points="10 7.5 7.5 7.5 7.5 10" />
+                                <line x1="4.5" y1="4.5" x2="2" y2="2" />
+                                <line x1="7.5" y1="7.5" x2="10" y2="10" />
+                              </>
+                            ) : (
+                              <>
+                                <polyline points="7.5 2 10 2 10 4.5" />
+                                <polyline points="4.5 10 2 10 2 7.5" />
+                                <line x1="10" y1="2" x2="6.8" y2="5.2" />
+                                <line x1="2" y1="10" x2="5.2" y2="6.8" />
+                              </>
+                            )}
+                          </svg>
+                          {isExpanded ? "Collapse" : "Expand"}
+                        </span>
                       </button>
                     )}
                   </div>
@@ -1156,11 +1206,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               })()}
               {labelPosition === "stack" && (
                 <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
-                  <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+                  <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
                     {h.logoUrl ? (
-                      <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="32px" />
+                      <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${labelLogoSize}px`} />
                     ) : (
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
+                      <svg width={Math.round(labelLogoSize / 2)} height={Math.round(labelLogoSize / 2)} viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
                         <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
                         <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
                       </svg>
@@ -1219,10 +1269,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
                       className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : (isAction ? "#FFFFFF" : statPillBg),
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
                         background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
-                        boxShadow: isAction ? "inset 0 0 0 1px #ECECEC" : undefined,
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
                         overflow: "hidden",
@@ -1422,26 +1471,30 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               detail: (() => {
                 const isExpanded = expandedBlurbs.has(compareBlurbId);
                 const canExpand = !!compareBlurb.long;
-                const text = isExpanded && canExpand ? compareBlurb.long : compareBlurb.text;
+                const fullText = canExpand ? compareBlurb.long : compareBlurb.text;
+                const collapsedH = blurbFontSize * 1.625 * 2 + 4;
                 return (
                   <div key={compareBlurbId} className="info-fade-in">
-                    <p
-                      className="leading-relaxed"
+                    <div
                       style={{
-                        fontSize: blurbFontSize,
-                        color: compareBlurb.isGenerated ? "#999" : "#bbb",
-                        fontWeight: 450,
-                        ...(isExpanded ? {} : {
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                          textOverflow: "clip",
-                        }),
+                        maxHeight: isExpanded ? 320 : collapsedH,
+                        overflow: "hidden",
+                        transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
+                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
+                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
                       }}
                     >
-                      {text}
-                    </p>
+                      <p
+                        className="leading-relaxed"
+                        style={{
+                          fontSize: blurbFontSize,
+                          color: compareBlurb.isGenerated ? "#999" : "#bbb",
+                          fontWeight: 450,
+                        }}
+                      >
+                        {fullText}
+                      </p>
+                    </div>
                     {canExpand && (
                       <button
                         type="button"
@@ -1450,14 +1503,33 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           fontSize: Math.max(10, blurbFontSize - 1),
                           color: "#bbb",
                           fontWeight: 450,
-                          marginTop: 4,
+                          marginTop: 6,
                           background: "none",
                           border: "none",
                           padding: 0,
                           cursor: "pointer",
                         }}
                       >
-                        {isExpanded ? "Less" : "More"}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)", transform: isExpanded ? "rotate(180deg)" : "none" }}>
+                            {isExpanded ? (
+                              <>
+                                <polyline points="2 4.5 4.5 4.5 4.5 2" />
+                                <polyline points="10 7.5 7.5 7.5 7.5 10" />
+                                <line x1="4.5" y1="4.5" x2="2" y2="2" />
+                                <line x1="7.5" y1="7.5" x2="10" y2="10" />
+                              </>
+                            ) : (
+                              <>
+                                <polyline points="7.5 2 10 2 10 4.5" />
+                                <polyline points="4.5 10 2 10 2 7.5" />
+                                <line x1="10" y1="2" x2="6.8" y2="5.2" />
+                                <line x1="2" y1="10" x2="5.2" y2="6.8" />
+                              </>
+                            )}
+                          </svg>
+                          {isExpanded ? "Collapse" : "Expand"}
+                        </span>
                       </button>
                     )}
                   </div>
@@ -1538,27 +1610,31 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               {blurbFloat && (() => {
                 const isExpanded = expandedBlurbs.has(compareBlurbId);
                 const canExpand = !!compareBlurb.long;
-                const text = isExpanded && canExpand ? compareBlurb.long : compareBlurb.text;
+                const fullText = canExpand ? compareBlurb.long : compareBlurb.text;
+                const collapsedH = blurbFontSize * 1.625 * 2 + 4;
                 return (
                   <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11, padding: `${statPillPadY}px ${statPillPadX}px 12px` }}>
-                    <p
-                      key={`blurb-float-${compareBlurbId}`}
-                      className="leading-relaxed info-fade-in"
+                    <div
                       style={{
-                        fontSize: blurbFontSize,
-                        color: compareBlurb.isGenerated ? "#999" : "#bbb",
-                        fontWeight: 450,
-                        ...(isExpanded ? {} : {
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                          textOverflow: "clip",
-                        }),
+                        maxHeight: isExpanded ? 320 : collapsedH,
+                        overflow: "hidden",
+                        transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
+                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
+                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
                       }}
                     >
-                      {text}
-                    </p>
+                      <p
+                        key={`blurb-float-${compareBlurbId}`}
+                        className="leading-relaxed info-fade-in"
+                        style={{
+                          fontSize: blurbFontSize,
+                          color: compareBlurb.isGenerated ? "#999" : "#bbb",
+                          fontWeight: 450,
+                        }}
+                      >
+                        {fullText}
+                      </p>
+                    </div>
                     {canExpand && (
                       <button
                         type="button"
@@ -1567,14 +1643,33 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           fontSize: Math.max(10, blurbFontSize - 1),
                           color: "#bbb",
                           fontWeight: 450,
-                          marginTop: 4,
+                          marginTop: 6,
                           background: "none",
                           border: "none",
                           padding: 0,
                           cursor: "pointer",
                         }}
                       >
-                        {isExpanded ? "Less" : "More"}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)", transform: isExpanded ? "rotate(180deg)" : "none" }}>
+                            {isExpanded ? (
+                              <>
+                                <polyline points="2 4.5 4.5 4.5 4.5 2" />
+                                <polyline points="10 7.5 7.5 7.5 7.5 10" />
+                                <line x1="4.5" y1="4.5" x2="2" y2="2" />
+                                <line x1="7.5" y1="7.5" x2="10" y2="10" />
+                              </>
+                            ) : (
+                              <>
+                                <polyline points="7.5 2 10 2 10 4.5" />
+                                <polyline points="4.5 10 2 10 2 7.5" />
+                                <line x1="10" y1="2" x2="6.8" y2="5.2" />
+                                <line x1="2" y1="10" x2="5.2" y2="6.8" />
+                              </>
+                            )}
+                          </svg>
+                          {isExpanded ? "Collapse" : "Expand"}
+                        </span>
                       </button>
                     )}
                   </div>
@@ -1695,10 +1790,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
                       className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : (isAction ? "#FFFFFF" : statPillBg),
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
                         background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
-                        boxShadow: isAction ? "inset 0 0 0 1px #ECECEC" : undefined,
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
                         overflow: "hidden",
@@ -1804,8 +1898,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ) : mImages.length > 0 ? mImages.map((src, i) => (
                   <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: mh.imageFit === "cover" ? 0 : mh.imagePosition === "bottom" ? "24px 24px 0 24px" : 24 }}>
                     <div className="relative w-full h-full">
-                      {/* key={src} forces remount on humanoid swap — without it, next/image's reused <img> can paint one frame without object-fit during fast scroll, flashing the image at natural size cropped to the box. */}
-                      <Image key={src} src={src} alt={`${mh.name} ${i + 1}`} fill className={mh.imageFit === "cover" ? "object-cover" : "object-contain"} style={mh.imagePosition ? { objectPosition: mh.imagePosition } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
+                      <Image src={src} alt={`${mh.name} ${i + 1}`} fill className={mh.imageFit === "cover" ? "object-cover" : "object-contain"} style={mh.imagePosition ? { objectPosition: mh.imagePosition } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
                     </div>
                   </div>
                 )) : (
@@ -1881,11 +1974,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
           const cardLabel = (
             <div key={h.id} className="flex items-center gap-2 px-0.5 info-fade-in">
-              <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+              <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
                 {h.logoUrl ? (
-                  <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="22px" />
+                  <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${labelLogoSize}px`} />
                 ) : (
-                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
+                  <svg width={Math.round(labelLogoSize / 2)} height={Math.round(labelLogoSize / 2)} viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
                     <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
                     <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
                   </svg>
@@ -2382,6 +2475,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 style={{ background: pillLabelUppercase ? "#1a1a1a" : "#f0f0f0", color: pillLabelUppercase ? "#fff" : "#666", border: "none", cursor: "pointer" }}>
                 {pillLabelUppercase ? "ON" : "OFF"}
               </button>
+            </div>
+            <div>
+              <label className="text-[10px] text-neutral-500 flex justify-between">Label logo <span className="tabular-nums text-neutral-400">{labelLogoSize}px</span></label>
+              <input type="range" min={16} max={56} value={labelLogoSize} onChange={(e) => setLabelLogoSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
             </div>
             <div>
               <label className="text-[10px] text-neutral-500 flex justify-between">Blurb size <span className="tabular-nums text-neutral-400">{blurbFontSize}px</span></label>

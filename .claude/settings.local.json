@@ -79,7 +79,9 @@
       "Bash(sips -g pixelWidth -g pixelHeight /Users/royjad/CODE/humanoid-index/public/robots/TALOS.png)",
       "Bash(sips -g pixelWidth -g pixelHeight /Users/royjad/CODE/humanoid-index/public/robots/walker-x.png)",
       "Bash(git log *)",
-      "Bash(git update-index *)"
+      "Bash(git update-index *)",
+      "Bash(awk '{print length\\($0\\), $0}')",
+      "Bash(awk *)"
     ],
     "deny": [],
     "ask": []
