@@ -70,7 +70,11 @@
       "Bash(echo \"EXIT $?\")",
       "Bash(npx tsx *)",
       "Bash(awk NR>=249 && NR<=260 *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(grep *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:vercel.com)",
+      "Bash(npm show *)"
     ],
     "deny": [],
     "ask": []

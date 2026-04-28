@@ -363,11 +363,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
   const [blurbFontSize, setBlurbFontSize] = useState(12);
   const [blurbFloat, setBlurbFloat] = useState(false);
+  const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
+  const toggleBlurbExpand = (id: string) => {
+    setExpandedBlurbs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
   const [pillLabelFontSize, setPillLabelFontSize] = useState(13);
   const [pillLabelFont, setPillLabelFont] = useState<string>("var(--font-geist-mono)");
   const [pillLabelLetterSpacing, setPillLabelLetterSpacing] = useState(0.06);
   const [pillLabelWeight, setPillLabelWeight] = useState(700);
   const [pillLabelUppercase, setPillLabelUppercase] = useState(true);
+  const [pillLabelColor, setPillLabelColor] = useState("#888");
 
   // Compare-header split tuner
   const [showSplitTuner, setShowSplitTuner] = useState(false);
@@ -965,27 +974,53 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         const robotDesc = getRobotDescription(h);
         return [
           { key: "desc", show: !!robotDesc.text, label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Info</p>
-          ), detail: (
-            <p
-              key={h.id}
-              className="leading-relaxed info-fade-in"
-              style={{
-                fontSize: blurbFontSize,
-                color: "#999",
-                fontWeight: 450,
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                textOverflow: "clip",
-              }}
-            >
-              {robotDesc.text}
-            </p>
-          ) },
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Info</p>
+          ), detail: (() => {
+            const isExpanded = expandedBlurbs.has(h.id);
+            const canExpand = !!robotDesc.long;
+            const text = isExpanded && canExpand ? robotDesc.long : robotDesc.text;
+            return (
+              <div key={h.id} className="info-fade-in">
+                <p
+                  className="leading-relaxed"
+                  style={{
+                    fontSize: blurbFontSize,
+                    color: "#999",
+                    fontWeight: 450,
+                    ...(isExpanded ? {} : {
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      textOverflow: "clip",
+                    }),
+                  }}
+                >
+                  {text}
+                </p>
+                {canExpand && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); toggleBlurbExpand(h.id); }}
+                    style={{
+                      fontSize: Math.max(10, blurbFontSize - 1),
+                      color: "#bbb",
+                      fontWeight: 450,
+                      marginTop: 4,
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {isExpanded ? "Less" : "More"}
+                  </button>
+                )}
+              </div>
+            );
+          })() },
           { key: "overview", show: !!(h.height || h.weight), label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Overview</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Overview</p>
           ), detail: (
             <div>
               {h.height ? barViz("Height", `${h.height} cm`, heightPct, 0.05) : null}
@@ -993,7 +1028,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "dof", show: !!h.dof, label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Degrees of Freedom</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Degrees of Freedom</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -1013,7 +1048,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "speed", show: !!h.maxSpeed, label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Speed</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Speed</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
@@ -1031,7 +1066,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           ) },
           { key: "status", show: !!h.status, label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Status</p>
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Status</p>
           ), detail: (
             <div>
               <div className="flex items-center gap-2.5" style={{ marginTop: 4 }}>
@@ -1047,20 +1082,24 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           // Purchase — collapsed by default so price/buy info opts in like every
           // other pill, keeping the initial column quiet. Only added when buy
           // layout is "card" (the "chip" variant lives on the image itself).
-          ...(buyLayout === "card" ? [{
-            key: "purchase",
-            show: true,
-            href: h.purchaseUrl || undefined,
-            label: (() => {
-              const hasCost = h.cost && h.cost !== "N/A";
-              const hasUrl = !!h.purchaseUrl;
-              const text = hasCost ? h.cost! : (hasUrl ? "Buy" : "Not for sale");
-              return (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: hasUrl ? "#888" : "#c0c0c0", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>{text}</p>
-              );
-            })(),
-            detail: null as React.ReactNode,
-          }] : []),
+          ...(buyLayout === "card" ? [(() => {
+            // Sunday Memo isn't for sale — the founding-family beta is the only way in,
+            // so the cost pill becomes a link to their beta program instead of a price.
+            const isSundayBeta = h.manufacturer === "Sunday Robotics";
+            const href = isSundayBeta ? "https://www.sunday.ai/beta-program" : (h.purchaseUrl || undefined);
+            const hasCost = h.cost && h.cost !== "N/A";
+            const hasUrl = !!href;
+            const text = isSundayBeta ? "Apply for Beta" : (hasCost ? h.cost! : (hasUrl ? "Buy" : "Not for sale"));
+            return {
+              key: "purchase",
+              show: true,
+              href,
+              label: (
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: hasUrl ? pillLabelColor : "#c0c0c0", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>{text}</p>
+              ),
+              detail: null as React.ReactNode,
+            };
+          })()] : []),
         ];
         };
 
@@ -1073,17 +1112,40 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           const robotDesc = getRobotDescription(h);
           return (
             <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
-              {blurbFloat && robotDesc.text && (
-                <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11, padding: `${statPillPadY}px ${statPillPadX}px 12px` }}>
-                  <p
-                    key={`blurb-float-${h.id}`}
-                    className="leading-relaxed info-fade-in"
-                    style={{ fontSize: blurbFontSize, color: "#999", fontWeight: 450 }}
-                  >
-                    {robotDesc.text}
-                  </p>
-                </div>
-              )}
+              {blurbFloat && robotDesc.text && (() => {
+                const isExpanded = expandedBlurbs.has(h.id);
+                const canExpand = !!robotDesc.long;
+                const text = isExpanded && canExpand ? robotDesc.long : robotDesc.text;
+                return (
+                  <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11, padding: `${statPillPadY}px ${statPillPadX}px 12px` }}>
+                    <p
+                      key={`blurb-float-${h.id}`}
+                      className="leading-relaxed info-fade-in"
+                      style={{ fontSize: blurbFontSize, color: "#999", fontWeight: 450 }}
+                    >
+                      {text}
+                    </p>
+                    {canExpand && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleBlurbExpand(h.id); }}
+                        style={{
+                          fontSize: Math.max(10, blurbFontSize - 1),
+                          color: "#bbb",
+                          fontWeight: 450,
+                          marginTop: 4,
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {isExpanded ? "Less" : "More"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
               {labelPosition === "stack" && (
                 <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
                   <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
@@ -1117,6 +1179,47 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
                   const interactive = !forcedOpen && !empty && !isLink;
+                  // Split layout for the purchase action pill: label pill + adjacent icon circle.
+                  // Reads as a CTA without breaking the column's quiet rhythm — the gap does the work.
+                  if (s.key === "purchase" && isLink) {
+                    const href = (s as any).href as string;
+                    return (
+                      <a
+                        key={s.key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-stretch w-full"
+                        style={{ gap: 4, textDecoration: "none" }}
+                      >
+                        <span
+                          className="pill-button flex-1 flex items-center"
+                          style={{
+                            ["--pill-bg" as string]: "#FAFAFA",
+                            borderRadius: statPillRadius,
+                            padding: `${statPillPadY}px ${statPillPadX}px`,
+                            color: pillLabelColor,
+                          }}
+                        >
+                          {s.label}
+                        </span>
+                        <span
+                          className="pill-button flex items-center justify-center flex-shrink-0"
+                          style={{
+                            ["--pill-bg" as string]: "#F2F2F2",
+                            aspectRatio: "1 / 1",
+                            borderRadius: 9999,
+                            color: pillLabelColor,
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.65 }}>
+                            <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
+                          </svg>
+                        </span>
+                      </a>
+                    );
+                  }
                   const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
                   return (
                     <Tag
@@ -1154,10 +1257,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888" }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
                           {s.label}
                           {isLink ? (
-                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}>
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                             </svg>
                           ) : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
@@ -1342,7 +1445,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "overview",
               show: !!(heightL || weightL || heightR || weightR),
               label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Overview</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Overview</p>
               ),
               detail: (
                 <div>
@@ -1355,7 +1458,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "dof",
               show: !!(dofL || dofR),
               label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Degrees of Freedom</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Degrees of Freedom</p>
               ),
               detail: compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null, dofL > dofR && dofL > 0, dofR > dofL && dofR > 0),
             },
@@ -1363,7 +1466,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "speed",
               show: !!(speedL || speedR),
               label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Speed</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Speed</p>
               ),
               detail: compareRow("Speed", speedL ? `${speedL} m/s` : null, speedR ? `${speedR} m/s` : null, speedL > speedR && speedL > 0, speedR > speedL && speedR > 0),
             },
@@ -1371,7 +1474,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "status",
               show: !!(hL.status || hR.status),
               label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Status</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Status</p>
               ),
               detail: (
                 <div className="flex items-center gap-3" style={{ marginTop: 6 }}>
@@ -1507,6 +1610,47 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
                   const interactive = !forcedOpen && !empty && !isLink;
+                  // Split layout for the purchase action pill: label pill + adjacent icon circle.
+                  // Reads as a CTA without breaking the column's quiet rhythm — the gap does the work.
+                  if (s.key === "purchase" && isLink) {
+                    const href = (s as any).href as string;
+                    return (
+                      <a
+                        key={s.key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-stretch w-full"
+                        style={{ gap: 4, textDecoration: "none" }}
+                      >
+                        <span
+                          className="pill-button flex-1 flex items-center"
+                          style={{
+                            ["--pill-bg" as string]: "#FAFAFA",
+                            borderRadius: statPillRadius,
+                            padding: `${statPillPadY}px ${statPillPadX}px`,
+                            color: pillLabelColor,
+                          }}
+                        >
+                          {s.label}
+                        </span>
+                        <span
+                          className="pill-button flex items-center justify-center flex-shrink-0"
+                          style={{
+                            ["--pill-bg" as string]: "#F2F2F2",
+                            aspectRatio: "1 / 1",
+                            borderRadius: 9999,
+                            color: pillLabelColor,
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.65 }}>
+                            <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
+                          </svg>
+                        </span>
+                      </a>
+                    );
+                  }
                   const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
                   return (
                     <Tag
@@ -1544,10 +1688,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: "#888" }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
                           {s.label}
                           {isLink ? (
-                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}>
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                             </svg>
                           ) : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
@@ -2100,6 +2244,47 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ))}
               </div>
             </div>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-neutral-500">Legacy labels</label>
+              {(() => {
+                // Pre-mono-uppercase look: Geist Sans, weight 500, tight negative tracking, mixed case.
+                // Strict check across every value so dragging any slider/control flips this back to OFF —
+                // otherwise the toggle would lie about being in the preset state.
+                const isLegacy =
+                  pillLabelFont === "var(--font-geist-sans)" &&
+                  pillLabelFontSize === 13 &&
+                  Math.abs(pillLabelLetterSpacing - (-0.01)) < 0.0005 &&
+                  pillLabelWeight === 500 &&
+                  !pillLabelUppercase &&
+                  pillLabelColor === "var(--c-ink-body)";
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isLegacy) {
+                        setPillLabelFont("var(--font-geist-mono)");
+                        setPillLabelFontSize(13);
+                        setPillLabelLetterSpacing(0.06);
+                        setPillLabelWeight(700);
+                        setPillLabelUppercase(true);
+                        setPillLabelColor("#888");
+                      } else {
+                        setPillLabelFont("var(--font-geist-sans)");
+                        setPillLabelFontSize(13);
+                        setPillLabelLetterSpacing(-0.01);
+                        setPillLabelWeight(500);
+                        setPillLabelUppercase(false);
+                        setPillLabelColor("var(--c-ink-body)");
+                      }
+                    }}
+                    className="text-[10px] px-2 py-1 rounded transition-colors"
+                    style={{ background: isLegacy ? "#1a1a1a" : "#f0f0f0", color: isLegacy ? "#fff" : "#666", border: "none", cursor: "pointer" }}
+                  >
+                    {isLegacy ? "ON" : "OFF"}
+                  </button>
+                );
+              })()}
+            </div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Pill label size <span className="tabular-nums text-neutral-400">{pillLabelFontSize}px</span></label><input type="range" min={9} max={18} value={pillLabelFontSize} onChange={(e) => setPillLabelFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
               <label className="text-[10px] text-neutral-500">Pill label font</label>
@@ -2124,7 +2309,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ))}
               </div>
             </div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Letter spacing <span className="tabular-nums text-neutral-400">{pillLabelLetterSpacing.toFixed(2)}em</span></label><input type="range" min={0} max={0.3} step={0.01} value={pillLabelLetterSpacing} onChange={(e) => setPillLabelLetterSpacing(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Letter spacing <span className="tabular-nums text-neutral-400">{pillLabelLetterSpacing.toFixed(2)}em</span></label><input type="range" min={-0.05} max={0.3} step={0.01} value={pillLabelLetterSpacing} onChange={(e) => setPillLabelLetterSpacing(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
               <label className="text-[10px] text-neutral-500 flex justify-between">Weight</label>
               <div className="flex gap-1 mt-1.5 flex-wrap">

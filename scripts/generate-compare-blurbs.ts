@@ -63,12 +63,12 @@ function robotSummary(h: (typeof humanoids)[0]) {
 
 // ─── EDIT THIS PROMPT TO TUNE STYLE ────────────────────────────────────────
 function buildPrompt(a: (typeof humanoids)[0], b: (typeof humanoids)[0]) {
-  return `Write 2 sentences comparing these two robots for a design-forward robotics index. Tone: casual and informative — like a knowledgeable friend giving you the quick version, not a narrator trying to land a punchline. Each sentence should say something real and specific about the comparison. No dramatic endings, no contrived contrasts, no poetic flourishes. Each sentence max 55 characters. No jargon.
+  return `Write ONE sentence comparing these two robots for a design-forward robotics index. Tone: casual and informative — like a knowledgeable friend giving you the quick version. The sentence must directly contrast the two robots using a connector like "while", "but", "where", or "vs" — not two parallel facts side by side. Pick the single most interesting real difference (mechanism, purpose, era, capability — whatever stands out). No dramatic flourishes, no contrived endings, no jargon. Target 60–80 characters total.
 
 Robot A: ${robotSummary(a)}
 Robot B: ${robotSummary(b)}
 
-Reply with the 2 sentences only. No quotes, no explanation.`;
+Reply with the sentence only. No quotes, no explanation.`;
 }
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -95,14 +95,21 @@ async function run() {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   if (PREVIEW) {
-    console.log("── PREVIEW MODE (8 sample pairs) ──\n");
+    console.log("── PREVIEW MODE (8 sample pairs, writing to JSON) ──\n");
+    const existing: Record<string, string> = fs.existsSync(OUT)
+      ? JSON.parse(fs.readFileSync(OUT, "utf8"))
+      : {};
     for (const [idA, idB] of PREVIEW_PAIRS) {
       const a = humanoids.find(h => h.id === idA);
       const b = humanoids.find(h => h.id === idB);
       if (!a || !b) { console.log(`skipping unknown pair: ${idA} / ${idB}`); continue; }
       const blurb = await generateBlurb(client, a, b);
+      const key = pairKey(a.id, b.id);
+      existing[key] = blurb;
       console.log(`${a.name} × ${b.name} (${blurb.length}c):\n  ${blurb}\n`);
     }
+    fs.writeFileSync(OUT, JSON.stringify(existing, null, 2));
+    console.log("Written to data/compare-blurbs.json");
     return;
   }
 
