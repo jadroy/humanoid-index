@@ -404,7 +404,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
-  const [bubbleVariant, setBubbleVariant] = useState(2);
+  const [bubbleVariant, setBubbleVariant] = useState(21);
   const bubbleVariants: { name: string; bg: string; shadow: string; shadowHover: string; backdropFilter?: string }[] = [
     { name: "Crisp white", bg: "#FFFFFF", shadow: "0 0 0 1px rgba(0,0,0,0.06)", shadowHover: "0 0 0 1px rgba(0,0,0,0.10)" },
     { name: "Soft float", bg: "#FFFFFF", shadow: "0 1px 4px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.035)", shadowHover: "0 2px 14px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05)" },
@@ -426,6 +426,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     { name: "Bubble radial", bg: "radial-gradient(ellipse at center, #FFFFFF 0%, #F4F4F4 100%)", shadow: "0 2px 8px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04)", shadowHover: "0 3px 14px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06)" },
     { name: "Warm white", bg: "#FFFCF8", shadow: "0 1px 4px rgba(120,80,40,0.05), 0 0 0 1px rgba(120,80,40,0.04)", shadowHover: "0 2px 12px rgba(120,80,40,0.08), 0 0 0 1px rgba(120,80,40,0.06)" },
     { name: "Cool white", bg: "#F8FBFF", shadow: "0 1px 4px rgba(40,80,120,0.05), 0 0 0 1px rgba(40,80,120,0.04)", shadowHover: "0 2px 12px rgba(40,80,120,0.08), 0 0 0 1px rgba(40,80,120,0.06)" },
+    { name: "iMessage stats", bg: "#FBFBFB", shadow: "0 1px 3px rgba(0,0,0,0.05), 0 0 0 0.5px rgba(0,0,0,0.025)", shadowHover: "0 2px 8px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.04)" },
+    { name: "Frosted glass", bg: "rgba(255,255,255,0.55)", shadow: "0 1px 4px rgba(0,0,0,0.05), 0 0 0 1px rgba(255,255,255,0.6), inset 0 1px 0 rgba(255,255,255,0.7)", shadowHover: "0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.8), inset 0 1px 0 rgba(255,255,255,0.85)", backdropFilter: "blur(12px) saturate(180%)" },
+    { name: "Lens", bg: "radial-gradient(ellipse 120% 100% at 50% -20%, #FFFFFF 0%, #F6F7F9 100%)", shadow: "0 2px 8px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9)", shadowHover: "0 4px 16px rgba(0,0,0,0.09), 0 0 0 0.5px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,1)" },
+    { name: "Layered glass", bg: "linear-gradient(180deg, #FFFFFF 0%, #F7F8FB 100%)", shadow: "0 4px 14px rgba(15,20,40,0.06), 0 1px 3px rgba(15,20,40,0.04), 0 0 0 0.5px rgba(15,20,40,0.05), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(15,20,40,0.04)", shadowHover: "0 6px 22px rgba(15,20,40,0.10), 0 2px 5px rgba(15,20,40,0.06), 0 0 0 0.5px rgba(15,20,40,0.07), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(15,20,40,0.06)" },
+    { name: "Glass dome", bg: "radial-gradient(ellipse 140% 90% at 50% -30%, #FFFFFF 0%, #F2F4F8 70%, #ECEFF3 100%)", shadow: "0 6px 18px rgba(20,30,60,0.08), 0 2px 4px rgba(20,30,60,0.05), 0 0 0 0.5px rgba(20,30,60,0.06), inset 0 1.5px 0 rgba(255,255,255,1), inset 0 -1.5px 0 rgba(20,30,60,0.05)", shadowHover: "0 10px 28px rgba(20,30,60,0.12), 0 3px 8px rgba(20,30,60,0.07), 0 0 0 0.5px rgba(20,30,60,0.08), inset 0 1.5px 0 rgba(255,255,255,1), inset 0 -1.5px 0 rgba(20,30,60,0.07)" },
+    { name: "Convex bubble", bg: "radial-gradient(ellipse 110% 140% at 50% -40%, rgba(255,255,255,1) 0%, rgba(244,247,251,0.95) 55%, rgba(228,234,243,1) 100%)", shadow: "0 8px 24px rgba(15,25,50,0.09), 0 2px 6px rgba(15,25,50,0.05), 0 0 0 0.5px rgba(15,25,50,0.06), inset 0 2px 0 rgba(255,255,255,1), inset 0 -2px 4px rgba(15,25,50,0.04)", shadowHover: "0 14px 36px rgba(15,25,50,0.13), 0 4px 10px rgba(15,25,50,0.08), 0 0 0 0.5px rgba(15,25,50,0.09), inset 0 2px 0 rgba(255,255,255,1), inset 0 -2px 5px rgba(15,25,50,0.06)" },
+    { name: "Soft pearl", bg: "linear-gradient(135deg, #FFFFFF 0%, #FAF7FF 45%, #F2F7FF 100%)", shadow: "0 4px 14px rgba(80,60,180,0.07), 0 1px 3px rgba(80,60,180,0.05), 0 0 0 0.5px rgba(80,60,180,0.06), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(80,60,180,0.04)", shadowHover: "0 6px 22px rgba(80,60,180,0.10), 0 2px 5px rgba(80,60,180,0.07), 0 0 0 0.5px rgba(80,60,180,0.09), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(80,60,180,0.06)" },
+    { name: "Floating orb", bg: "radial-gradient(ellipse 80% 110% at 30% 15%, #FFFFFF 0%, #F4F7FB 70%, #EAEFF6 100%)", shadow: "0 14px 32px rgba(20,30,60,0.08), 0 6px 12px rgba(20,30,60,0.05), 0 1px 2px rgba(20,30,60,0.04), 0 0 0 0.5px rgba(20,30,60,0.05), inset 0 1.5px 0 rgba(255,255,255,1)", shadowHover: "0 22px 48px rgba(20,30,60,0.12), 0 10px 20px rgba(20,30,60,0.08), 0 2px 4px rgba(20,30,60,0.05), 0 0 0 0.5px rgba(20,30,60,0.07), inset 0 1.5px 0 rgba(255,255,255,1)" },
+    { name: "Crystalline", bg: "linear-gradient(165deg, #FFFFFF 0%, #F4F6FA 50%, #FFFFFF 100%)", shadow: "0 5px 16px rgba(30,40,80,0.07), 0 1px 3px rgba(30,40,80,0.04), 0 0 0 0.5px rgba(30,40,80,0.07), inset 0 1.5px 0.5px rgba(255,255,255,1), inset 0 -1.5px 0.5px rgba(30,40,80,0.05), inset 1px 0 0 rgba(255,255,255,0.5), inset -1px 0 0 rgba(30,40,80,0.03)", shadowHover: "0 8px 26px rgba(30,40,80,0.10), 0 2px 5px rgba(30,40,80,0.06), 0 0 0 0.5px rgba(30,40,80,0.10), inset 0 1.5px 0.5px rgba(255,255,255,1), inset 0 -1.5px 0.5px rgba(30,40,80,0.07), inset 1px 0 0 rgba(255,255,255,0.6), inset -1px 0 0 rgba(30,40,80,0.04)" },
   ];
   const bubble = bubbleVariants[bubbleVariant - 1];
   const toggleBlurbExpand = (id: string) => {
@@ -2730,11 +2739,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div>
               <label className="text-[10px] text-neutral-500 flex justify-between">Blurb size <span className="tabular-nums text-neutral-400">{blurbFontSize}px</span></label>
               <input type="range" min={9} max={16} value={blurbFontSize} onChange={(e) => setBlurbFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
-              <label className="text-[10px] text-neutral-500 flex justify-between mt-2">Bubble variant <span className="tabular-nums text-neutral-400">{bubbleVariant}/20 · {bubbleVariants[bubbleVariant - 1].name}</span></label>
-              <input type="range" min={1} max={20} value={bubbleVariant} onChange={(e) => setBubbleVariant(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+              <label className="text-[10px] text-neutral-500 flex justify-between mt-2">Bubble variant <span className="tabular-nums text-neutral-400">{bubbleVariant}/{bubbleVariants.length} · {bubbleVariants[bubbleVariant - 1].name}</span></label>
+              <input type="range" min={1} max={bubbleVariants.length} value={bubbleVariant} onChange={(e) => setBubbleVariant(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
               <div className="flex gap-1 mt-1">
                 <button type="button" onClick={() => setBubbleVariant((v) => Math.max(1, v - 1))} className="text-[10px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>← prev</button>
-                <button type="button" onClick={() => setBubbleVariant((v) => Math.min(20, v + 1))} className="text-[10px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>next →</button>
+                <button type="button" onClick={() => setBubbleVariant((v) => Math.min(bubbleVariants.length, v + 1))} className="text-[10px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>next →</button>
               </div>
               <div className="mt-2">
                 <button
