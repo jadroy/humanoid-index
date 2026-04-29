@@ -404,7 +404,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
-  const [bubbleVariant, setBubbleVariant] = useState(21);
+  const [bubbleVariant, setBubbleVariant] = useState(24);
   const bubbleVariants: { name: string; bg: string; shadow: string; shadowHover: string; backdropFilter?: string }[] = [
     { name: "Crisp white", bg: "#FFFFFF", shadow: "0 0 0 1px rgba(0,0,0,0.06)", shadowHover: "0 0 0 1px rgba(0,0,0,0.10)" },
     { name: "Soft float", bg: "#FFFFFF", shadow: "0 1px 4px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.035)", shadowHover: "0 2px 14px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05)" },
@@ -464,7 +464,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [splitLiftY, setSplitLiftY] = useState(4);
   const [splitShadowOp, setSplitShadowOp] = useState(0.12);
   const [splitDur, setSplitDur] = useState(320); // ms
-  const [labelPosition, setLabelPosition] = useState<"stack" | "below" | "above">("below");
+  const [labelPosition, setLabelPosition] = useState<"stack" | "below" | "above">("above");
   const [statsAlign, setStatsAlign] = useState<"top" | "center" | "bottom">("bottom");
 
   // Adaptive arc positioning
@@ -1367,7 +1367,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 );
               })()}
               {labelPosition === "stack" && (
-                <div className="flex items-center gap-2 px-0.5 pointer-events-auto" style={{ flexShrink: 0, position: "relative", zIndex: 11 }}>
+                <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
                   <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
                     {h.logoUrl ? (
                       <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${labelLogoSize}px`} />
@@ -1379,8 +1379,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
-                    <p className="text-[9px] tracking-widest uppercase font-medium truncate" style={{ color: "#a3a3a3", letterSpacing: "0.06em" }}>
+                    <p className="text-[15px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
+                    <p className="text-[10px] tracking-widest uppercase font-medium mt-0.5 truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
                       {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
                     </p>
                   </div>
@@ -1937,10 +1937,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               {labelPosition === "stack" && (() => {
                 const active = splitHover;
                 const sDur = `${splitDur}ms`;
+                const unifiedL = `${cardRadius}px 0 0 ${cardRadius}px`;
+                const unifiedR = `0 ${cardRadius}px ${cardRadius}px 0`;
+                const roundedAll: string | number = cardRadius;
                 let containerGap = 0;
+                let leftRadius: string | number = active ? roundedAll : unifiedL;
+                let rightRadius: string | number = active ? roundedAll : unifiedR;
                 let leftTransform = "translateX(0)";
                 let rightTransform = "translateX(0)";
-                const transformOrigin = "center center";
+                let leftShadow = "none";
+                let rightShadow = "none";
+                let transformOrigin = "center center";
 
                 if (splitVariant === "morph") {
                   containerGap = active ? splitAmount : 0;
@@ -1951,15 +1958,21 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   containerGap = active ? splitAmount : 0;
                   leftTransform = active ? `translateY(-${splitLiftY}px)` : "translateY(0)";
                   rightTransform = active ? `translateY(-${splitLiftY}px)` : "translateY(0)";
+                  const blur = Math.max(6, splitLiftY * 3);
+                  leftShadow = active ? `0 ${splitLiftY + 2}px ${blur}px rgba(0,0,0,${splitShadowOp})` : "none";
+                  rightShadow = leftShadow;
                 } else if (splitVariant === "shrink") {
                   containerGap = active ? splitAmount : 0;
                   leftTransform = active ? `scale(${splitScale})` : "scale(1)";
                   rightTransform = active ? `scale(${splitScale})` : "scale(1)";
+                  transformOrigin = "center center";
                 } else if (splitVariant === "swap") {
                   containerGap = active ? splitAmount : 0;
                   leftTransform = active ? `translateX(${splitAmount / 2}px)` : "translateX(0)";
                   rightTransform = active ? `translateX(-${splitAmount / 2}px)` : "translateX(0)";
                 }
+
+                const pillTransition = `border-radius ${sDur} ${ease}, transform ${sDur} ${ease}, box-shadow ${sDur} ${ease}`;
 
                 return (
                   <div className="flex items-center pointer-events-auto" style={{
@@ -1969,17 +1982,25 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     gap: containerGap,
                     transition: `gap ${sDur} ${ease}`,
                   }}>
-                    <div className="flex-1 min-w-0 flex items-center px-0.5" style={{
+                    <div className="flex-1 min-w-0 flex items-center" style={{
+                      background: "#FAFAFA",
+                      padding: "10px 12px",
+                      borderRadius: leftRadius,
                       transform: leftTransform,
+                      boxShadow: leftShadow,
                       transformOrigin,
-                      transition: `transform ${sDur} ${ease}`,
+                      transition: pillTransition,
                     }}>
                       {headerCell(hL)}
                     </div>
-                    <div className="flex-1 min-w-0 flex items-center px-0.5" style={{
+                    <div className="flex-1 min-w-0 flex items-center" style={{
+                      background: "#FAFAFA",
+                      padding: "10px 12px",
+                      borderRadius: rightRadius,
                       transform: rightTransform,
+                      boxShadow: rightShadow,
                       transformOrigin,
-                      transition: `transform ${sDur} ${ease}`,
+                      transition: pillTransition,
                     }}>
                       {headerCell(hR)}
                     </div>
