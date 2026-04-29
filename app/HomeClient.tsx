@@ -1055,7 +1055,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         const robotDesc = getRobotDescription(h);
         return [
-          { key: "desc", show: !!robotDesc.text, label: (
+          { key: "desc", show: !!robotDesc.text, bubble: !!robotDesc.long, label: (
             <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Info</p>
           ), detail: (() => {
             const isExpanded = expandedBlurbs.has(h.id);
@@ -1358,7 +1358,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 );
               })()}
               {labelPosition === "stack" && (
-                <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
+                <div className="flex items-center gap-2 px-0.5 pointer-events-auto" style={{ flexShrink: 0, position: "relative", zIndex: 11 }}>
                   <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
                     {h.logoUrl ? (
                       <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${labelLogoSize}px`} />
@@ -1370,8 +1370,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
-                    <p className="text-[10px] tracking-widest uppercase font-medium mt-0.5 truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                    <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
+                    <p className="text-[9px] tracking-widest uppercase font-medium truncate" style={{ color: "#a3a3a3", letterSpacing: "0.06em" }}>
                       {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
                     </p>
                   </div>
@@ -1471,7 +1471,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         </div>
                       )}
                       {forcedOpen ? (
-                        <div style={{ padding: s.key === "desc" ? 0 : (hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0"), position: "relative" }}>{s.detail}</div>
+                        <div style={{ padding: s.key === "desc" ? ((s as { bubble?: boolean }).bubble ? 0 : `${statPillPadY}px 0`) : (hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0"), position: "relative" }}>{s.detail}</div>
                       ) : (
                         <div style={{
                           display: "grid",
@@ -1637,6 +1637,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             {
               key: "desc",
               show: true,
+              bubble: !!compareBlurb.long,
               label: null,
               detail: (() => {
                 const isExpanded = expandedBlurbs.has(compareBlurbId);
@@ -1927,17 +1928,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               {labelPosition === "stack" && (() => {
                 const active = splitHover;
                 const sDur = `${splitDur}ms`;
-                const unifiedL = `${cardRadius}px 0 0 ${cardRadius}px`;
-                const unifiedR = `0 ${cardRadius}px ${cardRadius}px 0`;
-                const roundedAll: string | number = cardRadius;
                 let containerGap = 0;
-                let leftRadius: string | number = active ? roundedAll : unifiedL;
-                let rightRadius: string | number = active ? roundedAll : unifiedR;
                 let leftTransform = "translateX(0)";
                 let rightTransform = "translateX(0)";
-                let leftShadow = "none";
-                let rightShadow = "none";
-                let transformOrigin = "center center";
+                const transformOrigin = "center center";
 
                 if (splitVariant === "morph") {
                   containerGap = active ? splitAmount : 0;
@@ -1948,21 +1942,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   containerGap = active ? splitAmount : 0;
                   leftTransform = active ? `translateY(-${splitLiftY}px)` : "translateY(0)";
                   rightTransform = active ? `translateY(-${splitLiftY}px)` : "translateY(0)";
-                  const blur = Math.max(6, splitLiftY * 3);
-                  leftShadow = active ? `0 ${splitLiftY + 2}px ${blur}px rgba(0,0,0,${splitShadowOp})` : "none";
-                  rightShadow = leftShadow;
                 } else if (splitVariant === "shrink") {
                   containerGap = active ? splitAmount : 0;
                   leftTransform = active ? `scale(${splitScale})` : "scale(1)";
                   rightTransform = active ? `scale(${splitScale})` : "scale(1)";
-                  transformOrigin = "center center";
                 } else if (splitVariant === "swap") {
                   containerGap = active ? splitAmount : 0;
                   leftTransform = active ? `translateX(${splitAmount / 2}px)` : "translateX(0)";
                   rightTransform = active ? `translateX(-${splitAmount / 2}px)` : "translateX(0)";
                 }
-
-                const pillTransition = `border-radius ${sDur} ${ease}, transform ${sDur} ${ease}, box-shadow ${sDur} ${ease}`;
 
                 return (
                   <div className="flex items-center pointer-events-auto" style={{
@@ -1972,25 +1960,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     gap: containerGap,
                     transition: `gap ${sDur} ${ease}`,
                   }}>
-                    <div className="flex-1 min-w-0 flex items-center" style={{
-                      background: "#FAFAFA",
-                      padding: "10px 12px",
-                      borderRadius: leftRadius,
+                    <div className="flex-1 min-w-0 flex items-center px-0.5" style={{
                       transform: leftTransform,
-                      boxShadow: leftShadow,
                       transformOrigin,
-                      transition: pillTransition,
+                      transition: `transform ${sDur} ${ease}`,
                     }}>
                       {headerCell(hL)}
                     </div>
-                    <div className="flex-1 min-w-0 flex items-center" style={{
-                      background: "#FAFAFA",
-                      padding: "10px 12px",
-                      borderRadius: rightRadius,
+                    <div className="flex-1 min-w-0 flex items-center px-0.5" style={{
                       transform: rightTransform,
-                      boxShadow: rightShadow,
                       transformOrigin,
-                      transition: pillTransition,
+                      transition: `transform ${sDur} ${ease}`,
                     }}>
                       {headerCell(hR)}
                     </div>
@@ -2088,7 +2068,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         </div>
                       )}
                       {forcedOpen ? (
-                        <div style={{ padding: s.key === "desc" ? 0 : (hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0"), position: "relative" }}>{s.detail}</div>
+                        <div style={{ padding: s.key === "desc" ? ((s as { bubble?: boolean }).bubble ? 0 : `${statPillPadY}px 0`) : (hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0"), position: "relative" }}>{s.detail}</div>
                       ) : (
                         <div style={{
                           display: "grid",

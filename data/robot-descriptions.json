@@ -1,15 +1,15 @@
 {
   "1": {
     "short": "It walks at 2.5 meters per second.\nIts hands now grip with more control.",
-    "long": "It walks at 2.5 meters per second.\nIts hands now grip with more control. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Optimus Gen 2 is Tesla's second take on a general-purpose humanoid, built to eventually work in the company's own factories before reaching wider use. The redesign focuses on lighter overall weight, better balance, and finer finger articulation for handling delicate objects. It remains a prototype, demonstrated in controlled settings rather than deployed. Tesla positions it as a long-term platform for repetitive physical labor."
   },
   "2": {
     "short": "It moves at 2.5 meters per second.\n28 joints give it full-body control.",
-    "long": "It moves at 2.5 meters per second.\n28 joints give it full-body control. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Electric Atlas is the fully electric successor to the hydraulic version Boston Dynamics has spent years refining. The shift to electric actuation makes it quieter, cleaner, and better suited to factory floors and warehouses. It is currently a prototype, with early deployment planned for automotive manufacturing. The target user is industry, not the home."
   },
   "3": {
     "short": "Memo handles chores on two arms and wheels.\nAt 122 cm, it fits most home spaces.",
-    "long": "Memo handles chores on two arms and wheels.\nAt 122 cm, it fits most home spaces. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Memo is built for everyday housework, from tidying surfaces to moving items between rooms. Its two arms work together for tasks that need both hands, while the wheeled base keeps it steady on flat floors. Sunday Robotics is developing it as a general-purpose home assistant rather than a specialist appliance. The robot is currently a prototype, aimed at households once it reaches consumers."
   },
   "4": {
     "short": "A bipedal humanoid built for the home.\nLight, quick, and safe around people.",
@@ -17,90 +17,90 @@
   },
   "5": {
     "short": "It walks, lifts, and works warehouse floors.\nAmazon runs it in live facilities now.",
-    "long": "It walks, lifts, and works warehouse floors.\nAmazon runs it in live facilities now. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Digit is built for one job: moving totes and packages inside warehouses alongside human staff. Agility Robotics designed it at human scale so it fits existing shelving, aisles, and workflows without retrofitting the building. It is one of the first humanoids to reach paying commercial deployment, with units already on the clock at Amazon sites. The target customer is any logistics operator looking to automate repetitive material handling without rebuilding the floor."
   },
   "7": {
     "short": "It stands 167 cm and weighs 70 kg.\n40 joints give it precise hand control.",
-    "long": "It stands 167 cm and weighs 70 kg.\n40 joints give it precise hand control. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Figure 02 is the second humanoid from Figure AI, built to work alongside people in warehouses and factories. The hands are the focus of this generation, with enough articulation to handle tools and parts designed for human workers. Onboard cameras and language models let it understand instructions and react to its surroundings without scripted routines. It is still a prototype, currently being tested in pilot deployments with commercial partners."
   },
   "8": {
     "short": "Stands 170 cm tall, weighs 70 kg.\nBuilt for general tasks, not one job.",
-    "long": "Stands 170 cm tall, weighs 70 kg.\nBuilt for general tasks, not one job. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Phoenix is Sanctuary AI's seventh-generation humanoid, designed to take on a wide range of physical work in commercial settings. It runs on Carbon, the company's in-house cognition system, which translates natural language instructions into real-world actions. The current version is a prototype being trialled with industry partners across logistics, retail, and manufacturing. It is aimed at operators looking to automate labour shortages rather than replace fixed-purpose machines."
   },
   "9": {
     "short": "Walks at 3 m/s on uneven ground.\n41 joints handle complex industrial tasks.",
-    "long": "Walks at 3 m/s on uneven ground.\n41 joints handle complex industrial tasks. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Walker X is Ubtech's flagship humanoid, built for factory floors, logistics sites, and other settings where the ground isn't always flat. Its full-body articulation lets it handle tools, carry loads, and navigate stairs without specialised infrastructure. The robot is currently in production and aimed at industrial operators rather than consumers. It reflects Ubtech's broader push to move humanoids out of demos and into working environments."
   },
   "10": {
     "short": "Humanoid built for factory work at human scale.\nBatteries swap out without stopping the robot.",
-    "long": "Humanoid built for factory work at human scale.\nBatteries swap out without stopping the robot. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Apollo is designed for warehouses and assembly lines, sized to fit the same workstations as the people next to it. Apptronik built the platform to be modular, so the hands, power system, and software stack can be reconfigured for different tasks. Hot-swappable packs keep it running across shifts without long downtime. The current version is a working prototype, with pilot deployments underway at industrial partners."
   },
   "11": {
     "short": "The G1 made humanoid robots finally affordable. At $16K, it moves without compromise.",
-    "long": "The G1 made humanoid robots finally affordable. At $16K, it moves without compromise. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "The G1 stands 127 cm tall and weighs 35 kg, with 23 degrees of freedom that let it walk, run, and recover its balance after a push. Unitree designed it as an open development platform, shipping with a software stack that researchers and small companies can build on directly. It entered production in 2024 and is aimed at labs, universities, and commercial teams who previously couldn't justify the cost of a full-size humanoid."
   },
   "12": {
     "short": "Full-size humanoid built for factory work. Walks at 3.3 meters per second.",
-    "long": "Full-size humanoid built for factory work. Walks at 3.3 meters per second. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "The H1 is Unitree's first full-size humanoid, designed to handle physical tasks in industrial settings. It stands at adult height and uses 19 actuated joints to move at speeds closer to a jogging human than a typical bipedal robot. The platform is already in production and shipping to research labs and industrial partners. It targets buyers exploring how general-purpose humanoids fit into real warehouse and factory workflows."
   },
   "13": {
     "short": "It walks, bends, and lifts with 40 joints.\nBuilt for research and rehab work.",
-    "long": "It walks, bends, and lifts with 40 joints.\nBuilt for research and rehab work. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "GR-1 is a full-size humanoid built by Fourier Intelligence, a company with a long background in rehabilitation robotics. It stands 165 cm tall and is designed to support patients during physical therapy as well as serve as a development platform for labs working on humanoid control. The robot entered production in 2023 and is sold to universities, research groups, and clinical partners. Its focus on healthcare settings sets it apart from most general-purpose humanoids aimed at industrial work."
   },
   "14": {
     "short": "It stands 165 cm tall and weighs 50 kg.\n31 joints let it move with real precision.",
-    "long": "It stands 165 cm tall and weighs 50 kg.\n31 joints let it move with real precision. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Oli is a full-size humanoid built by LimX Dynamics for service work and applied research. It runs on COSA, the company's agentic operating system, which handles task planning and adapts behaviour to the environment. LimX has prioritised accessible pricing to put Oli within reach of labs, universities, and developers rather than only large enterprises. The platform entered production in 2025 and is shipping to early customers now."
   },
   "15": {
     "short": "It moves like a person, not a machine.\n32 joints handle tasks like pouring drinks.",
-    "long": "It moves like a person, not a machine.\n32 joints handle tasks like pouring drinks. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "The Astribot S1 is built around fine motor control, with arms that can fold laundry, slice vegetables, and handle fragile objects at near-human speed. Its 32 degrees of freedom allow it to chain small, precise movements together rather than executing one task at a time. Astribot is positioning the S1 as a platform for home and service work, though it remains a prototype aimed at researchers and early commercial partners."
   },
   "16": {
     "short": "Built for factory floors, not labs.\nAt 40 joints, it moves like it means it.",
-    "long": "Built for factory floors, not labs.\nAt 40 joints, it moves like it means it. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "The K2 is Kepler Robotics' bid to make humanoid labor practical at industrial scale. It targets repetitive work in warehouses and assembly lines, where reliability matters more than novelty. Currently in prototype, the platform is being positioned as an affordable option for operators who need extra hands rather than research teams chasing benchmarks."
   },
   "17": {
     "short": "It moves its full body as one unit.\nAt 43 kg, it runs at 2 m/s.",
-    "long": "It moves its full body as one unit.\nAt 43 kg, it runs at 2 m/s. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Tiangong is the flagship humanoid from a state-backed research center in Beijing, built to advance coordinated motion across the entire body rather than isolated limbs. The platform is open to outside developers, who can adapt it for research in locomotion, manipulation, and control. It remains a prototype, with the current focus on refining hardware and software before any commercial path. The intended users are universities, labs, and industrial partners working on general-purpose humanoid systems."
   },
   "18": {
     "short": "It stands 160 cm and weighs 45 kg.\nIt takes verbal orders and does chores.",
-    "long": "It stands 160 cm and weighs 45 kg.\nIt takes verbal orders and does chores. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Menteebot is built around a single language model that handles perception, planning, and movement together, rather than stitching separate systems into one body. It learns new tasks from spoken instruction and demonstration, which is meant to remove the need for custom programming at home. The current prototype is aimed at domestic settings, with early use cases like tidying, fetching, and following someone through a room. Mentee Robotics is positioning it for households and small commercial spaces once the platform matures."
   },
   "19": {
     "short": "Rolls at 1.4 m/s on two wheels.\nBuilt for security work, not research.",
-    "long": "Rolls at 1.4 m/s on two wheels.\nBuilt for security work, not research. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Eve is a wheeled humanoid built by 1X Technologies for real commercial deployment, not lab demos. It handles night patrols, site monitoring, and logistics tasks in warehouses and offices, with a human operator able to take over when needed. The wheeled base keeps it stable and efficient indoors, while two arms let it interact with doors, switches, and objects designed for people. Eve is already in production and working on customer sites today."
   },
   "20": {
     "short": "Ameca moves its face in 52 ways.\nIt stands at full human height: 180 cm.",
-    "long": "Ameca moves its face in 52 ways.\nIt stands at full human height: 180 cm. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Ameca was built by Engineered Arts as a platform for studying how people respond to humanoid machines. Its expressions and gestures are designed to feel readable rather than lifelike, which makes it useful for testing interaction software without the distraction of a fully mobile body. The robot is sold to museums, research labs, and companies developing conversational AI. It has been in active production since 2021."
   },
   "21": {
     "short": "Pepper reads faces and responds to moods.\nIt stands 120 cm and weighs 28 kg.",
-    "long": "Pepper reads faces and responds to moods.\nIt stands 120 cm and weighs 28 kg. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Pepper is built for front-of-house roles in retail, hospitality, and reception, where short, friendly interactions matter more than physical work. It moves on a wheeled base rather than legs, which keeps it stable in public spaces and easy to deploy. A chest-mounted tablet handles menus, forms, and visual content, while the arms and head carry the conversation. It has been in active production since 2014 and remains one of the most widely deployed social humanoids in commercial use."
   },
   "23": {
     "short": "It works alongside humans in factories.\n63 joints let it move like one, too.",
-    "long": "It works alongside humans in factories.\n63 joints let it move like one, too. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Armar-6 was built at Karlsruhe Institute of Technology to assist maintenance workers in industrial settings, handing over tools, lifting components, and learning new tasks by watching a person perform them. It can recognise when a colleague needs help and offer it without being asked. The robot remains a research prototype, developed for studies in human-robot collaboration rather than commercial deployment."
   },
   "24": {
     "short": "Full-size humanoid built for research labs.\nTorque control makes its joints precise.",
-    "long": "Full-size humanoid built for research labs.\nTorque control makes its joints precise. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Talos is a full-size humanoid from PAL Robotics, designed for advanced manipulation and locomotion studies. Its 32 actuated joints use force feedback, allowing it to handle contact-rich tasks that simpler position-controlled robots cannot. The platform is aimed at universities and industrial research groups working on bipedal walking, whole-body control, and manufacturing applications. It has been in production since 2017."
   },
   "25": {
     "short": "Tendons, not motors, move its joints.\nIt has 48 points of articulation.",
-    "long": "Tendons, not motors, move its joints.\nIt has 48 points of articulation. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Roboy is built around artificial muscles and tendons rather than the rigid actuators most humanoids rely on, giving researchers a working model of how the human body actually moves. At 140 cm and 30 kg, it is sized to study balance, posture, and coordination at a realistic human scale. The project began at the University of Zurich in 2013 and continues as an open research platform for biomechanics and robotics labs. It is a prototype, not a product, intended for scientists exploring softer and more lifelike machines."
   },
   "26": {
     "short": "Atlas was the first robot that actually moved. Boston Dynamics built it to show what's possible.",
-    "long": "Atlas was the first robot that actually moved. Boston Dynamics built it to show what's possible. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
-  },
-  "legend-1": {
-    "short": "ASIMO made walking look effortless. It showed the world robots could belong.",
-    "long": "ASIMO made walking look effortless. It showed the world robots could belong. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Built for the DARPA Robotics Challenge in 2013, Atlas was designed to handle disaster response tasks too dangerous for people. Its hydraulic system gave it the power to run, jump, and recover from falls, and later to perform backflips and parkour routines that reset expectations for humanoid hardware. The platform was a research tool, not a product, and Boston Dynamics used it to push balance, perception, and whole-body control. It was retired in April 2024 and replaced by the all-electric Atlas."
   },
   "legend-2": {
     "short": "A humanoid built for human conversation.\nHer face shows over 60 expressions.",
-    "long": "A humanoid built for human conversation.\nHer face shows over 60 expressions. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+    "long": "Sophia is built for face-to-face interaction, with silicone skin and cameras that let her track people, hold eye contact, and respond in real time. She is used mainly for research, public events, and education, not as a household or service robot. Hanson Robotics produces her in small numbers, refining the platform with each new unit. She remains one of the most recognisable examples of social humanoid design."
+  },
+  "legend-1": {
+    "short": "ASIMO made walking look effortless. It showed the world robots could belong.",
+    "long": "ASIMO was Honda's long-running research platform for bipedal humanoids, designed to move and interact in spaces built for people. Across two decades, it climbed stairs, ran, poured drinks, and toured science museums as a public face for the field. The project ended in 2022, with its lessons folded into Honda's later work on mobility and assistive robotics. It was never sold commercially, but it set the reference point most humanoids are still measured against."
   }
 }
