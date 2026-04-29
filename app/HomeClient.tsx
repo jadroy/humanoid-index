@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
+import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -442,8 +442,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [pillLabelUppercase, setPillLabelUppercase] = useState(false);
   const [pillLabelColor, setPillLabelColor] = useState("var(--c-ink-body)");
   const [labelLogoSize, setLabelLogoSize] = useState(22);
-  // Action-pill variant — "pill" matches the data rows; "text" reads as a footer text-link.
-  const [actionVariant, setActionVariant] = useState<"pill" | "text">("pill");
+  // Action-pill variant — "pill" matches the data rows; "text" reads as a footer text-link;
+  // "accent" tints label + arrow with --c-accent and prepends ↗; "dark" inverts the pill
+  // (black base, white text); "hairline" prepends a 1px seam above the row to demote it.
+  const [actionVariant, setActionVariant] = useState<"pill" | "text" | "accent" | "dark" | "hairline">("pill");
 
   // Compare-header split tuner
   const [showSplitTuner, setShowSplitTuner] = useState(false);
@@ -1389,6 +1391,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const isLink = !!((s as { href?: string }).href);
                   const interactive = !forcedOpen && !empty && !isLink;
                   const isAction = s.key === "purchase" && isLink;
+                  const actionAccent = isAction && actionVariant === "accent";
+                  const actionDark = isAction && actionVariant === "dark";
+                  const actionHairline = isAction && actionVariant === "hairline";
+                  const actionLabelColor = actionAccent ? "var(--c-accent)" : pillLabelColor;
+                  const actionPillBg = actionDark ? "#ECECEC" : statPillBg;
+                  const actionText = isAction ? ((s as { text?: string }).text ?? "") : "";
                   // Text-link variant: render the action as plain inline text + arrow,
                   // sitting at the bottom of the column where the pill would otherwise live.
                   if (isAction && actionVariant === "text") {
@@ -1412,7 +1420,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     );
                   }
                   const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
-                  return (
+                  const pillEl = (
                     <Tag
                       key={s.key}
                       {...(isLink
@@ -1420,7 +1428,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
                       className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : actionPillBg,
                         background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
@@ -1448,8 +1456,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
-                          {s.label}
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: actionLabelColor }}>
+                          {actionAccent ? (
+                            <span className="inline-flex items-center" style={{ gap: 6, color: actionLabelColor, fontSize: pillLabelFontSize, lineHeight: 1.2 }}>
+                              <span aria-hidden style={{ fontSize: pillLabelFontSize, opacity: 0.85 }}>↗</span>
+                              {actionText}
+                            </span>
+                          ) : s.label}
                           {isLink ? (
                             <svg className={isAction ? "pill-arrow" : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
@@ -1482,6 +1495,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       )}
                     </Tag>
                   );
+                  return actionHairline ? (
+                    <Fragment key={s.key}>
+                      <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.06)", margin: "6px 2px 2px" }} />
+                      {pillEl}
+                    </Fragment>
+                  ) : pillEl;
                 })}
               </div>
             </div>
@@ -1989,6 +2008,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const isLink = !!((s as { href?: string }).href);
                   const interactive = !forcedOpen && !empty && !isLink;
                   const isAction = s.key === "purchase" && isLink;
+                  const actionAccent = isAction && actionVariant === "accent";
+                  const actionDark = isAction && actionVariant === "dark";
+                  const actionHairline = isAction && actionVariant === "hairline";
+                  const actionLabelColor = actionAccent ? "var(--c-accent)" : pillLabelColor;
+                  const actionPillBg = actionDark ? "#ECECEC" : statPillBg;
+                  const actionText = isAction ? ((s as { text?: string }).text ?? "") : "";
                   // Text-link variant: render the action as plain inline text + arrow,
                   // sitting at the bottom of the column where the pill would otherwise live.
                   if (isAction && actionVariant === "text") {
@@ -2012,7 +2037,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     );
                   }
                   const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
-                  return (
+                  const pillEl = (
                     <Tag
                       key={s.key}
                       {...(isLink
@@ -2020,7 +2045,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
                       className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
                       style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : statPillBg,
+                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : actionPillBg,
                         background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
                         border: "none",
                         borderRadius: statPillRadius,
@@ -2048,8 +2073,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
-                          {s.label}
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: actionLabelColor }}>
+                          {actionAccent ? (
+                            <span className="inline-flex items-center" style={{ gap: 6, color: actionLabelColor, fontSize: pillLabelFontSize, lineHeight: 1.2 }}>
+                              <span aria-hidden style={{ fontSize: pillLabelFontSize, opacity: 0.85 }}>↗</span>
+                              {actionText}
+                            </span>
+                          ) : s.label}
                           {isLink ? (
                             <svg className={isAction ? "pill-arrow" : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
@@ -2082,6 +2112,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       )}
                     </Tag>
                   );
+                  return actionHairline ? (
+                    <Fragment key={s.key}>
+                      <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.06)", margin: "6px 2px 2px" }} />
+                      {pillEl}
+                    </Fragment>
+                  ) : pillEl;
                 })}
               </div>
             </div>
@@ -2650,7 +2686,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div>
               <label className="text-[10px] text-neutral-500 mb-1.5 block">Action variant</label>
               <div className="flex flex-wrap gap-1.5">
-                {(["pill", "text"] as const).map((v) => (
+                {(["pill", "text", "accent", "dark", "hairline"] as const).map((v) => (
                   <button
                     key={v}
                     type="button"
