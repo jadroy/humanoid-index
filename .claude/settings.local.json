@@ -81,7 +81,8 @@
       "Bash(git log *)",
       "Bash(git update-index *)",
       "Bash(awk '{print length\\($0\\), $0}')",
-      "Bash(awk *)"
+      "Bash(awk *)",
+      "WebFetch(domain:registry.npmjs.org)"
     ],
     "deny": [],
     "ask": []
