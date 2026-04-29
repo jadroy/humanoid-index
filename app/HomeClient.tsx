@@ -1425,7 +1425,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         border: "none",
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
-                        overflow: "hidden",
+                        overflow: s.key === "desc" ? "visible" : "hidden",
                         cursor: (isLink || interactive) ? "pointer" : "default",
                         textDecoration: "none",
                         position: "relative",
@@ -1458,7 +1458,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         </div>
                       )}
                       {forcedOpen ? (
-                        <div style={{ padding: hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0", position: "relative" }}>{s.detail}</div>
+                        <div style={{ padding: s.key === "desc" ? 0 : (hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0"), position: "relative" }}>{s.detail}</div>
                       ) : (
                         <div style={{
                           display: "grid",
@@ -2025,7 +2025,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         border: "none",
                         borderRadius: statPillRadius,
                         padding: `0 ${statPillPadX}px`,
-                        overflow: "hidden",
+                        overflow: s.key === "desc" ? "visible" : "hidden",
                         cursor: (isLink || interactive) ? "pointer" : "default",
                         textDecoration: "none",
                         position: "relative",
@@ -2058,7 +2058,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         </div>
                       )}
                       {forcedOpen ? (
-                        <div style={{ padding: hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0", position: "relative" }}>{s.detail}</div>
+                        <div style={{ padding: s.key === "desc" ? 0 : (hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0"), position: "relative" }}>{s.detail}</div>
                       ) : (
                         <div style={{
                           display: "grid",
