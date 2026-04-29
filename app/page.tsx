@@ -67,11 +67,12 @@ export async function generateMetadata({
   // Default — no valid params or bare URL
   const title = "Humanoid Index";
   const description = "A comprehensive visual index of humanoid robots";
+  const ogImage = `${baseUrl}/og-default.png`;
   return {
     title,
     description,
-    openGraph: { title, description },
-    twitter: { card: "summary_large_image", title, description },
+    openGraph: { title, description, images: [ogImage] },
+    twitter: { card: "summary_large_image", title, description, images: [ogImage] },
   };
 }
 
