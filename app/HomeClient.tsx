@@ -27,6 +27,43 @@ import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSetti
 
 const MOBILE_BREAKPOINT = 768;
 
+// Press 'e' (or use the Epetri toggle) to remap every font CSS variable on
+// <main> to Epetri. Inline styles like `fontFamily: "var(--font-jetbrains-mono)"`
+// resolve against the closest ancestor, so every nested element follows.
+const EPETRI_FONT_OVERRIDES: React.CSSProperties = {
+  "--font-geist-sans": "var(--font-epetri)",
+  "--font-geist-mono": "var(--font-epetri)",
+  "--font-geist-pixel-square": "var(--font-epetri)",
+  "--font-geist-pixel-grid": "var(--font-epetri)",
+  "--font-geist-pixel-circle": "var(--font-epetri)",
+  "--font-geist-pixel-triangle": "var(--font-epetri)",
+  "--font-geist-pixel-line": "var(--font-epetri)",
+  "--font-inter": "var(--font-epetri)",
+  "--font-b612": "var(--font-epetri)",
+  "--font-b612-mono": "var(--font-epetri)",
+  "--font-space-mono": "var(--font-epetri)",
+  "--font-jetbrains-mono": "var(--font-epetri)",
+  "--font-ibm-plex-sans": "var(--font-epetri)",
+  "--font-ibm-plex-mono": "var(--font-epetri)",
+  "--font-azeret-mono": "var(--font-epetri)",
+  "--font-chivo-mono": "var(--font-epetri)",
+  "--font-fira-code": "var(--font-epetri)",
+  "--font-orbitron": "var(--font-epetri)",
+  "--font-chakra-petch": "var(--font-epetri)",
+  "--font-oxanium": "var(--font-epetri)",
+  "--font-rajdhani": "var(--font-epetri)",
+  "--font-exo-2": "var(--font-epetri)",
+  "--font-michroma": "var(--font-epetri)",
+  "--font-major-mono": "var(--font-epetri)",
+  "--font-tektur": "var(--font-epetri)",
+  "--font-anta": "var(--font-epetri)",
+  "--font-syne": "var(--font-epetri)",
+  "--font-epetri-tite": "var(--font-epetri)",
+  "--font-epetri-index": "var(--font-epetri)",
+  "--font-epetri-cfindex": "var(--font-epetri)",
+  "--font-epetri-pixel": "var(--font-epetri)",
+} as React.CSSProperties;
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   useEffect(() => {
@@ -320,6 +357,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [arcFsMin, setArcFsMin] = useState(10);
   const [arcDiskGap, setArcDiskGap] = useState(26);
   const [arcDiskColor, setArcDiskColor] = useState("#f5f5f5");
+  const [arcMaskFade, setArcMaskFade] = useState(22);
   // Arc-tag tuning
   const [tagFsMin, setTagFsMin] = useState(11);
   const [tagFsMax, setTagFsMax] = useState(14);
@@ -365,6 +403,31 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [blurbFontSize, setBlurbFontSize] = useState(12);
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
+  const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
+  const [bubbleVariant, setBubbleVariant] = useState(2);
+  const bubbleVariants: { name: string; bg: string; shadow: string; shadowHover: string; backdropFilter?: string }[] = [
+    { name: "Crisp white", bg: "#FFFFFF", shadow: "0 0 0 1px rgba(0,0,0,0.06)", shadowHover: "0 0 0 1px rgba(0,0,0,0.10)" },
+    { name: "Soft float", bg: "#FFFFFF", shadow: "0 1px 4px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.035)", shadowHover: "0 2px 14px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05)" },
+    { name: "Lifted", bg: "#FFFFFF", shadow: "0 2px 8px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)", shadowHover: "0 4px 16px rgba(0,0,0,0.09), 0 0 0 1px rgba(0,0,0,0.06)" },
+    { name: "Pillow", bg: "#FFFFFF", shadow: "0 4px 20px rgba(0,0,0,0.06)", shadowHover: "0 6px 28px rgba(0,0,0,0.10)" },
+    { name: "Sheen", bg: "#FFFFFF", shadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04)", shadowHover: "inset 0 1px 0 rgba(255,255,255,1), 0 2px 10px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06)" },
+    { name: "Embossed", bg: "#FFFFFF", shadow: "inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.05)", shadowHover: "inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.08)" },
+    { name: "Top-light gradient", bg: "linear-gradient(180deg, #FFFFFF 0%, #F7F7F7 100%)", shadow: "0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04)", shadowHover: "0 2px 10px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06)" },
+    { name: "Bottom-light gradient", bg: "linear-gradient(180deg, #F7F7F7 0%, #FFFFFF 100%)", shadow: "0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04)", shadowHover: "0 2px 10px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06)" },
+    { name: "Halo", bg: "#FFFFFF", shadow: "0 0 20px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.05)", shadowHover: "0 0 28px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.07)" },
+    { name: "Tight pill", bg: "#FFFFFF", shadow: "0 0 0 1px rgba(0,0,0,0.10)", shadowHover: "0 0 0 1px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.05)" },
+    { name: "Glassy", bg: "rgba(255,255,255,0.7)", shadow: "0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.6), inset 0 0 0 1px rgba(255,255,255,0.2)", shadowHover: "0 2px 12px rgba(0,0,0,0.07), 0 0 0 1px rgba(255,255,255,0.8), inset 0 0 0 1px rgba(255,255,255,0.3)", backdropFilter: "blur(8px) saturate(180%)" },
+    { name: "Cloud", bg: "#FFFFFF", shadow: "0 1px 2px rgba(0,0,0,0.03), 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.03)", shadowHover: "0 2px 4px rgba(0,0,0,0.04), 0 6px 12px rgba(0,0,0,0.05), 0 12px 24px rgba(0,0,0,0.05)" },
+    { name: "Inset card", bg: "#FAFAFA", shadow: "inset 0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)", shadowHover: "inset 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05)" },
+    { name: "Stacked depth", bg: "#FFFFFF", shadow: "0 1px 1px rgba(0,0,0,0.04), 0 3px 6px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.03)", shadowHover: "0 2px 2px rgba(0,0,0,0.06), 0 6px 12px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05)" },
+    { name: "Floating high", bg: "#FFFFFF", shadow: "0 6px 16px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)", shadowHover: "0 10px 24px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.05)" },
+    { name: "Subtle outline", bg: "#FFFFFF", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.04)" },
+    { name: "Pale glow", bg: "#FFFFFF", shadow: "0 0 16px rgba(255,255,255,0.8), 0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.04)", shadowHover: "0 0 24px rgba(255,255,255,0.9), 0 2px 10px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.06)" },
+    { name: "Bubble radial", bg: "radial-gradient(ellipse at center, #FFFFFF 0%, #F4F4F4 100%)", shadow: "0 2px 8px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04)", shadowHover: "0 3px 14px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06)" },
+    { name: "Warm white", bg: "#FFFCF8", shadow: "0 1px 4px rgba(120,80,40,0.05), 0 0 0 1px rgba(120,80,40,0.04)", shadowHover: "0 2px 12px rgba(120,80,40,0.08), 0 0 0 1px rgba(120,80,40,0.06)" },
+    { name: "Cool white", bg: "#F8FBFF", shadow: "0 1px 4px rgba(40,80,120,0.05), 0 0 0 1px rgba(40,80,120,0.04)", shadowHover: "0 2px 12px rgba(40,80,120,0.08), 0 0 0 1px rgba(40,80,120,0.06)" },
+  ];
+  const bubble = bubbleVariants[bubbleVariant - 1];
   const toggleBlurbExpand = (id: string) => {
     setExpandedBlurbs(prev => {
       const next = new Set(prev);
@@ -757,6 +820,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     }
   }, [comparing, springL.index, springR.index, onShareViewLabelChange]);
 
+  const [blurbReady, setBlurbReady] = useState(false);
+  useEffect(() => {
+    setBlurbReady(false);
+    const t = setTimeout(() => setBlurbReady(true), 350);
+    return () => clearTimeout(t);
+  }, [springL.index, springR.index, comparing]);
+
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
   const distL = Math.abs(springL.getPos() - springL.targetRef.current);
@@ -852,6 +922,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcDiskColor={arcDiskColor}
           arcFontFamily={arcFontFamily}
           arcAllCaps={allCaps}
+          arcMaskFade={arcMaskFade}
           arcMarkerVariant={arcMarkerVariant}
           arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
           entered={introDone}
@@ -891,6 +962,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             arcDiskColor={arcDiskColor}
             arcFontFamily={arcFontFamily}
             arcAllCaps={allCaps}
+            arcMaskFade={arcMaskFade}
             arcMarkerVariant={arcMarkerVariant}
             arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
             entered={introDone}
@@ -987,16 +1059,53 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             const isExpanded = expandedBlurbs.has(h.id);
             const canExpand = !!robotDesc.long;
             const fullText = canExpand ? robotDesc.long : robotDesc.text;
-            const collapsedH = blurbFontSize * 1.625 * 2 + 4;
+            const collapsedH = blurbFontSize * 1.625 * 2;
+            const isHovered = canExpand && hoveredBlurbId === h.id;
+            const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
+            const wrapperProps = canExpand
+              ? {
+                  type: "button" as const,
+                  onClick: (e: React.MouseEvent) => { e.stopPropagation(); toggleBlurbExpand(h.id); },
+                  onMouseEnter: () => setHoveredBlurbId(h.id),
+                  onMouseLeave: () => setHoveredBlurbId(null),
+                }
+              : {};
             return (
-              <div key={h.id} className="info-fade-in">
+              <Wrapper
+                key={h.id}
+                {...wrapperProps}
+                style={{
+                  ...(canExpand ? {
+                    background: bubble.bg,
+                    boxShadow: isHovered ? bubble.shadowHover : bubble.shadow,
+                    ...(bubble.backdropFilter ? { backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter } : {}),
+                    border: "none",
+                    padding: `${statPillPadY}px ${statPillPadX}px`,
+                    marginLeft: -statPillPadX,
+                    marginRight: -statPillPadX,
+                    textAlign: "left" as const,
+                    width: `calc(100% + ${statPillPadX * 2}px)`,
+                    cursor: "pointer",
+                    display: "block",
+                    position: "relative",
+                    borderRadius: statPillRadius,
+                    WebkitTapHighlightColor: "transparent",
+                  } : {}),
+                  opacity: blurbReady ? 1 : 0,
+                  transform: blurbReady ? "translateY(0) scale(1)" : "translateY(-3px) scale(0.985)",
+                  filter: blurbReady ? "blur(0)" : "blur(2px)",
+                  transition: canExpand
+                    ? "box-shadow 0.2s ease, opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)"
+                    : "opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
+                }}
+              >
                 <div
                   style={{
                     maxHeight: isExpanded ? 320 : collapsedH,
                     overflow: "hidden",
                     transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
-                    WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
-                    maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
+                    WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
+                    maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
                   }}
                 >
                   <p
@@ -1007,43 +1116,46 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   </p>
                 </div>
                 {canExpand && (
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); toggleBlurbExpand(h.id); }}
+                  <span
                     style={{
+                      position: "absolute",
+                      bottom: 4,
+                      right: 6,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
                       fontSize: Math.max(10, blurbFontSize - 1),
-                      color: "#bbb",
+                      color: "#999",
                       fontWeight: 450,
-                      marginTop: 6,
-                      background: "none",
-                      border: "none",
-                      padding: 0,
-                      cursor: "pointer",
+                      background: "rgba(255,255,255,0.92)",
+                      padding: "2px 7px",
+                      borderRadius: 999,
+                      opacity: isHovered ? 1 : 0,
+                      transition: "opacity 0.2s ease",
+                      pointerEvents: "none",
                     }}
                   >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)", transform: isExpanded ? "rotate(180deg)" : "none" }}>
-                        {isExpanded ? (
-                          <>
-                            <polyline points="2 4.5 4.5 4.5 4.5 2" />
-                            <polyline points="10 7.5 7.5 7.5 7.5 10" />
-                            <line x1="4.5" y1="4.5" x2="2" y2="2" />
-                            <line x1="7.5" y1="7.5" x2="10" y2="10" />
-                          </>
-                        ) : (
-                          <>
-                            <polyline points="7.5 2 10 2 10 4.5" />
-                            <polyline points="4.5 10 2 10 2 7.5" />
-                            <line x1="10" y1="2" x2="6.8" y2="5.2" />
-                            <line x1="2" y1="10" x2="5.2" y2="6.8" />
-                          </>
-                        )}
-                      </svg>
-                      {isExpanded ? "Collapse" : "Expand"}
-                    </span>
-                  </button>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                      {isExpanded ? (
+                        <>
+                          <polyline points="2 4.5 4.5 4.5 4.5 2" />
+                          <polyline points="10 7.5 7.5 7.5 7.5 10" />
+                          <line x1="4.5" y1="4.5" x2="2" y2="2" />
+                          <line x1="7.5" y1="7.5" x2="10" y2="10" />
+                        </>
+                      ) : (
+                        <>
+                          <polyline points="7.5 2 10 2 10 4.5" />
+                          <polyline points="4.5 10 2 10 2 7.5" />
+                          <line x1="10" y1="2" x2="6.8" y2="5.2" />
+                          <line x1="2" y1="10" x2="5.2" y2="6.8" />
+                        </>
+                      )}
+                    </svg>
+                    {isExpanded ? "Collapse" : "Expand"}
+                  </span>
                 )}
-              </div>
+              </Wrapper>
             );
           })() },
           { key: "overview", show: !!(h.height || h.weight), label: (
@@ -1144,16 +1256,52 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 const isExpanded = expandedBlurbs.has(h.id);
                 const canExpand = !!robotDesc.long;
                 const fullText = canExpand ? robotDesc.long : robotDesc.text;
-                const collapsedH = blurbFontSize * 1.625 * 2 + 4;
+                const collapsedH = blurbFontSize * 1.625 * 2;
+                const isHovered = canExpand && hoveredBlurbId === h.id;
+                const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
+                const wrapperProps = canExpand
+                  ? {
+                      type: "button" as const,
+                      onClick: (e: React.MouseEvent) => { e.stopPropagation(); toggleBlurbExpand(h.id); },
+                      onMouseEnter: () => setHoveredBlurbId(h.id),
+                      onMouseLeave: () => setHoveredBlurbId(null),
+                    }
+                  : {};
                 return (
-                  <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11, padding: `${statPillPadY}px ${statPillPadX}px 12px` }}>
+                  <Wrapper
+                    className="pointer-events-auto"
+                    {...wrapperProps}
+                    style={{
+                      position: "relative",
+                      zIndex: 11,
+                      padding: `${statPillPadY}px ${statPillPadX}px`,
+                      ...(canExpand ? {
+                        background: bubble.bg,
+                        boxShadow: isHovered ? bubble.shadowHover : bubble.shadow,
+                        ...(bubble.backdropFilter ? { backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter } : {}),
+                        border: "none",
+                        textAlign: "left" as const,
+                        width: "100%",
+                        cursor: "pointer",
+                        display: "block",
+                        borderRadius: statPillRadius,
+                        WebkitTapHighlightColor: "transparent",
+                      } : {}),
+                      opacity: blurbReady ? 1 : 0,
+                      transform: blurbReady ? "translateY(0) scale(1)" : "translateY(-3px) scale(0.985)",
+                      filter: blurbReady ? "blur(0)" : "blur(2px)",
+                      transition: canExpand
+                        ? "box-shadow 0.2s ease, opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)"
+                        : "opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
+                    }}
+                  >
                     <div
                       style={{
                         maxHeight: isExpanded ? 320 : collapsedH,
                         overflow: "hidden",
                         transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
-                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
-                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
+                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
+                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
                       }}
                     >
                       <p
@@ -1165,43 +1313,46 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       </p>
                     </div>
                     {canExpand && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); toggleBlurbExpand(h.id); }}
+                      <span
                         style={{
+                          position: "absolute",
+                          bottom: 4,
+                          right: 8,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
                           fontSize: Math.max(10, blurbFontSize - 1),
-                          color: "#bbb",
+                          color: "#999",
                           fontWeight: 450,
-                          marginTop: 6,
-                          background: "none",
-                          border: "none",
-                          padding: 0,
-                          cursor: "pointer",
+                          background: "rgba(255,255,255,0.92)",
+                          padding: "2px 7px",
+                          borderRadius: 999,
+                          opacity: isHovered ? 1 : 0,
+                          transition: "opacity 0.2s ease",
+                          pointerEvents: "none",
                         }}
                       >
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)", transform: isExpanded ? "rotate(180deg)" : "none" }}>
-                            {isExpanded ? (
-                              <>
-                                <polyline points="2 4.5 4.5 4.5 4.5 2" />
-                                <polyline points="10 7.5 7.5 7.5 7.5 10" />
-                                <line x1="4.5" y1="4.5" x2="2" y2="2" />
-                                <line x1="7.5" y1="7.5" x2="10" y2="10" />
-                              </>
-                            ) : (
-                              <>
-                                <polyline points="7.5 2 10 2 10 4.5" />
-                                <polyline points="4.5 10 2 10 2 7.5" />
-                                <line x1="10" y1="2" x2="6.8" y2="5.2" />
-                                <line x1="2" y1="10" x2="5.2" y2="6.8" />
-                              </>
-                            )}
-                          </svg>
-                          {isExpanded ? "Collapse" : "Expand"}
-                        </span>
-                      </button>
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                          {isExpanded ? (
+                            <>
+                              <polyline points="2 4.5 4.5 4.5 4.5 2" />
+                              <polyline points="10 7.5 7.5 7.5 7.5 10" />
+                              <line x1="4.5" y1="4.5" x2="2" y2="2" />
+                              <line x1="7.5" y1="7.5" x2="10" y2="10" />
+                            </>
+                          ) : (
+                            <>
+                              <polyline points="7.5 2 10 2 10 4.5" />
+                              <polyline points="4.5 10 2 10 2 7.5" />
+                              <line x1="10" y1="2" x2="6.8" y2="5.2" />
+                              <line x1="2" y1="10" x2="5.2" y2="6.8" />
+                            </>
+                          )}
+                        </svg>
+                        {isExpanded ? "Collapse" : "Expand"}
+                      </span>
                     )}
-                  </div>
+                  </Wrapper>
                 );
               })()}
               {labelPosition === "stack" && (
@@ -1472,16 +1623,53 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 const isExpanded = expandedBlurbs.has(compareBlurbId);
                 const canExpand = !!compareBlurb.long;
                 const fullText = canExpand ? compareBlurb.long : compareBlurb.text;
-                const collapsedH = blurbFontSize * 1.625 * 2 + 4;
+                const collapsedH = blurbFontSize * 1.625 * 2;
+                const isHovered = canExpand && hoveredBlurbId === compareBlurbId;
+                const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
+                const wrapperProps = canExpand
+                  ? {
+                      type: "button" as const,
+                      onClick: (e: React.MouseEvent) => { e.stopPropagation(); toggleBlurbExpand(compareBlurbId); },
+                      onMouseEnter: () => setHoveredBlurbId(compareBlurbId),
+                      onMouseLeave: () => setHoveredBlurbId(null),
+                    }
+                  : {};
                 return (
-                  <div key={compareBlurbId} className="info-fade-in">
+                  <Wrapper
+                    key={compareBlurbId}
+                    {...wrapperProps}
+                    style={{
+                      ...(canExpand ? {
+                        background: bubble.bg,
+                        boxShadow: isHovered ? bubble.shadowHover : bubble.shadow,
+                        ...(bubble.backdropFilter ? { backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter } : {}),
+                        border: "none",
+                        padding: `${statPillPadY}px ${statPillPadX}px`,
+                        marginLeft: -statPillPadX,
+                        marginRight: -statPillPadX,
+                        textAlign: "left" as const,
+                        width: `calc(100% + ${statPillPadX * 2}px)`,
+                        cursor: "pointer",
+                        display: "block",
+                        position: "relative",
+                        borderRadius: statPillRadius,
+                        WebkitTapHighlightColor: "transparent",
+                      } : {}),
+                      opacity: blurbReady ? 1 : 0,
+                      transform: blurbReady ? "translateY(0) scale(1)" : "translateY(-3px) scale(0.985)",
+                      filter: blurbReady ? "blur(0)" : "blur(2px)",
+                      transition: canExpand
+                        ? "box-shadow 0.2s ease, opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)"
+                        : "opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
+                    }}
+                  >
                     <div
                       style={{
                         maxHeight: isExpanded ? 320 : collapsedH,
                         overflow: "hidden",
                         transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
-                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
-                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
+                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
+                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
                       }}
                     >
                       <p
@@ -1496,43 +1684,46 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       </p>
                     </div>
                     {canExpand && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); toggleBlurbExpand(compareBlurbId); }}
+                      <span
                         style={{
+                          position: "absolute",
+                          bottom: 4,
+                          right: 6,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
                           fontSize: Math.max(10, blurbFontSize - 1),
-                          color: "#bbb",
+                          color: "#999",
                           fontWeight: 450,
-                          marginTop: 6,
-                          background: "none",
-                          border: "none",
-                          padding: 0,
-                          cursor: "pointer",
+                          background: "rgba(255,255,255,0.92)",
+                          padding: "2px 7px",
+                          borderRadius: 999,
+                          opacity: isHovered ? 1 : 0,
+                          transition: "opacity 0.2s ease",
+                          pointerEvents: "none",
                         }}
                       >
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)", transform: isExpanded ? "rotate(180deg)" : "none" }}>
-                            {isExpanded ? (
-                              <>
-                                <polyline points="2 4.5 4.5 4.5 4.5 2" />
-                                <polyline points="10 7.5 7.5 7.5 7.5 10" />
-                                <line x1="4.5" y1="4.5" x2="2" y2="2" />
-                                <line x1="7.5" y1="7.5" x2="10" y2="10" />
-                              </>
-                            ) : (
-                              <>
-                                <polyline points="7.5 2 10 2 10 4.5" />
-                                <polyline points="4.5 10 2 10 2 7.5" />
-                                <line x1="10" y1="2" x2="6.8" y2="5.2" />
-                                <line x1="2" y1="10" x2="5.2" y2="6.8" />
-                              </>
-                            )}
-                          </svg>
-                          {isExpanded ? "Collapse" : "Expand"}
-                        </span>
-                      </button>
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                          {isExpanded ? (
+                            <>
+                              <polyline points="2 4.5 4.5 4.5 4.5 2" />
+                              <polyline points="10 7.5 7.5 7.5 7.5 10" />
+                              <line x1="4.5" y1="4.5" x2="2" y2="2" />
+                              <line x1="7.5" y1="7.5" x2="10" y2="10" />
+                            </>
+                          ) : (
+                            <>
+                              <polyline points="7.5 2 10 2 10 4.5" />
+                              <polyline points="4.5 10 2 10 2 7.5" />
+                              <line x1="10" y1="2" x2="6.8" y2="5.2" />
+                              <line x1="2" y1="10" x2="5.2" y2="6.8" />
+                            </>
+                          )}
+                        </svg>
+                        {isExpanded ? "Collapse" : "Expand"}
+                      </span>
                     )}
-                  </div>
+                  </Wrapper>
                 );
               })(),
             },
@@ -1611,16 +1802,52 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 const isExpanded = expandedBlurbs.has(compareBlurbId);
                 const canExpand = !!compareBlurb.long;
                 const fullText = canExpand ? compareBlurb.long : compareBlurb.text;
-                const collapsedH = blurbFontSize * 1.625 * 2 + 4;
+                const collapsedH = blurbFontSize * 1.625 * 2;
+                const isHovered = canExpand && hoveredBlurbId === compareBlurbId;
+                const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
+                const wrapperProps = canExpand
+                  ? {
+                      type: "button" as const,
+                      onClick: (e: React.MouseEvent) => { e.stopPropagation(); toggleBlurbExpand(compareBlurbId); },
+                      onMouseEnter: () => setHoveredBlurbId(compareBlurbId),
+                      onMouseLeave: () => setHoveredBlurbId(null),
+                    }
+                  : {};
                 return (
-                  <div className="pointer-events-auto" style={{ position: "relative", zIndex: 11, padding: `${statPillPadY}px ${statPillPadX}px 12px` }}>
+                  <Wrapper
+                    className="pointer-events-auto"
+                    {...wrapperProps}
+                    style={{
+                      position: "relative",
+                      zIndex: 11,
+                      padding: `${statPillPadY}px ${statPillPadX}px`,
+                      ...(canExpand ? {
+                        background: bubble.bg,
+                        boxShadow: isHovered ? bubble.shadowHover : bubble.shadow,
+                        ...(bubble.backdropFilter ? { backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter } : {}),
+                        border: "none",
+                        textAlign: "left" as const,
+                        width: "100%",
+                        cursor: "pointer",
+                        display: "block",
+                        borderRadius: statPillRadius,
+                        WebkitTapHighlightColor: "transparent",
+                      } : {}),
+                      opacity: blurbReady ? 1 : 0,
+                      transform: blurbReady ? "translateY(0) scale(1)" : "translateY(-3px) scale(0.985)",
+                      filter: blurbReady ? "blur(0)" : "blur(2px)",
+                      transition: canExpand
+                        ? "box-shadow 0.2s ease, opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)"
+                        : "opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
+                    }}
+                  >
                     <div
                       style={{
                         maxHeight: isExpanded ? 320 : collapsedH,
                         overflow: "hidden",
                         transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
-                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
-                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 60%, transparent 100%)" : "none",
+                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
+                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
                       }}
                     >
                       <p
@@ -1636,43 +1863,46 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       </p>
                     </div>
                     {canExpand && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); toggleBlurbExpand(compareBlurbId); }}
+                      <span
                         style={{
+                          position: "absolute",
+                          bottom: 4,
+                          right: 8,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
                           fontSize: Math.max(10, blurbFontSize - 1),
-                          color: "#bbb",
+                          color: "#999",
                           fontWeight: 450,
-                          marginTop: 6,
-                          background: "none",
-                          border: "none",
-                          padding: 0,
-                          cursor: "pointer",
+                          background: "rgba(255,255,255,0.92)",
+                          padding: "2px 7px",
+                          borderRadius: 999,
+                          opacity: isHovered ? 1 : 0,
+                          transition: "opacity 0.2s ease",
+                          pointerEvents: "none",
                         }}
                       >
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)", transform: isExpanded ? "rotate(180deg)" : "none" }}>
-                            {isExpanded ? (
-                              <>
-                                <polyline points="2 4.5 4.5 4.5 4.5 2" />
-                                <polyline points="10 7.5 7.5 7.5 7.5 10" />
-                                <line x1="4.5" y1="4.5" x2="2" y2="2" />
-                                <line x1="7.5" y1="7.5" x2="10" y2="10" />
-                              </>
-                            ) : (
-                              <>
-                                <polyline points="7.5 2 10 2 10 4.5" />
-                                <polyline points="4.5 10 2 10 2 7.5" />
-                                <line x1="10" y1="2" x2="6.8" y2="5.2" />
-                                <line x1="2" y1="10" x2="5.2" y2="6.8" />
-                              </>
-                            )}
-                          </svg>
-                          {isExpanded ? "Collapse" : "Expand"}
-                        </span>
-                      </button>
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                          {isExpanded ? (
+                            <>
+                              <polyline points="2 4.5 4.5 4.5 4.5 2" />
+                              <polyline points="10 7.5 7.5 7.5 7.5 10" />
+                              <line x1="4.5" y1="4.5" x2="2" y2="2" />
+                              <line x1="7.5" y1="7.5" x2="10" y2="10" />
+                            </>
+                          ) : (
+                            <>
+                              <polyline points="7.5 2 10 2 10 4.5" />
+                              <polyline points="4.5 10 2 10 2 7.5" />
+                              <line x1="10" y1="2" x2="6.8" y2="5.2" />
+                              <line x1="2" y1="10" x2="5.2" y2="6.8" />
+                            </>
+                          )}
+                        </svg>
+                        {isExpanded ? "Collapse" : "Expand"}
+                      </span>
                     )}
-                  </div>
+                  </Wrapper>
                 );
               })()}
               {labelPosition === "stack" && (() => {
@@ -2484,6 +2714,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div>
               <label className="text-[10px] text-neutral-500 flex justify-between">Blurb size <span className="tabular-nums text-neutral-400">{blurbFontSize}px</span></label>
               <input type="range" min={9} max={16} value={blurbFontSize} onChange={(e) => setBlurbFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+              <label className="text-[10px] text-neutral-500 flex justify-between mt-2">Bubble variant <span className="tabular-nums text-neutral-400">{bubbleVariant}/20 · {bubbleVariants[bubbleVariant - 1].name}</span></label>
+              <input type="range" min={1} max={20} value={bubbleVariant} onChange={(e) => setBubbleVariant(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+              <div className="flex gap-1 mt-1">
+                <button type="button" onClick={() => setBubbleVariant((v) => Math.max(1, v - 1))} className="text-[10px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>← prev</button>
+                <button type="button" onClick={() => setBubbleVariant((v) => Math.min(20, v + 1))} className="text-[10px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>next →</button>
+              </div>
               <div className="mt-2">
                 <button
                   type="button"
@@ -2552,6 +2788,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Font max <span className="tabular-nums text-neutral-400">{arcFsMax}px</span></label><input type="range" min={12} max={40} value={arcFsMax} onChange={(e) => setArcFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{arcFsMin}px</span></label><input type="range" min={6} max={20} value={arcFsMin} onChange={(e) => setArcFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Disk gap <span className="tabular-nums text-neutral-400">{arcDiskGap}px</span></label><input type="range" min={0} max={280} value={arcDiskGap} onChange={(e) => setArcDiskGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[10px] text-neutral-500 flex justify-between">Edge fade <span className="tabular-nums text-neutral-400">{arcMaskFade}%</span></label><input type="range" min={0} max={45} value={arcMaskFade} onChange={(e) => setArcMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
               <label className="text-[10px] text-neutral-500 flex justify-between">Disk color <span className="tabular-nums text-neutral-400">{arcDiskColor}</span></label>
               <div className="flex items-center gap-1.5 mt-1.5">
@@ -2868,6 +3105,7 @@ export default function HomeClient() {
   const [textDim, setTextDim] = useState(0);
   const [showFontToast, setShowFontToast] = useState(false);
   const [showDimSlider, setShowDimSlider] = useState(false);
+  const [epetriMode, setEpetriMode] = useState(false);
   const toastTimeout = useRef<ReturnType<typeof setTimeout>>(null);
 
   // ── Intro animation state ──
@@ -2908,6 +3146,9 @@ export default function HomeClient() {
       }
       if (e.key === "d" && !e.metaKey && !e.ctrlKey) {
         setShowDimSlider((v) => !v);
+      }
+      if (e.key === "e" && !e.metaKey && !e.ctrlKey) {
+        setEpetriMode((v) => !v);
       }
       if (e.key === "w" && !e.metaKey && !e.ctrlKey) {
         setShowWelcome((v) => !v);
@@ -2976,7 +3217,11 @@ export default function HomeClient() {
   return (
     <main
       className="min-h-screen bg-white"
-      style={{ fontFamily: FONTS[fontIdx].family, "--text-dim": textDim } as React.CSSProperties}
+      style={{
+        fontFamily: epetriMode ? "var(--font-epetri)" : FONTS[fontIdx].family,
+        "--text-dim": textDim,
+        ...(epetriMode ? EPETRI_FONT_OVERRIDES : {}),
+      } as React.CSSProperties}
     >
       {/* ── Intro overlay ── */}
       {introPhase !== "done" && (
@@ -3051,6 +3296,46 @@ export default function HomeClient() {
             <span className="ml-2 tabular-nums" style={{ color: "#c4c4c4" }}>{fontIdx + 1}/{FONTS.length}</span>
           </p>
         </div>
+      )}
+
+      {/* Epetri toggle */}
+      {introDone && (
+        <button
+          onClick={() => setEpetriMode((v) => !v)}
+          aria-label={epetriMode ? "Disable Epetri font" : "Enable Epetri font"}
+          aria-pressed={epetriMode}
+          className="fixed z-[60] cursor-pointer transition-all"
+          style={{
+            bottom: 24,
+            left: 24,
+            height: 28,
+            padding: "0 12px",
+            borderRadius: 999,
+            background: epetriMode ? "#1a1a1a" : "rgba(255,255,255,0.85)",
+            color: epetriMode ? "#fff" : "#999",
+            border: epetriMode ? "1px solid #1a1a1a" : "1px solid #e8e8e8",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            fontFamily: "var(--font-epetri)",
+            fontSize: 11,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: epetriMode ? "#fff" : "#d4d4d4",
+              transition: "background 180ms ease",
+            }}
+          />
+          Epetri
+        </button>
       )}
 
       {/* Text dim slider */}

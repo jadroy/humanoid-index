@@ -1,31 +1,106 @@
 {
-  "1": "It walks at 2.5 meters per second.\nIts hands now grip with more control.",
-  "2": "It moves at 2.5 meters per second.\n28 joints give it full-body control.",
-  "3": "Memo handles chores on two arms and wheels.\nAt 122 cm, it fits most home spaces.",
+  "1": {
+    "short": "It walks at 2.5 meters per second.\nIts hands now grip with more control.",
+    "long": "It walks at 2.5 meters per second.\nIts hands now grip with more control. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "2": {
+    "short": "It moves at 2.5 meters per second.\n28 joints give it full-body control.",
+    "long": "It moves at 2.5 meters per second.\n28 joints give it full-body control. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "3": {
+    "short": "Memo handles chores on two arms and wheels.\nAt 122 cm, it fits most home spaces.",
+    "long": "Memo handles chores on two arms and wheels.\nAt 122 cm, it fits most home spaces. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
   "4": {
     "short": "A bipedal humanoid built for the home.\nLight, quick, and safe around people.",
     "long": "A bipedal humanoid built for the home. Light, quick, and safe around people. 1X designed Neo around soft surfaces and compliant joints so it can move freely without becoming a hazard, betting that the first useful home robots will need to feel approachable before they feel impressive."
   },
-  "5": "It walks, lifts, and works warehouse floors.\nAmazon runs it in live facilities now.",
-  "7": "It stands 167 cm and weighs 70 kg.\n40 joints give it precise hand control.",
-  "8": "Stands 170 cm tall, weighs 70 kg.\nBuilt for general tasks, not one job.",
-  "9": "Walks at 3 m/s on uneven ground.\n41 joints handle complex industrial tasks.",
-  "10": "Humanoid built for factory work at human scale.\nBatteries swap out without stopping the robot.",
-  "11": "The G1 made humanoid robots finally affordable. At $16K, it moves without compromise.",
-  "12": "Full-size humanoid built for factory work. Walks at 3.3 meters per second.",
-  "13": "It walks, bends, and lifts with 40 joints.\nBuilt for research and rehab work.",
-  "14": "It stands 165 cm tall and weighs 50 kg.\n31 joints let it move with real precision.",
-  "15": "It moves like a person, not a machine.\n32 joints handle tasks like pouring drinks.",
-  "16": "Built for factory floors, not labs.\nAt 40 joints, it moves like it means it.",
-  "17": "It moves its full body as one unit.\nAt 43 kg, it runs at 2 m/s.",
-  "18": "It stands 160 cm and weighs 45 kg.\nIt takes verbal orders and does chores.",
-  "19": "Rolls at 1.4 m/s on two wheels.\nBuilt for security work, not research.",
-  "20": "Ameca moves its face in 52 ways.\nIt stands at full human height: 180 cm.",
-  "21": "Pepper reads faces and responds to moods.\nIt stands 120 cm and weighs 28 kg.",
-  "23": "It works alongside humans in factories.\n63 joints let it move like one, too.",
-  "24": "Full-size humanoid built for research labs.\nTorque control makes its joints precise.",
-  "25": "Tendons, not motors, move its joints.\nIt has 48 points of articulation.",
-  "26": "Atlas was the first robot that actually moved. Boston Dynamics built it to show what's possible.",
-  "legend-1": "ASIMO made walking look effortless. It showed the world robots could belong.",
-  "legend-2": "A humanoid built for human conversation.\nHer face shows over 60 expressions."
+  "5": {
+    "short": "It walks, lifts, and works warehouse floors.\nAmazon runs it in live facilities now.",
+    "long": "It walks, lifts, and works warehouse floors.\nAmazon runs it in live facilities now. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "7": {
+    "short": "It stands 167 cm and weighs 70 kg.\n40 joints give it precise hand control.",
+    "long": "It stands 167 cm and weighs 70 kg.\n40 joints give it precise hand control. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "8": {
+    "short": "Stands 170 cm tall, weighs 70 kg.\nBuilt for general tasks, not one job.",
+    "long": "Stands 170 cm tall, weighs 70 kg.\nBuilt for general tasks, not one job. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "9": {
+    "short": "Walks at 3 m/s on uneven ground.\n41 joints handle complex industrial tasks.",
+    "long": "Walks at 3 m/s on uneven ground.\n41 joints handle complex industrial tasks. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "10": {
+    "short": "Humanoid built for factory work at human scale.\nBatteries swap out without stopping the robot.",
+    "long": "Humanoid built for factory work at human scale.\nBatteries swap out without stopping the robot. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "11": {
+    "short": "The G1 made humanoid robots finally affordable. At $16K, it moves without compromise.",
+    "long": "The G1 made humanoid robots finally affordable. At $16K, it moves without compromise. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "12": {
+    "short": "Full-size humanoid built for factory work. Walks at 3.3 meters per second.",
+    "long": "Full-size humanoid built for factory work. Walks at 3.3 meters per second. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "13": {
+    "short": "It walks, bends, and lifts with 40 joints.\nBuilt for research and rehab work.",
+    "long": "It walks, bends, and lifts with 40 joints.\nBuilt for research and rehab work. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "14": {
+    "short": "It stands 165 cm tall and weighs 50 kg.\n31 joints let it move with real precision.",
+    "long": "It stands 165 cm tall and weighs 50 kg.\n31 joints let it move with real precision. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "15": {
+    "short": "It moves like a person, not a machine.\n32 joints handle tasks like pouring drinks.",
+    "long": "It moves like a person, not a machine.\n32 joints handle tasks like pouring drinks. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "16": {
+    "short": "Built for factory floors, not labs.\nAt 40 joints, it moves like it means it.",
+    "long": "Built for factory floors, not labs.\nAt 40 joints, it moves like it means it. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "17": {
+    "short": "It moves its full body as one unit.\nAt 43 kg, it runs at 2 m/s.",
+    "long": "It moves its full body as one unit.\nAt 43 kg, it runs at 2 m/s. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "18": {
+    "short": "It stands 160 cm and weighs 45 kg.\nIt takes verbal orders and does chores.",
+    "long": "It stands 160 cm and weighs 45 kg.\nIt takes verbal orders and does chores. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "19": {
+    "short": "Rolls at 1.4 m/s on two wheels.\nBuilt for security work, not research.",
+    "long": "Rolls at 1.4 m/s on two wheels.\nBuilt for security work, not research. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "20": {
+    "short": "Ameca moves its face in 52 ways.\nIt stands at full human height: 180 cm.",
+    "long": "Ameca moves its face in 52 ways.\nIt stands at full human height: 180 cm. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "21": {
+    "short": "Pepper reads faces and responds to moods.\nIt stands 120 cm and weighs 28 kg.",
+    "long": "Pepper reads faces and responds to moods.\nIt stands 120 cm and weighs 28 kg. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "23": {
+    "short": "It works alongside humans in factories.\n63 joints let it move like one, too.",
+    "long": "It works alongside humans in factories.\n63 joints let it move like one, too. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "24": {
+    "short": "Full-size humanoid built for research labs.\nTorque control makes its joints precise.",
+    "long": "Full-size humanoid built for research labs.\nTorque control makes its joints precise. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "25": {
+    "short": "Tendons, not motors, move its joints.\nIt has 48 points of articulation.",
+    "long": "Tendons, not motors, move its joints.\nIt has 48 points of articulation. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "26": {
+    "short": "Atlas was the first robot that actually moved. Boston Dynamics built it to show what's possible.",
+    "long": "Atlas was the first robot that actually moved. Boston Dynamics built it to show what's possible. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "legend-1": {
+    "short": "ASIMO made walking look effortless. It showed the world robots could belong.",
+    "long": "ASIMO made walking look effortless. It showed the world robots could belong. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  },
+  "legend-2": {
+    "short": "A humanoid built for human conversation.\nHer face shows over 60 expressions.",
+    "long": "A humanoid built for human conversation.\nHer face shows over 60 expressions. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua, ut enim ad minim veniam quis nostrud exercitation."
+  }
 }
