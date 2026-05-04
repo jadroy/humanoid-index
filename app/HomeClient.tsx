@@ -2336,7 +2336,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         const effectiveGap = statsGap;
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 11 }}>
-            <div className="flex items-start">
+            <div className={`flex ${labelPosition === "above" ? "items-end" : "items-start"}`}>
               {/* Left robot */}
               <div
                 key={addHintVisible ? `nudge-${addNudgeKey}` : "idle-l"}
