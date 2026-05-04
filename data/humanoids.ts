@@ -91,7 +91,7 @@ export const humanoids: Humanoid[] = [
     id: "1",
     name: "Optimus Gen 2",
     manufacturer: "Tesla",
-    imageUrl: "/robots/optimus.png",
+    imageUrl: "/robots/optimus-HD.png",
     logoUrl: "/robots/Tesla-logo.png",
     manufacturerUrl: "https://www.tesla.com",
     year: 2024,
@@ -102,14 +102,6 @@ export const humanoids: Humanoid[] = [
     dof: 28,
     maxSpeed: 2.5,
     description: "Tesla's second-gen humanoid with improved hands and enhanced balance capabilities.",
-    media: [
-      { type: 'image', url: '/robots/optimus-torso.png', caption: 'Torso detail' },
-      { type: 'image', url: '/robots/optimus-upper-half.png', caption: 'Upper body' },
-      { type: 'image', url: '/robots/optimus-legs.png', caption: 'Legs detail' },
-      { type: 'image', url: '/robots/optimus-feet.png', caption: 'Feet mechanism' },
-      { type: 'image', url: '/robots/optimus-head-front.png', caption: 'Head front view' },
-      { type: 'image', url: '/robots/optimus-head-side.png', caption: 'Head side view' },
-    ],
   },
   {
     id: "2",
@@ -204,10 +196,6 @@ export const humanoids: Humanoid[] = [
     maxSpeed: 2.0,
     description: "Compact, affordable humanoid with advanced mobility for research and commercial use.",
     purchaseUrl: "https://shop.unitree.com/",
-    media: [
-      { type: 'image', url: '/robots/g1.png', caption: 'Front view' },
-      { type: 'image', url: '/robots/unitree-g1-humanoid-robot-2_43d63809-5fd6-4fbe-9f3c-31659aa50814_1200x1200 (1).webp', caption: 'Detailed view' },
-    ],
   },
   {
     id: "12",
@@ -265,7 +253,7 @@ export const humanoids: Humanoid[] = [
     status: "Prototype",
     height: 160,
     weight: 45,
-    imageUrl: "/robots/menteebot.png",
+    imageUrl: "/robots/menteebot-2.png",
     description: "AI-native humanoid for natural language interaction and household tasks.",
   },
   // 2023
