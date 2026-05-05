@@ -455,6 +455,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // "accent" tints label + arrow with --c-accent and prepends ↗; "dark" inverts the pill
   // (black base, white text); "hairline" prepends a 1px seam above the row to demote it.
   const [actionVariant, setActionVariant] = useState<"pill" | "text" | "accent" | "dark" | "hairline">("pill");
+  const [actionHoverTint, setActionHoverTint] = useState<"none" | "charcoal" | "slate" | "stone">("none");
+  const actionHoverColor = actionHoverTint === "slate" ? "#6B7280" : actionHoverTint === "stone" ? "#78716C" : "#52525B";
+  const actionHoverPct = actionHoverTint === "none" ? "0%" : "10%";
+  const actionActivePct = actionHoverTint === "none" ? "0%" : "18%";
 
   // Compare-header split tuner
   const [showSplitTuner, setShowSplitTuner] = useState(false);
@@ -889,7 +893,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const preloadSizes = `${Math.round(robotW)}vw`;
 
   return (
-    <div className="h-screen overflow-hidden select-none relative bg-white">
+    <div className="h-screen overflow-hidden select-none relative bg-white" style={{ ["--action-hover-tint" as string]: actionHoverColor, ["--action-hover-pct" as string]: actionHoverPct, ["--action-active-pct" as string]: actionActivePct }}>
       {/* Neighbor-image preloader — off-screen Next/Image tags matching the
           card's sizes, so the optimized variants are cached before crossings. */}
       <div aria-hidden style={{ position: "absolute", left: -99999, top: 0, width: `${robotW}vw`, height: `${robotH}vh`, maxWidth: robotMaxW, pointerEvents: "none", opacity: 0 }}>
@@ -2715,6 +2719,21 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     type="button"
                     onClick={() => setActionVariant(v)}
                     className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${actionVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] text-neutral-500 mb-1.5 block">Action hover tint</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(["none", "charcoal", "slate", "stone"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setActionHoverTint(v)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${actionHoverTint === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                   >
                     {v}
                   </button>

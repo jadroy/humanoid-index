@@ -347,34 +347,21 @@ h1, h2, h3, h4, h5, h6 {
   transform: scale(0.988);
 }
 
-/* Action variant — keeps the same idle background as the data pills and
-   skips the hover fill entirely; the arrow-shoot animation IS the hover
-   feedback, so a fill change would just compete with it. */
-.pill-button.pill-action:hover,
-.pill-button.pill-action:active {
-  background: var(--pill-bg, #FCFCFC);
+.pill-button.pill-action:hover {
+  background: color-mix(in srgb, var(--pill-bg, #FCFCFC) calc(100% - var(--action-hover-pct, 0%)), var(--action-hover-tint, #52525B) var(--action-hover-pct, 0%));
 }
 .pill-button.pill-action:active {
+  background: color-mix(in srgb, var(--pill-bg, #FCFCFC) calc(100% - var(--action-active-pct, 0%)), var(--action-hover-tint, #52525B) var(--action-active-pct, 0%));
   transform: scale(0.988);
 }
 
-/* Arrow shoot loop — on hover, the action arrow flies up-right out of frame,
-   teleports invisibly to lower-left, and eases back into place. Repeats while
-   hovered. translate3d to avoid jank, opacity gates the teleport. */
-@keyframes arrow-shoot {
-  0%   { transform: translate3d(0, 0, 0);      opacity: 0.55; }
-  5%   { transform: translate3d(2px, -2px, 0); opacity: 0.55; }
-  15%  { transform: translate3d(5px, -5px, 0); opacity: 0;    }
-  18%  { transform: translate3d(-5px, 5px, 0); opacity: 0;    }
-  28%  { transform: translate3d(-2px, 2px, 0); opacity: 0.55; }
-  100% { transform: translate3d(0, 0, 0);      opacity: 0.55; }
-}
 .pill-arrow {
-  will-change: transform, opacity;
-  backface-visibility: hidden;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
 }
 .pill-button.pill-action:hover .pill-arrow {
-  animation: arrow-shoot 1.5s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+  transform: translate3d(3px, -3px, 0);
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* ═══════════════════════════════════════
