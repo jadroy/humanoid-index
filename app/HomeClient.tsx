@@ -844,8 +844,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         ? (leftId && rightId ? `${origin}/api/og/${leftId}?compare=${rightId}` : "")
         : (leftId ? `${origin}/api/og/${leftId}` : "");
       shareOgRef.current = og;
-      // Silent preload so the toast thumbnail is already cached by the time it's clicked.
-      if (og) { const img = new window.Image(); img.src = og; }
     }
   }, [springL.index, springR.index, comparing, shareUrlRef, shareOgRef]);
 
@@ -3214,7 +3212,7 @@ export default function HomeClient() {
     navigator.clipboard.writeText(url);
     setShareToast({ label, ogUrl });
     if (shareToastTimer.current) clearTimeout(shareToastTimer.current);
-    shareToastTimer.current = setTimeout(() => setShareToast(false), 1600);
+    shareToastTimer.current = setTimeout(() => setShareToast(false), 2600);
   }, []);
   const [allCaps, setAllCaps] = useState(false);
 
@@ -3450,10 +3448,10 @@ export default function HomeClient() {
         }}
       >
         <span
-          className="text-[11px] tracking-wide opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
-          style={{ color: "#b4b4b4" }}
+          className={`text-[11px] tracking-wide transition-opacity duration-200 pointer-events-none ${shareToast ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          style={{ color: shareToast ? "#737373" : "#b4b4b4" }}
         >
-          {shareViewLabel}
+          {shareToast ? shareToast.label : shareViewLabel}
         </span>
         <button
           className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer hover:scale-[1.06]"
@@ -3550,25 +3548,35 @@ export default function HomeClient() {
         visible={introDone}
       />
 
-      {/* Share toast */}
-      {shareToast && (
+      {/* Share toast — OG thumbnail in a card; the "copied" label takes over the share-button hover text */}
+      {shareToast && shareToast.ogUrl && (
         <div
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] rounded-lg animate-blur-fade flex items-center gap-3"
-          style={{ background: "rgba(0,0,0,0.06)", backdropFilter: "blur(12px)", padding: shareToast.ogUrl ? "8px 12px 8px 8px" : "8px 16px" }}
+          className="fixed z-[60] animate-blur-fade"
+          style={{
+            top: "calc(var(--nav-top, 8px) + 52px)",
+            right: "var(--nav-x, 24px)",
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(20px) saturate(140%)",
+            WebkitBackdropFilter: "blur(20px) saturate(140%)",
+            border: "1px solid #ececec",
+            boxShadow: "0 10px 30px -8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.04)",
+            borderRadius: 16,
+            padding: 6,
+          }}
         >
-          {shareToast.ogUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={shareToast.ogUrl}
-              alt=""
-              width={96}
-              height={50}
-              style={{ display: "block", borderRadius: 6, objectFit: "cover", background: "rgba(0,0,0,0.04)" }}
-            />
-          )}
-          <p className="text-[11px] tracking-wide" style={{ color: "#737373", fontWeight: 500 }}>
-            {shareToast.label}
-          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={shareToast.ogUrl}
+            alt=""
+            width={200}
+            height={105}
+            style={{
+              display: "block",
+              borderRadius: 10,
+              objectFit: "cover",
+              background: "rgba(0,0,0,0.03)",
+            }}
+          />
         </div>
       )}
 
