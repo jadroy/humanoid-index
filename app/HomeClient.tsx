@@ -401,7 +401,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillGap, setStatPillGap] = useState(4);         // px — gap between pills
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
   const [statPillPadY, setStatPillPadY] = useState(11);      // px — vertical button padding (sets closed height)
-  const [statPillBg, setStatPillBg] = useState("#FCFCFC");
+  const [statPillBg, setStatPillBg] = useState("#FAFAFA");
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
   const [blurbFontSize, setBlurbFontSize] = useState(12);
   const [blurbFloat, setBlurbFloat] = useState(false);
