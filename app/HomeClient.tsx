@@ -2143,8 +2143,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         const renderMedia = (mh: typeof humanoids[0], mIdx: number, markPriority: boolean) => {
           const mGallery = mh.media?.filter((m) => m.type === "image") || [];
-          const mImages = [mh.imageUrl, ...mGallery.map((m) => m.url)].filter(Boolean) as string[];
-          const mHasGallery = mImages.length > 1;
+          const mItems: { src: string; position?: string; fit?: "contain" | "cover" }[] = [];
+          if (mh.imageUrl) mItems.push({ src: mh.imageUrl, position: mh.imagePosition, fit: mh.imageFit });
+          for (const m of mGallery) mItems.push({ src: m.url, position: m.position ?? mh.imagePosition, fit: m.fit ?? mh.imageFit });
+          const mHasGallery = mItems.length > 1;
           const mCurrent = galleryIdx[mIdx] || 0;
 
           const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -2178,29 +2180,31 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   <div className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
                     <span className="text-[11px] tracking-[0.22em] uppercase" style={{ color: "#a3a3a3" }}>Coming Soon</span>
                   </div>
-                ) : mImages.length > 0 ? mImages.map((src, i) => (
-                  <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: mh.imageFit === "cover" ? 0 : mh.imagePosition === "bottom" ? "24px 24px 0 24px" : 24 }}>
-                    <div className="relative w-full h-full">
-                      {/* key={src} forces remount on humanoid swap — without it, next/image's reused <img> can paint one frame without object-fit during fast scroll, flashing the image at natural size cropped to the box. */}
-                      <Image key={src} src={src} alt={`${mh.name} ${i + 1}`} fill className={mh.imageFit === "cover" ? "object-cover" : "object-contain"} style={mh.imagePosition ? { objectPosition: mh.imagePosition } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
+                ) : mItems.length > 0 ? mItems.map((item, i) => {
+                  const isCover = item.fit === "cover";
+                  const isBottom = !!item.position?.includes("bottom");
+                  return (
+                    <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: isCover ? 0 : isBottom ? "24px 24px 0 24px" : 24 }}>
+                      <div className="relative w-full h-full">
+                        {/* key={src} forces remount on humanoid swap — without it, next/image's reused <img> can paint one frame without object-fit during fast scroll, flashing the image at natural size cropped to the box. */}
+                        <Image key={item.src} src={item.src} alt={`${mh.name} ${i + 1}`} fill className={isCover ? "object-cover" : "object-contain"} style={item.position ? { objectPosition: item.position } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
+                        {isBottom && (
+                          <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]" style={{ height: bottomFadeH, background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))` }} />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )) : (
+                  );
+                }) : (
                   <div className="relative flex items-center justify-center p-6 pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
                     <PlaceholderLogo />
                   </div>
                 )}
               </div>
-
-              {/* Bottom fade for cut-off images */}
-              {mh.imagePosition?.includes("bottom") && (
-                <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]" style={{ height: bottomFadeH, background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))` }} />
-              )}
               {/* Dot strip — overlaid at bottom with fade */}
               {mHasGallery && (
                 <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none" style={{ height: 28, background: "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))" }}>
                   <div className="flex gap-1.5">
-                    {mImages.map((_, i) => (
+                    {mItems.map((_, i) => (
                       <div key={i} style={{
                         width: 5,
                         height: 5,

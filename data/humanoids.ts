@@ -3,6 +3,8 @@ export interface MediaItem {
   url: string; // For images: path to file, For videos: YouTube video ID
   caption?: string;
   thumbnail?: string; // For videos, preview image
+  position?: string; // CSS object-position override for this slide (falls back to humanoid-level)
+  fit?: "contain" | "cover"; // CSS object-fit override for this slide
 }
 
 export interface Humanoid {
@@ -69,7 +71,7 @@ export const humanoids: Humanoid[] = [
     description: "Full-size humanoid for service and research with affordable pricing and COSA agentic OS.",
     media: [
       { type: 'image', url: '/robots/oli-side.png', caption: 'Side profile' },
-      { type: 'image', url: '/robots/oli-wave.webp', caption: 'Waving' },
+      { type: 'image', url: '/robots/oli-wave.webp', caption: 'Waving', position: 'bottom' },
     ],
   },
   {
