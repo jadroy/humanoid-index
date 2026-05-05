@@ -404,6 +404,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
+  type BlurbExpandIndicator = "chevron" | "inline" | "edgebar" | "minimal" | "pill";
+  const [blurbExpandIndicator, setBlurbExpandIndicator] = useState<BlurbExpandIndicator>("chevron");
   const [bubbleVariant, setBubbleVariant] = useState(24);
   const bubbleVariants: { name: string; bg: string; shadow: string; shadowHover: string; backdropFilter?: string }[] = [
     { name: "Crisp white", bg: "#FFFFFF", shadow: "0 0 0 1px rgba(0,0,0,0.06)", shadowHover: "0 0 0 1px rgba(0,0,0,0.10)" },
@@ -1044,6 +1046,140 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           setPillFlash((f) => ({ statKey: key, id: f.id + 1 }));
         };
 
+        const renderExpandIndicator = ({ isExpanded, isHovered }: { isExpanded: boolean; isHovered: boolean }) => {
+          const variant = blurbExpandIndicator;
+          if (variant === "pill") {
+            return (
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: 4,
+                  right: 6,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: Math.max(10, blurbFontSize - 1),
+                  color: "#999",
+                  fontWeight: 450,
+                  background: "rgba(255,255,255,0.92)",
+                  padding: "2px 7px",
+                  borderRadius: 999,
+                  opacity: isHovered ? 1 : 0,
+                  transition: "opacity 0.2s ease",
+                  pointerEvents: "none",
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  {isExpanded ? (
+                    <>
+                      <polyline points="2 4.5 4.5 4.5 4.5 2" />
+                      <polyline points="10 7.5 7.5 7.5 7.5 10" />
+                      <line x1="4.5" y1="4.5" x2="2" y2="2" />
+                      <line x1="7.5" y1="7.5" x2="10" y2="10" />
+                    </>
+                  ) : (
+                    <>
+                      <polyline points="7.5 2 10 2 10 4.5" />
+                      <polyline points="4.5 10 2 10 2 7.5" />
+                      <line x1="10" y1="2" x2="6.8" y2="5.2" />
+                      <line x1="2" y1="10" x2="5.2" y2="6.8" />
+                    </>
+                  )}
+                </svg>
+                {isExpanded ? "Collapse" : "Expand"}
+              </span>
+            );
+          }
+          if (variant === "chevron" || variant === "minimal") {
+            const baseOp = variant === "chevron" ? 0.4 : 0;
+            const hoverOp = 0.75;
+            return (
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: 6,
+                  right: 8,
+                  width: 14,
+                  height: 14,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#888",
+                  opacity: isHovered ? hoverOp : (isExpanded ? hoverOp : baseOp),
+                  transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "opacity 0.2s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+                  pointerEvents: "none",
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 5 6 8 9 5" />
+                </svg>
+              </span>
+            );
+          }
+          if (variant === "edgebar") {
+            return (
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: 4,
+                  left: 0,
+                  right: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                  pointerEvents: "none",
+                }}
+              >
+                <svg
+                  width="10" height="6" viewBox="0 0 12 7"
+                  fill="none" stroke="#888" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
+                  style={{
+                    opacity: isHovered ? 1 : 0,
+                    transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "opacity 0.2s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+                  }}
+                >
+                  <polyline points="2 1.5 6 5 10 1.5" />
+                </svg>
+                <span
+                  style={{
+                    height: 2,
+                    width: isHovered ? 36 : 22,
+                    borderRadius: 999,
+                    background: isHovered ? "#888" : "#d4d4d4",
+                    transition: "width 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease",
+                  }}
+                />
+              </span>
+            );
+          }
+          if (variant === "inline") {
+            return (
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: statPillPadY,
+                  right: statPillPadX,
+                  paddingLeft: 28,
+                  fontSize: Math.max(10, blurbFontSize - 1),
+                  color: isHovered ? "#666" : "#a8a8a8",
+                  fontWeight: 450,
+                  fontStyle: "italic",
+                  letterSpacing: "0.01em",
+                  background: "linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.85) 45%, rgba(255,255,255,0.98) 100%)",
+                  transition: "color 0.2s ease",
+                  pointerEvents: "none",
+                }}
+              >
+                {isExpanded ? "less" : "more"}
+              </span>
+            );
+          }
+          return null;
+        };
+
 
         const statSections = (h: typeof humanoids[0]) => {
         const heightPct = Math.min(((h.height ?? 0) / 200) * 100, 100);
@@ -1130,46 +1266,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     {fullText}
                   </p>
                 </div>
-                {canExpand && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      bottom: 4,
-                      right: 6,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: Math.max(10, blurbFontSize - 1),
-                      color: "#999",
-                      fontWeight: 450,
-                      background: "rgba(255,255,255,0.92)",
-                      padding: "2px 7px",
-                      borderRadius: 999,
-                      opacity: isHovered ? 1 : 0,
-                      transition: "opacity 0.2s ease",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                      {isExpanded ? (
-                        <>
-                          <polyline points="2 4.5 4.5 4.5 4.5 2" />
-                          <polyline points="10 7.5 7.5 7.5 7.5 10" />
-                          <line x1="4.5" y1="4.5" x2="2" y2="2" />
-                          <line x1="7.5" y1="7.5" x2="10" y2="10" />
-                        </>
-                      ) : (
-                        <>
-                          <polyline points="7.5 2 10 2 10 4.5" />
-                          <polyline points="4.5 10 2 10 2 7.5" />
-                          <line x1="10" y1="2" x2="6.8" y2="5.2" />
-                          <line x1="2" y1="10" x2="5.2" y2="6.8" />
-                        </>
-                      )}
-                    </svg>
-                    {isExpanded ? "Collapse" : "Expand"}
-                  </span>
-                )}
+                {canExpand && renderExpandIndicator({ isExpanded, isHovered })}
               </Wrapper>
             );
           })() },
@@ -1327,46 +1424,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         {fullText}
                       </p>
                     </div>
-                    {canExpand && (
-                      <span
-                        style={{
-                          position: "absolute",
-                          bottom: 4,
-                          right: 8,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
-                          fontSize: Math.max(10, blurbFontSize - 1),
-                          color: "#999",
-                          fontWeight: 450,
-                          background: "rgba(255,255,255,0.92)",
-                          padding: "2px 7px",
-                          borderRadius: 999,
-                          opacity: isHovered ? 1 : 0,
-                          transition: "opacity 0.2s ease",
-                          pointerEvents: "none",
-                        }}
-                      >
-                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                          {isExpanded ? (
-                            <>
-                              <polyline points="2 4.5 4.5 4.5 4.5 2" />
-                              <polyline points="10 7.5 7.5 7.5 7.5 10" />
-                              <line x1="4.5" y1="4.5" x2="2" y2="2" />
-                              <line x1="7.5" y1="7.5" x2="10" y2="10" />
-                            </>
-                          ) : (
-                            <>
-                              <polyline points="7.5 2 10 2 10 4.5" />
-                              <polyline points="4.5 10 2 10 2 7.5" />
-                              <line x1="10" y1="2" x2="6.8" y2="5.2" />
-                              <line x1="2" y1="10" x2="5.2" y2="6.8" />
-                            </>
-                          )}
-                        </svg>
-                        {isExpanded ? "Collapse" : "Expand"}
-                      </span>
-                    )}
+                    {canExpand && renderExpandIndicator({ isExpanded, isHovered })}
                   </Wrapper>
                 );
               })()}
@@ -1716,46 +1774,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         {fullText}
                       </p>
                     </div>
-                    {canExpand && (
-                      <span
-                        style={{
-                          position: "absolute",
-                          bottom: 4,
-                          right: 6,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
-                          fontSize: Math.max(10, blurbFontSize - 1),
-                          color: "#999",
-                          fontWeight: 450,
-                          background: "rgba(255,255,255,0.92)",
-                          padding: "2px 7px",
-                          borderRadius: 999,
-                          opacity: isHovered ? 1 : 0,
-                          transition: "opacity 0.2s ease",
-                          pointerEvents: "none",
-                        }}
-                      >
-                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                          {isExpanded ? (
-                            <>
-                              <polyline points="2 4.5 4.5 4.5 4.5 2" />
-                              <polyline points="10 7.5 7.5 7.5 7.5 10" />
-                              <line x1="4.5" y1="4.5" x2="2" y2="2" />
-                              <line x1="7.5" y1="7.5" x2="10" y2="10" />
-                            </>
-                          ) : (
-                            <>
-                              <polyline points="7.5 2 10 2 10 4.5" />
-                              <polyline points="4.5 10 2 10 2 7.5" />
-                              <line x1="10" y1="2" x2="6.8" y2="5.2" />
-                              <line x1="2" y1="10" x2="5.2" y2="6.8" />
-                            </>
-                          )}
-                        </svg>
-                        {isExpanded ? "Collapse" : "Expand"}
-                      </span>
-                    )}
+                    {canExpand && renderExpandIndicator({ isExpanded, isHovered })}
                   </Wrapper>
                 );
               })(),
@@ -1895,46 +1914,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         {fullText}
                       </p>
                     </div>
-                    {canExpand && (
-                      <span
-                        style={{
-                          position: "absolute",
-                          bottom: 4,
-                          right: 8,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
-                          fontSize: Math.max(10, blurbFontSize - 1),
-                          color: "#999",
-                          fontWeight: 450,
-                          background: "rgba(255,255,255,0.92)",
-                          padding: "2px 7px",
-                          borderRadius: 999,
-                          opacity: isHovered ? 1 : 0,
-                          transition: "opacity 0.2s ease",
-                          pointerEvents: "none",
-                        }}
-                      >
-                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                          {isExpanded ? (
-                            <>
-                              <polyline points="2 4.5 4.5 4.5 4.5 2" />
-                              <polyline points="10 7.5 7.5 7.5 7.5 10" />
-                              <line x1="4.5" y1="4.5" x2="2" y2="2" />
-                              <line x1="7.5" y1="7.5" x2="10" y2="10" />
-                            </>
-                          ) : (
-                            <>
-                              <polyline points="7.5 2 10 2 10 4.5" />
-                              <polyline points="4.5 10 2 10 2 7.5" />
-                              <line x1="10" y1="2" x2="6.8" y2="5.2" />
-                              <line x1="2" y1="10" x2="5.2" y2="6.8" />
-                            </>
-                          )}
-                        </svg>
-                        {isExpanded ? "Collapse" : "Expand"}
-                      </span>
-                    )}
+                    {canExpand && renderExpandIndicator({ isExpanded, isHovered })}
                   </Wrapper>
                 );
               })()}
@@ -2807,6 +2787,31 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 >
                   Float to top
                 </button>
+              </div>
+              <label className="text-[10px] text-neutral-500 flex justify-between mt-3">Expand indicator</label>
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {([
+                  { key: "chevron", label: "Chevron" },
+                  { key: "minimal", label: "Minimal" },
+                  { key: "edgebar", label: "Edge bar" },
+                  { key: "inline", label: "Inline" },
+                  { key: "pill", label: "Pill" },
+                ] as { key: BlurbExpandIndicator; label: string }[]).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setBlurbExpandIndicator(opt.key)}
+                    className="text-[10px] px-2 py-1 rounded transition-colors"
+                    style={{
+                      background: blurbExpandIndicator === opt.key ? "#1a1a1a" : "#f0f0f0",
+                      color: blurbExpandIndicator === opt.key ? "#fff" : "#666",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{statPillRadius}px</span></label><input type="range" min={0} max={40} value={statPillRadius} onChange={(e) => setStatPillRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
