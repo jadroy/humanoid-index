@@ -118,9 +118,6 @@ export const humanoids: Humanoid[] = [
     dof: 28,
     maxSpeed: 2.5,
     description: "Fully electric successor to hydraulic Atlas for industrial applications.",
-    media: [
-      { type: 'image', url: '/robots/atlas.png', caption: 'Full body view' },
-    ],
   },
   {
     id: "4",
@@ -455,9 +452,5 @@ export const humanoids: Humanoid[] = [
     dof: 57,
     maxSpeed: 2.7,
     description: "Honda's pioneering bipedal humanoid. Retired in 2022 after 20 years of development.",
-    media: [
-      { type: 'image', url: '/robots/asimo.png', caption: 'Full body' },
-      { type: 'image', url: '/robots/asimo-head.png', caption: 'Head detail' },
-    ],
   },
 ];
