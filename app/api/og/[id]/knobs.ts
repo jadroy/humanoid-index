@@ -1,9 +1,15 @@
 export type SingleKnobs = {
+  showName: boolean;
+  showManufacturer: boolean;
   showStats: boolean;
   showBadge: boolean;
   showLogo: boolean;
+  showWatermark: boolean;
   imagePanelBg: string;
   imagePanelW: number;
+  imagePadX: number;
+  imagePadY: number;
+  imageOffsetY: number;
   imageW: number;
   imageH: number;
   nameSize: number;
@@ -25,11 +31,17 @@ export type CompareKnobs = {
 };
 
 export const SINGLE_DEFAULTS: SingleKnobs = {
+  showName: true,
+  showManufacturer: true,
   showStats: true,
   showBadge: true,
   showLogo: true,
+  showWatermark: true,
   imagePanelBg: "#fafafa",
   imagePanelW: 480,
+  imagePadX: 40,
+  imagePadY: 40,
+  imageOffsetY: 0,
   imageW: 400,
   imageH: 540,
   nameSize: 64,

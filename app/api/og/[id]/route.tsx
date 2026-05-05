@@ -66,11 +66,17 @@ function parseNum(v: string | null, fallback: number): number {
 function readSingleKnobs(sp: URLSearchParams): SingleKnobs {
   if (process.env.NODE_ENV !== "development") return SINGLE_DEFAULTS;
   return {
+    showName: parseBool(sp.get("showName"), SINGLE_DEFAULTS.showName),
+    showManufacturer: parseBool(sp.get("showManufacturer"), SINGLE_DEFAULTS.showManufacturer),
     showStats: parseBool(sp.get("showStats"), SINGLE_DEFAULTS.showStats),
     showBadge: parseBool(sp.get("showBadge"), SINGLE_DEFAULTS.showBadge),
     showLogo: parseBool(sp.get("showLogo"), SINGLE_DEFAULTS.showLogo),
+    showWatermark: parseBool(sp.get("showWatermark"), SINGLE_DEFAULTS.showWatermark),
     imagePanelBg: sp.get("imagePanelBg") ?? SINGLE_DEFAULTS.imagePanelBg,
     imagePanelW: parseNum(sp.get("imagePanelW"), SINGLE_DEFAULTS.imagePanelW),
+    imagePadX: parseNum(sp.get("imagePadX"), SINGLE_DEFAULTS.imagePadX),
+    imagePadY: parseNum(sp.get("imagePadY"), SINGLE_DEFAULTS.imagePadY),
+    imageOffsetY: parseNum(sp.get("imageOffsetY"), SINGLE_DEFAULTS.imageOffsetY),
     imageW: parseNum(sp.get("imageW"), SINGLE_DEFAULTS.imageW),
     imageH: parseNum(sp.get("imageH"), SINGLE_DEFAULTS.imageH),
     nameSize: parseNum(sp.get("nameSize"), SINGLE_DEFAULTS.nameSize),
@@ -110,6 +116,9 @@ function SingleCard({
 }) {
   const stats = getStats(bot);
   const badge = bot.status ? STATUS_COLORS[bot.status] ?? { bg: "#f3f4f6", fg: "#6b7280" } : null;
+  const showText = k.showName || k.showManufacturer || k.showStats || k.showBadge;
+  const showSidebar = showText || (k.showLogo && !!logoSrc);
+  const panelW = showSidebar ? k.imagePanelW : 1200;
 
   return (
     <div
@@ -125,17 +134,27 @@ function SingleCard({
     >
       <div
         style={{
-          width: k.imagePanelW,
+          width: panelW,
           height: 630,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: 40,
+          paddingTop: k.imagePadY,
+          paddingBottom: k.imagePadY,
+          paddingLeft: k.imagePadX,
+          paddingRight: k.imagePadX,
           background: k.imagePanelBg,
         }}
       >
         {imgSrc ? (
-          <img src={imgSrc} width={k.imageW} height={k.imageH} style={{ objectFit: "contain" }} />
+          <img
+            src={imgSrc}
+            width={k.imageW}
+            height={k.imageH}
+            style={k.imageOffsetY
+              ? { objectFit: "contain", transform: `translateY(${k.imageOffsetY}px)` }
+              : { objectFit: "contain" }}
+          />
         ) : (
           <div
             style={{
@@ -155,49 +174,59 @@ function SingleCard({
         )}
       </div>
 
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          padding: "60px 48px 60px 40px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          {k.showLogo && logoSrc && <img src={logoSrc} width={28} height={28} style={{ borderRadius: 4 }} />}
-          <span style={{ fontSize: k.manufacturerSize, color: "#888", letterSpacing: 0.5 }}>
-            {bot.manufacturer}{bot.year ? ` · ${bot.year}` : ""}
-          </span>
+      {showSidebar && (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            padding: "60px 48px 60px 40px",
+          }}
+        >
+          {(k.showManufacturer || (k.showLogo && logoSrc)) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              {k.showLogo && logoSrc && <img src={logoSrc} width={28} height={28} style={{ borderRadius: 4 }} />}
+              {k.showManufacturer && (
+                <span style={{ fontSize: k.manufacturerSize, color: "#888", letterSpacing: 0.5 }}>
+                  {bot.manufacturer}{bot.year ? ` · ${bot.year}` : ""}
+                </span>
+              )}
+            </div>
+          )}
+
+          {k.showName && (
+            <div style={{ fontSize: k.nameSize, fontWeight: 700, lineHeight: 1.1, marginBottom: 36, letterSpacing: -1, color: "#111" }}>
+              {bot.name}
+            </div>
+          )}
+
+          {k.showStats && stats.length > 0 && (
+            <div style={{ display: "flex", gap: 36 }}>
+              {stats.map((s) => (
+                <div key={s.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: k.statLabelSize, color: "#aaa", letterSpacing: 1.5, textTransform: "uppercase" }}>{s.label}</span>
+                  <span style={{ fontSize: k.statValueSize, fontWeight: 600, color: "#333" }}>{s.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {k.showBadge && badge && bot.status && (
+            <div style={{ marginTop: 32, display: "flex" }}>
+              <span style={{ fontSize: 14, padding: "6px 18px", borderRadius: 999, background: badge.bg, color: badge.fg, letterSpacing: 0.5 }}>
+                {bot.status}
+              </span>
+            </div>
+          )}
         </div>
+      )}
 
-        <div style={{ fontSize: k.nameSize, fontWeight: 700, lineHeight: 1.1, marginBottom: 36, letterSpacing: -1, color: "#111" }}>
-          {bot.name}
+      {k.showWatermark && (
+        <div style={{ position: "absolute", bottom: 28, right: 40, display: "flex", fontSize: 16, color: "#ccc", letterSpacing: 0.5 }}>
+          humanoid-index.com
         </div>
-
-        {k.showStats && stats.length > 0 && (
-          <div style={{ display: "flex", gap: 36 }}>
-            {stats.map((s) => (
-              <div key={s.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontSize: k.statLabelSize, color: "#aaa", letterSpacing: 1.5, textTransform: "uppercase" }}>{s.label}</span>
-                <span style={{ fontSize: k.statValueSize, fontWeight: 600, color: "#333" }}>{s.value}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {k.showBadge && badge && bot.status && (
-          <div style={{ marginTop: 32, display: "flex" }}>
-            <span style={{ fontSize: 14, padding: "6px 18px", borderRadius: 999, background: badge.bg, color: badge.fg, letterSpacing: 0.5 }}>
-              {bot.status}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <div style={{ position: "absolute", bottom: 28, right: 40, display: "flex", fontSize: 16, color: "#ccc", letterSpacing: 0.5 }}>
-        humanoid-index.com
-      </div>
+      )}
     </div>
   );
 }
