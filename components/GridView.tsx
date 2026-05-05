@@ -61,7 +61,7 @@ export default function GridView({ humanoids }: GridViewProps) {
         className="nav-slide fixed z-40 flex items-center gap-2 pointer-events-auto px-3 py-2 rounded-full"
         style={{
           top: "var(--nav-top, 4px)",
-          right: "var(--arc-logo-x, 24px)",
+          right: "var(--nav-x, 24px)",
           background: "rgba(255,255,255,0.75)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",

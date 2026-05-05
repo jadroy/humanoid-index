@@ -243,7 +243,7 @@ export function LayoutSwitcher({
   let navEl: React.ReactElement;
   // ── Style: floating (original — island with border) ──
   if (navStyle === "floating") navEl = (
-    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{mark}</div>
         <div className="flex-1 flex justify-center">
@@ -267,7 +267,7 @@ export function LayoutSwitcher({
 
   // ── Style: pill — rounded capsule, tinted active state ──
   else if (navStyle === "pill") navEl = (
-    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{mark}</div>
         <div className="flex-1 flex justify-center">
@@ -477,7 +477,7 @@ export function LayoutSwitcher({
     }
 
     navEl = (
-      <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 4px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+      <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 4px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
         <div className="flex items-center gap-4">
           <div className="pointer-events-auto">{mark}</div>
           <div className="flex-1 flex justify-center">
@@ -494,7 +494,7 @@ export function LayoutSwitcher({
 
   // ── Style: bordered — full-width top bar with bottom border ──
   else if (navStyle === "bordered") navEl = (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={{ ...frost, paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={{ ...frost, paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
       <div className="flex items-center gap-4 pb-3">
         <div>{mark}</div>
         <div className="flex-1 flex justify-center">
@@ -516,7 +516,7 @@ export function LayoutSwitcher({
 
   // ── Style: minimal — just text, no container, no border ──
   else if (navStyle === "minimal") navEl = (
-    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{mark}</div>
         <div className="flex-1 flex justify-center">
@@ -540,7 +540,7 @@ export function LayoutSwitcher({
 
   // ── Style: solid — dark bar, inverted text ──
   else navEl = (
-    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--arc-logo-x, 24px)", paddingRight: "var(--arc-logo-x, 24px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{solidMark}</div>
         <div className="flex-1 flex justify-center">

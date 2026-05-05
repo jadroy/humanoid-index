@@ -408,7 +408,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
   type BlurbExpandIndicator = "chevron" | "inline" | "edgebar" | "minimal" | "pill";
-  const [blurbExpandIndicator, setBlurbExpandIndicator] = useState<BlurbExpandIndicator>("chevron");
+  const [blurbExpandIndicator, setBlurbExpandIndicator] = useState<BlurbExpandIndicator>("pill");
   const [bubbleVariant, setBubbleVariant] = useState(24);
   const bubbleVariants: { name: string; bg: string; shadow: string; shadowHover: string; backdropFilter?: string; ink?: string; inkDim?: string }[] = [
     { name: "Crisp white", bg: "#FFFFFF", shadow: "0 0 0 1px rgba(0,0,0,0.06)", shadowHover: "0 0 0 1px rgba(0,0,0,0.10)" },
@@ -1482,7 +1482,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
-                  const interactive = !forcedOpen && !empty && !isLink;
+                  const interactive = !forcedOpen && !empty && !isLink && s.key !== "purchase";
                   const isAction = s.key === "purchase" && isLink;
                   const actionAccent = isAction && actionVariant === "accent";
                   const actionDark = isAction && actionVariant === "dark";
@@ -1560,7 +1560,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                             <svg className={isAction ? "pill-arrow" : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                             </svg>
-                          ) : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
+                          ) : s.key === "purchase" ? null : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
                         </div>
                       )}
                       {forcedOpen ? (
@@ -2023,7 +2023,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
-                  const interactive = !forcedOpen && !empty && !isLink;
+                  const interactive = !forcedOpen && !empty && !isLink && s.key !== "purchase";
                   const isAction = s.key === "purchase" && isLink;
                   const actionAccent = isAction && actionVariant === "accent";
                   const actionDark = isAction && actionVariant === "dark";
@@ -2101,7 +2101,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                             <svg className={isAction ? "pill-arrow" : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                             </svg>
-                          ) : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
+                          ) : s.key === "purchase" ? null : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
                         </div>
                       )}
                       {forcedOpen ? (
