@@ -1,5 +1,6 @@
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
+import { notFound } from "next/navigation";
 
 const epetri: React.CSSProperties = {
   fontFamily: "var(--font-epetri)",
@@ -31,6 +32,7 @@ function pad(n: string, len = 3) {
 }
 
 export default function EpetriPreview() {
+  if (process.env.NODE_ENV !== "development") notFound();
   const bot = humanoids.find((h) => h.id === "11")!; // Unitree G1
 
   return (

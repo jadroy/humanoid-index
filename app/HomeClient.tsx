@@ -20,6 +20,7 @@ import {
   type SwitcherStyle,
 } from "@/components/LayoutSwitcher";
 import { useSpring, SCROLL_PRESETS, type PresetKey } from "@/hooks/useSpring";
+import { useIsDev } from "@/hooks/useIsDev";
 import { ArcDots, ARC_STYLES, ARC_PRESETS, arcStyleLabels, MARKER_VARIANTS, type ArcStyle } from "@/components/ArcDots";
 import OptionsMenu, { BUTTON_VARIANTS, BUTTON_LABELS, type ButtonVariant } from "@/components/OptionsMenu";
 import { FONTS } from "@/lib/fonts";
@@ -284,7 +285,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -333,6 +334,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [miniCrownRadius, setMiniCrownRadius] = useState(70);
   const [arcInset, setArcInset] = useState(70);
   const [navTop, setNavTop] = useState(4);
+  const [autoNavX, setAutoNavX] = useState(true);
+  const [navX, setNavX] = useState(24);
   const [giveStyle, setGiveStyle] = useState<GiveStyle>("none");
   const [giveVelScale, setGiveVelScale] = useState(3);
   const [givePushAmt, setGivePushAmt] = useState(5);
@@ -406,8 +409,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
   type BlurbExpandIndicator = "chevron" | "inline" | "edgebar" | "minimal" | "pill";
   const [blurbExpandIndicator, setBlurbExpandIndicator] = useState<BlurbExpandIndicator>("chevron");
-  const [bubbleVariant, setBubbleVariant] = useState(24);
-  const bubbleVariants: { name: string; bg: string; shadow: string; shadowHover: string; backdropFilter?: string }[] = [
+  const [bubbleVariant, setBubbleVariant] = useState(32);
+  const bubbleVariants: { name: string; bg: string; shadow: string; shadowHover: string; backdropFilter?: string; ink?: string; inkDim?: string }[] = [
     { name: "Crisp white", bg: "#FFFFFF", shadow: "0 0 0 1px rgba(0,0,0,0.06)", shadowHover: "0 0 0 1px rgba(0,0,0,0.10)" },
     { name: "Soft float", bg: "#FFFFFF", shadow: "0 1px 4px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.035)", shadowHover: "0 2px 14px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05)" },
     { name: "Lifted", bg: "#FFFFFF", shadow: "0 2px 8px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)", shadowHover: "0 4px 16px rgba(0,0,0,0.09), 0 0 0 1px rgba(0,0,0,0.06)" },
@@ -437,8 +440,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     { name: "Soft pearl", bg: "linear-gradient(135deg, #FFFFFF 0%, #FAF7FF 45%, #F2F7FF 100%)", shadow: "0 4px 14px rgba(80,60,180,0.07), 0 1px 3px rgba(80,60,180,0.05), 0 0 0 0.5px rgba(80,60,180,0.06), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(80,60,180,0.04)", shadowHover: "0 6px 22px rgba(80,60,180,0.10), 0 2px 5px rgba(80,60,180,0.07), 0 0 0 0.5px rgba(80,60,180,0.09), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(80,60,180,0.06)" },
     { name: "Floating orb", bg: "radial-gradient(ellipse 80% 110% at 30% 15%, #FFFFFF 0%, #F4F7FB 70%, #EAEFF6 100%)", shadow: "0 14px 32px rgba(20,30,60,0.08), 0 6px 12px rgba(20,30,60,0.05), 0 1px 2px rgba(20,30,60,0.04), 0 0 0 0.5px rgba(20,30,60,0.05), inset 0 1.5px 0 rgba(255,255,255,1)", shadowHover: "0 22px 48px rgba(20,30,60,0.12), 0 10px 20px rgba(20,30,60,0.08), 0 2px 4px rgba(20,30,60,0.05), 0 0 0 0.5px rgba(20,30,60,0.07), inset 0 1.5px 0 rgba(255,255,255,1)" },
     { name: "Crystalline", bg: "linear-gradient(165deg, #FFFFFF 0%, #F4F6FA 50%, #FFFFFF 100%)", shadow: "0 5px 16px rgba(30,40,80,0.07), 0 1px 3px rgba(30,40,80,0.04), 0 0 0 0.5px rgba(30,40,80,0.07), inset 0 1.5px 0.5px rgba(255,255,255,1), inset 0 -1.5px 0.5px rgba(30,40,80,0.05), inset 1px 0 0 rgba(255,255,255,0.5), inset -1px 0 0 rgba(30,40,80,0.03)", shadowHover: "0 8px 26px rgba(30,40,80,0.10), 0 2px 5px rgba(30,40,80,0.06), 0 0 0 0.5px rgba(30,40,80,0.10), inset 0 1.5px 0.5px rgba(255,255,255,1), inset 0 -1.5px 0.5px rgba(30,40,80,0.07), inset 1px 0 0 rgba(255,255,255,0.6), inset -1px 0 0 rgba(30,40,80,0.04)" },
+    { name: "Dark slate", bg: "linear-gradient(180deg, #1F2226 0%, #16191D 100%)", shadow: "0 4px 14px rgba(0,0,0,0.28), 0 1px 3px rgba(0,0,0,0.22), 0 0 0 0.5px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.05)", shadowHover: "0 6px 22px rgba(0,0,0,0.36), 0 2px 5px rgba(0,0,0,0.28), 0 0 0 0.5px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.07)", ink: "#C8C8CC", inkDim: "#9A9AA0" },
+    { name: "Dark glass", bg: "rgba(78,80,86,0.62)", shadow: "0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.10)", shadowHover: "0 10px 32px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.14), 0 0 0 0.5px rgba(255,255,255,0.22), inset 0 1px 0 rgba(255,255,255,0.24), inset 0 -1px 0 rgba(0,0,0,0.12)", backdropFilter: "blur(24px) saturate(180%)", ink: "#F4F4F6", inkDim: "#DCDCE0" },
   ];
-  const bubble = bubbleVariants[bubbleVariant - 1];
+  const bubble = bubbleVariants[bubbleVariant - 1] ?? bubbleVariants[0];
   const toggleBlurbExpand = (id: string) => {
     setExpandedBlurbs(prev => {
       const next = new Set(prev);
@@ -510,11 +515,27 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const effectiveArcInset = autoArcInset ? adaptiveArcInset : arcInset;
   const effectiveDrumXOffset = autoArcInset ? adaptiveDrumXOffset : drumXOffset;
 
-  // Publish the arc's leftmost-label x so the nav logo can align to it
+  // Publish the arc's leftmost-label x so the arc text can align to it
   useEffect(() => {
     const x = Math.max(16, effectiveArcInset - arcTextGap);
     document.documentElement.style.setProperty("--arc-logo-x", `${x}px`);
   }, [effectiveArcInset, arcTextGap]);
+
+  // Publish a stable nav inset that ignores `comparing` so the logo and
+  // share button stay anchored when entering/leaving compare mode.
+  useEffect(() => {
+    if (!autoNavX) {
+      document.documentElement.style.setProperty("--nav-x", `${navX}px`);
+      return;
+    }
+    const cardPxStable = Math.min(robotW * windowWidth / 100, robotMaxW);
+    const centerHalfStable = (cardPxStable + statsGap + statsW) / 2;
+    const availableStable = (windowWidth / 2) - centerHalfStable;
+    const adaptiveStable = Math.round(Math.min(180, Math.max(48, availableStable * 0.3)));
+    const inset = autoArcInset ? adaptiveStable : arcInset;
+    const x = Math.max(16, inset - arcTextGap);
+    document.documentElement.style.setProperty("--nav-x", `${x}px`);
+  }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, autoArcInset, arcInset, arcTextGap]);
 
   // Publish nav top offset as a CSS variable
   useEffect(() => {
@@ -749,9 +770,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
-      if (e.key === "s") { pickArcStyle(ARC_STYLES[(ARC_STYLES.indexOf(arcStyle) + 1) % ARC_STYLES.length]); return; }
-      if (e.key === "t") { setShowTuner((v) => !v); return; }
-      if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
+      if (isDev) {
+        if (e.key === "s") { pickArcStyle(ARC_STYLES[(ARC_STYLES.indexOf(arcStyle) + 1) % ARC_STYLES.length]); return; }
+        if (e.key === "t") { setShowTuner((v) => !v); return; }
+        if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
+      }
       const isDown = e.key === "ArrowDown" || e.key === "ArrowRight";
       const isUp = e.key === "ArrowUp" || e.key === "ArrowLeft";
       if (isDown || isUp) {
@@ -765,7 +788,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeGo, comparing, arcStyle, springL.go, springR.go]);
+  }, [activeGo, comparing, arcStyle, springL.go, springR.go, isDev]);
 
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
@@ -1261,7 +1284,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 >
                   <p
                     className="leading-relaxed"
-                    style={{ fontSize: blurbFontSize, color: "#999", fontWeight: 450 }}
+                    style={{ fontSize: blurbFontSize, color: bubble.ink || "#999", fontWeight: 450 }}
                   >
                     {fullText}
                   </p>
@@ -1419,7 +1442,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       <p
                         key={`blurb-float-${h.id}`}
                         className="leading-relaxed info-fade-in"
-                        style={{ fontSize: blurbFontSize, color: "#999", fontWeight: 450 }}
+                        style={{ fontSize: blurbFontSize, color: bubble.ink || "#999", fontWeight: 450 }}
                       >
                         {fullText}
                       </p>
@@ -1767,7 +1790,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         className="leading-relaxed"
                         style={{
                           fontSize: blurbFontSize,
-                          color: compareBlurb.isGenerated ? "#999" : "#bbb",
+                          color: compareBlurb.isGenerated ? (bubble.ink || "#999") : (bubble.inkDim || "#bbb"),
                           fontWeight: 450,
                         }}
                       >
@@ -1907,7 +1930,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         className="leading-relaxed info-fade-in"
                         style={{
                           fontSize: blurbFontSize,
-                          color: compareBlurb.isGenerated ? "#999" : "#bbb",
+                          color: compareBlurb.isGenerated ? (bubble.ink || "#999") : (bubble.inkDim || "#bbb"),
                           fontWeight: 450,
                         }}
                       >
@@ -2422,31 +2445,33 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       })()}
 
       {/* ── Dev toggle (bottom-right, subtle) ── */}
-      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-1.5">
-        <button
-          onClick={() => setShowTuner(!showTuner)}
-          className="cursor-pointer transition-colors duration-150"
-          style={{ fontSize: 10, color: showTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
-        >
-          T
-        </button>
-        <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
-        <button
-          onClick={() => setShowSplitTuner(!showSplitTuner)}
-          className="cursor-pointer transition-colors duration-150"
-          style={{ fontSize: 10, color: showSplitTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
-        >
-          S
-        </button>
-        <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
-        <button
-          onClick={() => onToggleChatTuner?.()}
-          className="cursor-pointer transition-colors duration-150"
-          style={{ fontSize: 10, color: showChatTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
-        >
-          C
-        </button>
-      </div>
+      {isDev && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-1.5">
+          <button
+            onClick={() => setShowTuner(!showTuner)}
+            className="cursor-pointer transition-colors duration-150"
+            style={{ fontSize: 10, color: showTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+          >
+            T
+          </button>
+          <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
+          <button
+            onClick={() => setShowSplitTuner(!showSplitTuner)}
+            className="cursor-pointer transition-colors duration-150"
+            style={{ fontSize: 10, color: showSplitTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+          >
+            S
+          </button>
+          <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
+          <button
+            onClick={() => onToggleChatTuner?.()}
+            className="cursor-pointer transition-colors duration-150"
+            style={{ fontSize: 10, color: showChatTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+          >
+            C
+          </button>
+        </div>
+      )}
       {showSplitTuner && (
         <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
           <div>
@@ -2606,6 +2631,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               <div><p className="text-[10px] text-neutral-500 mb-1.5">Switcher</p><div className="flex flex-wrap gap-1.5">{SWITCHER_STYLES.map((s) => (<button key={s} onClick={() => onSwitcherStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${switcherStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             )}
             <div><label className="text-[10px] text-neutral-500 flex justify-between">Top offset <span className="tabular-nums text-neutral-400">{navTop}px</span></label><input type="range" min={0} max={48} value={navTop} onChange={(e) => setNavTop(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Auto side inset</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${autoNavX ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoNavX(!autoNavX)}>{autoNavX ? "On" : "Off"}</button></div>
+            <div style={{ opacity: autoNavX ? 0.3 : 1 }}><label className="text-[10px] text-neutral-500 flex justify-between">Side inset <span className="tabular-nums text-neutral-400">{navX}px</span></label><input type="range" min={0} max={200} value={navX} onChange={(e) => { setNavX(Number(e.target.value)); setAutoNavX(false); }} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Card Give</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setGiveVelScale(3); setGivePushAmt(5); setGiveLeanAmt(0.9); setGiveTiltAmt(4); setGiveTiltDepth(800); }}>Reset</button></div>
@@ -3143,6 +3170,7 @@ function GuideChat({ onSelect, config }: { onSelect: (idx: number) => void; conf
 // ─── Fonts ─────────────────────────────────────────────────────
 export default function HomeClient() {
   const isMobile = useIsMobile();
+  const isDev = useIsDev();
 
   const [layout, setLayout] = useState<Layout>("E");
   const [indexView, setIndexView] = useState<IndexView>("timeline");
@@ -3221,20 +3249,22 @@ export default function HomeClient() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "f" && !e.metaKey && !e.ctrlKey) {
-        setFontIdx((i) => (i + 1) % FONTS.length);
-        setShowFontToast(true);
-        if (toastTimeout.current) clearTimeout(toastTimeout.current);
-        toastTimeout.current = setTimeout(() => setShowFontToast(false), 1800);
-      }
-      if (e.key === "d" && !e.metaKey && !e.ctrlKey) {
-        setShowDimSlider((v) => !v);
-      }
-      if (e.key === "e" && !e.metaKey && !e.ctrlKey) {
-        setEpetriMode((v) => !v);
-      }
-      if (e.key === "w" && !e.metaKey && !e.ctrlKey) {
-        setShowWelcome((v) => !v);
+      if (isDev) {
+        if (e.key === "f" && !e.metaKey && !e.ctrlKey) {
+          setFontIdx((i) => (i + 1) % FONTS.length);
+          setShowFontToast(true);
+          if (toastTimeout.current) clearTimeout(toastTimeout.current);
+          toastTimeout.current = setTimeout(() => setShowFontToast(false), 1800);
+        }
+        if (e.key === "d" && !e.metaKey && !e.ctrlKey) {
+          setShowDimSlider((v) => !v);
+        }
+        if (e.key === "e" && !e.metaKey && !e.ctrlKey) {
+          setEpetriMode((v) => !v);
+        }
+        if (e.key === "w" && !e.metaKey && !e.ctrlKey) {
+          setShowWelcome((v) => !v);
+        }
       }
       if (e.key === "R" && e.shiftKey && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
@@ -3247,7 +3277,7 @@ export default function HomeClient() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [isDev]);
 
   const handleSelectHumanoid = useCallback((idx: number) => {
     setLayout("E");
@@ -3363,8 +3393,8 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} />}
-        {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} />}
+        {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
 
@@ -3407,7 +3437,7 @@ export default function HomeClient() {
         className="group fixed z-[1000] flex items-center gap-2"
         style={{
           top: "var(--nav-top, 8px)",
-          right: "var(--arc-logo-x, 24px)",
+          right: "var(--nav-x, 24px)",
           opacity: introDone ? 1 : 0,
           transform: introDone ? "translateY(0)" : "translateY(-12px)",
           transition: "opacity 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s, transform 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s",
@@ -3442,7 +3472,7 @@ export default function HomeClient() {
       </div>
 
       {/* Chat tuner panel */}
-      {showChatTuner && (
+      {isDev && showChatTuner && (
         <div data-tuner className="fixed bottom-14 right-6 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[70vh] overflow-y-auto scrollbar-hide">
           <div>
             <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Guide Style</p>

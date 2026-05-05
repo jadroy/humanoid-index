@@ -7,7 +7,7 @@ import { useWheelInput } from "./useWheelInput";
 import CarouselCard from "./CarouselCard";
 import { CARD_W, CARD_GAP, MAX_COLS } from "./carouselMath";
 
-export default function EllipticalCarousel({ allCaps }: { allCaps?: boolean }) {
+export default function EllipticalCarousel({ allCaps, isDev = false }: { allCaps?: boolean; isDev?: boolean }) {
   // ── Tunable parameters ──
   const [wheelR, setWheelR] = useState(800);
   const [arcSpread, setArcSpread] = useState(0.45);   // fraction of π
@@ -267,15 +267,17 @@ export default function EllipticalCarousel({ allCaps }: { allCaps?: boolean }) {
       </div>
 
       {/* Tuner toggle */}
-      <button
-        className="fixed bottom-4 right-4 z-50 w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-neutral-400 text-[14px] cursor-pointer transition-colors"
-        onClick={() => setShowPanel(!showPanel)}
-      >
-        ⚙
-      </button>
+      {isDev && (
+        <button
+          className="fixed bottom-4 right-4 z-50 w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-neutral-400 text-[14px] cursor-pointer transition-colors"
+          onClick={() => setShowPanel(!showPanel)}
+        >
+          ⚙
+        </button>
+      )}
 
       {/* Control panel */}
-      {showPanel && (
+      {isDev && showPanel && (
         <div className="fixed bottom-14 right-4 z-50 w-64 bg-white border border-neutral-200 rounded-lg p-4 shadow-lg space-y-3" style={{ fontSize: 10 }}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] tracking-widest uppercase text-neutral-400 font-medium">Arc Tuner</p>
