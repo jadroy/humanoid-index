@@ -3234,14 +3234,19 @@ export default function HomeClient() {
     const t1 = setTimeout(() => setIntroPhase("exit"), 800);
     // Phase 2: overlay unmounts, content expands in
     const t2 = setTimeout(() => setIntroPhase("done"), 1150);
-    // Phase 3: welcome modal surfaces after content settles
-    const t3 = setTimeout(() => {
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  // Welcome modal — gated to dev mode for now (Ctrl+Shift+D to enable)
+  useEffect(() => {
+    if (!isDev) return;
+    const t = setTimeout(() => {
       if (typeof window === "undefined") return;
       if (window.localStorage.getItem("hi:welcome-seen") === "1") return;
       setShowWelcome(true);
     }, 1500);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, []);
+    return () => clearTimeout(t);
+  }, [isDev]);
 
   const dismissWelcome = useCallback(() => {
     setShowWelcome(false);
