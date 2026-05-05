@@ -409,7 +409,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
   type BlurbExpandIndicator = "chevron" | "inline" | "edgebar" | "minimal" | "pill";
   const [blurbExpandIndicator, setBlurbExpandIndicator] = useState<BlurbExpandIndicator>("chevron");
-  const [bubbleVariant, setBubbleVariant] = useState(32);
+  const [bubbleVariant, setBubbleVariant] = useState(24);
   const bubbleVariants: { name: string; bg: string; shadow: string; shadowHover: string; backdropFilter?: string; ink?: string; inkDim?: string }[] = [
     { name: "Crisp white", bg: "#FFFFFF", shadow: "0 0 0 1px rgba(0,0,0,0.06)", shadowHover: "0 0 0 1px rgba(0,0,0,0.10)" },
     { name: "Soft float", bg: "#FFFFFF", shadow: "0 1px 4px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.035)", shadowHover: "0 2px 14px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05)" },
@@ -1262,6 +1262,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     cursor: "pointer",
                     display: "block",
                     position: "relative",
+                    zIndex: 12,
                     borderRadius: statPillRadius,
                     WebkitTapHighlightColor: "transparent",
                   } : {}),
@@ -1766,6 +1767,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         cursor: "pointer",
                         display: "block",
                         position: "relative",
+                        zIndex: 12,
                         borderRadius: statPillRadius,
                         WebkitTapHighlightColor: "transparent",
                       } : {}),
