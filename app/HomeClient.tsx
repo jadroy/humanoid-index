@@ -414,7 +414,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillPadY, setStatPillPadY] = useState(11);      // px — vertical button padding (sets closed height)
   const [statPillBg, setStatPillBg] = useState("#FAFAFA");
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
-  const [blurbFontSize, setBlurbFontSize] = useState(12);
+  const [blurbFontSize, setBlurbFontSize] = useState(12.7);
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
@@ -1321,9 +1321,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 {...wrapperProps}
                 style={{
                   ...(canExpand ? {
-                    background: bubble.bg,
-                    boxShadow: isHovered ? bubble.shadowHover : bubble.shadow,
-                    ...(bubble.backdropFilter ? { backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter } : {}),
+                    background: "transparent",
+                    boxShadow: "none",
                     border: "none",
                     padding: `${statPillPadY}px ${statPillPadX}px`,
                     marginLeft: -statPillPadX,
@@ -1334,7 +1333,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     display: "block",
                     position: "relative",
                     zIndex: 12,
-                    borderRadius: isExpanded ? statPillRadiusOpen : statPillRadius,
                     WebkitTapHighlightColor: "transparent",
                   } : {}),
                   opacity: blurbReady ? 1 : 0,
@@ -1808,9 +1806,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     {...wrapperProps}
                     style={{
                       ...(canExpand ? {
-                        background: bubble.bg,
-                        boxShadow: isHovered ? bubble.shadowHover : bubble.shadow,
-                        ...(bubble.backdropFilter ? { backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter } : {}),
+                        background: "transparent",
+                        boxShadow: "none",
                         border: "none",
                         padding: `${statPillPadY}px ${statPillPadX}px`,
                         marginLeft: -statPillPadX,
@@ -1821,7 +1818,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         display: "block",
                         position: "relative",
                         zIndex: 12,
-                        borderRadius: isExpanded ? statPillRadiusOpen : statPillRadius,
                         WebkitTapHighlightColor: "transparent",
                       } : {}),
                       opacity: blurbReady ? 1 : 0,
