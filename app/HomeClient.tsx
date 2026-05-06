@@ -394,6 +394,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [arcDiskGap, setArcDiskGap] = useState(26);
   const [arcDiskColor, setArcDiskColor] = useState("#f5f5f5");
   const [arcMaskFade, setArcMaskFade] = useState(22);
+  const [arcGhostDots, setArcGhostDots] = useState(true);
   // Arc-tag tuning
   const [tagFsMin, setTagFsMin] = useState(11);
   const [tagFsMax, setTagFsMax] = useState(14);
@@ -1088,6 +1089,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcMaskFade={arcMaskFade}
           arcMarkerVariant={arcMarkerVariant}
           arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
+          arcGhostDots={arcGhostDots}
           entered={introDone}
           tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
           tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -1128,6 +1130,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             arcMaskFade={arcMaskFade}
             arcMarkerVariant={arcMarkerVariant}
             arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
+            arcGhostDots={arcGhostDots}
             entered={introDone}
             tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
             tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -3321,6 +3324,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{arcFsMin}px</span></label><input type="range" min={6} max={20} value={arcFsMin} onChange={(e) => setArcFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Disk gap <span className="tabular-nums text-neutral-400">{arcDiskGap}px</span></label><input type="range" min={0} max={280} value={arcDiskGap} onChange={(e) => setArcDiskGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Edge fade <span className="tabular-nums text-neutral-400">{arcMaskFade}%</span></label><input type="range" min={0} max={45} value={arcMaskFade} onChange={(e) => setArcMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center justify-between"><label className="text-[12px] text-neutral-500">Ghost dots</label><button onClick={() => setArcGhostDots(v => !v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcGhostDots ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcGhostDots ? "On" : "Off"}</button></div>
             <div>
               <label className="text-[12px] text-neutral-500 flex justify-between">Disk color <span className="tabular-nums text-neutral-400">{arcDiskColor}</span></label>
               <div className="flex items-center gap-1.5 mt-1.5">

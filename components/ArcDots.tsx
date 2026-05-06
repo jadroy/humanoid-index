@@ -231,7 +231,7 @@ function ArcCurrentMarker({ markerVariant = 1, markerColor, mirrored, aInset, aT
   );
 }
 
-function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR, aStepDeg, aTextGap, aLineOp, aFsMax, aFsMin, aFontFamily, aAllCaps, markerVariant, markerAccentColor, aMaskFade }: {
+function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR, aStepDeg, aTextGap, aLineOp, aFsMax, aFsMin, aFontFamily, aAllCaps, markerVariant, markerAccentColor, aMaskFade, ghostDots = true }: {
   index: number;
   subscribe: SpringSubscribe;
   mirrored?: boolean;
@@ -242,13 +242,15 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
   markerVariant?: number;
   markerAccentColor?: string;
   aMaskFade?: number;
+  ghostDots?: boolean;
 }) {
   const wheelR = aWheelR;
   const r = wheelR - aTextGap;
   const items: { i: number; ghost: boolean }[] = [];
   for (let n = index - 14; n <= index + 15; n++) {
-    const ghost = n < 0 || n >= humanoids.length;
-    items.push({ i: n, ghost });
+    const outOfRange = n < 0 || n >= humanoids.length;
+    if (outOfRange && !ghostDots) continue;
+    items.push({ i: n, ghost: outOfRange });
   }
   const textRefs = useRef<Array<SVGTextElement | null>>([]);
   const nameRefs = useRef<Array<SVGTSpanElement | null>>([]);
@@ -278,7 +280,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
           if (ghostEl) {
             ghostEl.setAttribute("cx", String(cx));
             ghostEl.setAttribute("cy", String(cy));
-            ghostEl.style.opacity = String(Math.max(0.06, 0.22 - t * 0.18));
+            ghostEl.style.opacity = String(Math.max(0, 0.6 - dist * 0.08));
           }
           continue;
         }
@@ -347,8 +349,8 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
               <circle
                 key={`ghost-${i}`}
                 ref={(el) => { ghostRefs.current[idx] = el; }}
-                r={1.5}
-                fill="#bdbdbd"
+                r={2}
+                fill="#b5b5b5"
                 style={{ pointerEvents: "none" }}
               />
             );
@@ -518,14 +520,14 @@ function ArcTagWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR,
   );
 }
 
-export function ArcDots({ index, subscribe, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10, arcDiskGap: aDiskGap = 26, arcDiskColor: aDiskColor = "#f5f5f5", arcFontFamily: aFontFamily, arcAllCaps: aAllCaps, arcMaskFade: aMaskFade = 22, arcMarkerVariant = 0, arcMarkerColor, entered, tagFsMin: tFsMin = 11, tagFsMax: tFsMax = 14, tagOpMin: tOpMin = 1, tagOpMax: tOpMax = 1, tagGreyMin: tGreyMin = 64, tagGreyMax: tGreyMax = 213, tagPillOp: tPillOp = 0.03, tagFalloff: tFalloff = 2, tagPadX: tPadX = 0, tagPadY: tPadY = 0, tagRadius: tRadius = 20, tagMarkerSize: tMarkerSize = 4, tagMarkerOp: tMarkerOp = 0.32 }: { index: number; subscribe: SpringSubscribe; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number; arcDiskGap?: number; arcDiskColor?: string; arcFontFamily?: string; arcAllCaps?: boolean; arcMaskFade?: number; arcMarkerVariant?: number; arcMarkerColor?: string; entered?: boolean; tagFsMin?: number; tagFsMax?: number; tagOpMin?: number; tagOpMax?: number; tagGreyMin?: number; tagGreyMax?: number; tagPillOp?: number; tagFalloff?: number; tagPadX?: number; tagPadY?: number; tagRadius?: number; tagMarkerSize?: number; tagMarkerOp?: number }) {
+export function ArcDots({ index, subscribe, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10, arcDiskGap: aDiskGap = 26, arcDiskColor: aDiskColor = "#f5f5f5", arcFontFamily: aFontFamily, arcAllCaps: aAllCaps, arcMaskFade: aMaskFade = 22, arcMarkerVariant = 0, arcMarkerColor, arcGhostDots = true, entered, tagFsMin: tFsMin = 11, tagFsMax: tFsMax = 14, tagOpMin: tOpMin = 1, tagOpMax: tOpMax = 1, tagGreyMin: tGreyMin = 64, tagGreyMax: tGreyMax = 213, tagPillOp: tPillOp = 0.03, tagFalloff: tFalloff = 2, tagPadX: tPadX = 0, tagPadY: tPadY = 0, tagRadius: tRadius = 20, tagMarkerSize: tMarkerSize = 4, tagMarkerOp: tMarkerOp = 0.32 }: { index: number; subscribe: SpringSubscribe; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number; arcDiskGap?: number; arcDiskColor?: string; arcFontFamily?: string; arcAllCaps?: boolean; arcMaskFade?: number; arcMarkerVariant?: number; arcMarkerColor?: string; arcGhostDots?: boolean; entered?: boolean; tagFsMin?: number; tagFsMax?: number; tagOpMin?: number; tagOpMax?: number; tagGreyMin?: number; tagGreyMax?: number; tagPillOp?: number; tagFalloff?: number; tagPadX?: number; tagPadY?: number; tagRadius?: number; tagMarkerSize?: number; tagMarkerOp?: number }) {
   // arc-timeline / arc-names / arc-tag take the imperative path to avoid React reconciliation per frame
   if (variant === "arc-timeline") {
     return <ArcTimelineWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} aDiskGap={aDiskGap} aDiskColor={aDiskColor} entered={entered} />;
   }
   if (variant === "arc-names") {
     { const resolvedAccent = arcMarkerColor ?? MARKER_VARIANTS.find(m => m.id === arcMarkerVariant)?.accentColor;
-      return <ArcNamesWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} aFontFamily={aFontFamily} aAllCaps={aAllCaps} markerVariant={arcMarkerVariant} markerAccentColor={resolvedAccent} aMaskFade={aMaskFade} />; }
+      return <ArcNamesWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} aFontFamily={aFontFamily} aAllCaps={aAllCaps} markerVariant={arcMarkerVariant} markerAccentColor={resolvedAccent} aMaskFade={aMaskFade} ghostDots={arcGhostDots} />; }
   }
   if (variant === "arc-tag") {
     return <ArcTagWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aDiskGap={aDiskGap} aDiskColor={aDiskColor} entered={entered} tagFsMin={tFsMin} tagFsMax={tFsMax} tagOpMin={tOpMin} tagOpMax={tOpMax} tagGreyMin={tGreyMin} tagGreyMax={tGreyMax} tagPillOp={tPillOp} tagFalloff={tFalloff} tagPadX={tPadX} tagPadY={tPadY} tagRadius={tRadius} tagMarkerSize={tMarkerSize} tagMarkerOp={tMarkerOp} />;
