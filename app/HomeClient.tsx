@@ -1506,8 +1506,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
-                    <p className="text-[12.7px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.5 }}>
+                    <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, letterSpacing: "0.05em", textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
+                    <p className="text-[12.7px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, letterSpacing: "0.05em", textTransform: allCaps ? "uppercase" : undefined, opacity: 0.5 }}>
                       {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
                     </p>
                   </div>
@@ -1909,8 +1909,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.5 }}>{h.manufacturer}</p>
+                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, letterSpacing: "0.05em" }}>{h.name}</p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, letterSpacing: "0.05em", marginTop: 1, opacity: 0.5 }}>{h.manufacturer}</p>
               </div>
             </div>
           );

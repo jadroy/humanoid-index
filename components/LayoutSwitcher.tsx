@@ -59,7 +59,7 @@ function DragSwitcher({
   const thumbLeft = isRight ? slots.iL : slots.sL;
   const thumbWidth = isRight ? slots.iW : slots.sW;
 
-  const scrollInk = active === "E" ? "rgba(38, 38, 38, 1)" : "rgba(38, 38, 38, 0.35)";
+  const scrollInk = active === "E" ? "rgba(38, 38, 38, 1)" : "rgba(38, 38, 38, 0.55)";
   const transition = "max-width 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease, padding 260ms ease";
 
   return (
@@ -96,7 +96,7 @@ function DragSwitcher({
           onClick={() => { if (active !== "Z") onChange("Z"); }}
           className="text-[12px] tracking-wide cursor-pointer whitespace-nowrap"
           style={{
-            color: active === "Z" ? "rgba(38, 38, 38, 0.3)" : "rgba(38, 38, 38, 0.35)",
+            color: active === "Z" ? "rgba(38, 38, 38, 0.3)" : "rgba(38, 38, 38, 0.55)",
             fontWeight: 500,
             padding: active === "Z" ? "4px 4px 4px 12px" : "4px 12px",
             transition: "color 200ms ease, padding 260ms ease",
@@ -129,7 +129,7 @@ function DragSwitcher({
                 onClick={() => onIndexViewChange(v)}
                 className="text-[12px] tracking-wide capitalize whitespace-nowrap transition-colors duration-200 cursor-pointer"
                 style={{
-                  color: indexView === v ? "rgba(38,38,38,0.85)" : "rgba(38,38,38,0.35)",
+                  color: indexView === v ? "rgba(38,38,38,0.85)" : "rgba(38,38,38,0.55)",
                   fontWeight: 500,
                   padding: "0 6px",
                 }}
@@ -310,7 +310,7 @@ export function LayoutSwitcher({
       const isScroll = active === "E";
       const isIndex = active === "Z" && indexView === "grid";
       const isTimeline = active === "Z" && indexView === "timeline";
-      const opacityFor = (on: boolean) => (on ? 1 : 0.32);
+      const opacityFor = (on: boolean) => (on ? 1 : 0.55);
       const labelCls = "text-[12px] tracking-wide cursor-pointer select-none";
       const labelStyleText = (on: boolean): React.CSSProperties => ({
         color: "var(--c-ink)",
@@ -324,7 +324,7 @@ export function LayoutSwitcher({
             onClick={() => onChange("E")}
             className={labelCls}
             style={labelStyleText(isScroll)}
-            onMouseEnter={(e) => { if (!isScroll) e.currentTarget.style.opacity = "0.6"; }}
+            onMouseEnter={(e) => { if (!isScroll) e.currentTarget.style.opacity = "0.8"; }}
             onMouseLeave={(e) => { if (!isScroll) e.currentTarget.style.opacity = String(opacityFor(false)); }}
           >
             Scroll
@@ -333,7 +333,7 @@ export function LayoutSwitcher({
             onClick={() => { if (active !== "Z") onChange("Z"); if (indexView !== "grid") onIndexViewChange("grid"); }}
             className={labelCls}
             style={labelStyleText(isIndex)}
-            onMouseEnter={(e) => { if (!isIndex) e.currentTarget.style.opacity = "0.6"; }}
+            onMouseEnter={(e) => { if (!isIndex) e.currentTarget.style.opacity = "0.8"; }}
             onMouseLeave={(e) => { if (!isIndex) e.currentTarget.style.opacity = String(opacityFor(false)); }}
           >
             Index
@@ -342,7 +342,7 @@ export function LayoutSwitcher({
             onClick={() => { if (active !== "Z") onChange("Z"); if (indexView !== "timeline") onIndexViewChange("timeline"); }}
             className={labelCls}
             style={labelStyleText(isTimeline)}
-            onMouseEnter={(e) => { if (!isTimeline) e.currentTarget.style.opacity = "0.6"; }}
+            onMouseEnter={(e) => { if (!isTimeline) e.currentTarget.style.opacity = "0.8"; }}
             onMouseLeave={(e) => { if (!isTimeline) e.currentTarget.style.opacity = String(opacityFor(false)); }}
           >
             Timeline
