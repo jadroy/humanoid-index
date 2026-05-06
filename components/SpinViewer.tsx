@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 interface SpinViewerProps {
   frameCount: number;
@@ -11,18 +11,19 @@ interface SpinViewerProps {
   style?: React.CSSProperties;
 }
 
-export default function SpinViewer({
-  frameCount,
-  path,
-  pxPerFrame = 14,
-  showHint = true,
-  className = "",
-  style,
-}: SpinViewerProps) {
+export interface SpinViewerHandle {
+  unwind: () => Promise<void>;
+}
+
+const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinViewer(
+  { frameCount, path, pxPerFrame = 14, showHint = true, className = "", style },
+  ref
+) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const frameRef = useRef(0);
   const dragRef = useRef<{ startX: number; startFrame: number } | null>(null);
+  const unwindingRef = useRef(false);
   const [loaded, setLoaded] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
@@ -57,8 +58,52 @@ export default function SpinViewer({
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   };
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      unwind: () =>
+        new Promise<void>((resolve) => {
+          const start = frameRef.current;
+          if (start === 0) {
+            resolve();
+            return;
+          }
+          // Shortest path back to frame 0 around the loop
+          const forward = frameCount - start;
+          const backward = start;
+          const distance = Math.min(forward, backward);
+          const direction = forward < backward ? 1 : -1;
+          const duration = Math.min(450, 220 + distance * 14);
+          const t0 = performance.now();
+          unwindingRef.current = true;
+          dragRef.current = null;
+
+          const tick = (now: number) => {
+            const t = Math.min(1, (now - t0) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            const offset = eased * distance;
+            let next = Math.round(start + direction * offset);
+            next = ((next % frameCount) + frameCount) % frameCount;
+            if (t >= 1) next = 0;
+            if (next !== frameRef.current) {
+              frameRef.current = next;
+              draw();
+            }
+            if (t < 1 && canvasRef.current) {
+              requestAnimationFrame(tick);
+            } else {
+              unwindingRef.current = false;
+              resolve();
+            }
+          };
+          requestAnimationFrame(tick);
+        }),
+    }),
+    [frameCount]
+  );
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!loaded) return;
+    if (!loaded || unwindingRef.current) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { startX: e.clientX, startFrame: frameRef.current };
     if (!hasInteracted) setHasInteracted(true);
@@ -116,4 +161,8 @@ export default function SpinViewer({
       )}
     </div>
   );
-}
+});
+
+SpinViewer.displayName = "SpinViewer";
+
+export default SpinViewer;

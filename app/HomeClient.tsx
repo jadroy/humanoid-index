@@ -8,7 +8,7 @@ import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
 import MobileView from "@/components/MobileView";
-import SpinViewer from "@/components/SpinViewer";
+import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
 
 const SPIN_ROBOTS: Record<string, { frameCount: number; path: string }> = {
   "3": { frameCount: 30, path: "/spin/memo" },
@@ -318,6 +318,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
   const [spinActive, setSpinActive] = useState(false);
+  const spinViewerRef = useRef<SpinViewerHandle>(null);
+  const spinExitingRef = useRef(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
@@ -2387,6 +2389,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               <div className="relative flex-1 min-h-0 overflow-hidden">
                 {spinActive && isFirst && SPIN_ROBOTS[h.id] ? (
                   <SpinViewer
+                    ref={spinViewerRef}
                     frameCount={SPIN_ROBOTS[h.id]!.frameCount}
                     path={SPIN_ROBOTS[h.id]!.path}
                     className="w-full h-full"
@@ -2412,9 +2415,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 {/* 3D toggle — bottom-right, mirrors the share button */}
                 {isFirst && !comparing && SPIN_ROBOTS[h.id] && (
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      setSpinActive((prev) => !prev);
+                      if (spinExitingRef.current) return;
+                      if (spinActive) {
+                        spinExitingRef.current = true;
+                        await spinViewerRef.current?.unwind();
+                        setSpinActive(false);
+                        spinExitingRef.current = false;
+                      } else {
+                        setSpinActive(true);
+                      }
                     }}
                     aria-label={spinActive ? "Exit 3D view" : "View in 3D"}
                     className={`absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ${
