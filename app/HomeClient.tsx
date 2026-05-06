@@ -416,7 +416,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillPadY, setStatPillPadY] = useState(11);      // px — vertical button padding (sets closed height)
   const [statPillBg, setStatPillBg] = useState("#FAFAFA");
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
-  const [blurbFontSize, setBlurbFontSize] = useState(12.7);
+  const [blurbFontSize, setBlurbFontSize] = useState(13);
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [splitBlurb, setSplitBlurb] = useState(false);
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
@@ -1162,7 +1162,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 4,
-                  fontSize: Math.max(12.7, blurbFontSize - 1),
+                  fontSize: Math.max(13, blurbFontSize - 1),
                   color: "#999",
                   fontWeight: 450,
                   background: "rgba(255,255,255,0.92)",
@@ -1267,7 +1267,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   bottom: statPillPadY,
                   right: statPillPadX,
                   paddingLeft: 28,
-                  fontSize: Math.max(12.7, blurbFontSize - 1),
+                  fontSize: Math.max(13, blurbFontSize - 1),
                   color: isHovered ? "#666" : "#a8a8a8",
                   fontWeight: 450,
                   fontStyle: "italic",
@@ -1515,8 +1515,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
-                    <p className="text-[12px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.42 }}>
+                    <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
+                    <p className="text-[13px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.42 }}>
                       {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
                     </p>
                   </div>
@@ -1936,8 +1936,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.42 }}>{h.manufacturer}</p>
+                <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
+                <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.42 }}>{h.manufacturer}</p>
               </div>
             </div>
           );
@@ -2345,8 +2345,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42 }}>{h.manufacturer}</p>
+                <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
+                <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42 }}>{h.manufacturer}</p>
               </div>
             </div>
           );
