@@ -10,8 +10,19 @@ import GridView from "@/components/GridView";
 import MobileView from "@/components/MobileView";
 import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
 
-const SPIN_ROBOTS: Record<string, { frameCount: number; path: string }> = {
-  "3": { frameCount: 30, path: "/spin/memo" },
+const SPIN_ROBOTS: Record<
+  string,
+  {
+    frameCount: number;
+    path: string;
+    credit?: { prefix?: string; name: string; href?: string };
+  }
+> = {
+  "3": {
+    frameCount: 30,
+    path: "/spin/memo",
+    credit: { prefix: "via", name: "Sunday Robotics", href: "https://www.sundayrobotics.com" },
+  },
 };
 import { WelcomeModal, WelcomeStyleSwitcher, type WelcomeStyle } from "@/components/WelcomeModal";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
@@ -484,7 +495,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // Action-pill variant — "pill" matches the data rows; "text" reads as a footer text-link;
   // "accent" tints label + arrow with --c-accent and prepends ↗; "dark" inverts the pill
   // (black base, white text); "hairline" prepends a 1px seam above the row to demote it.
-  const [actionVariant, setActionVariant] = useState<"pill" | "text" | "accent" | "dark" | "hairline">("pill");
+  const [actionVariant, setActionVariant] = useState<"pill" | "text" | "accent" | "dark" | "hairline" | "split">("pill");
   const [actionHoverTint, setActionHoverTint] = useState<"none" | "charcoal" | "slate" | "stone">("none");
   const actionHoverColor = actionHoverTint === "slate" ? "#6B7280" : actionHoverTint === "stone" ? "#78716C" : "#52525B";
   const actionHoverPct = actionHoverTint === "none" ? "0%" : "10%";
@@ -1435,6 +1446,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               show: true,
               href,
               text,
+              price: hasCost ? h.cost! : undefined,
+              ctaText: isSundayBeta ? "Apply" : "Buy",
               label: (
                 <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: hasUrl ? pillLabelColor : "#c0c0c0", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>{text}</p>
               ),
@@ -1552,6 +1565,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const actionAccent = isAction && actionVariant === "accent";
                   const actionDark = isAction && actionVariant === "dark";
                   const actionHairline = isAction && actionVariant === "hairline";
+                  const actionSplit = isAction && actionVariant === "split";
                   const actionLabelColor = actionAccent ? "var(--c-accent)" : pillLabelColor;
                   const actionPillBg = actionDark ? "#ECECEC" : pillBg;
                   const actionText = isAction ? ((s as { text?: string }).text ?? "") : "";
@@ -1574,6 +1588,42 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
                           <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                         </svg>
+                      </a>
+                    );
+                  }
+                  // Split variant: Apple-style price text + accent "Buy" button inside one pill.
+                  if (actionSplit) {
+                    const href = (s as any).href as string;
+                    const price = (s as { price?: string }).price;
+                    const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
+                    return (
+                      <a
+                        key={s.key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="pill-button w-full"
+                        style={{
+                          ["--pill-bg" as string]: pillBg,
+                          background: pillBg,
+                          borderRadius: statPillRadius,
+                          padding: `4px 4px 4px ${statPillPadX}px`,
+                          textDecoration: "none",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          minHeight: 36,
+                          WebkitTapHighlightColor: "transparent",
+                        }}
+                      >
+                        <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
+                          {price ?? " "}
+                        </span>
+                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--c-accent)", color: "#fff", borderRadius: 999, padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1 }}>
+                          {cta}
+                        </span>
                       </a>
                     );
                   }
@@ -2112,6 +2162,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const actionAccent = isAction && actionVariant === "accent";
                   const actionDark = isAction && actionVariant === "dark";
                   const actionHairline = isAction && actionVariant === "hairline";
+                  const actionSplit = isAction && actionVariant === "split";
                   const actionLabelColor = actionAccent ? "var(--c-accent)" : pillLabelColor;
                   const actionPillBg = actionDark ? "#ECECEC" : pillBg;
                   const actionText = isAction ? ((s as { text?: string }).text ?? "") : "";
@@ -2134,6 +2185,42 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
                           <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                         </svg>
+                      </a>
+                    );
+                  }
+                  // Split variant: Apple-style price text + accent "Buy" button inside one pill.
+                  if (actionSplit) {
+                    const href = (s as any).href as string;
+                    const price = (s as { price?: string }).price;
+                    const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
+                    return (
+                      <a
+                        key={s.key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="pill-button w-full"
+                        style={{
+                          ["--pill-bg" as string]: pillBg,
+                          background: pillBg,
+                          borderRadius: statPillRadius,
+                          padding: `4px 4px 4px ${statPillPadX}px`,
+                          textDecoration: "none",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          minHeight: 36,
+                          WebkitTapHighlightColor: "transparent",
+                        }}
+                      >
+                        <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
+                          {price ?? " "}
+                        </span>
+                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--c-accent)", color: "#fff", borderRadius: 999, padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1 }}>
+                          {cta}
+                        </span>
                       </a>
                     );
                   }
@@ -2396,6 +2483,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     ref={spinViewerRef}
                     frameCount={SPIN_ROBOTS[h.id]!.frameCount}
                     path={SPIN_ROBOTS[h.id]!.path}
+                    credit={SPIN_ROBOTS[h.id]!.credit}
                     className="w-full h-full"
                   />
                 ) : (
@@ -3028,7 +3116,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div>
               <label className="text-[12px] text-neutral-500 mb-1.5 block">Action variant</label>
               <div className="flex flex-wrap gap-1.5">
-                {(["pill", "text", "accent", "dark", "hairline"] as const).map((v) => (
+                {(["pill", "text", "accent", "dark", "hairline", "split"] as const).map((v) => (
                   <button
                     key={v}
                     type="button"

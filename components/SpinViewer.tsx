@@ -9,6 +9,7 @@ interface SpinViewerProps {
   showHint?: boolean;
   className?: string;
   style?: React.CSSProperties;
+  credit?: { prefix?: string; name: string; href?: string };
 }
 
 export interface SpinViewerHandle {
@@ -18,7 +19,7 @@ export interface SpinViewerHandle {
 }
 
 const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinViewer(
-  { frameCount, path, pxPerFrame = 14, showHint = true, className = "", style },
+  { frameCount, path, pxPerFrame = 14, showHint = true, className = "", style, credit },
   ref
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -203,6 +204,28 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
           }`}
         >
           Drag to rotate
+        </div>
+      )}
+
+      {credit && (
+        <div
+          className={`absolute bottom-2 left-3 text-[11px] tracking-tight text-neutral-400 transition-opacity duration-500 ${
+            loaded ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          {credit.prefix && <span>{credit.prefix} </span>}
+          {credit.href ? (
+            <a
+              href={credit.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-neutral-500 hover:text-neutral-700 transition-colors"
+            >
+              {credit.name}
+            </a>
+          ) : (
+            <span>{credit.name}</span>
+          )}
         </div>
       )}
     </div>

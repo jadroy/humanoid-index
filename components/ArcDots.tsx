@@ -245,23 +245,23 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
 }) {
   const wheelR = aWheelR;
   const r = wheelR - aTextGap;
-  const items: { i: number }[] = [];
+  const items: { i: number; ghost: boolean }[] = [];
   for (let n = index - 14; n <= index + 15; n++) {
-    if (n >= 0 && n < humanoids.length) items.push({ i: n });
+    const ghost = n < 0 || n >= humanoids.length;
+    items.push({ i: n, ghost });
   }
   const textRefs = useRef<Array<SVGTextElement | null>>([]);
   const nameRefs = useRef<Array<SVGTSpanElement | null>>([]);
   const hitRefs = useRef<Array<SVGRectElement | null>>([]);
+  const ghostRefs = useRef<Array<SVGCircleElement | null>>([]);
   // Tangent distance to the adjacent item — used to size click rects so they tile.
   const stepH = r * Math.sin((aStepDeg * Math.PI) / 180);
 
   useLayoutEffect(() => {
     const update = (pos: number) => {
       for (let idx = 0; idx < items.length; idx++) {
-        const el = textRefs.current[idx];
-        const nameEl = nameRefs.current[idx];
-        if (!el || !nameEl) continue;
-        const i = items[idx].i;
+        const item = items[idx];
+        const i = item.i;
         const o = i - pos;
         const deg = o * aStepDeg;
         const rad = (deg * Math.PI) / 180;
@@ -271,8 +271,22 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         const cy = wheelR + Math.sin(theta) * r;
         const tangentDeg = (theta * 180) / Math.PI + (mirrored ? 180 : 0);
         const dist = Math.abs(o);
-        const isAct = dist < 0.5;
         const t = Math.min(dist / 10, 1);
+
+        if (item.ghost) {
+          const ghostEl = ghostRefs.current[idx];
+          if (ghostEl) {
+            ghostEl.setAttribute("cx", String(cx));
+            ghostEl.setAttribute("cy", String(cy));
+            ghostEl.style.opacity = String(Math.max(0.06, 0.22 - t * 0.18));
+          }
+          continue;
+        }
+
+        const el = textRefs.current[idx];
+        const nameEl = nameRefs.current[idx];
+        if (!el || !nameEl) continue;
+        const isAct = dist < 0.5;
         const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
         const fw = isAct ? 500 : 400;
         const op = Math.max(0.08, 1 - t * 0.9);
@@ -327,7 +341,18 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
       >
         <circle cx={wheelR} cy={wheelR} r={r} fill="none" stroke="#ebebeb" strokeWidth="0.5" style={{ opacity: aLineOp }} />
-        {items.map(({ i }, idx) => {
+        {items.map(({ i, ghost }, idx) => {
+          if (ghost) {
+            return (
+              <circle
+                key={`ghost-${i}`}
+                ref={(el) => { ghostRefs.current[idx] = el; }}
+                r={1.5}
+                fill="#bdbdbd"
+                style={{ pointerEvents: "none" }}
+              />
+            );
+          }
           const h = humanoids[i];
           const name = h?.name ?? String(i).padStart(2, "0");
           return (
