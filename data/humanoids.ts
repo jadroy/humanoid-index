@@ -26,6 +26,7 @@ export interface Humanoid {
   manufacturerUrl?: string; // Company website
   media?: MediaItem[]; // Additional images and videos
   purchaseUrl?: string; // Link to buy/learn more about the robot
+  sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
 }
 
 export const humanoids: Humanoid[] = [
@@ -136,6 +137,7 @@ export const humanoids: Humanoid[] = [
     maxSpeed: 4.0,
     description: "Lightweight bipedal humanoid for safe human interaction and home assistance.",
     purchaseUrl: "https://www.1x.tech/order",
+    sceneUrl: "/scenes/neo-scene.png",
   },
   {
     id: "7",

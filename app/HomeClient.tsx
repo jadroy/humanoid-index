@@ -404,7 +404,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillBg, setStatPillBg] = useState("#FAFAFA");
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
   const [blurbFontSize, setBlurbFontSize] = useState(12);
-  const [blurbFloat, setBlurbFloat] = useState(false);
+  const [blurbFloat, setBlurbFloat] = useState(true);
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
   type BlurbExpandIndicator = "chevron" | "inline" | "edgebar" | "minimal" | "pill";
@@ -477,6 +477,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [splitDur, setSplitDur] = useState(320); // ms
   const [labelPosition, setLabelPosition] = useState<"stack" | "below" | "above">("above");
   const [statsAlign, setStatsAlign] = useState<"top" | "center" | "bottom">("bottom");
+
+  // Scene background tuner
+  const [showSceneTuner, setShowSceneTuner] = useState(false);
+  const [sceneShape, setSceneShape] = useState<"radial" | "horizontal" | "vertical" | "top" | "bottom">("bottom");
+  const [sceneSize, setSceneSize] = useState(39);
+  const [sceneSoftness, setSceneSoftness] = useState(35);
+  const [scenePeakAlpha, setScenePeakAlpha] = useState(48);
+  const [sceneOpacity, setSceneOpacity] = useState(79);
+  const [sceneBlur, setSceneBlur] = useState(0);
+  // Humanoid card fill tuner — only applied to cards whose humanoid has a sceneUrl
+  const [cardFillColor, setCardFillColor] = useState("#FAFAFA");
+  const [cardFillAlpha, setCardFillAlpha] = useState(63);
+  const [cardBlur, setCardBlur] = useState(28);
 
   // Adaptive arc positioning
   const [windowWidth, setWindowWidth] = useState(1920);
@@ -774,6 +787,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         if (e.key === "s") { pickArcStyle(ARC_STYLES[(ARC_STYLES.indexOf(arcStyle) + 1) % ARC_STYLES.length]); return; }
         if (e.key === "t") { setShowTuner((v) => !v); return; }
         if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
+        if (e.key === "b") { setShowSceneTuner((v) => !v); return; }
       }
       const isDown = e.key === "ArrowDown" || e.key === "ArrowRight";
       const isUp = e.key === "ArrowUp" || e.key === "ArrowLeft";
@@ -915,8 +929,56 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   })();
   const preloadSizes = `${Math.round(robotW)}vw`;
 
+  const sceneBgUrl = !comparing ? humanoids[springL.index]?.sceneUrl : undefined;
+
+  const sceneMask = (() => {
+    const peak = scenePeakAlpha / 100;
+    switch (sceneShape) {
+      case "radial": {
+        const inner = Math.max(0, sceneSize - sceneSoftness);
+        return `radial-gradient(ellipse ${sceneSize}% ${Math.round(sceneSize * 0.85)}% at 50% 50%, rgba(0,0,0,${peak}) ${inner}%, transparent ${sceneSize}%)`;
+      }
+      case "horizontal": {
+        const half = sceneSize / 2;
+        return `linear-gradient(to bottom, transparent 0%, rgba(0,0,0,${peak}) ${50 - half}%, rgba(0,0,0,${peak}) ${50 + half}%, transparent 100%)`;
+      }
+      case "vertical": {
+        const half = sceneSize / 2;
+        return `linear-gradient(to right, transparent 0%, rgba(0,0,0,${peak}) ${50 - half}%, rgba(0,0,0,${peak}) ${50 + half}%, transparent 100%)`;
+      }
+      case "top": return `linear-gradient(to bottom, rgba(0,0,0,${peak}) 0%, transparent ${sceneSize}%)`;
+      case "bottom": return `linear-gradient(to top, rgba(0,0,0,${peak}) 0%, transparent ${sceneSize}%)`;
+    }
+  })();
+
+  const cardBg = (() => {
+    const hex = cardFillColor.replace("#", "");
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${cardFillAlpha / 100})`;
+  })();
+  const cardBackdropFilter = cardBlur > 0 ? `blur(${cardBlur}px)` : undefined;
+
   return (
     <div className="h-screen overflow-hidden select-none relative bg-white" style={{ ["--action-hover-tint" as string]: actionHoverColor, ["--action-hover-pct" as string]: actionHoverPct, ["--action-active-pct" as string]: actionActivePct }}>
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 0,
+          backgroundImage: sceneBgUrl ? `url(${sceneBgUrl})` : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          opacity: sceneBgUrl ? sceneOpacity / 100 : 0,
+          filter: sceneBlur > 0 ? `blur(${sceneBlur}px)` : undefined,
+          transition: "opacity 0.5s ease",
+          pointerEvents: "none",
+          WebkitMaskImage: sceneMask,
+          maskImage: sceneMask,
+        }}
+      />
       {/* Neighbor-image preloader — off-screen Next/Image tags matching the
           card's sizes, so the optimized variants are cached before crossings. */}
       <div aria-hidden style={{ position: "absolute", left: -99999, top: 0, width: `${robotW}vw`, height: `${robotH}vh`, maxWidth: robotMaxW, pointerEvents: "none", opacity: 0 }}>
@@ -1410,15 +1472,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       zIndex: 11,
                       padding: `${statPillPadY}px ${statPillPadX}px`,
                       ...(canExpand ? {
-                        background: bubble.bg,
-                        boxShadow: isHovered ? bubble.shadowHover : bubble.shadow,
-                        ...(bubble.backdropFilter ? { backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter } : {}),
+                        background: "transparent",
+                        boxShadow: "none",
                         border: "none",
                         textAlign: "left" as const,
                         width: "100%",
                         cursor: "pointer",
                         display: "block",
-                        borderRadius: statPillRadius,
                         WebkitTapHighlightColor: "transparent",
                       } : {}),
                       opacity: blurbReady ? 1 : 0,
@@ -1897,15 +1957,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       zIndex: 11,
                       padding: `${statPillPadY}px ${statPillPadX}px`,
                       ...(canExpand ? {
-                        background: bubble.bg,
-                        boxShadow: isHovered ? bubble.shadowHover : bubble.shadow,
-                        ...(bubble.backdropFilter ? { backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter } : {}),
+                        background: "transparent",
+                        boxShadow: "none",
                         border: "none",
                         textAlign: "left" as const,
                         width: "100%",
                         cursor: "pointer",
                         display: "block",
-                        borderRadius: statPillRadius,
                         WebkitTapHighlightColor: "transparent",
                       } : {}),
                       opacity: blurbReady ? 1 : 0,
@@ -2291,7 +2349,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
                 maxWidth: comparing ? robotMaxW - 100 : robotMaxW,
                 borderRadius: cardRadius,
-                background: "#FAFAFA",
+                background: (!comparing && h.sceneUrl) ? cardBg : "#FAFAFA",
+                backdropFilter: (!comparing && h.sceneUrl) ? cardBackdropFilter : undefined,
+                WebkitBackdropFilter: (!comparing && h.sceneUrl) ? cardBackdropFilter : undefined,
                 pointerEvents: "auto",
                 transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
                 willChange: "transform",
@@ -2468,6 +2528,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           </button>
           <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
           <button
+            onClick={() => setShowSceneTuner(!showSceneTuner)}
+            className="cursor-pointer transition-colors duration-150"
+            style={{ fontSize: 10, color: showSceneTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+          >
+            B
+          </button>
+          <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
+          <button
             onClick={() => onToggleChatTuner?.()}
             className="cursor-pointer transition-colors duration-150"
             style={{ fontSize: 10, color: showChatTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
@@ -2553,6 +2621,94 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <button
               onClick={() => { setSplitVariant("shrink"); setSplitAmount(44); setSplitScale(0.97); setSplitLiftY(4); setSplitShadowOp(0.12); setSplitDur(320); }}
               className="text-[10px] text-neutral-400 hover:text-neutral-600 cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
+      {showSceneTuner && (
+        <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[260px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Scene</p>
+            <span className="text-[10px] text-neutral-400">{sceneBgUrl ? humanoids[springL.index]?.name : "—"}</span>
+          </div>
+          <div>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Shape</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(["radial", "horizontal", "vertical", "top", "bottom"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setSceneShape(v)}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${sceneShape === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Size <span className="tabular-nums text-neutral-400">{sceneSize}%</span></label>
+              <input type="range" min={10} max={150} value={sceneSize} onChange={(e) => setSceneSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            {sceneShape === "radial" && (
+              <div>
+                <label className="text-[12px] text-neutral-500 flex justify-between">Softness <span className="tabular-nums text-neutral-400">{sceneSoftness}%</span></label>
+                <input type="range" min={0} max={100} value={sceneSoftness} onChange={(e) => setSceneSoftness(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+              </div>
+            )}
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Peak alpha <span className="tabular-nums text-neutral-400">{scenePeakAlpha}%</span></label>
+              <input type="range" min={0} max={100} value={scenePeakAlpha} onChange={(e) => setScenePeakAlpha(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Layer opacity <span className="tabular-nums text-neutral-400">{sceneOpacity}%</span></label>
+              <input type="range" min={0} max={100} value={sceneOpacity} onChange={(e) => setSceneOpacity(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Image blur <span className="tabular-nums text-neutral-400">{sceneBlur}px</span></label>
+              <input type="range" min={0} max={30} value={sceneBlur} onChange={(e) => setSceneBlur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+          </div>
+          <div className="space-y-3 pt-3 border-t border-neutral-100">
+            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Card fill</p>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Color <span className="tabular-nums text-neutral-400">{cardFillColor}</span></label>
+              <div className="flex gap-1.5 mt-1.5 items-center">
+                {["#ffffff", "#fafafa", "#f5f5f5", "#efefef", "#e5e5e5"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCardFillColor(c)}
+                    className="w-6 h-6 rounded cursor-pointer"
+                    style={{ background: c, border: cardFillColor === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={cardFillColor}
+                  onChange={(e) => setCardFillColor(e.target.value)}
+                  className="w-6 h-6 rounded cursor-pointer border border-neutral-200"
+                  style={{ padding: 0 }}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Fill alpha <span className="tabular-nums text-neutral-400">{cardFillAlpha}%</span></label>
+              <input type="range" min={0} max={100} value={cardFillAlpha} onChange={(e) => setCardFillAlpha(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Backdrop blur <span className="tabular-nums text-neutral-400">{cardBlur}px</span></label>
+              <input type="range" min={0} max={40} value={cardBlur} onChange={(e) => setCardBlur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+          </div>
+          <div className="pt-2 border-t border-neutral-100">
+            <button
+              onClick={() => {
+                setSceneShape("bottom"); setSceneSize(39); setSceneSoftness(35); setScenePeakAlpha(48); setSceneOpacity(79); setSceneBlur(0);
+                setCardFillColor("#FAFAFA"); setCardFillAlpha(63); setCardBlur(28);
+              }}
+              className="text-[12px] text-neutral-400 hover:text-neutral-600 cursor-pointer"
             >
               Reset
             </button>
