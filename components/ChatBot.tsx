@@ -173,7 +173,7 @@ export default function ChatBot() {
                 </div>
                 <div>
                   <div className="text-[14px] font-medium text-white">Robot Advisor</div>
-                  <div className="text-[11px] text-white/50">Find your perfect humanoid</div>
+                  <div className="text-[12px] text-white/50">Find your perfect humanoid</div>
                 </div>
               </div>
               <button
@@ -229,7 +229,7 @@ export default function ChatBot() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-[12px] font-semibold text-neutral-800 truncate">{s.name}</div>
-                            <div className="text-[11px] text-neutral-400 truncate">{s.manufacturer}</div>
+                            <div className="text-[12px] text-neutral-400 truncate">{s.manufacturer}</div>
                           </div>
                           <div className="w-6 h-6 rounded-full bg-neutral-100 group-hover:bg-neutral-900 flex items-center justify-center transition-colors flex-shrink-0">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-neutral-400 group-hover:text-white transition-colors">
@@ -249,7 +249,7 @@ export default function ChatBot() {
           {/* Quick prompts - only show if no user messages yet */}
           {messages.length === 1 && (
             <div className="px-5 pb-3">
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide mb-2">Quick questions</p>
+              <p className="text-[12px] text-neutral-400 uppercase tracking-wide mb-2">Quick questions</p>
               <div className="flex flex-wrap gap-2">
                 {quickPrompts.map((prompt) => (
                   <button

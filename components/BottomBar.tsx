@@ -209,7 +209,7 @@ export default function BottomBar({
                 onChange={(e) => onLayoutConfigChange({ ...layoutConfig, gridColumns: Number(e.target.value) })}
                 className="w-14 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
               />
-              <span className="text-[11px] text-neutral-400 w-3">{layoutConfig.gridColumns}</span>
+              <span className="text-[12px] text-neutral-400 w-3">{layoutConfig.gridColumns}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[13px] text-neutral-400">Borders</span>

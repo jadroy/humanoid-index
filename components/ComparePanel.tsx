@@ -76,7 +76,7 @@ export default function ComparePanel({ selectedIds, onRemove, onClear, onClose }
               <div key={robot.id} className="text-center relative group">
                 <button
                   onClick={() => onRemove(robot.id)}
-                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-neutral-200 hover:bg-red-500 hover:text-white text-neutral-500 text-[10px] opacity-0 group-hover:opacity-100 flex items-center justify-center z-10"
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-neutral-200 hover:bg-red-500 hover:text-white text-neutral-500 text-[12px] opacity-0 group-hover:opacity-100 flex items-center justify-center z-10"
                 >
                   ×
                 </button>

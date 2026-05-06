@@ -68,7 +68,7 @@ export default function GridView({ humanoids }: GridViewProps) {
           border: "1px solid rgba(0,0,0,0.06)",
         }}
       >
-        <span className="text-[9px] tracking-[0.14em] uppercase" style={{ color: "#a3a3a3" }}>Cols</span>
+        <span className="text-[12px] tracking-[0.14em] uppercase" style={{ color: "#a3a3a3" }}>Cols</span>
         <input
           type="range"
           min={MIN_COLS}
@@ -77,7 +77,7 @@ export default function GridView({ humanoids }: GridViewProps) {
           onChange={(e) => setCols(Number(e.target.value))}
           className="w-20 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-neutral-800"
         />
-        <span className="text-[10px] tabular-nums w-3 text-right" style={{ color: "var(--c-ink)" }}>{cols}</span>
+        <span className="text-[12px] tabular-nums w-3 text-right" style={{ color: "var(--c-ink)" }}>{cols}</span>
       </div>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
@@ -135,7 +135,7 @@ export default function GridView({ humanoids }: GridViewProps) {
                   {h.name}
                 </p>
                 <p
-                  className="text-[9px] uppercase font-medium truncate"
+                  className="text-[12px] uppercase font-medium truncate"
                   style={{ color: "#a3a3a3", letterSpacing: "0.06em" }}
                 >
                   {h.manufacturer}

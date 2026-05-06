@@ -66,7 +66,7 @@ export default function CompareStrip({ pinnedIds, allRobots, onRemove, onClear, 
                   className="max-w-full max-h-full object-contain"
                 />
               </div>
-              <span className="font-mono text-[10px] tracking-wider uppercase text-neutral-600 whitespace-nowrap">
+              <span className="font-mono text-[12px] tracking-wider uppercase text-neutral-600 whitespace-nowrap">
                 {h.name}
               </span>
               <button
@@ -85,13 +85,13 @@ export default function CompareStrip({ pinnedIds, allRobots, onRemove, onClear, 
           {pinned.length > 0 && (
             <button
               onClick={onClear}
-              className="font-mono text-[9px] tracking-wider uppercase text-neutral-400 hover:text-neutral-600 transition-colors px-2 py-1"
+              className="font-mono text-[12px] tracking-wider uppercase text-neutral-400 hover:text-neutral-600 transition-colors px-2 py-1"
             >
               Clear
             </button>
           )}
 
-          <div className="font-mono text-[9px] tracking-wider uppercase text-neutral-300 flex items-center gap-1">
+          <div className="font-mono text-[12px] tracking-wider uppercase text-neutral-300 flex items-center gap-1">
             <kbd className="px-1 py-0.5 rounded border border-neutral-200 text-neutral-400">P</kbd>
             <span>pin</span>
           </div>
@@ -102,7 +102,7 @@ export default function CompareStrip({ pinnedIds, allRobots, onRemove, onClear, 
           <div className="px-4 pb-3 flex flex-col gap-2 border-t border-neutral-100 pt-2">
             {statLabels.map(label => (
               <div key={label} className="flex items-center gap-3">
-                <span className="font-mono text-[9px] tracking-wider uppercase text-neutral-400 w-12 flex-shrink-0">
+                <span className="font-mono text-[12px] tracking-wider uppercase text-neutral-400 w-12 flex-shrink-0">
                   {label}
                 </span>
                 <div className="flex-1 flex gap-1.5">
@@ -120,7 +120,7 @@ export default function CompareStrip({ pinnedIds, allRobots, onRemove, onClear, 
                             }}
                           />
                         </div>
-                        <div className="font-mono text-[8px] text-neutral-400 mt-0.5 text-right">
+                        <div className="font-mono text-[12px] text-neutral-400 mt-0.5 text-right">
                           {stat ? stat.value : '-'}
                         </div>
                       </div>

@@ -22,7 +22,7 @@ function CarouselCard({ humanoid: h, isNew, width = CARD_W, allCaps }: { humanoi
       {/* Image */}
       <div className="relative aspect-[3/4] overflow-hidden" style={{ borderRadius: cardRadius, background: "#FAFAFA" }}>
         {isNew && (
-          <div className="absolute top-2 left-2 z-10 px-1.5 py-0 rounded-full text-[11px] font-semibold" style={{ background: "#8e8e93", color: "#ffffff" }}>
+          <div className="absolute top-2 left-2 z-10 px-1.5 py-0 rounded-full text-[12px] font-semibold" style={{ background: "#8e8e93", color: "#ffffff" }}>
             New
           </div>
         )}
@@ -33,13 +33,13 @@ function CarouselCard({ humanoid: h, isNew, width = CARD_W, allCaps }: { humanoi
               <path d="M12 16v-4M12 8h.01" />
             </svg>
             <div className="absolute top-5 right-0 w-44 px-2.5 py-1.5 rounded-md opacity-0 group-hover/info:opacity-100 pointer-events-none transition-opacity duration-150" style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-              <p className="text-[10px] leading-relaxed" style={{ color: "#999" }}>{h.description}</p>
+              <p className="text-[12px] leading-relaxed" style={{ color: "#999" }}>{h.description}</p>
             </div>
           </div>
         )}
         {h.status === "Anticipated" ? (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-[9px] tracking-[0.2em] uppercase" style={{ color: "#a3a3a3" }}>Coming Soon</span>
+            <span className="text-[12px] tracking-[0.2em] uppercase" style={{ color: "#a3a3a3" }}>Coming Soon</span>
           </div>
         ) : h.imageUrl ? (
           <Image
@@ -68,8 +68,8 @@ function CarouselCard({ humanoid: h, isNew, width = CARD_W, allCaps }: { humanoi
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
-          <p className="text-[8px] tracking-widest uppercase font-medium truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>{h.manufacturer}</p>
+          <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
+          <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.4 }}>{h.manufacturer}</p>
         </div>
       </div>
     </div>

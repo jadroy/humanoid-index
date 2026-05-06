@@ -31,10 +31,10 @@ export default function CatalogIndex({ humanoids }: CatalogIndexProps) {
       <div className="px-6 md:px-12 lg:px-20 pt-20 pb-6">
         <div className="flex items-end justify-between gap-8">
           <div className="font-mono">
-            <div className="text-[9px] uppercase tracking-widest text-neutral-300 mb-1">Ref. Catalog</div>
+            <div className="text-[12px] uppercase tracking-widest text-neutral-300 mb-1">Ref. Catalog</div>
             <div className="text-[32px] tracking-tight text-neutral-900 leading-none font-light">Index</div>
           </div>
-          <div className="font-mono text-[9px] text-neutral-300 uppercase tracking-wider text-right leading-relaxed">
+          <div className="font-mono text-[12px] text-neutral-300 uppercase tracking-wider text-right leading-relaxed">
             <div>{allBots.length} units</div>
             <div>{inProduction.length} production · {prototypes.length} prototype · {discontinued.length} legacy</div>
           </div>
@@ -51,7 +51,7 @@ export default function CatalogIndex({ humanoids }: CatalogIndexProps) {
             { label: 'Top Speed', value: `${maxSpeed}m/s` },
           ].map(s => (
             <div key={s.label}>
-              <div className="text-[9px] uppercase tracking-wider text-neutral-300">{s.label}</div>
+              <div className="text-[12px] uppercase tracking-wider text-neutral-300">{s.label}</div>
               <div className="text-[18px] text-neutral-800 leading-none mt-1 font-light">{s.value}</div>
             </div>
           ))}
@@ -105,29 +105,29 @@ export default function CatalogIndex({ humanoids }: CatalogIndexProps) {
                 <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                   <div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-[9px] text-neutral-300">[{idx}]</span>
-                      <span className="text-[11px] text-neutral-900 font-medium truncate">{bot.name}</span>
+                      <span className="text-[12px] text-neutral-300">[{idx}]</span>
+                      <span className="text-[12px] text-neutral-900 font-medium truncate">{bot.name}</span>
                     </div>
-                    <div className="text-[9px] text-neutral-400 truncate mt-0.5">
+                    <div className="text-[12px] text-neutral-400 truncate mt-0.5">
                       by {bot.manufacturer}
                       {bot.year ? ` · ${bot.year}` : ''}
                       {isLegend ? ' · Legend' : ''}
                     </div>
                   </div>
                   <div className="flex items-center gap-3 mt-1">
-                    {bot.height && <span className="text-[8px] text-neutral-300">{bot.height}cm</span>}
-                    {bot.weight && <span className="text-[8px] text-neutral-300">{bot.weight}kg</span>}
-                    {bot.dof && <span className="text-[8px] text-neutral-300">{bot.dof}DOF</span>}
-                    {bot.maxSpeed && <span className="text-[8px] text-neutral-300">{bot.maxSpeed}m/s</span>}
+                    {bot.height && <span className="text-[12px] text-neutral-300">{bot.height}cm</span>}
+                    {bot.weight && <span className="text-[12px] text-neutral-300">{bot.weight}kg</span>}
+                    {bot.dof && <span className="text-[12px] text-neutral-300">{bot.dof}DOF</span>}
+                    {bot.maxSpeed && <span className="text-[12px] text-neutral-300">{bot.maxSpeed}m/s</span>}
                     {bot.cost && bot.cost !== 'N/A' && (
-                      <span className="text-[8px] text-neutral-500 ml-auto">{bot.cost}</span>
+                      <span className="text-[12px] text-neutral-500 ml-auto">{bot.cost}</span>
                     )}
                   </div>
                 </div>
 
                 {/* Hover arrow */}
                 <div
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[10px] text-neutral-300"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[12px] text-neutral-300"
                   style={{
                     opacity: isHovered ? 1 : 0,
                     transform: isHovered ? 'translate(0, -50%)' : 'translate(-4px, -50%)',
@@ -147,7 +147,7 @@ export default function CatalogIndex({ humanoids }: CatalogIndexProps) {
       {/* ═══ TIMELINE ═══ */}
       <div className="px-6 md:px-12 lg:px-20 pb-12">
         <div className="border-t border-neutral-200 pt-8">
-          <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-300 mb-6">Timeline</div>
+          <div className="font-mono text-[12px] uppercase tracking-widest text-neutral-300 mb-6">Timeline</div>
           <div className="relative">
             {/* Line */}
             <div className="absolute top-[6px] left-0 right-0 h-px bg-neutral-200" />
@@ -163,13 +163,13 @@ export default function CatalogIndex({ humanoids }: CatalogIndexProps) {
                         className="w-[7px] h-[7px] rounded-full border-2 border-neutral-300 bg-white relative z-10"
                         style={{ borderWidth: count > 2 ? '3px' : '2px' }}
                       />
-                      <div className="font-mono text-[9px] text-neutral-400 mt-2">{year}</div>
-                      <div className="font-mono text-[8px] text-neutral-300 mt-0.5">{count}×</div>
+                      <div className="font-mono text-[12px] text-neutral-400 mt-2">{year}</div>
+                      <div className="font-mono text-[12px] text-neutral-300 mt-0.5">{count}×</div>
                       {/* Tooltip */}
                       <div
                         className="absolute top-full mt-4 left-1/2 -translate-x-1/2 bg-white border border-neutral-200 rounded px-3 py-2 opacity-0 group-hover/yr:opacity-100 transition-opacity duration-100 pointer-events-none whitespace-nowrap z-20 shadow-sm"
                       >
-                        <div className="font-mono text-[8px] text-neutral-500 flex flex-col gap-0.5">
+                        <div className="font-mono text-[12px] text-neutral-500 flex flex-col gap-0.5">
                           {names.map(n => <span key={n}>{n}</span>)}
                         </div>
                       </div>
@@ -184,27 +184,27 @@ export default function CatalogIndex({ humanoids }: CatalogIndexProps) {
 
       {/* ═══ LEGEND / KEY ═══ */}
       <div className="px-6 md:px-12 lg:px-20 py-10 border-t border-neutral-200">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 font-mono text-[8px] text-neutral-300 uppercase tracking-wider leading-relaxed">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 font-mono text-[12px] text-neutral-300 uppercase tracking-wider leading-relaxed">
           <div className="flex flex-col gap-1.5">
-            <span className="text-neutral-400 text-[9px]">Status</span>
+            <span className="text-neutral-400 text-[12px]">Status</span>
             <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-neutral-800" /> In Production</span>
             <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-neutral-400" /> Prototype</span>
             <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-neutral-200" /> Discontinued</span>
           </div>
           <div className="flex flex-col gap-1.5">
-            <span className="text-neutral-400 text-[9px]">Metrics</span>
+            <span className="text-neutral-400 text-[12px]">Metrics</span>
             <span>DOF — Degrees of Freedom</span>
             <span>H — Height in centimeters</span>
             <span>W — Weight in kilograms</span>
           </div>
           <div className="flex flex-col gap-1.5">
-            <span className="text-neutral-400 text-[9px]">Data</span>
+            <span className="text-neutral-400 text-[12px]">Data</span>
             <span>{humanoids.length} Active units</span>
             <span>{legends.length} Hall of fame</span>
             <span>{allBots.filter(b => b.purchaseUrl).length} Available to order</span>
           </div>
           <div className="flex flex-col gap-1.5">
-            <span className="text-neutral-400 text-[9px]">Coverage</span>
+            <span className="text-neutral-400 text-[12px]">Coverage</span>
             <span>{allBots.filter(b => b.year && b.year >= 2023).length} Units from 2023+</span>
             <span>{allBots.filter(b => b.dof).length}/{allBots.length} with DOF data</span>
             <span>{allBots.filter(b => b.cost && b.cost !== 'N/A').length} with pricing</span>
@@ -215,7 +215,7 @@ export default function CatalogIndex({ humanoids }: CatalogIndexProps) {
       {/* ═══ BOTTOM MARK ═══ */}
       <div className="px-6 md:px-12 lg:px-20 pb-20 pt-4">
         <div className="h-px bg-neutral-200 mb-8" />
-        <div className="font-mono text-[9px] text-neutral-200 uppercase tracking-[0.2em] text-center">
+        <div className="font-mono text-[12px] text-neutral-200 uppercase tracking-[0.2em] text-center">
           Humanoid Index — {new Date().getFullYear()}
         </div>
       </div>

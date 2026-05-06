@@ -174,12 +174,12 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
               {/* Name */}
               <div className="min-w-0 flex-1">
                 <div
-                  className="text-[10px] tracking-[0.06em] uppercase truncate"
+                  className="text-[12px] tracking-[0.06em] uppercase truncate"
                   style={{ color: isActive || isPinned ? "#000" : "#999" }}
                 >
                   {humanoid.name}
                 </div>
-                <div className="hidden sm:block text-[8px] tracking-[0.08em] uppercase truncate text-[#bbb]">
+                <div className="hidden sm:block text-[12px] tracking-[0.08em] uppercase truncate text-[#bbb]">
                   {humanoid.manufacturer}
                 </div>
               </div>
@@ -277,7 +277,7 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
 
             {specGrid.length > 0 && (
               <div
-                className="w-full grid grid-cols-2 gap-x-6 gap-y-2 mt-5 font-mono text-[11px]"
+                className="w-full grid grid-cols-2 gap-x-6 gap-y-2 mt-5 font-mono text-[12px]"
                 style={{ textTransform: "none" }}
               >
                 {specGrid.map((spec) => (
@@ -291,7 +291,7 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
 
             {active.description && (
               <p
-                className="w-full font-mono text-[11px] leading-relaxed text-[#777] mt-4"
+                className="w-full font-mono text-[12px] leading-relaxed text-[#777] mt-4"
                 style={{ textTransform: "none" }}
               >
                 {active.description}
@@ -346,7 +346,7 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
                   <div className="text-[16px] leading-none tracking-tight text-black mt-3 text-center">
                     {h.name}
                   </div>
-                  <div className="text-[11px] leading-none tracking-tight text-[#999] mt-1 text-center">
+                  <div className="text-[12px] leading-none tracking-tight text-[#999] mt-1 text-center">
                     {h.manufacturer}
                   </div>
 
@@ -356,7 +356,7 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
                         const clampedPct = Math.max(4, Math.min(100, stat.pct));
                         return (
                           <div key={stat.label} className="animate-stat-cascade" style={{ animationDelay: `${120 + i * 80 + si * 50}ms` }}>
-                            <div className="flex justify-between items-baseline text-[11px] leading-none mb-[2px]">
+                            <div className="flex justify-between items-baseline text-[12px] leading-none mb-[2px]">
                               <span style={{ color: "#999" }}>{stat.label}</span>
                               <span className="text-[12px]" style={{ color: "#444" }}>{stat.value}</span>
                             </div>

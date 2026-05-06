@@ -364,18 +364,14 @@ h1, h2, h3, h4, h5, h6 {
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* ═══════════════════════════════════════
-   TEXT DIMMING — controlled by --text-dim (0–70)
-   ═══════════════════════════════════════ */
 main {
-  --text-dim: 0;
-  --c-ink: color-mix(in srgb, #343433 calc(100% - var(--text-dim) * 1%), white);
-  --c-ink-bold: color-mix(in srgb, #171717 calc(100% - var(--text-dim) * 1%), white);
-  --c-ink-medium: color-mix(in srgb, #494440 calc(100% - var(--text-dim) * 1%), white);
-  --c-ink-body: color-mix(in srgb, #747484 calc(100% - var(--text-dim) * 1%), white);
-  --c-ink-spec: color-mix(in srgb, #262626 calc(100% - var(--text-dim) * 1%), white);
-  --c-ink-muted: color-mix(in srgb, #a3a3a3 calc(100% - var(--text-dim) * 1%), white);
-  --c-ink-subtle: color-mix(in srgb, #c4c4c4 calc(100% - var(--text-dim) * 1%), white);
+  --c-ink: #343433;
+  --c-ink-bold: #171717;
+  --c-ink-medium: #494440;
+  --c-ink-body: #747484;
+  --c-ink-spec: #262626;
+  --c-ink-muted: #a3a3a3;
+  --c-ink-subtle: #c4c4c4;
   --c-accent: #ff7a45;
 }
 

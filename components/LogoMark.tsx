@@ -66,7 +66,7 @@ export function LogoMark({
         className="absolute top-1/2 pointer-events-none whitespace-nowrap opacity-0 -translate-y-1/2 group-hover:opacity-[0.3]"
         style={{
           left: total + 4,
-          fontSize: 11,
+          fontSize: 12,
           color: ringColor,
           transition: "opacity 180ms ease",
         }}

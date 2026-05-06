@@ -46,7 +46,7 @@ export default function CarouselGroup({ year, entries, isNewestYear, position }:
       {/* Year label */}
       <div className="flex items-center gap-3 border-t border-neutral-100 pt-2.5" style={{ width: groupW }}>
         <span className="text-[26px] font-medium tabular-nums" style={{ color: "var(--c-ink)", letterSpacing: "-0.03em" }}>{year}</span>
-        <span className="text-[10px] text-neutral-300 uppercase tracking-wider ml-auto">{entries.length}</span>
+        <span className="text-[12px] text-neutral-300 uppercase tracking-wider ml-auto">{entries.length}</span>
       </div>
     </div>
   );

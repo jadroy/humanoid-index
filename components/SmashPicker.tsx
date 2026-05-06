@@ -167,7 +167,7 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
                 {/* Name label */}
                 {isSelected && !isConfirmed && (
                   <div
-                    className={`absolute bottom-0 left-0 right-0 font-mono ${isMobile ? 'text-[9px]' : 'text-[7px]'} tracking-[0.08em] uppercase text-center py-0.5 truncate px-1 text-[#999]`}
+                    className={`absolute bottom-0 left-0 right-0 font-mono ${isMobile ? 'text-[12px]' : 'text-[12px]'} tracking-[0.08em] uppercase text-center py-0.5 truncate px-1 text-[#999]`}
                     style={{ background: "linear-gradient(transparent, rgba(255,255,255,0.95))" }}
                   >
                     {humanoid.name}
@@ -176,7 +176,7 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
 
                 {/* P1 token on confirmed */}
                 {isConfirmed && (
-                  <div className="absolute top-1 right-1.5 font-mono text-[7px] tracking-[0.1em] text-[#999]">
+                  <div className="absolute top-1 right-1.5 font-mono text-[12px] tracking-[0.1em] text-[#999]">
                     P1
                   </div>
                 )}
@@ -223,7 +223,7 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
         <div className={`flex-1 flex items-center ${isMobile ? 'gap-3 px-3' : 'gap-5 px-6'} relative`}>
           {/* Player tag */}
           <div
-            className="absolute top-0 left-0 font-mono text-[9px] tracking-[0.15em] uppercase px-3 py-1 bg-black text-white"
+            className="absolute top-0 left-0 font-mono text-[12px] tracking-[0.15em] uppercase px-3 py-1 bg-black text-white"
           >
             1P
           </div>
@@ -257,20 +257,20 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
                 <div className={`${isMobile ? 'text-[14px]' : 'text-[18px]'} font-medium tracking-[0.08em] uppercase text-black`}>
                   {announceText}
                 </div>
-                <div className="text-[9px] font-normal tracking-[0.2em] uppercase mt-1 text-[#999]">
+                <div className="text-[12px] font-normal tracking-[0.2em] uppercase mt-1 text-[#999]">
                   Locked In
                 </div>
               </div>
             ) : (
               <>
-                <div className="font-mono text-[10px] tracking-[0.15em] uppercase text-[#999]">
+                <div className="font-mono text-[12px] tracking-[0.15em] uppercase text-[#999]">
                   {selected.manufacturer}
                 </div>
                 <div className={`font-mono ${isMobile ? 'text-[13px]' : 'text-[15px]'} font-medium tracking-[0.04em] uppercase text-black mt-0.5`}>
                   {selected.name}
                 </div>
                 {!isMobile && (
-                  <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-[#ccc] mt-1">
+                  <div className="font-mono text-[12px] tracking-[0.1em] uppercase text-[#ccc] mt-1">
                     {selected.year || "—"} &middot; {selected.status || "—"}
                   </div>
                 )}
@@ -282,7 +282,7 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
           <div className={`${isMobile ? 'w-[100px]' : 'w-[160px]'} flex-shrink-0 space-y-1.5 py-1`}>
             {getStats(selected).map((stat) => (
               <div key={stat.label} className="flex items-center gap-1.5">
-                <span className="font-mono text-[8px] tracking-[0.08em] w-6 text-right text-[#bbb]">
+                <span className="font-mono text-[12px] tracking-[0.08em] w-6 text-right text-[#bbb]">
                   {stat.label}
                 </span>
                 <div className="flex-1 h-[3px] relative overflow-hidden bg-[#f0f0f0]">
@@ -316,12 +316,12 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
                 style={{ background: "#fafafa" }}
               >
                 <div
-                  className="absolute top-0 left-0 font-mono text-[9px] tracking-[0.15em] uppercase px-3 py-1 text-[#ccc]"
+                  className="absolute top-0 left-0 font-mono text-[12px] tracking-[0.15em] uppercase px-3 py-1 text-[#ccc]"
                   style={{ background: "#f0f0f0" }}
                 >
                   {p}P
                 </div>
-                <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-[#ccc]">
+                <span className="font-mono text-[12px] tracking-[0.15em] uppercase text-[#ccc]">
                   Press Start
                 </span>
               </div>
@@ -332,7 +332,7 @@ export default function SmashPicker({ humanoids }: SmashPickerProps) {
 
       {/* STATUS BAR */}
       <div
-        className={`flex-shrink-0 flex items-center justify-center py-2 font-mono ${isMobile ? 'text-[10px]' : 'text-[9px]'} tracking-[0.1em] uppercase`}
+        className={`flex-shrink-0 flex items-center justify-center py-2 font-mono ${isMobile ? 'text-[12px]' : 'text-[12px]'} tracking-[0.1em] uppercase`}
         style={{ borderTop: "1px solid #e5e5e5" }}
       >
         <span className={confirmed ? "text-black" : "text-[#999]"}>

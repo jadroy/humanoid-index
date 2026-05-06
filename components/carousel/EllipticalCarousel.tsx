@@ -155,7 +155,7 @@ export default function EllipticalCarousel({ allCaps, isDev = false }: { allCaps
           >
             {floorYear}
           </span>
-          <span className="text-[11px] text-neutral-400 uppercase tracking-wider pb-1.5">
+          <span className="text-[12px] text-neutral-400 uppercase tracking-wider pb-1.5">
             {floorEntries.length} {floorEntries.length === 1 ? "robot" : "robots"}
           </span>
         </div>
@@ -174,7 +174,7 @@ export default function EllipticalCarousel({ allCaps, isDev = false }: { allCaps
             >
               {ceilYear}
             </span>
-            <span className="text-[11px] text-neutral-400 uppercase tracking-wider pb-1.5">
+            <span className="text-[12px] text-neutral-400 uppercase tracking-wider pb-1.5">
               {ceilEntries.length} {ceilEntries.length === 1 ? "robot" : "robots"}
             </span>
           </div>
@@ -250,7 +250,7 @@ export default function EllipticalCarousel({ allCaps, isDev = false }: { allCaps
                   y={cy - 12}
                   textAnchor="middle"
                   style={{
-                    fontSize: 9,
+                    fontSize: 12,
                     fontWeight: 400,
                     fill: "#b3b3b3",
                     fontFamily: "inherit",

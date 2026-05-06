@@ -17,7 +17,7 @@ export type IndexView = (typeof INDEX_VIEWS)[number];
 export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid"] as const;
 export type NavStyle = (typeof NAV_STYLES)[number];
 
-export const SWITCHER_STYLES = ["drag", "single", "toggle", "pill", "slash", "dot", "dash", "brackets", "ghost", "divider"] as const;
+export const SWITCHER_STYLES = ["text", "drag", "single", "toggle", "pill", "slash", "dot", "dash", "brackets", "ghost", "divider"] as const;
 export type SwitcherStyle = (typeof SWITCHER_STYLES)[number];
 
 // ─── Drag Switcher (click-only, morphs to contain Index sub-sections) ───
@@ -81,7 +81,7 @@ function DragSwitcher({
       <button
         ref={scrollSlotRef}
         onClick={() => { if (active !== "E") onChange("E"); }}
-        className="relative px-3 py-1 text-[11px] tracking-wide cursor-pointer"
+        className="relative px-3 py-1 text-[12px] tracking-wide cursor-pointer"
         style={{
           color: scrollInk,
           fontWeight: 500,
@@ -94,7 +94,7 @@ function DragSwitcher({
       <div ref={indexSlotRef} className="relative flex items-center">
         <button
           onClick={() => { if (active !== "Z") onChange("Z"); }}
-          className="text-[11px] tracking-wide cursor-pointer whitespace-nowrap"
+          className="text-[12px] tracking-wide cursor-pointer whitespace-nowrap"
           style={{
             color: active === "Z" ? "rgba(38, 38, 38, 0.3)" : "rgba(38, 38, 38, 0.35)",
             fontWeight: 500,
@@ -113,7 +113,7 @@ function DragSwitcher({
           }}
         >
           <span
-            className="text-[11px]"
+            className="text-[12px]"
             style={{
               color: "rgba(38, 38, 38, 0.22)",
               fontWeight: 400,
@@ -127,7 +127,7 @@ function DragSwitcher({
               <button
                 key={v}
                 onClick={() => onIndexViewChange(v)}
-                className="text-[11px] tracking-wide capitalize whitespace-nowrap transition-colors duration-200 cursor-pointer"
+                className="text-[12px] tracking-wide capitalize whitespace-nowrap transition-colors duration-200 cursor-pointer"
                 style={{
                   color: indexView === v ? "rgba(38,38,38,0.85)" : "rgba(38,38,38,0.35)",
                   fontWeight: 500,
@@ -161,7 +161,7 @@ function SingleSwitcher({ active, onChange }: { active: Layout; onChange: (l: La
   return (
     <button
       onClick={handleClick}
-      className="relative inline-flex items-center justify-center text-[11px] tracking-wide cursor-pointer"
+      className="relative inline-flex items-center justify-center text-[12px] tracking-wide cursor-pointer"
       style={{ color: "#9a9a9a", fontWeight: 500, padding: "4px 16px", minWidth: 76 }}
     >
       <span
@@ -230,7 +230,7 @@ export function LayoutSwitcher({
             <button
               key={v}
               onClick={() => onIndexViewChange(v)}
-              className="text-[10px] tracking-[0.14em] uppercase transition-colors duration-200 cursor-pointer"
+              className="text-[12px] tracking-[0.14em] uppercase transition-colors duration-200 cursor-pointer"
               style={{ color: indexView === v ? activeColor : inactiveColor, fontWeight: 500 }}
             >
               {v}
@@ -251,7 +251,7 @@ export function LayoutSwitcher({
             <div className="flex items-center gap-0.5">
               {ALL_LAYOUTS.map((l) => (
                 <button key={l} onClick={() => onChange(l)}
-                  className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                  className="px-2.5 py-1 text-[12px] tracking-wide transition-all duration-200 cursor-pointer"
                   style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
                   {layoutLabels[l]}
                 </button>
@@ -275,7 +275,7 @@ export function LayoutSwitcher({
             <div className="flex items-center gap-1">
               {ALL_LAYOUTS.map((l) => (
                 <button key={l} onClick={() => onChange(l)}
-                  className="px-3 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer rounded-full"
+                  className="px-3 py-1 text-[12px] tracking-wide transition-all duration-200 cursor-pointer rounded-full"
                   style={{
                     color: active === l ? "#fff" : "#999",
                     background: active === l ? "var(--c-ink)" : "transparent",
@@ -298,7 +298,7 @@ export function LayoutSwitcher({
     const L0 = ALL_LAYOUTS[0];
     const L1 = ALL_LAYOUTS[1];
     const isRight = active === L1;
-    const labelBase = "text-[11px] tracking-wide transition-colors duration-200 cursor-pointer";
+    const labelBase = "text-[12px] tracking-wide transition-colors duration-200 cursor-pointer";
     const labelStyle = (l: Layout): React.CSSProperties => ({
       color: active === l ? "var(--c-ink)" : "#c4c4c4",
       fontWeight: 500,
@@ -306,7 +306,50 @@ export function LayoutSwitcher({
 
     let switcherEl: React.ReactElement;
 
-    if (switcherStyle === "drag") {
+    if (switcherStyle === "text") {
+      const isScroll = active === "E";
+      const isIndex = active === "Z" && indexView === "grid";
+      const isTimeline = active === "Z" && indexView === "timeline";
+      const opacityFor = (on: boolean) => (on ? 1 : 0.32);
+      const labelCls = "text-[12px] tracking-wide cursor-pointer select-none";
+      const labelStyleText = (on: boolean): React.CSSProperties => ({
+        color: "var(--c-ink)",
+        opacity: opacityFor(on),
+        fontWeight: on ? 500 : 400,
+        transition: "opacity 220ms ease, font-weight 220ms ease",
+      });
+      switcherEl = (
+        <div className="flex items-center gap-5">
+          <button
+            onClick={() => onChange("E")}
+            className={labelCls}
+            style={labelStyleText(isScroll)}
+            onMouseEnter={(e) => { if (!isScroll) e.currentTarget.style.opacity = "0.6"; }}
+            onMouseLeave={(e) => { if (!isScroll) e.currentTarget.style.opacity = String(opacityFor(false)); }}
+          >
+            Scroll
+          </button>
+          <button
+            onClick={() => { if (active !== "Z") onChange("Z"); if (indexView !== "grid") onIndexViewChange("grid"); }}
+            className={labelCls}
+            style={labelStyleText(isIndex)}
+            onMouseEnter={(e) => { if (!isIndex) e.currentTarget.style.opacity = "0.6"; }}
+            onMouseLeave={(e) => { if (!isIndex) e.currentTarget.style.opacity = String(opacityFor(false)); }}
+          >
+            Index
+          </button>
+          <button
+            onClick={() => { if (active !== "Z") onChange("Z"); if (indexView !== "timeline") onIndexViewChange("timeline"); }}
+            className={labelCls}
+            style={labelStyleText(isTimeline)}
+            onMouseEnter={(e) => { if (!isTimeline) e.currentTarget.style.opacity = "0.6"; }}
+            onMouseLeave={(e) => { if (!isTimeline) e.currentTarget.style.opacity = String(opacityFor(false)); }}
+          >
+            Timeline
+          </button>
+        </div>
+      );
+    } else if (switcherStyle === "drag") {
       switcherEl = <DragSwitcher active={active} onChange={onChange} indexView={indexView} onIndexViewChange={onIndexViewChange} />;
     } else if (switcherStyle === "single") {
       switcherEl = <SingleSwitcher active={active} onChange={onChange} />;
@@ -349,7 +392,7 @@ export function LayoutSwitcher({
             />
             {ALL_LAYOUTS.map((l) => (
               <button key={l} onClick={() => onChange(l)}
-                className="relative px-3 py-1 text-[11px] tracking-wide cursor-pointer"
+                className="relative px-3 py-1 text-[12px] tracking-wide cursor-pointer"
                 style={{ color: active === l ? "var(--c-ink)" : "#9a9a9a", fontWeight: 500 }}>
                 {layoutLabels[l]}
               </button>
@@ -363,7 +406,7 @@ export function LayoutSwitcher({
                   <button
                     key={v}
                     onClick={() => onIndexViewChange(v)}
-                    className="text-[10px] tracking-[0.14em] uppercase transition-colors duration-200 cursor-pointer"
+                    className="text-[12px] tracking-[0.14em] uppercase transition-colors duration-200 cursor-pointer"
                     style={{ color: indexView === v ? "var(--c-ink)" : "#c4c4c4", fontWeight: 500 }}
                   >
                     {v}
@@ -378,7 +421,7 @@ export function LayoutSwitcher({
       switcherEl = (
         <div className="flex items-center gap-1.5">
           <button onClick={() => onChange(L0)} className={labelBase} style={labelStyle(L0)}>{layoutLabels[L0]}</button>
-          <span className="text-[11px]" style={{ color: "#d4d4d4" }}>/</span>
+          <span className="text-[12px]" style={{ color: "#d4d4d4" }}>/</span>
           <button onClick={() => onChange(L1)} className={labelBase} style={labelStyle(L1)}>{layoutLabels[L1]}</button>
         </div>
       );
@@ -425,7 +468,7 @@ export function LayoutSwitcher({
     } else if (switcherStyle === "brackets") {
       const bracket = (l: Layout, side: "l" | "r") => (
         <span
-          className="text-[11px]"
+          className="text-[12px]"
           style={{
             color: "var(--c-ink)",
             opacity: active === l ? 0.6 : 0,
@@ -454,7 +497,7 @@ export function LayoutSwitcher({
         <div className="flex items-center gap-1">
           {ALL_LAYOUTS.map((l) => (
             <button key={l} onClick={() => onChange(l)}
-              className="px-2.5 py-1 rounded-md text-[11px] tracking-wide cursor-pointer transition-all duration-200"
+              className="px-2.5 py-1 rounded-md text-[12px] tracking-wide cursor-pointer transition-all duration-200"
               style={{
                 color: active === l ? "var(--c-ink)" : "#b4b4b4",
                 background: active === l ? "rgba(0,0,0,0.05)" : "transparent",
@@ -483,7 +526,7 @@ export function LayoutSwitcher({
           <div className="flex-1 flex justify-center">
             <div className="pointer-events-auto flex items-center">
               {switcherEl}
-              {switcherStyle !== "pill" && switcherStyle !== "drag" && subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
+              {switcherStyle !== "pill" && switcherStyle !== "drag" && switcherStyle !== "text" && subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
             </div>
           </div>
           <div style={{ width: 20 }} />
@@ -501,7 +544,7 @@ export function LayoutSwitcher({
           <div className="flex items-center gap-1">
             {ALL_LAYOUTS.map((l) => (
               <button key={l} onClick={() => onChange(l)}
-                className="px-3 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                className="px-3 py-1 text-[12px] tracking-wide transition-all duration-200 cursor-pointer"
                 style={{ color: active === l ? "var(--c-ink)" : "#c4c4c4", fontWeight: active === l ? 500 : 400 }}>
                 {layoutLabels[l]}
               </button>
@@ -524,7 +567,7 @@ export function LayoutSwitcher({
             <div className="flex items-center gap-3">
               {ALL_LAYOUTS.map((l) => (
                 <button key={l} onClick={() => onChange(l)}
-                  className="px-1 py-0.5 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                  className="px-1 py-0.5 text-[12px] tracking-wide transition-all duration-200 cursor-pointer"
                   style={{ color: active === l ? "var(--c-ink)" : "#d4d4d4", fontWeight: active === l ? 600 : 400 }}>
                   {layoutLabels[l]}
                 </button>
@@ -548,7 +591,7 @@ export function LayoutSwitcher({
             <div className="flex items-center gap-0.5">
               {ALL_LAYOUTS.map((l) => (
                 <button key={l} onClick={() => onChange(l)}
-                  className="px-2.5 py-1 text-[11px] tracking-wide transition-all duration-200 cursor-pointer"
+                  className="px-2.5 py-1 text-[12px] tracking-wide transition-all duration-200 cursor-pointer"
                   style={{ color: active === l ? "#fff" : "#666", fontWeight: active === l ? 500 : 400 }}>
                   {layoutLabels[l]}
                 </button>

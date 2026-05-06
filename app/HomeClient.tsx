@@ -28,6 +28,16 @@ import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSetti
 
 const MOBILE_BREAKPOINT = 768;
 
+const formatHeight = (cm: number) => {
+  const totalInches = cm / 2.54;
+  const ft = Math.floor(totalInches / 12);
+  const inches = Math.round(totalInches - ft * 12);
+  if (inches === 12) return `${ft + 1}'0"`;
+  return `${ft}'${inches}"`;
+};
+const formatWeight = (kg: number) => `${Math.round(kg * 2.20462)} lb`;
+const formatSpeed = (ms: number) => `${(ms * 2.23694).toFixed(1)} mph`;
+
 // Press 'e' (or use the Epetri toggle) to remap every font CSS variable on
 // <main> to Epetri. Inline styles like `fontFamily: "var(--font-jetbrains-mono)"`
 // resolve against the closest ancestor, so every nested element follows.
@@ -98,7 +108,7 @@ function StatCompare({ left, right }: { left: typeof humanoids[0]; right: typeof
         return (
           <div key={k.key} className="flex items-baseline justify-between gap-6" style={{ minWidth: 200 }}>
             <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "left" ? "var(--c-ink)" : "#c4c4c4" }}>{lv ? `${lv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
-            <span className="text-[10px] tracking-widest uppercase" style={{ color: "#b4b4b4" }}>{k.label}</span>
+            <span className="text-[12px] tracking-widest uppercase" style={{ color: "#b4b4b4" }}>{k.label}</span>
             <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "right" ? "var(--c-ink)" : "#c4c4c4" }}>{rv ? `${rv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
           </div>
         );
@@ -178,7 +188,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
                   <polyline points="7.5,2 3.5,6 7.5,10" />
                 </svg>
               </button>
-              <span className="text-[10px] tabular-nums mx-1" style={{ color: "#a3a3a3" }}>
+              <span className="text-[12px] tabular-nums mx-1" style={{ color: "#a3a3a3" }}>
                 {String(idx + 1).padStart(2, "0")}<span style={{ color: "#d4d4d4" }}>/</span>{String(humanoids.length).padStart(2, "0")}
               </span>
               <button
@@ -195,7 +205,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
 
           <div className="flex-1 flex flex-col justify-center">
             <div className="animate-expand-content" style={{ animationDelay: "0.1s" }}>
-              <p className="text-[10px] tracking-widest uppercase font-medium mb-3" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+              <p className="text-[12px] tracking-widest uppercase font-medium mb-3" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
                 {h.manufacturer}
               </p>
               <h2 className="text-[32px] font-medium leading-none" style={{ color: "#171717", letterSpacing: "-0.04em" }}>
@@ -225,7 +235,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
                   href={h.purchaseUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center mt-4 px-5 py-2 text-[11px] font-medium tracking-wide transition-colors hover:bg-neutral-800"
+                  className="inline-flex items-center justify-center mt-4 px-5 py-2 text-[12px] font-medium tracking-wide transition-colors hover:bg-neutral-800"
                   style={{ background: "#171717", color: "#fff", borderRadius: 6 }}
                 >
                   Buy
@@ -238,7 +248,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
             <div className="flex items-start gap-8 pt-6" style={{ borderTop: "1px solid #e5e5e5" }}>
               {specs.map((s) => (
                 <div key={s.label}>
-                  <p className="text-[9px] tracking-widest uppercase" style={{ color: "#a3a3a3", letterSpacing: "0.1em" }}>
+                  <p className="text-[12px] tracking-widest uppercase" style={{ color: "#a3a3a3", letterSpacing: "0.1em" }}>
                     {s.label}
                   </p>
                   <p className="text-[13px] font-medium mt-1" style={{ color: "#262626" }}>
@@ -397,14 +407,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statsGap, setStatsGap] = useState(8);     // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(28);  // px
   // Stat-pill tuners
-  const [statPillRadius, setStatPillRadius] = useState(40);  // px — 40+ reads as full stadium at closed height
+  const [statPillRadius, setStatPillRadius] = useState(28);  // px — matches cardRadius so pills sit flush with card corners
+  const [statPillRadiusOpen, setStatPillRadiusOpen] = useState(14);  // px — tighter radius when a pill is expanded
   const [statPillGap, setStatPillGap] = useState(4);         // px — gap between pills
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
   const [statPillPadY, setStatPillPadY] = useState(11);      // px — vertical button padding (sets closed height)
   const [statPillBg, setStatPillBg] = useState("#FAFAFA");
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
   const [blurbFontSize, setBlurbFontSize] = useState(12);
-  const [blurbFloat, setBlurbFloat] = useState(true);
+  const [blurbFloat, setBlurbFloat] = useState(false);
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
   type BlurbExpandIndicator = "chevron" | "inline" | "edgebar" | "minimal" | "pill";
@@ -486,7 +497,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [scenePeakAlpha, setScenePeakAlpha] = useState(48);
   const [sceneOpacity, setSceneOpacity] = useState(79);
   const [sceneBlur, setSceneBlur] = useState(0);
-  // Humanoid card fill tuner — only applied to cards whose humanoid has a sceneUrl
+  // Humanoid card fill tuner
   const [cardFillColor, setCardFillColor] = useState("#FAFAFA");
   const [cardFillAlpha, setCardFillAlpha] = useState(63);
   const [cardBlur, setCardBlur] = useState(28);
@@ -1141,7 +1152,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 4,
-                  fontSize: Math.max(10, blurbFontSize - 1),
+                  fontSize: Math.max(12, blurbFontSize - 1),
                   color: "#999",
                   fontWeight: 450,
                   background: "rgba(255,255,255,0.92)",
@@ -1246,7 +1257,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   bottom: statPillPadY,
                   right: statPillPadX,
                   paddingLeft: 28,
-                  fontSize: Math.max(10, blurbFontSize - 1),
+                  fontSize: Math.max(12, blurbFontSize - 1),
                   color: isHovered ? "#666" : "#a8a8a8",
                   fontWeight: 450,
                   fontStyle: "italic",
@@ -1273,15 +1284,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         const barViz = (label: string, value: string, pct: number, delay: number) => (
           <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
-            <p className="text-[10px] w-[32px] text-right flex-shrink-0" style={{ color: "#aaa" }}>{label}</p>
+            <p className="text-[12px] w-[32px] text-right flex-shrink-0" style={{ color: "#aaa" }}>{label}</p>
             <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "#EFEFEF" }}>
               <div className="h-full rounded-full" style={{
-                width: openStat.has("overview") ? `${pct}%` : "0%",
+                width: openStat.has("stats") ? `${pct}%` : "0%",
                 background: "#c4c4c4",
                 transition: `width 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
               }} />
             </div>
-            <p className="text-[10px] flex-shrink-0 tabular-nums" style={{ color: "var(--c-ink-body)", minWidth: 42 }}>{value}</p>
+            <p className="text-[12px] flex-shrink-0 tabular-nums" style={{ color: "var(--c-ink-body)", minWidth: 42 }}>{value}</p>
           </div>
         );
 
@@ -1293,7 +1304,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             const isExpanded = expandedBlurbs.has(h.id);
             const canExpand = !!robotDesc.long;
             const fullText = canExpand ? robotDesc.long : robotDesc.text;
-            const collapsedH = blurbFontSize * 1.625 * 2;
+            const collapsedH = blurbFontSize * 1.5 * 2;
             const isHovered = canExpand && hoveredBlurbId === h.id;
             const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
             const wrapperProps = canExpand
@@ -1323,7 +1334,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     display: "block",
                     position: "relative",
                     zIndex: 12,
-                    borderRadius: statPillRadius,
+                    borderRadius: isExpanded ? statPillRadiusOpen : statPillRadius,
                     WebkitTapHighlightColor: "transparent",
                   } : {}),
                   opacity: blurbReady ? 1 : 0,
@@ -1344,8 +1355,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   }}
                 >
                   <p
-                    className="leading-relaxed"
-                    style={{ fontSize: blurbFontSize, color: bubble.ink || "#999", fontWeight: 450 }}
+                    className="leading-[1.5]"
+                    style={{ fontSize: blurbFontSize, color: bubble.ink || "#7a7a7a", fontWeight: 450, letterSpacing: "0.005em" }}
                   >
                     {fullText}
                   </p>
@@ -1354,55 +1365,27 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </Wrapper>
             );
           })() },
-          { key: "overview", show: !!(h.height || h.weight), label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Overview</p>
+          { key: "stats", show: !!(h.height || h.weight || h.dof || h.maxSpeed), label: (
+            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Stats</p>
           ), detail: (
             <div>
-              {h.height ? barViz("Height", `${h.height} cm`, heightPct, 0.05) : null}
-              {h.weight ? barViz("Weight", `${h.weight} kg`, weightPct, 0.12) : null}
-            </div>
-          ) },
-          { key: "dof", show: !!h.dof, label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Degrees of Freedom</p>
-          ), detail: (
-            <div>
-              <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
-                <div className="flex gap-[3px]">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className="rounded-full" style={{
-                      width: 6, height: 6,
-                      background: i < Math.round((h.dof ?? 0) / 5) ? "#c4c4c4" : "#EFEFEF",
-                      transform: openStat.has("dof") ? "scale(1)" : "scale(0)",
-                      transition: `transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) ${0.03 * i}s`,
-                    }} />
-                  ))}
-                </div>
-                <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.dof}</p>
-              </div>
-              <p key={h.id} className="text-[11px] mt-2 info-fade-in" style={{ color: "#999", fontWeight: 450 }}>{(h.dof ?? 0) >= 40 ? "High dexterity — suited for complex manipulation." : (h.dof ?? 0) >= 25 ? "Moderate articulation for general mobility." : "Streamlined with fewer active joints."}</p>
-            </div>
-          ) },
-          { key: "speed", show: !!h.maxSpeed, label: (
-            <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Speed</p>
-          ), detail: (
-            <div>
-              <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
-                <svg width="40" height="24" viewBox="0 0 40 24">
-                  <path d="M4 20 A16 16 0 0 1 36 20" fill="none" stroke="#EFEFEF" strokeWidth="2.5" strokeLinecap="round" />
-                  <path d="M4 20 A16 16 0 0 1 36 20" fill="none" stroke="#c4c4c4" strokeWidth="2.5" strokeLinecap="round"
-                    strokeDasharray="50.3"
-                    strokeDashoffset={openStat.has("speed") ? 50.3 * (1 - speedPct / 100) : 50.3}
-                    style={{ transition: `stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s` }}
-                  />
-                </svg>
-                <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.maxSpeed} m/s</p>
-              </div>
-              <p key={h.id} className="text-[11px] mt-2 info-fade-in" style={{ color: "#999", fontWeight: 450 }}>{(h.maxSpeed ?? 0) >= 3.0 ? "Exceeds typical human walking speed." : (h.maxSpeed ?? 0) >= 2.0 ? "Comparable to human walking pace." : "Designed for precision over speed."}</p>
+              {h.height ? barViz("Height", formatHeight(h.height), heightPct, 0.05) : null}
+              {h.weight ? barViz("Weight", formatWeight(h.weight), weightPct, 0.12) : null}
+              {h.dof ? barViz("DOF", `${h.dof}`, dofPct, 0.19) : null}
+              {h.maxSpeed ? barViz("Speed", formatSpeed(h.maxSpeed), speedPct, 0.26) : null}
             </div>
           ) },
           { key: "status", show: !!h.status, label: (
             <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Status</p>
-          ), detail: (
+          ), preview: h.status ? (
+            <span className="inline-flex items-center" style={{ gap: 6 }}>
+              <span className="relative flex h-2 w-2">
+                {h.status === "In Production" && <span className="absolute inline-flex h-full w-full rounded-full animate-ping" style={{ background: statusColor, opacity: 0.4 }} />}
+                <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: statusColor }} />
+              </span>
+              <span className="text-[12px]" style={{ color: "var(--c-ink-body)", fontWeight: 500 }}>{h.status}</span>
+            </span>
+          ) : null, detail: (
             <div>
               <div className="flex items-center gap-2.5" style={{ marginTop: 4 }}>
                 <span className="relative flex h-2.5 w-2.5">
@@ -1411,7 +1394,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 </span>
                 <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.status}</p>
               </div>
-              <p key={h.id} className="text-[11px] mt-2 info-fade-in" style={{ color: "#999", fontWeight: 450 }}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : h.status === "Anticipated" ? "Teased for future release — details not yet revealed." : "No longer in active production."}</p>
+              <p key={h.id} className="text-[12px] mt-2 info-fade-in" style={{ color: "#999", fontWeight: 450 }}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : h.status === "Anticipated" ? "Teased for future release — details not yet revealed." : "No longer in active production."}</p>
             </div>
           ) },
           // Purchase — collapsed by default so price/buy info opts in like every
@@ -1446,13 +1429,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         const renderStats = (h: typeof humanoids[0]) => {
           const sections = statSections(h);
           const robotDesc = getRobotDescription(h);
+          const pillBg = statPillBg;
+          const pillBackdrop: string | undefined = undefined;
           return (
             <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
               {blurbFloat && robotDesc.text && (() => {
                 const isExpanded = expandedBlurbs.has(h.id);
                 const canExpand = !!robotDesc.long;
                 const fullText = canExpand ? robotDesc.long : robotDesc.text;
-                const collapsedH = blurbFontSize * 1.625 * 2;
+                const collapsedH = blurbFontSize * 1.5 * 2;
                 const isHovered = canExpand && hoveredBlurbId === h.id;
                 const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
                 const wrapperProps = canExpand
@@ -1500,8 +1485,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     >
                       <p
                         key={`blurb-float-${h.id}`}
-                        className="leading-relaxed info-fade-in"
-                        style={{ fontSize: blurbFontSize, color: bubble.ink || "#999", fontWeight: 450 }}
+                        className="leading-[1.5] info-fade-in"
+                        style={{ fontSize: blurbFontSize, color: bubble.ink || "#7a7a7a", fontWeight: 450, letterSpacing: "0.005em" }}
                       >
                         {fullText}
                       </p>
@@ -1511,7 +1496,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 );
               })()}
               {labelPosition === "stack" && (
-                <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: "#FAFAFA", padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
+                <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: pillBg, backdropFilter: pillBackdrop, WebkitBackdropFilter: pillBackdrop, padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
                   <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
                     {h.logoUrl ? (
                       <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${labelLogoSize}px`} />
@@ -1523,12 +1508,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
-                    <p className="text-[10px] tracking-widest uppercase font-medium mt-0.5 truncate" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                    <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
+                    <p className="text-[12px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.5 }}>
                       {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
                     </p>
                   </div>
-                  {h.id.startsWith("legend") && <span className="flex-shrink-0 text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
+                  {h.id.startsWith("legend") && <span className="flex-shrink-0 text-[12px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
                 </div>
               )}
               {/* Stats — individual pill containers. Always render every section so the
@@ -1548,7 +1533,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const actionDark = isAction && actionVariant === "dark";
                   const actionHairline = isAction && actionVariant === "hairline";
                   const actionLabelColor = actionAccent ? "var(--c-accent)" : pillLabelColor;
-                  const actionPillBg = actionDark ? "#ECECEC" : statPillBg;
+                  const actionPillBg = actionDark ? "#ECECEC" : pillBg;
                   const actionText = isAction ? ((s as { text?: string }).text ?? "") : "";
                   // Text-link variant: render the action as plain inline text + arrow,
                   // sitting at the bottom of the column where the pill would otherwise live.
@@ -1563,7 +1548,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center"
-                        style={{ gap: 4, padding: `8px ${statPillPadX}px`, color: "#999", fontSize: 11, fontWeight: 450, textDecoration: "none", alignSelf: "flex-start" }}
+                        style={{ gap: 4, padding: `8px ${statPillPadX}px`, color: "#999", fontSize: 12, fontWeight: 450, textDecoration: "none", alignSelf: "flex-start" }}
                       >
                         {text}
                         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
@@ -1582,9 +1567,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
                       style={{
                         ["--pill-bg" as string]: s.key === "desc" ? "transparent" : actionPillBg,
-                        background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
+                        background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : pillBg),
+                        backdropFilter: s.key === "desc" ? undefined : pillBackdrop,
+                        WebkitBackdropFilter: s.key === "desc" ? undefined : pillBackdrop,
                         border: "none",
-                        borderRadius: statPillRadius,
+                        borderRadius: isOpen ? statPillRadiusOpen : statPillRadius,
                         padding: `0 ${statPillPadX}px`,
                         overflow: s.key === "desc" ? "visible" : "hidden",
                         cursor: (isLink || interactive) ? "pointer" : "default",
@@ -1603,7 +1590,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           style={{
                             position: "absolute",
                             inset: 0,
-                            borderRadius: statPillRadius,
+                            borderRadius: isOpen ? statPillRadiusOpen : statPillRadius,
                             pointerEvents: "none",
                           }}
                         />
@@ -1620,7 +1607,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                             <svg className={isAction ? "pill-arrow" : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                             </svg>
-                          ) : s.key === "purchase" ? null : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
+                          ) : s.key === "purchase" ? null : !forcedOpen && (empty ? <span className="text-[12px]" style={{ color: "#c4c4c4" }}>—</span> : ((s as { preview?: React.ReactNode }).preview && !isOpen ? (s as { preview?: React.ReactNode }).preview : plusMinus(isOpen)))}
                         </div>
                       )}
                       {forcedOpen ? (
@@ -1665,6 +1652,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
           const leadIn = h.status === "In Production" ? "From" : "Est.";
           const href = h.purchaseUrl;
+          const pillBg = statPillBg;
+          const pillBackdrop: string | undefined = undefined;
 
           if (buyCardStyle === "split") {
             const disabled = !href;
@@ -1673,7 +1662,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 flex: 1,
                 minWidth: 0,
                 borderRadius: cardRadius,
-                background: "#FAFAFA",
+                background: pillBg,
+                backdropFilter: pillBackdrop,
+                WebkitBackdropFilter: pillBackdrop,
                 padding: "10px 16px",
                 minHeight: 52,
                 opacity: disabled ? 0.4 : 1,
@@ -1685,7 +1676,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     : (priceLabel || "Inquire");
                   return (
                     <div className="min-w-0">
-                      <p className="text-[10px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                      <p className="text-[12px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
                         {label}
                       </p>
                       <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
@@ -1700,7 +1691,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               width: 52,
               height: 52,
               borderRadius: 999,
-              background: "#FAFAFA",
+              background: pillBg,
+              backdropFilter: pillBackdrop,
+              WebkitBackdropFilter: pillBackdrop,
               flexShrink: 0,
             };
             const circleIcon = (
@@ -1736,7 +1729,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           if (!href && !priceLabel) return null;
           const darkBody = (
             <>
-              <span className="text-[9px] tracking-[0.14em] uppercase font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <span className="text-[12px] tracking-[0.14em] uppercase font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
                 {href ? "Purchase" : "Price"}
               </span>
               <span className="flex items-center gap-1.5 min-w-0">
@@ -1769,17 +1762,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         };
 
         const renderMergedStats = () => {
+          const pillBg = statPillBg;
+          const pillBackdrop: string | undefined = undefined;
           const heightL = hL.height ?? 0, heightR = hR.height ?? 0;
           const weightL = hL.weight ?? 0, weightR = hR.weight ?? 0;
           const dofL = hL.dof ?? 0, dofR = hR.dof ?? 0;
           const speedL = hL.maxSpeed ?? 0, speedR = hR.maxSpeed ?? 0;
           const statusColor = (status?: string) => status === "In Production" ? "#22c55e" : status === "Prototype" ? "#eab308" : status === "Concept" ? "#3b82f6" : status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
 
-          const compareRow = (label: string, valL: string | null, valR: string | null, lWin: boolean, rWin: boolean) => (
+          const compareRow = (label: string, valL: string | null, valR: string | null) => (
             <div className="flex items-baseline justify-between gap-2" style={{ marginTop: 6 }}>
-              <p className="text-[11px] tabular-nums flex-1 text-left" style={{ color: lWin ? "var(--c-ink)" : "#c4c4c4" }}>{valL || "—"}</p>
-              <p className="text-[9px] uppercase text-center" style={{ color: "#a3a3a3", letterSpacing: "0.08em", minWidth: 44 }}>{label}</p>
-              <p className="text-[11px] tabular-nums flex-1 text-right" style={{ color: rWin ? "var(--c-ink)" : "#c4c4c4" }}>{valR || "—"}</p>
+              <p className="text-[12px] tabular-nums flex-1 text-left" style={{ color: valL ? "var(--c-ink-body)" : "#c4c4c4" }}>{valL || "—"}</p>
+              <p className="text-[12px] uppercase text-center" style={{ color: "#a3a3a3", letterSpacing: "0.08em", minWidth: 44 }}>{label}</p>
+              <p className="text-[12px] tabular-nums flex-1 text-right" style={{ color: valR ? "var(--c-ink-body)" : "#c4c4c4" }}>{valR || "—"}</p>
             </div>
           );
 
@@ -1796,7 +1791,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 const isExpanded = expandedBlurbs.has(compareBlurbId);
                 const canExpand = !!compareBlurb.long;
                 const fullText = canExpand ? compareBlurb.long : compareBlurb.text;
-                const collapsedH = blurbFontSize * 1.625 * 2;
+                const collapsedH = blurbFontSize * 1.5 * 2;
                 const isHovered = canExpand && hoveredBlurbId === compareBlurbId;
                 const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
                 const wrapperProps = canExpand
@@ -1826,7 +1821,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         display: "block",
                         position: "relative",
                         zIndex: 12,
-                        borderRadius: statPillRadius,
+                        borderRadius: isExpanded ? statPillRadiusOpen : statPillRadius,
                         WebkitTapHighlightColor: "transparent",
                       } : {}),
                       opacity: blurbReady ? 1 : 0,
@@ -1847,11 +1842,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       }}
                     >
                       <p
-                        className="leading-relaxed"
+                        className="leading-[1.5]"
                         style={{
                           fontSize: blurbFontSize,
-                          color: compareBlurb.isGenerated ? (bubble.ink || "#999") : (bubble.inkDim || "#bbb"),
+                          color: compareBlurb.isGenerated ? (bubble.ink || "#7a7a7a") : (bubble.inkDim || "#a8a8a8"),
                           fontWeight: 450,
+                          letterSpacing: "0.005em",
                         }}
                       >
                         {fullText}
@@ -1863,33 +1859,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               })(),
             },
             {
-              key: "overview",
-              show: !!(heightL || weightL || heightR || weightR),
+              key: "stats",
+              show: !!(heightL || weightL || heightR || weightR || dofL || dofR || speedL || speedR),
               label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Overview</p>
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Stats</p>
               ),
               detail: (
                 <div>
-                  {(heightL || heightR) ? compareRow("Height", heightL ? `${heightL} cm` : null, heightR ? `${heightR} cm` : null, heightL > heightR && heightL > 0, heightR > heightL && heightR > 0) : null}
-                  {(weightL || weightR) ? compareRow("Weight", weightL ? `${weightL} kg` : null, weightR ? `${weightR} kg` : null, weightL > 0 && (weightR === 0 || weightL < weightR), weightR > 0 && (weightL === 0 || weightR < weightL)) : null}
+                  {(heightL || heightR) ? compareRow("Height", heightL ? formatHeight(heightL) : null, heightR ? formatHeight(heightR) : null) : null}
+                  {(weightL || weightR) ? compareRow("Weight", weightL ? formatWeight(weightL) : null, weightR ? formatWeight(weightR) : null) : null}
+                  {(dofL || dofR) ? compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null) : null}
+                  {(speedL || speedR) ? compareRow("Speed", speedL ? formatSpeed(speedL) : null, speedR ? formatSpeed(speedR) : null) : null}
                 </div>
               ),
-            },
-            {
-              key: "dof",
-              show: !!(dofL || dofR),
-              label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Degrees of Freedom</p>
-              ),
-              detail: compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null, dofL > dofR && dofL > 0, dofR > dofL && dofR > 0),
-            },
-            {
-              key: "speed",
-              show: !!(speedL || speedR),
-              label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Speed</p>
-              ),
-              detail: compareRow("Speed", speedL ? `${speedL} m/s` : null, speedR ? `${speedR} m/s` : null, speedL > speedR && speedL > 0, speedR > speedL && speedR > 0),
             },
             {
               key: "status",
@@ -1897,14 +1879,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               label: (
                 <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Status</p>
               ),
+              preview: (
+                <span className="inline-flex items-center" style={{ gap: 6 }}>
+                  {hL.status && <span className="inline-block rounded-full h-2 w-2" style={{ background: statusColor(hL.status) }} />}
+                  {hR.status && <span className="inline-block rounded-full h-2 w-2" style={{ background: statusColor(hR.status) }} />}
+                </span>
+              ),
               detail: (
                 <div className="flex items-center gap-3" style={{ marginTop: 6 }}>
                   <div className="flex items-center gap-1.5 flex-1 min-w-0">
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: statusColor(hL.status) }} />
-                    <p className="text-[11px] truncate" style={{ color: "var(--c-ink-body)" }}>{hL.status || "—"}</p>
+                    <p className="text-[12px] truncate" style={{ color: "var(--c-ink-body)" }}>{hL.status || "—"}</p>
                   </div>
                   <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-                    <p className="text-[11px] truncate" style={{ color: "var(--c-ink-body)" }}>{hR.status || "—"}</p>
+                    <p className="text-[12px] truncate" style={{ color: "var(--c-ink-body)" }}>{hR.status || "—"}</p>
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: statusColor(hR.status) }} />
                   </div>
                 </div>
@@ -1925,8 +1913,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[9px] tracking-widest uppercase font-medium truncate" style={{ color: "#a3a3a3", letterSpacing: "0.06em", marginTop: 1 }}>{h.manufacturer}</p>
+                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
+                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.5 }}>{h.manufacturer}</p>
               </div>
             </div>
           );
@@ -1937,7 +1925,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 const isExpanded = expandedBlurbs.has(compareBlurbId);
                 const canExpand = !!compareBlurb.long;
                 const fullText = canExpand ? compareBlurb.long : compareBlurb.text;
-                const collapsedH = blurbFontSize * 1.625 * 2;
+                const collapsedH = blurbFontSize * 1.5 * 2;
                 const isHovered = canExpand && hoveredBlurbId === compareBlurbId;
                 const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
                 const wrapperProps = canExpand
@@ -1985,11 +1973,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     >
                       <p
                         key={`blurb-float-${compareBlurbId}`}
-                        className="leading-relaxed info-fade-in"
+                        className="leading-[1.5] info-fade-in"
                         style={{
                           fontSize: blurbFontSize,
-                          color: compareBlurb.isGenerated ? (bubble.ink || "#999") : (bubble.inkDim || "#bbb"),
+                          color: compareBlurb.isGenerated ? (bubble.ink || "#7a7a7a") : (bubble.inkDim || "#a8a8a8"),
                           fontWeight: 450,
+                          letterSpacing: "0.005em",
                         }}
                       >
                         {fullText}
@@ -2087,7 +2076,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const actionDark = isAction && actionVariant === "dark";
                   const actionHairline = isAction && actionVariant === "hairline";
                   const actionLabelColor = actionAccent ? "var(--c-accent)" : pillLabelColor;
-                  const actionPillBg = actionDark ? "#ECECEC" : statPillBg;
+                  const actionPillBg = actionDark ? "#ECECEC" : pillBg;
                   const actionText = isAction ? ((s as { text?: string }).text ?? "") : "";
                   // Text-link variant: render the action as plain inline text + arrow,
                   // sitting at the bottom of the column where the pill would otherwise live.
@@ -2102,7 +2091,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center"
-                        style={{ gap: 4, padding: `8px ${statPillPadX}px`, color: "#999", fontSize: 11, fontWeight: 450, textDecoration: "none", alignSelf: "flex-start" }}
+                        style={{ gap: 4, padding: `8px ${statPillPadX}px`, color: "#999", fontSize: 12, fontWeight: 450, textDecoration: "none", alignSelf: "flex-start" }}
                       >
                         {text}
                         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
@@ -2121,9 +2110,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
                       style={{
                         ["--pill-bg" as string]: s.key === "desc" ? "transparent" : actionPillBg,
-                        background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : statPillBg),
+                        background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : pillBg),
+                        backdropFilter: s.key === "desc" ? undefined : pillBackdrop,
+                        WebkitBackdropFilter: s.key === "desc" ? undefined : pillBackdrop,
                         border: "none",
-                        borderRadius: statPillRadius,
+                        borderRadius: isOpen ? statPillRadiusOpen : statPillRadius,
                         padding: `0 ${statPillPadX}px`,
                         overflow: s.key === "desc" ? "visible" : "hidden",
                         cursor: (isLink || interactive) ? "pointer" : "default",
@@ -2142,7 +2133,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           style={{
                             position: "absolute",
                             inset: 0,
-                            borderRadius: statPillRadius,
+                            borderRadius: isOpen ? statPillRadiusOpen : statPillRadius,
                             pointerEvents: "none",
                           }}
                         />
@@ -2159,7 +2150,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                             <svg className={isAction ? "pill-arrow" : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                             </svg>
-                          ) : s.key === "purchase" ? null : !forcedOpen && (empty ? <span className="text-[11px]" style={{ color: "#c4c4c4" }}>—</span> : plusMinus(isOpen))}
+                          ) : s.key === "purchase" ? null : !forcedOpen && (empty ? <span className="text-[12px]" style={{ color: "#c4c4c4" }}>—</span> : ((s as { preview?: React.ReactNode }).preview && !isOpen ? (s as { preview?: React.ReactNode }).preview : plusMinus(isOpen)))}
                         </div>
                       )}
                       {forcedOpen ? (
@@ -2219,7 +2210,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <>
               {/* New badge — rides with the humanoid */}
               {mh.year === 2025 && (
-                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 text-[11px] font-semibold" style={{ borderRadius: Math.max(3, cardRadius - 1), background: "#8e8e93", color: "#ffffff" }}>New</div>
+                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 text-[12px] font-semibold" style={{ borderRadius: Math.max(3, cardRadius - 1), background: "#8e8e93", color: "#ffffff" }}>New</div>
               )}
               <div
                 ref={(el) => { galleryScrollRefs.current[mIdx] = el; }}
@@ -2236,7 +2227,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               >
                 {mh.status === "Anticipated" ? (
                   <div className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
-                    <span className="text-[11px] tracking-[0.22em] uppercase" style={{ color: "#a3a3a3" }}>Coming Soon</span>
+                    <span className="text-[12px] tracking-[0.22em] uppercase" style={{ color: "#a3a3a3" }}>Coming Soon</span>
                   </div>
                 ) : mItems.length > 0 ? mItems.map((item, i) => {
                   const isCover = item.fit === "cover";
@@ -2319,7 +2310,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           };
 
           const cardLabel = (
-            <div key={h.id} className="flex items-center gap-2 px-0.5 info-fade-in">
+            <div key={h.id} className="flex items-center gap-2 pl-3 pr-0.5 info-fade-in">
               <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
                 {h.logoUrl ? (
                   <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${labelLogoSize}px`} />
@@ -2331,8 +2322,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[9px] tracking-widest uppercase font-medium truncate" style={{ color: "#a3a3a3", letterSpacing: "0.06em" }}>{h.manufacturer}</p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
+                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.5 }}>{h.manufacturer}</p>
               </div>
             </div>
           );
@@ -2547,13 +2538,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       {showSplitTuner && (
         <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
           <div>
-            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Label Position</p>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Label Position</p>
             <div className="flex gap-1.5">
               {(["stack", "above", "below"] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setLabelPosition(v)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${labelPosition === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${labelPosition === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                 >
                   {v}
                 </button>
@@ -2561,13 +2552,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           </div>
           <div>
-            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Stats Align</p>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Stats Align</p>
             <div className="flex gap-1.5">
               {(["top", "center", "bottom"] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setStatsAlign(v)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${statsAlign === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${statsAlign === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                 >
                   {v}
                 </button>
@@ -2575,13 +2566,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           </div>
           <div>
-            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Header Split</p>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Header Split</p>
             <div className="flex flex-wrap gap-1.5">
               {(["morph", "push", "lift", "shrink", "swap"] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setSplitVariant(v)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${splitVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${splitVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                 >
                   {v}
                 </button>
@@ -2589,38 +2580,38 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <p className="text-[10px] tracking-widest uppercase text-neutral-400">Fine Tune</p>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400">Fine Tune</p>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Split amount <span className="tabular-nums text-neutral-400">{splitAmount}px</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Split amount <span className="tabular-nums text-neutral-400">{splitAmount}px</span></label>
               <input type="range" min={0} max={120} value={splitAmount} onChange={(e) => setSplitAmount(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
             </div>
             {splitVariant === "shrink" && (
               <div>
-                <label className="text-[10px] text-neutral-500 flex justify-between">Scale <span className="tabular-nums text-neutral-400">{splitScale.toFixed(2)}</span></label>
+                <label className="text-[12px] text-neutral-500 flex justify-between">Scale <span className="tabular-nums text-neutral-400">{splitScale.toFixed(2)}</span></label>
                 <input type="range" min={70} max={100} value={Math.round(splitScale * 100)} onChange={(e) => setSplitScale(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" />
               </div>
             )}
             {splitVariant === "lift" && (
               <>
                 <div>
-                  <label className="text-[10px] text-neutral-500 flex justify-between">Lift Y <span className="tabular-nums text-neutral-400">{splitLiftY}px</span></label>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">Lift Y <span className="tabular-nums text-neutral-400">{splitLiftY}px</span></label>
                   <input type="range" min={0} max={24} value={splitLiftY} onChange={(e) => setSplitLiftY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-neutral-500 flex justify-between">Shadow <span className="tabular-nums text-neutral-400">{splitShadowOp.toFixed(2)}</span></label>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">Shadow <span className="tabular-nums text-neutral-400">{splitShadowOp.toFixed(2)}</span></label>
                   <input type="range" min={0} max={40} value={Math.round(splitShadowOp * 100)} onChange={(e) => setSplitShadowOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" />
                 </div>
               </>
             )}
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Duration <span className="tabular-nums text-neutral-400">{splitDur}ms</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Duration <span className="tabular-nums text-neutral-400">{splitDur}ms</span></label>
               <input type="range" min={150} max={1200} step={10} value={splitDur} onChange={(e) => setSplitDur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
             </div>
           </div>
           <div className="pt-2 border-t border-neutral-100">
             <button
               onClick={() => { setSplitVariant("shrink"); setSplitAmount(44); setSplitScale(0.97); setSplitLiftY(4); setSplitShadowOp(0.12); setSplitDur(320); }}
-              className="text-[10px] text-neutral-400 hover:text-neutral-600 cursor-pointer"
+              className="text-[12px] text-neutral-400 hover:text-neutral-600 cursor-pointer"
             >
               Reset
             </button>
@@ -2719,25 +2710,25 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide" style={{ overscrollBehavior: "contain" }}>
           <div>
             <div className="flex items-center justify-between">
-              <p className="text-[10px] tracking-widest uppercase text-neutral-400" style={{ fontFamily: "var(--font-epetri)", letterSpacing: "0.18em" }}>Epetri Font</p>
+              <p className="text-[12px] tracking-widest uppercase text-neutral-400" style={{ fontFamily: "var(--font-epetri)", letterSpacing: "0.18em" }}>Epetri Font</p>
               <button
                 type="button"
                 onClick={() => onEpetriModeChange?.(!epetriMode)}
                 aria-pressed={epetriMode}
-                className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${epetriMode ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+                className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${epetriMode ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
               >
                 {epetriMode ? "On" : "Off"}
               </button>
             </div>
           </div>
           <div className="pt-2 border-t border-neutral-100">
-            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Buy</p>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Buy</p>
             <div className="flex flex-wrap gap-1.5">
               {(["card", "chip"] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setBuyLayout(v)}
-                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${buyLayout === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${buyLayout === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                 >
                   {v === "card" ? "Stats card" : "Image chip"}
                 </button>
@@ -2749,7 +2740,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   <button
                     key={v}
                     onClick={() => setBuyCardStyle(v)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${buyCardStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${buyCardStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                   >
                     {v}
                   </button>
@@ -2758,9 +2749,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             )}
             {buyLayout === "card" && (
               <div className="mt-2 flex items-center gap-2">
-                <label className="text-[10px] text-neutral-500 flex-1">Hide when unbuyable</label>
+                <label className="text-[12px] text-neutral-500 flex-1">Hide when unbuyable</label>
                 <button
-                  className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${hideUnbuyable ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+                  className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${hideUnbuyable ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
                   onClick={() => setHideUnbuyable(!hideUnbuyable)}
                 >
                   {hideUnbuyable ? "On" : "Off"}
@@ -2768,68 +2759,68 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             )}
           </div>
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => pickArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => pickArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
           {arcStyle === "arc-names" && (
             <div className="pt-2 border-t border-neutral-100">
-              <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Arc Marker</p>
-              <div className="flex flex-wrap gap-1.5"><button onClick={() => setArcMarkerVariant(0)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcMarkerVariant === 0 ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>None</button>{MARKER_VARIANTS.map((m) => (<button key={m.id} onClick={() => setArcMarkerVariant(m.id)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${arcMarkerVariant === m.id ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{m.label}</button>))}</div>
+              <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Arc Marker</p>
+              <div className="flex flex-wrap gap-1.5"><button onClick={() => setArcMarkerVariant(0)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcMarkerVariant === 0 ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>None</button>{MARKER_VARIANTS.map((m) => (<button key={m.id} onClick={() => setArcMarkerVariant(m.id)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcMarkerVariant === m.id ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{m.label}</button>))}</div>
               {arcMarkerVariant === 22 && (
                 <div className="flex items-center gap-2.5 mt-2.5">
                   <label className="cursor-pointer flex-shrink-0" style={{ width: 22, height: 22, borderRadius: 6, background: arcMarkerColor, border: "1.5px solid rgba(0,0,0,0.08)", display: "block" }}>
                     <input type="color" value={arcMarkerColor} onChange={e => setArcMarkerColor(e.target.value)} className="sr-only" />
                   </label>
-                  <span className="text-[11px] text-neutral-400 tabular-nums uppercase tracking-wider">{arcMarkerColor}</span>
+                  <span className="text-[12px] text-neutral-400 tabular-nums uppercase tracking-wider">{arcMarkerColor}</span>
                 </div>
               )}
             </div>
           )}
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Nav</p>
-            <div><p className="text-[10px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Nav</p>
+            <div><p className="text-[12px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             {navStyle === "underline" && (
-              <div><p className="text-[10px] text-neutral-500 mb-1.5">Switcher</p><div className="flex flex-wrap gap-1.5">{SWITCHER_STYLES.map((s) => (<button key={s} onClick={() => onSwitcherStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${switcherStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
+              <div><p className="text-[12px] text-neutral-500 mb-1.5">Switcher</p><div className="flex flex-wrap gap-1.5">{SWITCHER_STYLES.map((s) => (<button key={s} onClick={() => onSwitcherStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${switcherStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             )}
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Top offset <span className="tabular-nums text-neutral-400">{navTop}px</span></label><input type="range" min={0} max={48} value={navTop} onChange={(e) => setNavTop(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Auto side inset</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${autoNavX ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoNavX(!autoNavX)}>{autoNavX ? "On" : "Off"}</button></div>
-            <div style={{ opacity: autoNavX ? 0.3 : 1 }}><label className="text-[10px] text-neutral-500 flex justify-between">Side inset <span className="tabular-nums text-neutral-400">{navX}px</span></label><input type="range" min={0} max={200} value={navX} onChange={(e) => { setNavX(Number(e.target.value)); setAutoNavX(false); }} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Top offset <span className="tabular-nums text-neutral-400">{navTop}px</span></label><input type="range" min={0} max={48} value={navTop} onChange={(e) => setNavTop(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">Auto side inset</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${autoNavX ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoNavX(!autoNavX)}>{autoNavX ? "On" : "Off"}</button></div>
+            <div style={{ opacity: autoNavX ? 0.3 : 1 }}><label className="text-[12px] text-neutral-500 flex justify-between">Side inset <span className="tabular-nums text-neutral-400">{navX}px</span></label><input type="range" min={0} max={200} value={navX} onChange={(e) => { setNavX(Number(e.target.value)); setAutoNavX(false); }} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Card Give</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setGiveVelScale(3); setGivePushAmt(5); setGiveLeanAmt(0.9); setGiveTiltAmt(4); setGiveTiltDepth(800); }}>Reset</button></div>
-            <div className="flex flex-wrap gap-1.5">{GIVE_STYLES.map((s) => (<button key={s} onClick={() => setGiveStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all ${giveStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{giveStyleLabels[s]}</button>))}</div>
-            <div style={{ opacity: (giveStyle === "push" || giveStyle === "lean" || giveStyle === "tilt" || giveStyle === "drag") ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Velocity scale <span className="tabular-nums text-neutral-400">{giveVelScale.toFixed(1)}</span></label><input type="range" min={5} max={80} value={Math.round(giveVelScale * 10)} onChange={(e) => setGiveVelScale(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: (giveStyle === "push" || giveStyle === "drag") ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Push amount <span className="tabular-nums text-neutral-400">{givePushAmt}px</span></label><input type="range" min={0} max={30} value={givePushAmt} onChange={(e) => setGivePushAmt(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: giveStyle === "lean" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Lean amount <span className="tabular-nums text-neutral-400">{giveLeanAmt.toFixed(1)}°</span></label><input type="range" min={0} max={50} value={Math.round(giveLeanAmt * 10)} onChange={(e) => setGiveLeanAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Tilt amount <span className="tabular-nums text-neutral-400">{giveTiltAmt.toFixed(1)}°</span></label><input type="range" min={0} max={200} value={Math.round(giveTiltAmt * 10)} onChange={(e) => setGiveTiltAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Tilt depth <span className="tabular-nums text-neutral-400">{giveTiltDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={giveTiltDepth} onChange={(e) => setGiveTiltDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center justify-between"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Card Give</p><button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setGiveVelScale(3); setGivePushAmt(5); setGiveLeanAmt(0.9); setGiveTiltAmt(4); setGiveTiltDepth(800); }}>Reset</button></div>
+            <div className="flex flex-wrap gap-1.5">{GIVE_STYLES.map((s) => (<button key={s} onClick={() => setGiveStyle(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${giveStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{giveStyleLabels[s]}</button>))}</div>
+            <div style={{ opacity: (giveStyle === "push" || giveStyle === "lean" || giveStyle === "tilt" || giveStyle === "drag") ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Velocity scale <span className="tabular-nums text-neutral-400">{giveVelScale.toFixed(1)}</span></label><input type="range" min={5} max={80} value={Math.round(giveVelScale * 10)} onChange={(e) => setGiveVelScale(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: (giveStyle === "push" || giveStyle === "drag") ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Push amount <span className="tabular-nums text-neutral-400">{givePushAmt}px</span></label><input type="range" min={0} max={30} value={givePushAmt} onChange={(e) => setGivePushAmt(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: giveStyle === "lean" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Lean amount <span className="tabular-nums text-neutral-400">{giveLeanAmt.toFixed(1)}°</span></label><input type="range" min={0} max={50} value={Math.round(giveLeanAmt * 10)} onChange={(e) => setGiveLeanAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Tilt amount <span className="tabular-nums text-neutral-400">{giveTiltAmt.toFixed(1)}°</span></label><input type="range" min={0} max={200} value={Math.round(giveTiltAmt * 10)} onChange={(e) => setGiveTiltAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Tilt depth <span className="tabular-nums text-neutral-400">{giveTiltDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={giveTiltDepth} onChange={(e) => setGiveTiltDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] tracking-widest uppercase text-neutral-400">Lucky Tap</p>
-              <button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setLuckyTapStyle("shake"); setLuckyTapDur(500); setLuckyTapAngle(2.7); setLuckyTapDepth(1400); setLuckyTapOriginY(100); setLuckyShakePx(8); setLuckyShakeCycles(2); }}>Reset</button>
+              <p className="text-[12px] tracking-widest uppercase text-neutral-400">Lucky Tap</p>
+              <button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setLuckyTapStyle("shake"); setLuckyTapDur(500); setLuckyTapAngle(2.7); setLuckyTapDepth(1400); setLuckyTapOriginY(100); setLuckyShakePx(8); setLuckyShakeCycles(2); }}>Reset</button>
             </div>
             <div className="flex gap-1.5">
               {(["tilt", "shake"] as const).map((s) => (
-                <button key={s} onClick={() => setLuckyTapStyle(s)} className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${luckyTapStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>
+                <button key={s} onClick={() => setLuckyTapStyle(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${luckyTapStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>
               ))}
             </div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Duration <span className="tabular-nums text-neutral-400">{luckyTapDur}ms</span></label><input type="range" min={120} max={900} step={10} value={luckyTapDur} onChange={(e) => setLuckyTapDur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Peak angle <span className="tabular-nums text-neutral-400">{luckyTapAngle.toFixed(1)}°</span></label><input type="range" min={0} max={300} value={Math.round(luckyTapAngle * 10)} onChange={(e) => setLuckyTapAngle(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Depth <span className="tabular-nums text-neutral-400">{luckyTapDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={luckyTapDepth} onChange={(e) => setLuckyTapDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Pivot Y <span className="tabular-nums text-neutral-400">{luckyTapOriginY}%</span></label><input type="range" min={0} max={100} value={luckyTapOriginY} onChange={(e) => setLuckyTapOriginY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake amount <span className="tabular-nums text-neutral-400">{luckyShakePx}px</span></label><input type="range" min={0} max={14} value={luckyShakePx} onChange={(e) => setLuckyShakePx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[10px] text-neutral-500 flex justify-between">Shake cycles <span className="tabular-nums text-neutral-400">{luckyShakeCycles}</span></label><input type="range" min={1} max={8} value={luckyShakeCycles} onChange={(e) => setLuckyShakeCycles(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Duration <span className="tabular-nums text-neutral-400">{luckyTapDur}ms</span></label><input type="range" min={120} max={900} step={10} value={luckyTapDur} onChange={(e) => setLuckyTapDur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Peak angle <span className="tabular-nums text-neutral-400">{luckyTapAngle.toFixed(1)}°</span></label><input type="range" min={0} max={300} value={Math.round(luckyTapAngle * 10)} onChange={(e) => setLuckyTapAngle(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Depth <span className="tabular-nums text-neutral-400">{luckyTapDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={luckyTapDepth} onChange={(e) => setLuckyTapDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Pivot Y <span className="tabular-nums text-neutral-400">{luckyTapOriginY}%</span></label><input type="range" min={0} max={100} value={luckyTapOriginY} onChange={(e) => setLuckyTapOriginY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Shake amount <span className="tabular-nums text-neutral-400">{luckyShakePx}px</span></label><input type="range" min={0} max={14} value={luckyShakePx} onChange={(e) => setLuckyShakePx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Shake cycles <span className="tabular-nums text-neutral-400">{luckyShakeCycles}</span></label><input type="range" min={1} max={8} value={luckyShakeCycles} onChange={(e) => setLuckyShakeCycles(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Stat Pills</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setStatPillRadius(40); setStatPillGap(4); setStatPillPadX(16); setStatPillPadY(11); setStatPillBg("#FCFCFC"); setInfoMode("bare"); }}>Reset</button></div>
+            <div className="flex items-center justify-between"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Stat Pills</p><button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setStatPillRadius(40); setStatPillGap(4); setStatPillPadX(16); setStatPillPadY(11); setStatPillBg("#FCFCFC"); setInfoMode("bare"); }}>Reset</button></div>
             <div>
-              <p className="text-[10px] text-neutral-500 mb-1.5">Info</p>
+              <p className="text-[12px] text-neutral-500 mb-1.5">Info</p>
               <div className="flex flex-wrap gap-1.5">
                 {(["pill", "open", "bare"] as const).map((v) => (
                   <button
                     key={v}
                     onClick={() => setInfoMode(v)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${infoMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${infoMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                   >
                     {v}
                   </button>
@@ -2837,7 +2828,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <label className="text-[10px] text-neutral-500">Legacy labels</label>
+              <label className="text-[12px] text-neutral-500">Legacy labels</label>
               {(() => {
                 // Pre-mono-uppercase look: Geist Sans, weight 500, tight negative tracking, mixed case.
                 // Strict check across every value so dragging any slider/control flips this back to OFF —
@@ -2869,7 +2860,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         setPillLabelColor("var(--c-ink-body)");
                       }
                     }}
-                    className="text-[10px] px-2 py-1 rounded transition-colors"
+                    className="text-[12px] px-2 py-1 rounded transition-colors"
                     style={{ background: isLegacy ? "#1a1a1a" : "#f0f0f0", color: isLegacy ? "#fff" : "#666", border: "none", cursor: "pointer" }}
                   >
                     {isLegacy ? "ON" : "OFF"}
@@ -2878,14 +2869,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               })()}
             </div>
             <div>
-              <label className="text-[10px] text-neutral-500 mb-1.5 block">Action variant</label>
+              <label className="text-[12px] text-neutral-500 mb-1.5 block">Action variant</label>
               <div className="flex flex-wrap gap-1.5">
                 {(["pill", "text", "accent", "dark", "hairline"] as const).map((v) => (
                   <button
                     key={v}
                     type="button"
                     onClick={() => setActionVariant(v)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${actionVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${actionVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                   >
                     {v}
                   </button>
@@ -2893,23 +2884,23 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             </div>
             <div>
-              <label className="text-[10px] text-neutral-500 mb-1.5 block">Action hover tint</label>
+              <label className="text-[12px] text-neutral-500 mb-1.5 block">Action hover tint</label>
               <div className="flex flex-wrap gap-1.5">
                 {(["none", "charcoal", "slate", "stone"] as const).map((v) => (
                   <button
                     key={v}
                     type="button"
                     onClick={() => setActionHoverTint(v)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${actionHoverTint === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${actionHoverTint === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                   >
                     {v}
                   </button>
                 ))}
               </div>
             </div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Pill label size <span className="tabular-nums text-neutral-400">{pillLabelFontSize}px</span></label><input type="range" min={9} max={18} value={pillLabelFontSize} onChange={(e) => setPillLabelFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Pill label size <span className="tabular-nums text-neutral-400">{pillLabelFontSize}px</span></label><input type="range" min={9} max={18} value={pillLabelFontSize} onChange={(e) => setPillLabelFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
-              <label className="text-[10px] text-neutral-500">Pill label font</label>
+              <label className="text-[12px] text-neutral-500">Pill label font</label>
               <div className="flex flex-col gap-1 mt-1.5">
                 {([
                   { label: "Geist Mono", value: "var(--font-geist-mono)" },
@@ -2931,13 +2922,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ))}
               </div>
             </div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Letter spacing <span className="tabular-nums text-neutral-400">{pillLabelLetterSpacing.toFixed(2)}em</span></label><input type="range" min={-0.05} max={0.3} step={0.01} value={pillLabelLetterSpacing} onChange={(e) => setPillLabelLetterSpacing(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Letter spacing <span className="tabular-nums text-neutral-400">{pillLabelLetterSpacing.toFixed(2)}em</span></label><input type="range" min={-0.05} max={0.3} step={0.01} value={pillLabelLetterSpacing} onChange={(e) => setPillLabelLetterSpacing(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Weight</label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Weight</label>
               <div className="flex gap-1 mt-1.5 flex-wrap">
                 {[300, 400, 500, 600, 700, 800].map((w) => (
                   <button key={w} type="button" onClick={() => setPillLabelWeight(w)}
-                    className="text-[10px] px-2 py-1 rounded transition-colors tabular-nums"
+                    className="text-[12px] px-2 py-1 rounded transition-colors tabular-nums"
                     style={{ background: pillLabelWeight === w ? "#1a1a1a" : "#f0f0f0", color: pillLabelWeight === w ? "#fff" : "#666", border: "none", cursor: "pointer", fontWeight: w }}>
                     {w}
                   </button>
@@ -2945,37 +2936,37 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <label className="text-[10px] text-neutral-500">Uppercase</label>
+              <label className="text-[12px] text-neutral-500">Uppercase</label>
               <button type="button" onClick={() => setPillLabelUppercase((v) => !v)}
-                className="text-[10px] px-2 py-1 rounded transition-colors"
+                className="text-[12px] px-2 py-1 rounded transition-colors"
                 style={{ background: pillLabelUppercase ? "#1a1a1a" : "#f0f0f0", color: pillLabelUppercase ? "#fff" : "#666", border: "none", cursor: "pointer" }}>
                 {pillLabelUppercase ? "ON" : "OFF"}
               </button>
             </div>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Label logo <span className="tabular-nums text-neutral-400">{labelLogoSize}px</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Label logo <span className="tabular-nums text-neutral-400">{labelLogoSize}px</span></label>
               <input type="range" min={16} max={56} value={labelLogoSize} onChange={(e) => setLabelLogoSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
             </div>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Blurb size <span className="tabular-nums text-neutral-400">{blurbFontSize}px</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Blurb size <span className="tabular-nums text-neutral-400">{blurbFontSize}px</span></label>
               <input type="range" min={9} max={16} value={blurbFontSize} onChange={(e) => setBlurbFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
-              <label className="text-[10px] text-neutral-500 flex justify-between mt-2">Bubble variant <span className="tabular-nums text-neutral-400">{bubbleVariant}/{bubbleVariants.length} · {bubbleVariants[bubbleVariant - 1].name}</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between mt-2">Bubble variant <span className="tabular-nums text-neutral-400">{bubbleVariant}/{bubbleVariants.length} · {bubbleVariants[bubbleVariant - 1].name}</span></label>
               <input type="range" min={1} max={bubbleVariants.length} value={bubbleVariant} onChange={(e) => setBubbleVariant(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
               <div className="flex gap-1 mt-1">
-                <button type="button" onClick={() => setBubbleVariant((v) => Math.max(1, v - 1))} className="text-[10px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>← prev</button>
-                <button type="button" onClick={() => setBubbleVariant((v) => Math.min(bubbleVariants.length, v + 1))} className="text-[10px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>next →</button>
+                <button type="button" onClick={() => setBubbleVariant((v) => Math.max(1, v - 1))} className="text-[12px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>← prev</button>
+                <button type="button" onClick={() => setBubbleVariant((v) => Math.min(bubbleVariants.length, v + 1))} className="text-[12px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>next →</button>
               </div>
               <div className="mt-2">
                 <button
                   type="button"
                   onClick={() => setBlurbFloat((v) => !v)}
-                  className="text-[10px] px-2 py-1 rounded transition-colors"
+                  className="text-[12px] px-2 py-1 rounded transition-colors"
                   style={{ background: blurbFloat ? "#1a1a1a" : "#f0f0f0", color: blurbFloat ? "#fff" : "#666", border: "none", cursor: "pointer" }}
                 >
                   Float to top
                 </button>
               </div>
-              <label className="text-[10px] text-neutral-500 flex justify-between mt-3">Expand indicator</label>
+              <label className="text-[12px] text-neutral-500 flex justify-between mt-3">Expand indicator</label>
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {([
                   { key: "chevron", label: "Chevron" },
@@ -2988,7 +2979,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     key={opt.key}
                     type="button"
                     onClick={() => setBlurbExpandIndicator(opt.key)}
-                    className="text-[10px] px-2 py-1 rounded transition-colors"
+                    className="text-[12px] px-2 py-1 rounded transition-colors"
                     style={{
                       background: blurbExpandIndicator === opt.key ? "#1a1a1a" : "#f0f0f0",
                       color: blurbExpandIndicator === opt.key ? "#fff" : "#666",
@@ -3001,12 +2992,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ))}
               </div>
             </div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{statPillRadius}px</span></label><input type="range" min={0} max={40} value={statPillRadius} onChange={(e) => setStatPillRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{statPillGap}px</span></label><input type="range" min={0} max={16} value={statPillGap} onChange={(e) => setStatPillGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Padding X <span className="tabular-nums text-neutral-400">{statPillPadX}px</span></label><input type="range" min={6} max={28} value={statPillPadX} onChange={(e) => setStatPillPadX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Padding Y <span className="tabular-nums text-neutral-400">{statPillPadY}px</span></label><input type="range" min={4} max={18} value={statPillPadY} onChange={(e) => setStatPillPadY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{statPillRadius}px</span></label><input type="range" min={0} max={40} value={statPillRadius} onChange={(e) => setStatPillRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{statPillGap}px</span></label><input type="range" min={0} max={16} value={statPillGap} onChange={(e) => setStatPillGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Padding X <span className="tabular-nums text-neutral-400">{statPillPadX}px</span></label><input type="range" min={6} max={28} value={statPillPadX} onChange={(e) => setStatPillPadX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Padding Y <span className="tabular-nums text-neutral-400">{statPillPadY}px</span></label><input type="range" min={4} max={18} value={statPillPadY} onChange={(e) => setStatPillPadY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Background <span className="tabular-nums text-neutral-400">{statPillBg}</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Background <span className="tabular-nums text-neutral-400">{statPillBg}</span></label>
               <div className="flex items-center gap-1.5 mt-1.5">
                 {["#ffffff", "#fcfcfc", "#fafafa", "#f5f5f5", "#efefef", "#f4f1eb", "transparent"].map((c) => (
                   <button
@@ -3033,34 +3024,34 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           </div>
           {(arcStyle === "crown" || arcStyle === "arc-timeline" || arcStyle === "arc-names" || arcStyle === "arc-tag") && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(70); }}>Reset</button></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Angle <span className="tabular-nums text-neutral-400">{drumAngle}°</span></label><input type="range" min={8} max={45} value={drumAngle} onChange={(e) => setDrumAngle(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{drumRadius}px</span></label><input type="range" min={60} max={300} value={drumRadius} onChange={(e) => setDrumRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Size max <span className="tabular-nums text-neutral-400">{drumFsMax}px</span></label><input type="range" min={20} max={80} value={drumFsMax} onChange={(e) => setDrumFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Size min <span className="tabular-nums text-neutral-400">{drumFsMin}px</span></label><input type="range" min={6} max={32} value={drumFsMin} onChange={(e) => setDrumFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Weight <span className="tabular-nums text-neutral-400">{drumFwMax}</span></label><input type="range" min={300} max={900} step={100} value={drumFwMax} onChange={(e) => setDrumFwMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Compression <span className="tabular-nums text-neutral-400">{drumCompression.toFixed(2)}</span></label><input type="range" min={40} max={100} value={Math.round(drumCompression * 100)} onChange={(e) => setDrumCompression(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Fade power <span className="tabular-nums text-neutral-400">{drumOpPower.toFixed(1)}</span></label><input type="range" min={3} max={40} value={Math.round(drumOpPower * 10)} onChange={(e) => setDrumOpPower(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">X offset <span className="tabular-nums text-neutral-400">{drumXOffset}px</span></label><input type="range" min={10} max={120} value={drumXOffset} onChange={(e) => setDrumXOffset(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Mask fade <span className="tabular-nums text-neutral-400">{drumMaskFade}%</span></label><input type="range" min={0} max={35} value={drumMaskFade} onChange={(e) => setDrumMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Visible items <span className="tabular-nums text-neutral-400">{drumRange}</span></label><input type="range" min={2} max={8} value={drumRange} onChange={(e) => setDrumRange(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Tracking <span className="tabular-nums text-neutral-400">{drumTracking.toFixed(2)}em</span></label><input type="range" min={-10} max={10} value={Math.round(drumTracking * 100)} onChange={(e) => setDrumTracking(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Mini radius <span className="tabular-nums text-neutral-400">{miniCrownRadius}px</span></label><input type="range" min={20} max={100} value={miniCrownRadius} onChange={(e) => setMiniCrownRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Scroll threshold <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={100} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
-            <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Auto position</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${autoArcInset ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoArcInset(!autoArcInset)}>{autoArcInset ? "On" : "Off"}</button><span className="text-[9px] tabular-nums text-neutral-300">{effectiveArcInset}px</span></div>
-            <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">Geist Mono</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${arcFontMono ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setArcFontMono(!arcFontMono)}>{arcFontMono ? "On" : "Off"}</button></div>
-            <div className="flex items-center gap-2 mb-1"><label className="text-[10px] text-neutral-500 flex-1">All Caps</label><button className={`px-2 py-0.5 rounded text-[9px] cursor-pointer ${allCaps ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => onAllCapsChange?.(!allCaps)}>{allCaps ? "On" : "Off"}</button></div>
-            <div style={{ opacity: autoArcInset ? 0.3 : 1 }}><label className="text-[10px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => { setArcInset(Number(e.target.value)); setAutoArcInset(false); }} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Arc radius <span className="tabular-nums text-neutral-400">{arcWheelR}px</span></label><input type="range" min={80} max={1500} value={arcWheelR} onChange={(e) => setArcWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Step angle <span className="tabular-nums text-neutral-400">{arcStepDeg.toFixed(1)}°</span></label><input type="range" min={10} max={80} value={Math.round(arcStepDeg * 10)} onChange={(e) => setArcStepDeg(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Text gap <span className="tabular-nums text-neutral-400">{arcTextGap}px</span></label><input type="range" min={0} max={80} value={arcTextGap} onChange={(e) => setArcTextGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Line opacity <span className="tabular-nums text-neutral-400">{arcLineOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(arcLineOp * 100)} onChange={(e) => setArcLineOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Font max <span className="tabular-nums text-neutral-400">{arcFsMax}px</span></label><input type="range" min={12} max={40} value={arcFsMax} onChange={(e) => setArcFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{arcFsMin}px</span></label><input type="range" min={6} max={20} value={arcFsMin} onChange={(e) => setArcFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Disk gap <span className="tabular-nums text-neutral-400">{arcDiskGap}px</span></label><input type="range" min={0} max={280} value={arcDiskGap} onChange={(e) => setArcDiskGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Edge fade <span className="tabular-nums text-neutral-400">{arcMaskFade}%</span></label><input type="range" min={0} max={45} value={arcMaskFade} onChange={(e) => setArcMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center justify-between"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(70); }}>Reset</button></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Angle <span className="tabular-nums text-neutral-400">{drumAngle}°</span></label><input type="range" min={8} max={45} value={drumAngle} onChange={(e) => setDrumAngle(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{drumRadius}px</span></label><input type="range" min={60} max={300} value={drumRadius} onChange={(e) => setDrumRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Size max <span className="tabular-nums text-neutral-400">{drumFsMax}px</span></label><input type="range" min={20} max={80} value={drumFsMax} onChange={(e) => setDrumFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Size min <span className="tabular-nums text-neutral-400">{drumFsMin}px</span></label><input type="range" min={6} max={32} value={drumFsMin} onChange={(e) => setDrumFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Weight <span className="tabular-nums text-neutral-400">{drumFwMax}</span></label><input type="range" min={300} max={900} step={100} value={drumFwMax} onChange={(e) => setDrumFwMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Compression <span className="tabular-nums text-neutral-400">{drumCompression.toFixed(2)}</span></label><input type="range" min={40} max={100} value={Math.round(drumCompression * 100)} onChange={(e) => setDrumCompression(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Fade power <span className="tabular-nums text-neutral-400">{drumOpPower.toFixed(1)}</span></label><input type="range" min={3} max={40} value={Math.round(drumOpPower * 10)} onChange={(e) => setDrumOpPower(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">X offset <span className="tabular-nums text-neutral-400">{drumXOffset}px</span></label><input type="range" min={10} max={120} value={drumXOffset} onChange={(e) => setDrumXOffset(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Mask fade <span className="tabular-nums text-neutral-400">{drumMaskFade}%</span></label><input type="range" min={0} max={35} value={drumMaskFade} onChange={(e) => setDrumMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Visible items <span className="tabular-nums text-neutral-400">{drumRange}</span></label><input type="range" min={2} max={8} value={drumRange} onChange={(e) => setDrumRange(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Tracking <span className="tabular-nums text-neutral-400">{drumTracking.toFixed(2)}em</span></label><input type="range" min={-10} max={10} value={Math.round(drumTracking * 100)} onChange={(e) => setDrumTracking(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Mini radius <span className="tabular-nums text-neutral-400">{miniCrownRadius}px</span></label><input type="range" min={20} max={100} value={miniCrownRadius} onChange={(e) => setMiniCrownRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Scroll threshold <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={100} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">Auto position</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${autoArcInset ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoArcInset(!autoArcInset)}>{autoArcInset ? "On" : "Off"}</button><span className="text-[12px] tabular-nums text-neutral-300">{effectiveArcInset}px</span></div>
+            <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">Geist Mono</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${arcFontMono ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setArcFontMono(!arcFontMono)}>{arcFontMono ? "On" : "Off"}</button></div>
+            <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">All Caps</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${allCaps ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => onAllCapsChange?.(!allCaps)}>{allCaps ? "On" : "Off"}</button></div>
+            <div style={{ opacity: autoArcInset ? 0.3 : 1 }}><label className="text-[12px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => { setArcInset(Number(e.target.value)); setAutoArcInset(false); }} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Arc radius <span className="tabular-nums text-neutral-400">{arcWheelR}px</span></label><input type="range" min={80} max={1500} value={arcWheelR} onChange={(e) => setArcWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Step angle <span className="tabular-nums text-neutral-400">{arcStepDeg.toFixed(1)}°</span></label><input type="range" min={10} max={80} value={Math.round(arcStepDeg * 10)} onChange={(e) => setArcStepDeg(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Text gap <span className="tabular-nums text-neutral-400">{arcTextGap}px</span></label><input type="range" min={0} max={80} value={arcTextGap} onChange={(e) => setArcTextGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Line opacity <span className="tabular-nums text-neutral-400">{arcLineOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(arcLineOp * 100)} onChange={(e) => setArcLineOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Font max <span className="tabular-nums text-neutral-400">{arcFsMax}px</span></label><input type="range" min={12} max={40} value={arcFsMax} onChange={(e) => setArcFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{arcFsMin}px</span></label><input type="range" min={6} max={20} value={arcFsMin} onChange={(e) => setArcFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Disk gap <span className="tabular-nums text-neutral-400">{arcDiskGap}px</span></label><input type="range" min={0} max={280} value={arcDiskGap} onChange={(e) => setArcDiskGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Edge fade <span className="tabular-nums text-neutral-400">{arcMaskFade}%</span></label><input type="range" min={0} max={45} value={arcMaskFade} onChange={(e) => setArcMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Disk color <span className="tabular-nums text-neutral-400">{arcDiskColor}</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Disk color <span className="tabular-nums text-neutral-400">{arcDiskColor}</span></label>
               <div className="flex items-center gap-1.5 mt-1.5">
                 {["#ffffff", "#fafafa", "#f5f5f5", "#ececec", "#f4f1eb", "#e8e4dc", "transparent"].map((c) => (
                   <button
@@ -3088,20 +3079,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           )}
           {arcStyle === "arc-tag" && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <div className="flex items-center justify-between"><p className="text-[10px] tracking-widest uppercase text-neutral-400">Tag</p><button className="text-[9px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setTagFsMin(11); setTagFsMax(14); setTagOpMin(0.58); setTagOpMax(1); setTagGreyMin(64); setTagGreyMax(213); setTagPillOp(0.03); setTagFalloff(2); setTagPadX(0); setTagPadY(0); setTagRadius(20); setTagMarkerSize(4); setTagMarkerOp(0.32); }}>Reset</button></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{tagFsMin}px</span></label><input type="range" min={8} max={20} value={tagFsMin} onChange={(e) => setTagFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Font max <span className="tabular-nums text-neutral-400">{tagFsMax}px</span></label><input type="range" min={12} max={32} value={tagFsMax} onChange={(e) => setTagFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Opacity min <span className="tabular-nums text-neutral-400">{tagOpMin.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagOpMin * 100)} onChange={(e) => setTagOpMin(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Opacity max <span className="tabular-nums text-neutral-400">{tagOpMax.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagOpMax * 100)} onChange={(e) => setTagOpMax(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Color dark <span className="tabular-nums text-neutral-400">{tagGreyMin}</span></label><input type="range" min={0} max={120} value={tagGreyMin} onChange={(e) => setTagGreyMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Color light <span className="tabular-nums text-neutral-400">{tagGreyMax}</span></label><input type="range" min={120} max={240} value={tagGreyMax} onChange={(e) => setTagGreyMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Falloff <span className="tabular-nums text-neutral-400">{tagFalloff}</span></label><input type="range" min={2} max={20} value={tagFalloff} onChange={(e) => setTagFalloff(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Pill opacity <span className="tabular-nums text-neutral-400">{tagPillOp.toFixed(2)}</span></label><input type="range" min={0} max={50} value={Math.round(tagPillOp * 100)} onChange={(e) => setTagPillOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Pad X <span className="tabular-nums text-neutral-400">{tagPadX}px</span></label><input type="range" min={0} max={20} value={tagPadX} onChange={(e) => setTagPadX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Pad Y <span className="tabular-nums text-neutral-400">{tagPadY}px</span></label><input type="range" min={0} max={15} value={tagPadY} onChange={(e) => setTagPadY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Pill radius <span className="tabular-nums text-neutral-400">{tagRadius}px</span></label><input type="range" min={0} max={20} value={tagRadius} onChange={(e) => setTagRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Marker size <span className="tabular-nums text-neutral-400">{tagMarkerSize}px</span></label><input type="range" min={0} max={16} value={tagMarkerSize} onChange={(e) => setTagMarkerSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div><label className="text-[10px] text-neutral-500 flex justify-between">Marker opacity <span className="tabular-nums text-neutral-400">{tagMarkerOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagMarkerOp * 100)} onChange={(e) => setTagMarkerOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center justify-between"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Tag</p><button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setTagFsMin(11); setTagFsMax(14); setTagOpMin(0.58); setTagOpMax(1); setTagGreyMin(64); setTagGreyMax(213); setTagPillOp(0.03); setTagFalloff(2); setTagPadX(0); setTagPadY(0); setTagRadius(20); setTagMarkerSize(4); setTagMarkerOp(0.32); }}>Reset</button></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{tagFsMin}px</span></label><input type="range" min={8} max={20} value={tagFsMin} onChange={(e) => setTagFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Font max <span className="tabular-nums text-neutral-400">{tagFsMax}px</span></label><input type="range" min={12} max={32} value={tagFsMax} onChange={(e) => setTagFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Opacity min <span className="tabular-nums text-neutral-400">{tagOpMin.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagOpMin * 100)} onChange={(e) => setTagOpMin(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Opacity max <span className="tabular-nums text-neutral-400">{tagOpMax.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagOpMax * 100)} onChange={(e) => setTagOpMax(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Color dark <span className="tabular-nums text-neutral-400">{tagGreyMin}</span></label><input type="range" min={0} max={120} value={tagGreyMin} onChange={(e) => setTagGreyMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Color light <span className="tabular-nums text-neutral-400">{tagGreyMax}</span></label><input type="range" min={120} max={240} value={tagGreyMax} onChange={(e) => setTagGreyMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Falloff <span className="tabular-nums text-neutral-400">{tagFalloff}</span></label><input type="range" min={2} max={20} value={tagFalloff} onChange={(e) => setTagFalloff(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Pill opacity <span className="tabular-nums text-neutral-400">{tagPillOp.toFixed(2)}</span></label><input type="range" min={0} max={50} value={Math.round(tagPillOp * 100)} onChange={(e) => setTagPillOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Pad X <span className="tabular-nums text-neutral-400">{tagPadX}px</span></label><input type="range" min={0} max={20} value={tagPadX} onChange={(e) => setTagPadX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Pad Y <span className="tabular-nums text-neutral-400">{tagPadY}px</span></label><input type="range" min={0} max={15} value={tagPadY} onChange={(e) => setTagPadY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Pill radius <span className="tabular-nums text-neutral-400">{tagRadius}px</span></label><input type="range" min={0} max={20} value={tagRadius} onChange={(e) => setTagRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Marker size <span className="tabular-nums text-neutral-400">{tagMarkerSize}px</span></label><input type="range" min={0} max={16} value={tagMarkerSize} onChange={(e) => setTagMarkerSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Marker opacity <span className="tabular-nums text-neutral-400">{tagMarkerOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagMarkerOp * 100)} onChange={(e) => setTagMarkerOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           )}
         </div>
@@ -3336,7 +3327,7 @@ export default function HomeClient() {
   const [indexView, setIndexView] = useState<IndexView>("timeline");
 
   const [navStyle, setNavStyle] = useState<NavStyle>("underline");
-  const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("drag");
+  const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
   const [chatOpen, setChatOpen] = useState(false);
   const [showChatTuner, setShowChatTuner] = useState(false);
   const [chatConfig, setChatConfig] = useState({
@@ -3373,9 +3364,7 @@ export default function HomeClient() {
   const [allCaps, setAllCaps] = useState(false);
 
   const [fontIdx, setFontIdx] = useState(0);
-  const [textDim, setTextDim] = useState(0);
   const [showFontToast, setShowFontToast] = useState(false);
-  const [showDimSlider, setShowDimSlider] = useState(false);
   const [epetriMode, setEpetriMode] = useState(false);
   const toastTimeout = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -3420,9 +3409,6 @@ export default function HomeClient() {
           setShowFontToast(true);
           if (toastTimeout.current) clearTimeout(toastTimeout.current);
           toastTimeout.current = setTimeout(() => setShowFontToast(false), 1800);
-        }
-        if (e.key === "d" && !e.metaKey && !e.ctrlKey) {
-          setShowDimSlider((v) => !v);
         }
         if (e.key === "e" && !e.metaKey && !e.ctrlKey) {
           setEpetriMode((v) => !v);
@@ -3497,7 +3483,6 @@ export default function HomeClient() {
       className="min-h-screen bg-white"
       style={{
         fontFamily: epetriMode ? "var(--font-epetri)" : FONTS[fontIdx].family,
-        "--text-dim": textDim,
         ...(epetriMode ? EPETRI_FONT_OVERRIDES : {}),
       } as React.CSSProperties}
     >
@@ -3569,31 +3554,10 @@ export default function HomeClient() {
           className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg animate-blur-fade"
           style={{ background: "rgba(0,0,0,0.06)", backdropFilter: "blur(12px)" }}
         >
-          <p className="text-[11px] tracking-wide" style={{ color: "#999" }}>
+          <p className="text-[12px] tracking-wide" style={{ color: "#999" }}>
             <span style={{ color: "#737373", fontWeight: 500 }}>{FONTS[fontIdx].name}</span>
             <span className="ml-2 tabular-nums" style={{ color: "#c4c4c4" }}>{fontIdx + 1}/{FONTS.length}</span>
           </p>
-        </div>
-      )}
-
-      {/* Text dim slider */}
-      {showDimSlider && (
-        <div
-          className="fixed bottom-16 right-5 z-[60] px-4 py-3 rounded-xl"
-          style={{ background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", border: "1px solid #e8e8e8", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}
-        >
-          <p className="text-[10px] tracking-widest uppercase mb-2" style={{ color: "#b4b4b4" }}>Text lightness</p>
-          <div className="flex items-center gap-3">
-            <input
-              type="range"
-              min={0}
-              max={70}
-              value={textDim}
-              onChange={(e) => setTextDim(Number(e.target.value))}
-              className="w-28 h-1 accent-neutral-800 cursor-pointer"
-            />
-            <span className="text-[11px] tabular-nums w-6 text-right" style={{ color: "#999" }}>{textDim}</span>
-          </div>
         </div>
       )}
 
@@ -3609,7 +3573,7 @@ export default function HomeClient() {
         }}
       >
         <span
-          className={`text-[11px] tracking-wide transition-opacity duration-200 pointer-events-none ${shareToast ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          className={`text-[12px] tracking-wide transition-opacity duration-200 pointer-events-none ${shareToast ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
           style={{ color: shareToast ? "#737373" : "#b4b4b4" }}
         >
           {shareToast ? shareToast.label : shareViewLabel}
@@ -3640,63 +3604,63 @@ export default function HomeClient() {
       {isDev && showChatTuner && (
         <div data-tuner className="fixed bottom-14 right-6 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[70vh] overflow-y-auto scrollbar-hide">
           <div>
-            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">Guide Style</p>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Guide Style</p>
             <div className="flex gap-1.5">
               {(["plain", "bubble"] as const).map((v) => (
                 <button key={v} onClick={() => setChatConfig((c) => ({ ...c, guideStyle: v }))}
-                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${chatConfig.guideStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${chatConfig.guideStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>
                   {v}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-[10px] tracking-widest uppercase text-neutral-400 mb-2">User Bubble</p>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">User Bubble</p>
             <div className="flex gap-1.5">
               {(["tint", "dark", "outline"] as const).map((v) => (
                 <button key={v} onClick={() => setChatConfig((c) => ({ ...c, userStyle: v }))}
-                  className={`px-2.5 py-1 rounded-full text-[11px] cursor-pointer transition-all capitalize ${chatConfig.userStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${chatConfig.userStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>
                   {v}
                 </button>
               ))}
             </div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <p className="text-[10px] tracking-widest uppercase text-neutral-400">Container</p>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400">Container</p>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Background <span className="tabular-nums text-neutral-400">{chatConfig.bgOpacity}%</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Background <span className="tabular-nums text-neutral-400">{chatConfig.bgOpacity}%</span></label>
               <input type="range" min={0} max={100} value={chatConfig.bgOpacity} onChange={(e) => setChatConfig((c) => ({ ...c, bgOpacity: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
             </div>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Blur <span className="tabular-nums text-neutral-400">{chatConfig.blur}px</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Blur <span className="tabular-nums text-neutral-400">{chatConfig.blur}px</span></label>
               <input type="range" min={0} max={40} value={chatConfig.blur} onChange={(e) => setChatConfig((c) => ({ ...c, blur: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
             </div>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{chatConfig.radius}px</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{chatConfig.radius}px</span></label>
               <input type="range" min={0} max={40} value={chatConfig.radius} onChange={(e) => setChatConfig((c) => ({ ...c, radius: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
             </div>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Width <span className="tabular-nums text-neutral-400">{chatConfig.width}px</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Width <span className="tabular-nums text-neutral-400">{chatConfig.width}px</span></label>
               <input type="range" min={280} max={520} value={chatConfig.width} onChange={(e) => setChatConfig((c) => ({ ...c, width: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
             </div>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Shadow <span className="tabular-nums text-neutral-400">{chatConfig.shadowOp}%</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Shadow <span className="tabular-nums text-neutral-400">{chatConfig.shadowOp}%</span></label>
               <input type="range" min={0} max={30} value={chatConfig.shadowOp} onChange={(e) => setChatConfig((c) => ({ ...c, shadowOp: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
             </div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <p className="text-[10px] tracking-widest uppercase text-neutral-400">Typography</p>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400">Typography</p>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Font size <span className="tabular-nums text-neutral-400">{chatConfig.fontSize}px</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Font size <span className="tabular-nums text-neutral-400">{chatConfig.fontSize}px</span></label>
               <input type="range" min={11} max={16} value={chatConfig.fontSize} onChange={(e) => setChatConfig((c) => ({ ...c, fontSize: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
             </div>
             <div>
-              <label className="text-[10px] text-neutral-500 flex justify-between">Input radius <span className="tabular-nums text-neutral-400">{chatConfig.inputRadius}px</span></label>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Input radius <span className="tabular-nums text-neutral-400">{chatConfig.inputRadius}px</span></label>
               <input type="range" min={0} max={99} value={chatConfig.inputRadius} onChange={(e) => setChatConfig((c) => ({ ...c, inputRadius: Number(e.target.value) }))} className="w-full accent-neutral-900 h-1" />
             </div>
           </div>
           <button onClick={() => setChatConfig({ bgOpacity: 92, blur: 24, radius: 24, width: 400, shadowOp: 10, guideStyle: "plain", userStyle: "tint", fontSize: 13, inputRadius: 99 })}
-            className="text-[11px] text-neutral-400 hover:text-neutral-600 cursor-pointer transition-colors">
+            className="text-[12px] text-neutral-400 hover:text-neutral-600 cursor-pointer transition-colors">
             Reset
           </button>
         </div>
