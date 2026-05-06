@@ -199,6 +199,7 @@ export function LayoutSwitcher({
   hintNonce = 0,
   indexView,
   onIndexViewChange,
+  onShareSite,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
@@ -210,6 +211,7 @@ export function LayoutSwitcher({
   hintNonce?: number;
   indexView: IndexView;
   onIndexViewChange: (v: IndexView) => void;
+  onShareSite?: () => void;
 }) {
   const handleClick = () => {
     if (active !== "E") onChange("E" as Layout);
@@ -713,23 +715,40 @@ export function LayoutSwitcher({
                           </li>
                         ))}
                       </ul>
-                      <div
-                        className="rounded-2xl overflow-hidden bg-neutral-100"
-                        style={{ minHeight: 150 }}
+                      <button
+                        onClick={() => { onShareSite?.(); setMenuOpen(false); }}
+                        aria-label="Share site"
+                        className="group relative rounded-2xl overflow-hidden bg-neutral-100 cursor-pointer block w-full p-0 text-left"
+                        style={{ minHeight: 150, border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}
                       >
                         <img
                           src="/og-default.png"
                           alt="Humanoid Index"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                           style={{ minHeight: 150 }}
                         />
-                      </div>
+                        <span
+                          className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center transition-all"
+                          style={{
+                            background: "rgba(255,255,255,0.92)",
+                            backdropFilter: "blur(8px)",
+                            WebkitBackdropFilter: "blur(8px)",
+                            color: SUNDAY_INK,
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
+                            <polyline points="16 6 12 2 8 6" />
+                            <line x1="12" y1="2" x2="12" y2="15" />
+                          </svg>
+                        </span>
+                      </button>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 px-8 pb-4 text-[12px]" style={{ color: "#999" }}>
+                    <div className="grid grid-cols-2 gap-4 px-8 pb-4 text-[12px]" style={{ color: "#999" }}>
                       <span>A visual index of humanoid robots</span>
-                      <span className="text-center">Updated 2026</span>
-                      <span className="text-right">Share <span style={{ color: "#facc15" }}>•</span></span>
+                      <a href="https://royjad.com/" target="_blank" rel="noopener noreferrer" className="text-right transition-opacity hover:opacity-70" style={{ color: "inherit" }}>Made by Roy Jad</a>
                     </div>
                   </div>
                 </div>

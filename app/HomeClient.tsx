@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
+import { Toaster, toast } from "sonner";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -205,7 +206,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
 
           <div className="flex-1 flex flex-col justify-center">
             <div className="animate-expand-content" style={{ animationDelay: "0.1s" }}>
-              <p className="text-[12px] tracking-widest uppercase font-medium mb-3" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+              <p className="text-[12px] tracking-widest uppercase font-medium mb-3" style={{ color: "#a3a3a3", letterSpacing: "0.02em" }}>
                 {h.manufacturer}
               </p>
               <h2 className="text-[32px] font-medium leading-none" style={{ color: "#171717", letterSpacing: "-0.04em" }}>
@@ -417,6 +418,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
   const [blurbFontSize, setBlurbFontSize] = useState(12.7);
   const [blurbFloat, setBlurbFloat] = useState(false);
+  const [splitBlurb, setSplitBlurb] = useState(false);
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
   type BlurbExpandIndicator = "chevron" | "inline" | "edgebar" | "minimal" | "pill";
@@ -522,11 +524,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     return () => { window.removeEventListener("resize", onResize); cancelAnimationFrame(raf); };
   }, []);
 
+  // When the blurb is broken out into its own column, the stats slot widens
+  // to fit two side-by-side columns (blurb + pills). Used by layout math and
+  // the slot wrapper so centering stays correct.
+  const effectiveStatsW = splitBlurb && blurbFloat ? statsW * 2 + cardGap : statsW;
+
   const centerHalfWidth = (() => {
     const cardPx = comparing
       ? Math.min((robotW - 8) * windowWidth / 100, robotMaxW - 100)
       : Math.min(robotW * windowWidth / 100, robotMaxW);
-    const statsPx = statsW;
+    const statsPx = effectiveStatsW;
     const gap = statsGap;
     if (comparing) {
       return cardPx + gap + statsPx / 2;
@@ -1432,9 +1439,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           const robotDesc = getRobotDescription(h);
           const pillBg = statPillBg;
           const pillBackdrop: string | undefined = undefined;
-          return (
-            <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
-              {blurbFloat && robotDesc.text && (() => {
+          const useSplit = splitBlurb && blurbFloat && !!robotDesc.text;
+          const blurbNode = blurbFloat && robotDesc.text && (() => {
                 const isExpanded = expandedBlurbs.has(h.id);
                 const canExpand = !!robotDesc.long;
                 const fullText = canExpand ? robotDesc.long : robotDesc.text;
@@ -1495,8 +1501,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     {canExpand && renderExpandIndicator({ isExpanded, isHovered })}
                   </Wrapper>
                 );
-              })()}
-              {labelPosition === "stack" && (
+              })();
+          const labelNode = labelPosition === "stack" && (
                 <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: pillBg, backdropFilter: pillBackdrop, WebkitBackdropFilter: pillBackdrop, padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
                   <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
                     {h.logoUrl ? (
@@ -1509,17 +1515,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, letterSpacing: "0.05em", textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
-                    <p className="text-[12.7px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, letterSpacing: "0.05em", textTransform: allCaps ? "uppercase" : undefined, opacity: 0.5 }}>
+                    <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
+                    <p className="text-[12px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.42 }}>
                       {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
                     </p>
                   </div>
                   {h.id.startsWith("legend") && <span className="flex-shrink-0 text-[12px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
                 </div>
-              )}
-              {/* Stats — individual pill containers. Always render every section so the
-                  column height stays stable across humanoids; missing data renders dim/disabled. */}
-              <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11, marginTop: blurbFloat ? "auto" : undefined }}>
+              );
+          const pillsNode = (
+              <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11, marginTop: blurbFloat && !useSplit ? "auto" : undefined }}>
                 {sections.map((s) => {
                   if (blurbFloat && s.key === "desc") return null;
                   const empty = !s.show;
@@ -1644,6 +1649,25 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   ) : pillEl;
                 })}
               </div>
+          );
+          if (useSplit) {
+            return (
+              <div className="flex flex-row h-full" style={{ width: effectiveStatsW, minWidth: effectiveStatsW, gap: cardGap }}>
+                <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, justifyContent: alignJustify }}>
+                  {blurbNode}
+                </div>
+                <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
+                  {labelNode}
+                  {pillsNode}
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
+              {blurbNode}
+              {labelNode}
+              {pillsNode}
             </div>
           );
         };
@@ -1677,7 +1701,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     : (priceLabel || "Inquire");
                   return (
                     <div className="min-w-0">
-                      <p className="text-[12px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.08em" }}>
+                      <p className="text-[12px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.02em" }}>
                         {label}
                       </p>
                       <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
@@ -1774,7 +1798,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           const compareRow = (label: string, valL: string | null, valR: string | null) => (
             <div className="flex items-baseline justify-between gap-2" style={{ marginTop: 6 }}>
               <p className="text-[12px] tabular-nums flex-1 text-left" style={{ color: valL ? "var(--c-ink-body)" : "#c4c4c4" }}>{valL || "—"}</p>
-              <p className="text-[12px] uppercase text-center" style={{ color: "#a3a3a3", letterSpacing: "0.08em", minWidth: 44 }}>{label}</p>
+              <p className="text-[12px] uppercase text-center" style={{ color: "#a3a3a3", letterSpacing: "0.02em", minWidth: 44 }}>{label}</p>
               <p className="text-[12px] tabular-nums flex-1 text-right" style={{ color: valR ? "var(--c-ink-body)" : "#c4c4c4" }}>{valR || "—"}</p>
             </div>
           );
@@ -1912,8 +1936,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, letterSpacing: "0.05em" }}>{h.name}</p>
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, letterSpacing: "0.05em", marginTop: 1, opacity: 0.5 }}>{h.manufacturer}</p>
+                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
+                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.42 }}>{h.manufacturer}</p>
               </div>
             </div>
           );
@@ -2322,7 +2346,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.5 }}>{h.manufacturer}</p>
+                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42 }}>{h.manufacturer}</p>
               </div>
             </div>
           );
@@ -2451,7 +2475,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 style={{
                   marginLeft: effectiveGap,
                   overflowX: "visible", overflowY: "visible",
-                  width: statsW,
+                  width: comparing ? statsW : effectiveStatsW,
                   height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
                   transform: addHintVisible
                     ? undefined
@@ -2563,7 +2587,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           <button
             onClick={() => setShowTuner(!showTuner)}
             className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+            style={{ fontSize: 10, color: showTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
           >
             T
           </button>
@@ -2571,7 +2595,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           <button
             onClick={() => setShowSplitTuner(!showSplitTuner)}
             className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showSplitTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+            style={{ fontSize: 10, color: showSplitTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
           >
             S
           </button>
@@ -2579,7 +2603,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           <button
             onClick={() => setShowSceneTuner(!showSceneTuner)}
             className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showSceneTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+            style={{ fontSize: 10, color: showSceneTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
           >
             B
           </button>
@@ -2587,7 +2611,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           <button
             onClick={() => onToggleChatTuner?.()}
             className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showChatTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.05em" }}
+            style={{ fontSize: 10, color: showChatTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
           >
             C
           </button>
@@ -3023,6 +3047,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 >
                   Float to top
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitBlurb((v) => !v)}
+                  className="text-[12px] px-2 py-1 rounded transition-colors ml-1"
+                  style={{ background: splitBlurb ? "#1a1a1a" : "#f0f0f0", color: splitBlurb ? "#fff" : "#666", border: "none", cursor: "pointer" }}
+                >
+                  Split columns
+                </button>
               </div>
               <label className="text-[12px] text-neutral-500 flex justify-between mt-3">Expand indicator</label>
               <div className="flex flex-wrap gap-1 mt-1.5">
@@ -3411,13 +3443,42 @@ export default function HomeClient() {
   // Share URL — Browse writes to this ref, Home's share button reads it
   const shareUrlRef = useRef("");
   const shareOgRef = useRef("");
-  const [shareToast, setShareToast] = useState<{ label: string; ogUrl?: string } | false>(false);
-  const shareToastTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const copyUrl = useCallback((url: string, label: string, ogUrl?: string) => {
     navigator.clipboard.writeText(url);
-    setShareToast({ label, ogUrl });
-    if (shareToastTimer.current) clearTimeout(shareToastTimer.current);
-    shareToastTimer.current = setTimeout(() => setShareToast(false), 2600);
+    toast.custom((id) => (
+      <div
+        onClick={() => toast.dismiss(id)}
+        style={{
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(20px) saturate(140%)",
+          WebkitBackdropFilter: "blur(20px) saturate(140%)",
+          border: "1px solid #ececec",
+          boxShadow: "0 10px 30px -8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.04)",
+          borderRadius: 16,
+          padding: 6,
+          cursor: "pointer",
+        }}
+      >
+        {ogUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={ogUrl}
+            alt=""
+            width={200}
+            height={105}
+            style={{
+              display: "block",
+              borderRadius: 10,
+              objectFit: "cover",
+              background: "rgba(0,0,0,0.03)",
+            }}
+          />
+        )}
+        <div style={{ fontSize: 12, color: "#737373", padding: "6px 8px 2px", letterSpacing: "-0.005em" }}>
+          {label}
+        </div>
+      </div>
+    ), { duration: 2600 });
   }, []);
   const [allCaps, setAllCaps] = useState(false);
 
@@ -3594,6 +3655,10 @@ export default function HomeClient() {
               hintNonce={hintNonce}
               indexView={indexView}
               onIndexViewChange={setIndexView}
+              onShareSite={() => {
+                const origin = typeof window !== "undefined" ? window.location.origin : "";
+                copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
+              }}
             />
           </div>
         </div>
@@ -3692,37 +3757,12 @@ export default function HomeClient() {
         visible={introDone}
       />
 
-      {/* Share toast — OG thumbnail in a card; the "copied" label takes over the share-button hover text */}
-      {shareToast && shareToast.ogUrl && (
-        <div
-          className="fixed z-[60] toast-rise"
-          style={{
-            bottom: 32,
-            left: "50%",
-            background: "rgba(255,255,255,0.92)",
-            backdropFilter: "blur(20px) saturate(140%)",
-            WebkitBackdropFilter: "blur(20px) saturate(140%)",
-            border: "1px solid #ececec",
-            boxShadow: "0 10px 30px -8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.04)",
-            borderRadius: 16,
-            padding: 6,
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={shareToast.ogUrl}
-            alt=""
-            width={200}
-            height={105}
-            style={{
-              display: "block",
-              borderRadius: 10,
-              objectFit: "cover",
-              background: "rgba(0,0,0,0.03)",
-            }}
-          />
-        </div>
-      )}
+      <Toaster
+        position="bottom-center"
+        offset={32}
+        style={{ "--width": "600px" } as React.CSSProperties}
+        toastOptions={{ unstyled: true, style: { display: "flex", justifyContent: "center", width: "100%" } }}
+      />
 
       {chatOpen && <GuideChat onSelect={handleSelectHumanoid} config={chatConfig} />}
 
