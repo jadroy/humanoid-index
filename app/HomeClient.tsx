@@ -2286,9 +2286,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   </div>
                 )}
               </div>
-              {/* Dot strip — overlaid at bottom with fade */}
+              {/* Dot strip — overlaid at bottom with fade, revealed on card hover */}
               {mHasGallery && (
-                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none" style={{ height: 28, background: "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))" }}>
+                <div
+                  className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
+                  style={{ height: 28, background: "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))" }}
+                >
                   <div className="flex gap-1.5">
                     {mItems.map((_, i) => (
                       <div key={i} style={{
@@ -2405,7 +2408,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       onShareView?.();
                     }}
                     aria-label="Copy link"
-                    className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-neutral-500 transition-all duration-200 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
+                    className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-neutral-500 transition-all duration-200 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md opacity-0 group-hover/card:opacity-100"
                   >
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -2436,9 +2439,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     className="absolute bottom-2 right-[44px] z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-neutral-500 transition-all duration-200 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
                   >
                     {spinPlaying ? (
-                      <Pause width={15} height={15} fill="currentColor" stroke="none" />
+                      <Pause width={17} height={17} strokeWidth={1.75} />
                     ) : (
-                      <Play width={15} height={15} fill="currentColor" stroke="none" />
+                      <Play width={17} height={17} strokeWidth={1.75} />
                     )}
                   </button>
                 )}
@@ -2460,8 +2463,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     aria-label={spinActive ? "Exit 3D view" : "View in 3D"}
                     className={`absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ${
                       spinActive
-                        ? "bg-neutral-800 text-white"
-                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
+                        ? "bg-white/75 backdrop-blur-md text-neutral-800 opacity-100"
+                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md opacity-0 group-hover/card:opacity-100"
                     }`}
                   >
                     <Box width={17} height={17} strokeWidth={1.75} />
