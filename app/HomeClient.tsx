@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { Toaster, toast } from "sonner";
-import { Box, Compass, Play, Repeat, Repeat2, RefreshCw, RotateCw, type LucideIcon } from "lucide-react";
+import { Box, Pause, Play } from "lucide-react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -13,16 +13,6 @@ import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
 const SPIN_ROBOTS: Record<string, { frameCount: number; path: string }> = {
   "3": { frameCount: 30, path: "/spin/memo" },
 };
-
-const SPIN_ICON_OPTIONS = {
-  refreshCw: { label: "Refresh", Icon: RefreshCw },
-  rotateCw: { label: "Rotate", Icon: RotateCw },
-  repeat: { label: "Repeat", Icon: Repeat },
-  repeat2: { label: "Repeat 2", Icon: Repeat2 },
-  compass: { label: "Compass", Icon: Compass },
-  play: { label: "Play", Icon: Play },
-} satisfies Record<string, { label: string; Icon: LucideIcon }>;
-type SpinIconKey = keyof typeof SPIN_ICON_OPTIONS;
 import { WelcomeModal, WelcomeStyleSwitcher, type WelcomeStyle } from "@/components/WelcomeModal";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
@@ -331,8 +321,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const spinViewerRef = useRef<SpinViewerHandle>(null);
   const spinAnimatingRef = useRef(false);
   const [spinPlaying, setSpinPlaying] = useState(false);
-  const [spinIconKey, setSpinIconKey] = useState<SpinIconKey>("refreshCw");
-  const [showSpinTuner, setShowSpinTuner] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
@@ -828,7 +816,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         if (e.key === "t") { setShowTuner((v) => !v); return; }
         if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
         if (e.key === "b") { setShowSceneTuner((v) => !v); return; }
-        if (e.key === "r") { setShowSpinTuner((v) => !v); return; }
       }
       const isDown = e.key === "ArrowDown" || e.key === "ArrowRight";
       const isUp = e.key === "ArrowUp" || e.key === "ArrowLeft";
@@ -2426,11 +2413,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     </svg>
                   </button>
                 )}
-                {/* Auto-rotate — appears next to the 3D toggle while active */}
+                {/* Auto-rotate (play/pause) — appears next to the 3D toggle while active */}
                 {isFirst && !comparing && SPIN_ROBOTS[h.id] && spinActive && (
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
+                      if (spinPlaying) {
+                        spinViewerRef.current?.cancelPlay();
+                        return;
+                      }
                       if (spinAnimatingRef.current) return;
                       spinAnimatingRef.current = true;
                       setSpinPlaying(true);
@@ -2441,20 +2432,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         setSpinPlaying(false);
                       }
                     }}
-                    aria-label="Auto-rotate"
+                    aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
                     className="absolute bottom-2 right-[44px] z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-neutral-500 transition-all duration-200 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
                   >
-                    {(() => {
-                      const SelectedSpinIcon = SPIN_ICON_OPTIONS[spinIconKey].Icon;
-                      return (
-                        <SelectedSpinIcon
-                          width={17}
-                          height={17}
-                          strokeWidth={1.75}
-                          className={spinPlaying ? "animate-[spin_1.2s_linear_reverse]" : ""}
-                        />
-                      );
-                    })()}
+                    {spinPlaying ? (
+                      <Pause width={15} height={15} fill="currentColor" stroke="none" />
+                    ) : (
+                      <Play width={15} height={15} fill="currentColor" stroke="none" />
+                    )}
                   </button>
                 )}
                 {/* 3D toggle — bottom-right, mirrors the share button */}
@@ -2690,42 +2675,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           >
             C
           </button>
-          <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
-          <button
-            onClick={() => setShowSpinTuner(!showSpinTuner)}
-            className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showSpinTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
-          >
-            R
-          </button>
-        </div>
-      )}
-      {showSpinTuner && (
-        <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4">
-          <div>
-            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Spin icon</p>
-            <div className="flex flex-wrap gap-1.5">
-              {(Object.keys(SPIN_ICON_OPTIONS) as SpinIconKey[]).map((k) => {
-                const { Icon, label } = SPIN_ICON_OPTIONS[k];
-                const selected = spinIconKey === k;
-                return (
-                  <button
-                    key={k}
-                    onClick={() => setSpinIconKey(k)}
-                    aria-label={label}
-                    title={label}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all ${
-                      selected
-                        ? "bg-neutral-900 text-white"
-                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                    }`}
-                  >
-                    <Icon width={16} height={16} strokeWidth={1.75} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
       )}
       {showSplitTuner && (

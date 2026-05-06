@@ -14,6 +14,7 @@ interface SpinViewerProps {
 export interface SpinViewerHandle {
   unwind: () => Promise<void>;
   playRotation: () => Promise<void>;
+  cancelPlay: () => void;
 }
 
 const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinViewer(
@@ -25,6 +26,7 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
   const frameRef = useRef(0);
   const dragRef = useRef<{ startX: number; startFrame: number } | null>(null);
   const unwindingRef = useRef(false);
+  const playCancelRef = useRef<(() => void) | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
@@ -104,10 +106,24 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
           const start = frameRef.current;
           const duration = 1200;
           const t0 = performance.now();
+          let cancelled = false;
           unwindingRef.current = true;
           dragRef.current = null;
+          playCancelRef.current = () => {
+            cancelled = true;
+          };
+
+          const finish = () => {
+            unwindingRef.current = false;
+            playCancelRef.current = null;
+            resolve();
+          };
 
           const tick = (now: number) => {
+            if (cancelled || !canvasRef.current) {
+              finish();
+              return;
+            }
             const t = Math.min(1, (now - t0) / duration);
             // Linear — constant angular velocity feels honest for a spin
             let next = Math.round(start + t * frameCount);
@@ -117,15 +133,17 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
               frameRef.current = next;
               draw();
             }
-            if (t < 1 && canvasRef.current) {
+            if (t < 1) {
               requestAnimationFrame(tick);
             } else {
-              unwindingRef.current = false;
-              resolve();
+              finish();
             }
           };
           requestAnimationFrame(tick);
         }),
+      cancelPlay: () => {
+        playCancelRef.current?.();
+      },
     }),
     [frameCount]
   );
