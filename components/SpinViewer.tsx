@@ -13,6 +13,7 @@ interface SpinViewerProps {
 
 export interface SpinViewerHandle {
   unwind: () => Promise<void>;
+  playRotation: () => Promise<void>;
 }
 
 const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinViewer(
@@ -85,6 +86,33 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
             let next = Math.round(start + direction * offset);
             next = ((next % frameCount) + frameCount) % frameCount;
             if (t >= 1) next = 0;
+            if (next !== frameRef.current) {
+              frameRef.current = next;
+              draw();
+            }
+            if (t < 1 && canvasRef.current) {
+              requestAnimationFrame(tick);
+            } else {
+              unwindingRef.current = false;
+              resolve();
+            }
+          };
+          requestAnimationFrame(tick);
+        }),
+      playRotation: () =>
+        new Promise<void>((resolve) => {
+          const start = frameRef.current;
+          const duration = 1200;
+          const t0 = performance.now();
+          unwindingRef.current = true;
+          dragRef.current = null;
+
+          const tick = (now: number) => {
+            const t = Math.min(1, (now - t0) / duration);
+            // Linear — constant angular velocity feels honest for a spin
+            let next = Math.round(start + t * frameCount);
+            next = ((next % frameCount) + frameCount) % frameCount;
+            if (t >= 1) next = start;
             if (next !== frameRef.current) {
               frameRef.current = next;
               draw();
