@@ -168,7 +168,10 @@ function ChatInputTrigger({
   chatOpen: boolean;
 }) {
   const [hover, setHover] = useState(false);
+  const expanded = hover || chatOpen;
   const inkColor = chatOpen ? "#555" : "#b4b4b4";
+  const ease = "cubic-bezier(0.32, 0.72, 0, 1)";
+  const dur = 620;
   return (
     <button
       onClick={onClick}
@@ -178,28 +181,44 @@ function ChatInputTrigger({
       className="fixed bottom-6 z-50 cursor-pointer"
       style={{
         height: 40,
-        width: 220,
+        width: expanded ? 220 : 40,
         left: "50%",
         transform: "translateX(-50%)",
         borderRadius: 999,
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 12px 0 16px",
+        justifyContent: expanded ? "space-between" : "center",
+        padding: expanded ? "0 12px 0 16px" : 0,
         background: hover ? "#EBEBEB" : "#F4F4F4",
         border: "none",
         color: inkColor,
         textAlign: "left",
-        transition: "background 220ms ease, color 220ms ease",
+        overflow: "hidden",
+        transition: `width ${dur}ms ${ease}, padding ${dur}ms ${ease}, background 280ms ease, color 280ms ease`,
       }}
     >
-      <span style={{ fontSize: 13, color: inkColor, letterSpacing: "-0.005em" }}>
+      <span
+        style={{
+          fontSize: 13,
+          color: inkColor,
+          letterSpacing: "-0.005em",
+          whiteSpace: "nowrap",
+          maxWidth: expanded ? 180 : 0,
+          opacity: expanded ? 1 : 0,
+          transform: `translateX(${expanded ? 0 : -4}px)`,
+          transition: expanded
+            ? `max-width ${dur}ms ${ease}, opacity 360ms ease 220ms, transform 480ms ${ease} 180ms`
+            : `max-width ${dur}ms ${ease}, opacity 220ms ease, transform 320ms ${ease}`,
+        }}
+      >
         {chatOpen ? "Close chat" : "Ask about humanoids…"}
       </span>
       {chatOpen ? (
-        <span style={{ fontSize: 16, lineHeight: 1, color: inkColor }}>×</span>
+        <span style={{ fontSize: 16, lineHeight: 1, color: inkColor, flexShrink: 0 }}>×</span>
       ) : (
-        <IconQuestion size={16} />
+        <span style={{ flexShrink: 0, display: "inline-flex" }}>
+          <IconQuestion size={16} />
+        </span>
       )}
     </button>
   );

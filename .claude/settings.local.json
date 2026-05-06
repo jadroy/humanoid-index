@@ -102,7 +102,14 @@
       "Bash(sips *)",
       "Bash(git pull *)",
       "Bash(cp /Users/royjad/CODE/humanoid-index/app/HomeClient.tsx /tmp/HomeClient.tsx.full)",
-      "Bash(cp /Users/royjad/CODE/humanoid-index/data/humanoids.ts /tmp/humanoids.ts.full)"
+      "Bash(cp /Users/royjad/CODE/humanoid-index/data/humanoids.ts /tmp/humanoids.ts.full)",
+      "Bash(echo \"exit=$?\")",
+      "WebFetch(domain:sunday.ai)",
+      "Bash(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0:s=x /tmp/memo-frames-raw/frame_0000.png)",
+      "Read(//private/tmp/memo-frames-raw/**)",
+      "Bash(mkdir -p public/spin/memo)",
+      "Bash(ffmpeg -hide_banner -loglevel error -y -i /tmp/memo-frames-raw/frame_0000.png -vf scale=800:1000 -c:v libwebp -quality 82 /tmp/memo-test.webp)",
+      "Bash(cwebp -version)"
     ],
     "deny": [],
     "ask": []

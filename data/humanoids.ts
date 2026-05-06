@@ -121,6 +121,7 @@ export const humanoids: Humanoid[] = [
     dof: 28,
     maxSpeed: 2.5,
     description: "Fully electric successor to hydraulic Atlas for industrial applications.",
+    sceneUrl: "/scenes/electric-atlas-scene.jpg",
   },
   {
     id: "4",

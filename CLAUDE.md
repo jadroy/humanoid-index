@@ -42,7 +42,7 @@ Avoid: pure stats sentences, metaphors, brand names readers won't know, dramatic
 - `app/page.tsx` — thin server component. `generateMetadata` reads `?h` and `?compare`, falls through partial-compare → single-bot, defaults to `/og-default.png`. Renders `<HomeClient />`.
 - `app/HomeClient.tsx` — ~3.5k lines. `Browse()` (line ~287) owns spring/scroll/compare/cards/lucky-tap/dev tuners. Default export `HomeClient()` (line ~3100) owns layout switching, share button, intro, chat tuner.
 - `hooks/useSpring.ts` — `snapTo` (synchronous, no RAF) for URL hydration; `jumpTo` (animates) for user navigation.
-- `components/` — extracted clusters: `ArcDots`, `LayoutSwitcher`, `LogoMark`, `ComparePanel`, `CompareStrip`, `GridView`, `HumanoidCard`, `Sidebar`, `BottomBar`, `OptionsMenu`, `SearchModal`, `WelcomeModal`, `ChatBot`, `MobileView` (placeholder), and a self-contained `carousel/` (its own spring + wheel input).
+- `components/` — extracted clusters: `ArcDots`, `LayoutSwitcher`, `LogoMark`, `ComparePanel`, `CompareStrip`, `GridView`, `Sidebar`, `BottomBar`, `OptionsMenu`, `SearchModal`, `WelcomeModal`, `ChatBot`, `SpinViewer`, `MobileView` (placeholder), and a self-contained `carousel/` (its own spring + wheel input).
 - `lib/` — `cardPhysics`, `compareBlurb` (getter w/ fallback), `robotDescription` (getter), `fonts`.
 - `data/` — `humanoids.ts` (source of truth, numeric ids), `compare-blurbs.json`, `robot-descriptions.json`.
 - `app/api/og/[id]/route.ts` — 1200×630 light cards via Satori. SVG logos skipped (Satori limit). Supports `?compare=<rightId>`.

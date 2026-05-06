@@ -2,11 +2,17 @@
 
 import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { Toaster, toast } from "sonner";
+import { Box } from "lucide-react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
 import MobileView from "@/components/MobileView";
+import SpinViewer from "@/components/SpinViewer";
+
+const SPIN_ROBOTS: Record<string, { frameCount: number; path: string }> = {
+  "3": { frameCount: 30, path: "/spin/memo" },
+};
 import { WelcomeModal, WelcomeStyleSwitcher, type WelcomeStyle } from "@/components/WelcomeModal";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
@@ -306,12 +312,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [bottomFadeH, setBottomFadeH] = useState(40);
   const [bottomFadeOpacity, setBottomFadeOpacity] = useState(0.9);
   const [showTuner, setShowTuner] = useState(false);
-  const [shareCopyFilled, setShareCopyFilled] = useState(false);
   const [buyLayout, setBuyLayout] = useState<"card" | "chip">("card");
   const [buyCardStyle, setBuyCardStyle] = useState<"split" | "dark">("split");
   const [hideUnbuyable, setHideUnbuyable] = useState(false);
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
+  const [spinActive, setSpinActive] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
@@ -897,6 +903,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     const t = setTimeout(() => setBlurbReady(true), 350);
     return () => clearTimeout(t);
   }, [springL.index, springR.index, comparing]);
+
+  // Drop spin viewer when the active humanoid changes or compare mode toggles
+  useEffect(() => {
+    setSpinActive(false);
+  }, [springL.index, comparing]);
 
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
@@ -2374,37 +2385,45 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             >
               {/* Media area */}
               <div className="relative flex-1 min-h-0 overflow-hidden">
-                {renderMedia(h, hIdx, isFirst)}
+                {spinActive && isFirst && SPIN_ROBOTS[h.id] ? (
+                  <SpinViewer
+                    frameCount={SPIN_ROBOTS[h.id]!.frameCount}
+                    path={SPIN_ROBOTS[h.id]!.path}
+                    className="w-full h-full"
+                  />
+                ) : (
+                  renderMedia(h, hIdx, isFirst)
+                )}
                 {isFirst && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onShareView?.();
-                      setShareCopyFilled(true);
                     }}
-                    onMouseLeave={() => setShareCopyFilled(false)}
                     aria-label="Copy link"
-                    className="absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
-                    style={{
-                      top: 8,
-                      right: 8,
-                      width: 28,
-                      height: 28,
-                      borderRadius: 999,
-                      background: "rgba(255,255,255,0.85)",
-                      backdropFilter: "blur(8px)",
-                      WebkitBackdropFilter: "blur(8px)",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
-                      color: shareCopyFilled ? "#555" : "#888",
-                      opacity: shareCopyFilled ? 1 : 0.55,
-                      transition: "opacity 180ms ease, color 180ms ease",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                    className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-neutral-500 transition-all duration-200 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
                     </svg>
+                  </button>
+                )}
+                {/* 3D toggle — bottom-right, mirrors the share button */}
+                {isFirst && !comparing && SPIN_ROBOTS[h.id] && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSpinActive((prev) => !prev);
+                    }}
+                    aria-label={spinActive ? "Exit 3D view" : "View in 3D"}
+                    className={`absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ${
+                      spinActive
+                        ? "bg-neutral-800 text-white"
+                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
+                    }`}
+                  >
+                    <Box width={17} height={17} strokeWidth={1.75} />
                   </button>
                 )}
               </div>
@@ -2775,16 +2794,28 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               <input type="range" min={0} max={40} value={cardBlur} onChange={(e) => setCardBlur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
             </div>
           </div>
-          <div className="pt-2 border-t border-neutral-100">
-            <button
-              onClick={() => {
-                setSceneShape("bottom"); setSceneSize(39); setSceneSoftness(35); setScenePeakAlpha(48); setSceneOpacity(79); setSceneBlur(0);
-                setCardFillColor("#FAFAFA"); setCardFillAlpha(63); setCardBlur(28);
-              }}
-              className="text-[12px] text-neutral-400 hover:text-neutral-600 cursor-pointer"
-            >
-              Reset
-            </button>
+          <div className="pt-3 border-t border-neutral-100 space-y-2">
+            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Presets</p>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => {
+                  setSceneShape("bottom"); setSceneSize(39); setSceneSoftness(35); setScenePeakAlpha(48); setSceneOpacity(79); setSceneBlur(0);
+                  setCardFillColor("#FAFAFA"); setCardFillAlpha(63); setCardBlur(28);
+                }}
+                className="px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+              >
+                Default
+              </button>
+              <button
+                onClick={() => {
+                  setSceneShape("radial"); setSceneSize(55); setSceneSoftness(43); setScenePeakAlpha(41); setSceneOpacity(56); setSceneBlur(0);
+                  setCardFillColor("#ffffff"); setCardFillAlpha(11); setCardBlur(4);
+                }}
+                className="px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+              >
+                Halo
+              </button>
+            </div>
           </div>
         </div>
       )}

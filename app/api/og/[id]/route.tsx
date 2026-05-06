@@ -23,10 +23,6 @@ async function loadBotImage(bot: Humanoid) {
   return bot.imageUrl && !isSvg(bot.imageUrl) ? loadImageAsDataUri(bot.imageUrl) : null;
 }
 
-async function loadBotLogo(bot: Humanoid) {
-  return bot.logoUrl && !isSvg(bot.logoUrl) ? loadImageAsDataUri(bot.logoUrl) : null;
-}
-
 function getStats(bot: Humanoid) {
   return [
     bot.height && { label: "Height", value: `${bot.height} cm` },
@@ -35,14 +31,6 @@ function getStats(bot: Humanoid) {
     bot.maxSpeed && { label: "Speed", value: `${bot.maxSpeed} m/s` },
   ].filter(Boolean) as { label: string; value: string }[];
 }
-
-const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
-  "In Production": { bg: "#e8f5e9", fg: "#2e7d32" },
-  Prototype: { bg: "#f3f4f6", fg: "#6b7280" },
-  Concept: { bg: "#fef3c7", fg: "#92400e" },
-  Discontinued: { bg: "#f3f4f6", fg: "#9ca3af" },
-  Anticipated: { bg: "#f3e8ff", fg: "#6d28d9" },
-};
 
 // ── Knobs (dev-only overrides) ───────────────────────────────
 
@@ -104,22 +92,12 @@ function readCompareKnobs(sp: URLSearchParams): CompareKnobs {
 // ── Single bot card ──────────────────────────────────────────
 
 function SingleCard({
-  bot,
   imgSrc,
-  logoSrc,
   k,
 }: {
-  bot: Humanoid;
   imgSrc: string | null;
-  logoSrc: string | null;
   k: SingleKnobs;
 }) {
-  const stats = getStats(bot);
-  const badge = bot.status ? STATUS_COLORS[bot.status] ?? { bg: "#f3f4f6", fg: "#6b7280" } : null;
-  const showText = k.showName || k.showManufacturer || k.showStats || k.showBadge;
-  const showSidebar = showText || (k.showLogo && !!logoSrc);
-  const panelW = showSidebar ? k.imagePanelW : 1200;
-
   return (
     <div
       style={{
@@ -129,21 +107,16 @@ function SingleCard({
         background: "#ffffff",
         color: "#111",
         fontFamily: "sans-serif",
-        position: "relative",
       }}
     >
       <div
         style={{
-          width: panelW,
+          width: 600,
           height: 630,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          paddingTop: k.imagePadY,
-          paddingBottom: k.imagePadY,
-          paddingLeft: k.imagePadX,
-          paddingRight: k.imagePadX,
-          background: k.imagePanelBg,
+          padding: 80,
         }}
       >
         {imgSrc ? (
@@ -151,9 +124,7 @@ function SingleCard({
             src={imgSrc}
             width={k.imageW}
             height={k.imageH}
-            style={k.imageOffsetY
-              ? { objectFit: "contain", transform: `translateY(${k.imageOffsetY}px)` }
-              : { objectFit: "contain" }}
+            style={{ objectFit: "contain" }}
           />
         ) : (
           <div
@@ -161,7 +132,7 @@ function SingleCard({
               width: 180,
               height: 180,
               borderRadius: 90,
-              background: "#f0f0f0",
+              background: "#f5f5f5",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -174,59 +145,28 @@ function SingleCard({
         )}
       </div>
 
-      {showSidebar && (
+      <div
+        style={{
+          width: 600,
+          height: 630,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 80,
+        }}
+      >
         <div
           style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            padding: "60px 48px 60px 40px",
+            fontSize: 56,
+            fontWeight: 600,
+            letterSpacing: -1.5,
+            color: "#111",
+            lineHeight: 1.1,
           }}
         >
-          {(k.showManufacturer || (k.showLogo && logoSrc)) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-              {k.showLogo && logoSrc && <img src={logoSrc} width={28} height={28} style={{ borderRadius: 4 }} />}
-              {k.showManufacturer && (
-                <span style={{ fontSize: k.manufacturerSize, color: "#888", letterSpacing: 0.5 }}>
-                  {bot.manufacturer}{bot.year ? ` · ${bot.year}` : ""}
-                </span>
-              )}
-            </div>
-          )}
-
-          {k.showName && (
-            <div style={{ fontSize: k.nameSize, fontWeight: 700, lineHeight: 1.1, marginBottom: 36, letterSpacing: -1, color: "#111" }}>
-              {bot.name}
-            </div>
-          )}
-
-          {k.showStats && stats.length > 0 && (
-            <div style={{ display: "flex", gap: 36 }}>
-              {stats.map((s) => (
-                <div key={s.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: k.statLabelSize, color: "#aaa", letterSpacing: 1.5, textTransform: "uppercase" }}>{s.label}</span>
-                  <span style={{ fontSize: k.statValueSize, fontWeight: 600, color: "#333" }}>{s.value}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {k.showBadge && badge && bot.status && (
-            <div style={{ marginTop: 32, display: "flex" }}>
-              <span style={{ fontSize: 14, padding: "6px 18px", borderRadius: 999, background: badge.bg, color: badge.fg, letterSpacing: 0.5 }}>
-                {bot.status}
-              </span>
-            </div>
-          )}
+          Humanoid Index
         </div>
-      )}
-
-      {k.showWatermark && (
-        <div style={{ position: "absolute", bottom: 28, right: 40, display: "flex", fontSize: 16, color: "#ccc", letterSpacing: 0.5 }}>
-          humanoid-index.com
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -393,8 +333,8 @@ export async function GET(
   }
 
   const k = readSingleKnobs(url.searchParams);
-  const [imgSrc, logoSrc] = await Promise.all([loadBotImage(bot), loadBotLogo(bot)]);
-  return new ImageResponse(<SingleCard bot={bot} imgSrc={imgSrc} logoSrc={logoSrc} k={k} />, {
+  const imgSrc = await loadBotImage(bot);
+  return new ImageResponse(<SingleCard imgSrc={imgSrc} k={k} />, {
     width: 1200,
     height: 630,
   });
