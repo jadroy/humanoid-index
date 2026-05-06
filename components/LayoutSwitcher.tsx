@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/LogoMark";
 
 export const ALL_LAYOUTS = ["E", "Z"] as const;
@@ -14,7 +14,7 @@ export const layoutLabels: Record<Layout, string> = {
 export const INDEX_VIEWS = ["grid", "timeline"] as const;
 export type IndexView = (typeof INDEX_VIEWS)[number];
 
-export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid"] as const;
+export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday"] as const;
 export type NavStyle = (typeof NAV_STYLES)[number];
 
 export const SWITCHER_STYLES = ["text", "drag", "single", "toggle", "pill", "slash", "dot", "dash", "brackets", "ghost", "divider"] as const;
@@ -129,7 +129,7 @@ function DragSwitcher({
                 onClick={() => onIndexViewChange(v)}
                 className="text-[12px] tracking-wide capitalize whitespace-nowrap transition-colors duration-200 cursor-pointer"
                 style={{
-                  color: indexView === v ? "rgba(38,38,38,0.85)" : "rgba(38,38,38,0.55)",
+                  color: indexView === v ? "rgba(38, 38, 38,0.85)" : "rgba(38, 38, 38,0.55)",
                   fontWeight: 500,
                   padding: "0 6px",
                 }}
@@ -219,6 +219,15 @@ export function LayoutSwitcher({
   const mark = <LogoMark onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} />;
   const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} ringColor="#fff" />;
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [navHover, setNavHover] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
   const frost = { background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } as React.CSSProperties;
 
   const subInline = (activeColor: string, inactiveColor: string, separatorColor: string): React.ReactNode =>
@@ -298,7 +307,7 @@ export function LayoutSwitcher({
     const L0 = ALL_LAYOUTS[0];
     const L1 = ALL_LAYOUTS[1];
     const isRight = active === L1;
-    const labelBase = "text-[12px] tracking-wide transition-colors duration-200 cursor-pointer";
+    const labelBase = "text-[12.7px] tracking-tight transition-colors duration-200 cursor-pointer";
     const labelStyle = (l: Layout): React.CSSProperties => ({
       color: active === l ? "var(--c-ink)" : "#c4c4c4",
       fontWeight: 500,
@@ -310,13 +319,13 @@ export function LayoutSwitcher({
       const isScroll = active === "E";
       const isIndex = active === "Z" && indexView === "grid";
       const isTimeline = active === "Z" && indexView === "timeline";
-      const opacityFor = (on: boolean) => (on ? 1 : 0.55);
-      const labelCls = "text-[12px] tracking-wide cursor-pointer select-none";
+      const opacityFor = (on: boolean) => (on ? 1 : 0.35);
+      const labelCls = "text-[12.7px] tracking-tight cursor-pointer select-none";
       const labelStyleText = (on: boolean): React.CSSProperties => ({
         color: "var(--c-ink)",
         opacity: opacityFor(on),
-        fontWeight: on ? 500 : 400,
-        transition: "opacity 220ms ease, font-weight 220ms ease",
+        fontWeight: 600,
+        transition: "opacity 220ms ease",
       });
       switcherEl = (
         <div className="flex items-center gap-5">
@@ -336,7 +345,7 @@ export function LayoutSwitcher({
             onMouseEnter={(e) => { if (!isIndex) e.currentTarget.style.opacity = "0.8"; }}
             onMouseLeave={(e) => { if (!isIndex) e.currentTarget.style.opacity = String(opacityFor(false)); }}
           >
-            Index
+            Grid
           </button>
           <button
             onClick={() => { if (active !== "Z") onChange("Z"); if (indexView !== "timeline") onIndexViewChange("timeline"); }}
@@ -521,15 +530,12 @@ export function LayoutSwitcher({
 
     navEl = (
       <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 4px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-center gap-4">
           <div className="pointer-events-auto">{mark}</div>
-          <div className="flex-1 flex justify-center">
-            <div className="pointer-events-auto flex items-center">
-              {switcherEl}
-              {switcherStyle !== "pill" && switcherStyle !== "drag" && switcherStyle !== "text" && subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
-            </div>
+          <div className="pointer-events-auto flex items-center">
+            {switcherEl}
+            {switcherStyle !== "pill" && switcherStyle !== "drag" && switcherStyle !== "text" && subInline("var(--c-ink)", "#c4c4c4", "rgba(0,0,0,0.08)")}
           </div>
-          <div style={{ width: 20 }} />
         </div>
       </nav>
     );
@@ -580,6 +586,160 @@ export function LayoutSwitcher({
       </div>
     </nav>
   );
+
+  // ── Style: sunday — single pill with logo + brand + hamburger; menu opens a panel ──
+  else if (navStyle === "sunday") {
+    const SUNDAY_INK = "#171717";
+    const SUNDAY_WORDMARK = "#494440";
+    const sundayMark = <LogoMark fill={SUNDAY_WORDMARK} ringColor={SUNDAY_WORDMARK} opacity={1} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} showLuckyHint={false} />;
+    const closeAndPick = (l: Layout, v?: IndexView) => {
+      if (active !== l) onChange(l);
+      if (v && indexView !== v) onIndexViewChange(v);
+      setMenuOpen(false);
+    };
+    const items: Array<{ label: string; onClick: () => void; isActive: boolean }> = [
+      { label: "Scroll", onClick: () => closeAndPick("E"), isActive: active === "E" },
+      { label: "Grid", onClick: () => closeAndPick("Z", "grid"), isActive: active === "Z" && indexView === "grid" },
+      { label: "Timeline", onClick: () => closeAndPick("Z", "timeline"), isActive: active === "Z" && indexView === "timeline" },
+    ];
+    navEl = (
+      <>
+        {/* Backdrop dim */}
+        <div
+          className="fixed inset-0 z-[55]"
+          style={{
+            background: "rgba(0,0,0,0.35)",
+            opacity: menuOpen ? 1 : 0,
+            pointerEvents: menuOpen ? "auto" : "none",
+            transition: "opacity 280ms cubic-bezier(0.22,1,0.36,1)",
+          }}
+          onClick={() => setMenuOpen(false)}
+        />
+
+        {/* Morphing nav: pill ⇄ panel */}
+        <nav
+          className="fixed top-0 left-0 right-0 z-[60] pointer-events-none"
+          style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}
+        >
+          <div className="flex justify-center">
+            <div
+              onMouseEnter={() => setNavHover(true)}
+              onMouseLeave={() => setNavHover(false)}
+              className="pointer-events-auto overflow-hidden"
+              style={{
+                width: menuOpen ? "min(760px, calc(100vw - 48px))" : "min(280px, 100%)",
+                borderRadius: menuOpen ? 28 : 999,
+                background: menuOpen ? "rgba(255,255,255,1)" : "rgba(245,245,245,0.55)",
+                backdropFilter: menuOpen ? "blur(0px)" : "blur(20px) saturate(1.4)",
+                WebkitBackdropFilter: menuOpen ? "blur(0px)" : "blur(20px) saturate(1.4)",
+                border: menuOpen ? "1px solid rgba(0,0,0,0.04)" : "1px solid rgba(255,255,255,0.6)",
+                boxShadow: menuOpen ? "0 24px 60px -24px rgba(0,0,0,0.25)" : "0 0 0 rgba(0,0,0,0)",
+                color: SUNDAY_INK,
+                opacity: menuOpen || navHover ? 1 : 0.7,
+                transition: "width 420ms cubic-bezier(0.22,1,0.36,1), border-radius 360ms cubic-bezier(0.22,1,0.36,1), background 320ms ease, border-color 320ms ease, box-shadow 360ms ease, opacity 240ms ease",
+              }}
+            >
+              {/* Header — always visible, padding morphs */}
+              <div
+                className="flex items-center justify-between"
+                style={{
+                  paddingLeft: menuOpen ? 24 : 14,
+                  paddingRight: menuOpen ? 16 : 4,
+                  paddingTop: menuOpen ? 14 : 4,
+                  paddingBottom: menuOpen ? 10 : 4,
+                  transition: "padding 360ms cubic-bezier(0.22,1,0.36,1)",
+                }}
+              >
+                <button
+                  onClick={handleClick}
+                  className="text-[15px] select-none whitespace-nowrap cursor-pointer transition-opacity hover:opacity-80"
+                  style={{ color: "var(--c-ink-medium, #494440)", fontWeight: 500, letterSpacing: "-0.035em", background: "transparent", border: "none", padding: 0 }}
+                >
+                  Humanoid Index
+                </button>
+                <button
+                  onClick={() => setMenuOpen((v) => !v)}
+                  aria-label={menuOpen ? "Close menu" : "Open menu"}
+                  className="w-8 h-8 flex items-center justify-center cursor-pointer rounded-full hover:bg-black/5 transition-colors"
+                  style={{ color: SUNDAY_INK }}
+                >
+                  <span
+                    className="relative w-[16px] h-[16px] flex items-center justify-center"
+                    style={{ transition: "transform 320ms cubic-bezier(0.22,1,0.36,1)", transform: menuOpen ? "rotate(90deg)" : "rotate(0)" }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ position: "absolute", opacity: menuOpen ? 0 : 1, transition: "opacity 200ms ease" }}>
+                      <path d="M4 9h16M4 15h16" />
+                    </svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ position: "absolute", opacity: menuOpen ? 1 : 0, transition: "opacity 200ms ease" }}>
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </span>
+                </button>
+              </div>
+
+              {/* Body — collapses via grid-rows 0fr ⇄ 1fr */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateRows: menuOpen ? "1fr" : "0fr",
+                  transition: "grid-template-rows 420ms cubic-bezier(0.22,1,0.36,1)",
+                }}
+              >
+                <div style={{ overflow: "hidden", minHeight: 0 }}>
+                  <div
+                    style={{
+                      opacity: menuOpen ? 1 : 0,
+                      transform: menuOpen ? "translateY(0)" : "translateY(-6px)",
+                      transition: "opacity 280ms ease 80ms, transform 320ms cubic-bezier(0.22,1,0.36,1) 60ms",
+                    }}
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-8 pt-2 pb-4">
+                      <ul className="flex flex-col gap-2">
+                        {items.map((it) => (
+                          <li key={it.label}>
+                            <button
+                              onClick={it.onClick}
+                              className="text-left text-[22px] md:text-[24px] tracking-tight cursor-pointer transition-opacity"
+                              style={{
+                                color: SUNDAY_INK,
+                                fontWeight: 600,
+                                opacity: it.isActive ? 1 : 0.55,
+                              }}
+                              onMouseEnter={(e) => { if (!it.isActive) e.currentTarget.style.opacity = "0.85"; }}
+                              onMouseLeave={(e) => { if (!it.isActive) e.currentTarget.style.opacity = "0.55"; }}
+                            >
+                              {it.label}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <div
+                        className="rounded-2xl overflow-hidden bg-neutral-100"
+                        style={{ minHeight: 150 }}
+                      >
+                        <img
+                          src="/og-default.png"
+                          alt="Humanoid Index"
+                          className="w-full h-full object-cover"
+                          style={{ minHeight: 150 }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 px-8 pb-4 text-[12px]" style={{ color: "#999" }}>
+                      <span>A visual index of humanoid robots</span>
+                      <span className="text-center">Updated 2026</span>
+                      <span className="text-right">Share <span style={{ color: "#facc15" }}>•</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </nav>
+      </>
+    );
+  }
 
   // ── Style: solid — dark bar, inverted text ──
   else navEl = (

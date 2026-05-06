@@ -99,7 +99,10 @@
       "Bash(lsof -nP -i TCP:3001 -sTCP:LISTEN)",
       "Bash(lsof -nP -iTCP -sTCP:LISTEN)",
       "WebFetch(domain:localhost)",
-      "Bash(sips *)"
+      "Bash(sips *)",
+      "Bash(git pull *)",
+      "Bash(cp /Users/royjad/CODE/humanoid-index/app/HomeClient.tsx /tmp/HomeClient.tsx.full)",
+      "Bash(cp /Users/royjad/CODE/humanoid-index/data/humanoids.ts /tmp/humanoids.ts.full)"
     ],
     "deny": [],
     "ask": []

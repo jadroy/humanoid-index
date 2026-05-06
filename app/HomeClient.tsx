@@ -295,7 +295,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -305,6 +305,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [bottomFadeH, setBottomFadeH] = useState(40);
   const [bottomFadeOpacity, setBottomFadeOpacity] = useState(0.9);
   const [showTuner, setShowTuner] = useState(false);
+  const [shareCopyFilled, setShareCopyFilled] = useState(false);
   const [buyLayout, setBuyLayout] = useState<"card" | "chip">("card");
   const [buyCardStyle, setBuyCardStyle] = useState<"split" | "dark">("split");
   const [hideUnbuyable, setHideUnbuyable] = useState(false);
@@ -343,7 +344,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [drumTracking, setDrumTracking] = useState(0.04);
   const [miniCrownRadius, setMiniCrownRadius] = useState(70);
   const [arcInset, setArcInset] = useState(70);
-  const [navTop, setNavTop] = useState(4);
+  const [navTop, setNavTop] = useState(12);
   const [autoNavX, setAutoNavX] = useState(true);
   const [navX, setNavX] = useState(24);
   const [giveStyle, setGiveStyle] = useState<GiveStyle>("none");
@@ -940,7 +941,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   })();
   const preloadSizes = `${Math.round(robotW)}vw`;
 
-  const sceneBgUrl = !comparing ? humanoids[springL.index]?.sceneUrl : undefined;
+  const focusedH = !comparing ? humanoids[springL.index] : undefined;
+  const sceneActive = !!focusedH?.sceneUrl;
+  const sceneBackgroundImage = focusedH?.sceneUrl ? `url(${focusedH.sceneUrl})` : undefined;
 
   const sceneMask = (() => {
     const peak = scenePeakAlpha / 100;
@@ -979,10 +982,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           position: "absolute",
           inset: 0,
           zIndex: 0,
-          backgroundImage: sceneBgUrl ? `url(${sceneBgUrl})` : undefined,
+          backgroundImage: sceneActive ? sceneBackgroundImage : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          opacity: sceneBgUrl ? sceneOpacity / 100 : 0,
+          opacity: sceneActive ? sceneOpacity / 100 : 0,
           filter: sceneBlur > 0 ? `blur(${sceneBlur}px)` : undefined,
           transition: "opacity 0.5s ease",
           pointerEvents: "none",
@@ -1093,7 +1096,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         return (
           <div
             className="absolute top-0 bottom-0 right-0 flex items-center justify-center cursor-pointer"
-            style={{ width: "38%", zIndex: 10 }}
+            style={{ width: "calc(38% - 24px)", zIndex: 10 }}
             onClick={() => { setAddHover(false); enterCompare(); }}
             onMouseEnter={() => setAddHover(true)}
             onMouseLeave={() => setAddHover(false)}
@@ -2348,6 +2351,38 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               {/* Media area */}
               <div className="relative flex-1 min-h-0 overflow-hidden">
                 {renderMedia(h, hIdx, isFirst)}
+                {isFirst && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onShareView?.();
+                      setShareCopyFilled(true);
+                    }}
+                    onMouseLeave={() => setShareCopyFilled(false)}
+                    aria-label="Copy link"
+                    className="absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
+                    style={{
+                      top: 8,
+                      right: 8,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 999,
+                      background: "rgba(255,255,255,0.85)",
+                      backdropFilter: "blur(8px)",
+                      WebkitBackdropFilter: "blur(8px)",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
+                      color: shareCopyFilled ? "#555" : "#888",
+                      opacity: shareCopyFilled ? 1 : 0.55,
+                      transition: "opacity 180ms ease, color 180ms ease",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
+                  </button>
+                )}
               </div>
 
               {/* Hover arrows — anchored to the active humanoid's gallery */}
@@ -2480,7 +2515,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
 
               {/* Right robot — compare only */}
-              <div className="flex-shrink-0" style={{
+              <div className="flex-shrink-0 relative" style={{
                 opacity: comparing ? 1 : 0,
                 transform: `translateX(${splitHover ? 12 : 0}px) scale(${comparing ? 1 : 0.95})`,
                 width: comparing ? "auto" : 0,
@@ -2488,6 +2523,33 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 overflow: comparing ? "visible" : "hidden",
                 transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}, margin-left ${dur} ${ease}`,
               }}>
+                {comparing && (
+                  <button
+                    onClick={exitCompare}
+                    aria-label="Remove from compare"
+                    className="absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
+                    style={{
+                      top: 8,
+                      right: 8,
+                      width: 26,
+                      height: 26,
+                      borderRadius: 999,
+                      background: "rgba(255,255,255,0.85)",
+                      backdropFilter: "blur(8px)",
+                      WebkitBackdropFilter: "blur(8px)",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
+                      opacity: 0.5,
+                      transition: "opacity 180ms ease, transform 180ms ease",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "scale(1.06)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.5"; e.currentTarget.style.transform = "scale(1)"; }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#666" strokeWidth="1.6" strokeLinecap="round">
+                      <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" />
+                      <line x1="9.5" y1="2.5" x2="2.5" y2="9.5" />
+                    </svg>
+                  </button>
+                )}
                 {renderRobot(hR, distR, springR.index, false)}
               </div>
             </div>
@@ -2618,7 +2680,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[260px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
           <div className="flex items-center justify-between">
             <p className="text-[11px] tracking-widest uppercase text-neutral-500">Scene</p>
-            <span className="text-[10px] text-neutral-400">{sceneBgUrl ? humanoids[springL.index]?.name : "—"}</span>
+            <span className="text-[10px] text-neutral-400">{sceneActive ? focusedH?.name : "—"}</span>
           </div>
           <div>
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Shape</p>
@@ -2988,6 +3050,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ))}
               </div>
             </div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Card↔Stats gap <span className="tabular-nums text-neutral-400">{statsGap}px</span></label><input type="range" min={0} max={80} value={statsGap} onChange={(e) => setStatsGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{statPillRadius}px</span></label><input type="range" min={0} max={40} value={statPillRadius} onChange={(e) => setStatPillRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{statPillGap}px</span></label><input type="range" min={0} max={16} value={statPillGap} onChange={(e) => setStatPillGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Padding X <span className="tabular-nums text-neutral-400">{statPillPadX}px</span></label><input type="range" min={6} max={28} value={statPillPadX} onChange={(e) => setStatPillPadX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -3322,7 +3385,7 @@ export default function HomeClient() {
   const [layout, setLayout] = useState<Layout>("E");
   const [indexView, setIndexView] = useState<IndexView>("timeline");
 
-  const [navStyle, setNavStyle] = useState<NavStyle>("underline");
+  const [navStyle, setNavStyle] = useState<NavStyle>("sunday");
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
   const [chatOpen, setChatOpen] = useState(false);
   const [showChatTuner, setShowChatTuner] = useState(false);
@@ -3349,7 +3412,6 @@ export default function HomeClient() {
   const shareUrlRef = useRef("");
   const shareOgRef = useRef("");
   const [shareToast, setShareToast] = useState<{ label: string; ogUrl?: string } | false>(false);
-  const [shareCopyFilled, setShareCopyFilled] = useState(false);
   const shareToastTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const copyUrl = useCallback((url: string, label: string, ogUrl?: string) => {
     navigator.clipboard.writeText(url);
@@ -3539,7 +3601,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -3556,45 +3618,6 @@ export default function HomeClient() {
           </p>
         </div>
       )}
-
-      {/* Top-right share button */}
-      <div
-        className="group fixed z-[1000] flex items-center gap-2"
-        style={{
-          top: "var(--nav-top, 8px)",
-          right: "var(--nav-x, 24px)",
-          opacity: introDone ? 1 : 0,
-          transform: introDone ? "translateY(0)" : "translateY(-12px)",
-          transition: "opacity 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s, transform 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s",
-        }}
-      >
-        <span
-          className={`text-[12px] tracking-wide transition-opacity duration-200 pointer-events-none ${shareToast ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-          style={{ color: shareToast ? "#737373" : "#b4b4b4" }}
-        >
-          {shareToast ? shareToast.label : shareViewLabel}
-        </span>
-        <button
-          className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer hover:scale-[1.06]"
-          style={{
-            background: "transparent",
-            border: `1px solid ${shareCopyFilled ? "#aaa" : "#e0e0e0"}`,
-            color: shareCopyFilled ? "#555" : "#b4b4b4",
-            transition: "border-color 220ms ease, color 220ms ease",
-          }}
-          onClick={() => {
-            copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current);
-            setShareCopyFilled(true);
-          }}
-          onMouseLeave={() => setShareCopyFilled(false)}
-          aria-label="Copy link"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-          </svg>
-        </button>
-      </div>
 
       {/* Chat tuner panel */}
       {isDev && showChatTuner && (
@@ -3672,10 +3695,10 @@ export default function HomeClient() {
       {/* Share toast — OG thumbnail in a card; the "copied" label takes over the share-button hover text */}
       {shareToast && shareToast.ogUrl && (
         <div
-          className="fixed z-[60] animate-blur-fade"
+          className="fixed z-[60] toast-rise"
           style={{
-            top: "calc(var(--nav-top, 8px) + 52px)",
-            right: "var(--nav-x, 24px)",
+            bottom: 32,
+            left: "50%",
             background: "rgba(255,255,255,0.92)",
             backdropFilter: "blur(20px) saturate(140%)",
             WebkitBackdropFilter: "blur(20px) saturate(140%)",

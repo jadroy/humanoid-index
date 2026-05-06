@@ -21,6 +21,7 @@ export function LogoMark({
   luckyNonce = 0,
   hintNonce = 0,
   ringColor = "var(--c-ink)",
+  showLuckyHint = true,
 }: {
   fill?: string;
   opacity?: number;
@@ -29,6 +30,7 @@ export function LogoMark({
   luckyNonce?: number;
   hintNonce?: number;
   ringColor?: string;
+  showLuckyHint?: boolean;
 }) {
   const pad = 6;
   const total = size + pad * 2;
@@ -62,17 +64,19 @@ export function LogoMark({
       style={{ width: total, height: total }}
       onClick={onClick}
     >
-      <span
-        className="absolute top-1/2 pointer-events-none whitespace-nowrap opacity-0 -translate-y-1/2 group-hover:opacity-[0.3]"
-        style={{
-          left: total + 4,
-          fontSize: 12,
-          color: ringColor,
-          transition: "opacity 180ms ease",
-        }}
-      >
-        I&rsquo;m feeling lucky
-      </span>
+      {showLuckyHint && (
+        <span
+          className="absolute top-1/2 pointer-events-none whitespace-nowrap opacity-0 -translate-y-1/2 group-hover:opacity-[0.3]"
+          style={{
+            left: total + 4,
+            fontSize: 12,
+            color: ringColor,
+            transition: "opacity 180ms ease",
+          }}
+        >
+          I&rsquo;m feeling lucky
+        </span>
+      )}
       {hintVisible && (
         <svg
           key={`hint-${hintKey}`}

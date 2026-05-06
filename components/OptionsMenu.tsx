@@ -45,11 +45,10 @@ type Props = {
 
 const strokeIcon: CSSProperties = { fill: "none", stroke: "currentColor" };
 
-function IconQuestion({ size = 20 }: { size?: number }) {
+function IconQuestion({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={strokeIcon} aria-hidden>
-      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
+    <svg width={size} height={size} viewBox="0 0 24 24" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={strokeIcon} aria-hidden>
+      <path d="M21 12a8 8 0 0 1-11.3 7.3L4 21l1.7-5.7A8 8 0 1 1 21 12z" />
     </svg>
   );
 }
@@ -125,7 +124,7 @@ function TriggerButton({
     return <PillTrigger chatOpen={chatOpen} onClick={onClick} ariaLabel={ariaLabel} />;
   }
 
-  // Shared base style — transparent, thin border, no fill
+  // Shared base style — pill fill, no border (matches humanoid card/pills)
   const base: CSSProperties = {
     width: 40,
     height: 40,
@@ -134,15 +133,15 @@ function TriggerButton({
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    border: chatOpen ? "1px solid #bbb" : "1px solid #e0e0e0",
+    border: "none",
     color: chatOpen ? "#555" : "#b4b4b4",
-    transition: "color 220ms ease, border-color 220ms ease, background 220ms ease, box-shadow 220ms ease",
+    transition: "color 220ms ease, background 220ms ease, box-shadow 220ms ease",
   };
 
-  let style: CSSProperties = { ...base, background: "transparent" };
+  let style: CSSProperties = { ...base, background: "#F4F4F4" };
 
   if (variant === "dots" || variant === "plus" || variant === "grid") {
-    style = { ...base, background: chatOpen ? "transparent" : "#F7F7F7", border: chatOpen ? "1px solid #bbb" : "none" };
+    style = { ...base, background: "#F4F4F4" };
   } else if (variant === "glass") {
     style = {
       ...base,
@@ -155,16 +154,53 @@ function TriggerButton({
   } else if (variant === "ring") {
     style = { ...base, background: "transparent", border: chatOpen ? "1.5px solid #aaa" : "1.5px solid #d8d8d8" };
   }
-  // "outlined" falls through to the base style
+  // "outlined" falls through to the base style — render as a chat-input pill.
+  return <ChatInputTrigger onClick={onClick} ariaLabel={ariaLabel} chatOpen={chatOpen} />;
+}
 
+function ChatInputTrigger({
+  onClick,
+  ariaLabel,
+  chatOpen,
+}: {
+  onClick: () => void;
+  ariaLabel: string;
+  chatOpen: boolean;
+}) {
+  const [hover, setHover] = useState(false);
+  const inkColor = chatOpen ? "#555" : "#b4b4b4";
   return (
     <button
       onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       aria-label={ariaLabel}
-      className="fixed bottom-6 left-1/2 z-50 hover:scale-[1.06]"
-      style={{ ...style, transform: "translateX(-50%)" }}
+      className="fixed bottom-6 z-50 cursor-pointer"
+      style={{
+        height: 40,
+        width: 220,
+        left: "50%",
+        transform: "translateX(-50%)",
+        borderRadius: 999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 12px 0 16px",
+        background: hover ? "#EBEBEB" : "#F4F4F4",
+        border: "none",
+        color: inkColor,
+        textAlign: "left",
+        transition: "background 220ms ease, color 220ms ease",
+      }}
     >
-      {icon}
+      <span style={{ fontSize: 13, color: inkColor, letterSpacing: "-0.005em" }}>
+        {chatOpen ? "Close chat" : "Ask about humanoids…"}
+      </span>
+      {chatOpen ? (
+        <span style={{ fontSize: 16, lineHeight: 1, color: inkColor }}>×</span>
+      ) : (
+        <IconQuestion size={16} />
+      )}
     </button>
   );
 }
