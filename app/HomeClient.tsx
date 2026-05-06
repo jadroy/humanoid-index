@@ -313,7 +313,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [comparing, setComparing] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
-  const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("hover");
+  const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("arc-names");
   const [arcMarkerVariant, setArcMarkerVariant] = useState(0);
@@ -1091,7 +1091,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       {!comparing && (() => {
         const alwaysMode = addCtaMode === "always";
         const addShown = alwaysMode || addHover || addHintVisible;
-        const opacity = alwaysMode ? (addHover ? 1 : 0.35) : (addShown ? 1 : 0);
+        const opacity = alwaysMode ? 0.55 : (addShown ? 1 : 0);
         const scale = alwaysMode ? 1 : (addShown ? 1 : 0.75);
         return (
           <div
@@ -2437,7 +2437,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 style={{
                   transform: addHintVisible
                     ? undefined
-                    : splitHover ? "translateX(-12px)" : addHover ? "translateX(-16px)" : "translateX(0)",
+                    : splitHover ? "translateX(-12px)" : (addHover && addCtaMode !== "always") ? "translateX(-16px)" : "translateX(0)",
                   transition: addHintVisible ? undefined : `transform ${dur} ${ease}`,
                 }}
               >
@@ -2455,7 +2455,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
                   transform: addHintVisible
                     ? undefined
-                    : !comparing && addHover ? "translateX(-16px)" : "translateX(0)",
+                    : !comparing && addHover && addCtaMode !== "always" ? "translateX(-16px)" : "translateX(0)",
                   transition: addHintVisible
                     ? `width ${dur} ${ease}, height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left ${dur} ${ease}`
                     : `width ${dur} ${ease}, height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left ${dur} ${ease}, transform ${dur} ${ease}`,
