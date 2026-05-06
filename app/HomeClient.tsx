@@ -1152,7 +1152,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 4,
-                  fontSize: Math.max(12, blurbFontSize - 1),
+                  fontSize: Math.max(12.7, blurbFontSize - 1),
                   color: "#999",
                   fontWeight: 450,
                   background: "rgba(255,255,255,0.92)",
@@ -1257,7 +1257,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   bottom: statPillPadY,
                   right: statPillPadX,
                   paddingLeft: 28,
-                  fontSize: Math.max(12, blurbFontSize - 1),
+                  fontSize: Math.max(12.7, blurbFontSize - 1),
                   color: isHovered ? "#666" : "#a8a8a8",
                   fontWeight: 450,
                   fontStyle: "italic",
@@ -1507,7 +1507,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
-                    <p className="text-[12px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.5 }}>
+                    <p className="text-[12.7px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.5 }}>
                       {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
                     </p>
                   </div>
@@ -1910,7 +1910,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.5 }}>{h.manufacturer}</p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.5 }}>{h.manufacturer}</p>
               </div>
             </div>
           );
@@ -2306,7 +2306,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           };
 
           const cardLabel = (
-            <div key={h.id} className="flex items-center gap-2 pl-3 pr-0.5 info-fade-in">
+            <div key={h.id} className="flex items-center gap-2 px-0.5 info-fade-in">
               <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
                 {h.logoUrl ? (
                   <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${labelLogoSize}px`} />
@@ -2319,7 +2319,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.5 }}>{h.manufacturer}</p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.5 }}>{h.manufacturer}</p>
               </div>
             </div>
           );
