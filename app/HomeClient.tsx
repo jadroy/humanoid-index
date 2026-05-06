@@ -25,6 +25,7 @@ const SPIN_ROBOTS: Record<
   },
 };
 import { WelcomeModal, WelcomeStyleSwitcher, type WelcomeStyle } from "@/components/WelcomeModal";
+import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { getRobotDescription } from "@/lib/robotDescription";
@@ -828,6 +829,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
         if (e.key === "b") { setShowSceneTuner((v) => !v); return; }
       }
+      const mod = e.metaKey || e.ctrlKey;
+      const isJumpStart =
+        (mod && (e.key === "ArrowLeft" || e.key === "ArrowUp")) ||
+        e.key === "Home" || e.key === "PageUp";
+      const isJumpEnd =
+        (mod && (e.key === "ArrowRight" || e.key === "ArrowDown")) ||
+        e.key === "End" || e.key === "PageDown";
+      if (isJumpStart || isJumpEnd) {
+        e.preventDefault();
+        const x = mouseXRef.current;
+        const spring = comparing && x != null
+          ? (x < window.innerWidth / 2 ? springL : springR)
+          : (comparing && activeSide === "right" ? springR : springL);
+        spring.jumpTo(isJumpStart ? 0 : humanoids.length - 1);
+        return;
+      }
       const isDown = e.key === "ArrowDown" || e.key === "ArrowRight";
       const isUp = e.key === "ArrowUp" || e.key === "ArrowLeft";
       if (isDown || isUp) {
@@ -841,7 +858,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeGo, comparing, arcStyle, springL.go, springR.go, isDev]);
+  }, [activeGo, comparing, activeSide, arcStyle, springL, springR, isDev]);
 
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
@@ -3654,6 +3671,7 @@ export default function HomeClient() {
   const [introPhase, setIntroPhase] = useState<"logo" | "exit" | "done">("logo");
   const [showWelcome, setShowWelcome] = useState(false);
   const [welcomeStyle, setWelcomeStyle] = useState<WelcomeStyle>("minimal");
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [buttonVariant, setButtonVariant] = useState<ButtonVariant>("outlined");
 
   useEffect(() => {
@@ -3698,6 +3716,11 @@ export default function HomeClient() {
         if (e.key === "w" && !e.metaKey && !e.ctrlKey) {
           setShowWelcome((v) => !v);
         }
+      }
+      if ((e.key === "?" || e.key === "/") && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+        return;
       }
       if (e.key === "R" && e.shiftKey && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
@@ -3935,6 +3958,8 @@ export default function HomeClient() {
           <WelcomeStyleSwitcher style={welcomeStyle} onChange={setWelcomeStyle} />
         </>
       )}
+
+      {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
     </main>
   );
 }

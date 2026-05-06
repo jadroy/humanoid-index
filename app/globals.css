@@ -629,6 +629,23 @@ main {
   flex-shrink: 0;
 }
 
+.shortcuts-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid #ececec;
+  border-radius: 5px;
+  background: #fafafa;
+  font-size: 10.5px;
+  font-family: inherit;
+  color: #6a6a6a;
+  flex-shrink: 0;
+  letter-spacing: 0;
+}
+
 .welcome-cta {
   width: 100%;
   padding: 11px 0;
