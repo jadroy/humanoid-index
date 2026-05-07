@@ -109,7 +109,12 @@
       "Read(//private/tmp/memo-frames-raw/**)",
       "Bash(mkdir -p public/spin/memo)",
       "Bash(ffmpeg -hide_banner -loglevel error -y -i /tmp/memo-frames-raw/frame_0000.png -vf scale=800:1000 -c:v libwebp -quality 82 /tmp/memo-test.webp)",
-      "Bash(cwebp -version)"
+      "Bash(cwebp -version)",
+      "Bash(cp app/HomeClient.tsx /tmp/HomeClient.tsx.full)",
+      "Bash(cp app/globals.css /tmp/globals.css.full)",
+      "Read(//private/tmp/**)",
+      "Bash(cp /tmp/HomeClient.tsx.full app/HomeClient.tsx)",
+      "Bash(cp /tmp/globals.css.full app/globals.css)"
     ],
     "deny": [],
     "ask": []

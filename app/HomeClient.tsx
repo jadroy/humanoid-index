@@ -333,6 +333,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const spinViewerRef = useRef<SpinViewerHandle>(null);
   const spinAnimatingRef = useRef(false);
   const [spinPlaying, setSpinPlaying] = useState(false);
+  const [spinExiting, setSpinExiting] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
@@ -498,6 +499,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // "accent" tints label + arrow with --c-accent and prepends ↗; "dark" inverts the pill
   // (black base, white text); "hairline" prepends a 1px seam above the row to demote it.
   const [actionVariant, setActionVariant] = useState<"pill" | "text" | "accent" | "dark" | "hairline" | "split">("pill");
+  const SPLIT_BUTTON_COLORS = {
+    accent: "var(--c-accent)",
+    "apple-blue": "#0071e3",
+    black: "#1d1d1f",
+    green: "#34c759",
+    orange: "#ff6a00",
+    plum: "#7c5cff",
+  } as const;
+  type SplitButtonColor = keyof typeof SPLIT_BUTTON_COLORS;
+  const [splitButtonColor, setSplitButtonColor] = useState<SplitButtonColor>("accent");
   const [actionHoverTint, setActionHoverTint] = useState<"none" | "charcoal" | "slate" | "stone">("none");
   const actionHoverColor = actionHoverTint === "slate" ? "#6B7280" : actionHoverTint === "stone" ? "#78716C" : "#52525B";
   const actionHoverPct = actionHoverTint === "none" ? "0%" : "10%";
@@ -1628,22 +1639,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           ["--pill-bg" as string]: pillBg,
                           background: pillBg,
                           borderRadius: statPillRadius,
-                          padding: `4px 4px 4px ${statPillPadX}px`,
+                          padding: `0 ${statPillPadX}px`,
                           textDecoration: "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 8,
-                          minHeight: 36,
+                          display: "block",
                           WebkitTapHighlightColor: "transparent",
                         }}
                       >
-                        <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
-                          {price ?? " "}
-                        </span>
-                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--c-accent)", color: "#fff", borderRadius: 999, padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1 }}>
-                          {cta}
-                        </span>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, gap: 8 }}>
+                          <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
+                            {price ?? " "}
+                          </span>
+                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: SPLIT_BUTTON_COLORS[splitButtonColor], color: "#fff", borderRadius: 999, padding: "4px 12px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.4 }}>
+                            {cta}
+                          </span>
+                        </div>
                       </a>
                     );
                   }
@@ -2225,22 +2234,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           ["--pill-bg" as string]: pillBg,
                           background: pillBg,
                           borderRadius: statPillRadius,
-                          padding: `4px 4px 4px ${statPillPadX}px`,
+                          padding: `0 ${statPillPadX}px`,
                           textDecoration: "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 8,
-                          minHeight: 36,
+                          display: "block",
                           WebkitTapHighlightColor: "transparent",
                         }}
                       >
-                        <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor }}>
-                          {price ?? " "}
-                        </span>
-                        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--c-accent)", color: "#fff", borderRadius: 999, padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1 }}>
-                          {cta}
-                        </span>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, gap: 8 }}>
+                          <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
+                            {price ?? " "}
+                          </span>
+                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: SPLIT_BUTTON_COLORS[splitButtonColor], color: "#fff", borderRadius: 999, padding: "4px 12px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.4 }}>
+                            {cta}
+                          </span>
+                        </div>
                       </a>
                     );
                   }
@@ -2498,16 +2505,26 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             >
               {/* Media area */}
               <div className="relative flex-1 min-h-0 overflow-hidden">
-                {spinActive && isFirst && SPIN_ROBOTS[h.id] ? (
-                  <SpinViewer
-                    ref={spinViewerRef}
-                    frameCount={SPIN_ROBOTS[h.id]!.frameCount}
-                    path={SPIN_ROBOTS[h.id]!.path}
-                    credit={SPIN_ROBOTS[h.id]!.credit}
-                    className="w-full h-full"
-                  />
-                ) : (
-                  renderMedia(h, hIdx, isFirst)
+                {/* Static — instant on entry, fades in on exit (mirrors SpinViewer's canvas fade-in) */}
+                {(!spinActive || spinExiting) && (
+                  <div
+                    className="absolute inset-0"
+                    style={spinExiting ? { animation: "spin-static-in 500ms ease-out forwards" } : undefined}
+                  >
+                    {renderMedia(h, hIdx, isFirst)}
+                  </div>
+                )}
+                {/* Spin viewer — mounted only during active 3D; instant in/out at wrapper level */}
+                {spinActive && !spinExiting && isFirst && SPIN_ROBOTS[h.id] && (
+                  <div className="absolute inset-0">
+                    <SpinViewer
+                      ref={spinViewerRef}
+                      frameCount={SPIN_ROBOTS[h.id]!.frameCount}
+                      path={SPIN_ROBOTS[h.id]!.path}
+                      credit={SPIN_ROBOTS[h.id]!.credit}
+                      className="w-full h-full"
+                    />
+                  </div>
                 )}
                 {isFirst && (
                   <button
@@ -2562,7 +2579,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       if (spinActive) {
                         spinAnimatingRef.current = true;
                         await spinViewerRef.current?.unwind();
+                        // Fade the spin layer out, mirroring the entry fade-in
+                        setSpinExiting(true);
+                        await new Promise((r) => setTimeout(r, 500));
                         setSpinActive(false);
+                        setSpinExiting(false);
                         spinAnimatingRef.current = false;
                       } else {
                         setSpinActive(true);
@@ -3148,6 +3169,24 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ))}
               </div>
             </div>
+            {actionVariant === "split" && (
+              <div>
+                <label className="text-[12px] text-neutral-500 mb-1.5 block">Buy button color</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(Object.keys(SPLIT_BUTTON_COLORS) as SplitButtonColor[]).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setSplitButtonColor(v)}
+                      className={`px-2 py-1 rounded-full text-[12px] cursor-pointer transition-all flex items-center gap-1.5 ${splitButtonColor === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                    >
+                      <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, background: SPLIT_BUTTON_COLORS[v], display: "inline-block" }} />
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <label className="text-[12px] text-neutral-500 mb-1.5 block">Action hover tint</label>
               <div className="flex flex-wrap gap-1.5">

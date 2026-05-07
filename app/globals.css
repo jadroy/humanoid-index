@@ -860,3 +860,8 @@ main {
   color: #ffffff;
 }
 
+/* Spin viewer exit — static media fades in, mirroring the entry canvas fade-in */
+@keyframes spin-static-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
