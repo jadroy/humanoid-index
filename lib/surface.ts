@@ -1,3 +1,3 @@
-export const SURFACE = "#FAFAFA";
-export const SURFACE_HOVER = "#F0F0F0";
-export const SURFACE_ACTIVE = "#E8E8E8";
+export const SURFACE = "#F2F2F2";
+export const SURFACE_HOVER = "#EBEBEB";
+export const SURFACE_ACTIVE = "#E0E0E0";

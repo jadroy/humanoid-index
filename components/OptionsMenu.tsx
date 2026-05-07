@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { SURFACE, SURFACE_HOVER } from "@/lib/surface";
 
 export type ButtonVariant =
   | "dots"
@@ -11,7 +10,8 @@ export type ButtonVariant =
   | "glass"
   | "pill"
   | "grid"
-  | "ring";
+  | "ring"
+  | "apple";
 
 export const BUTTON_VARIANTS: ButtonVariant[] = [
   "dots",
@@ -22,6 +22,7 @@ export const BUTTON_VARIANTS: ButtonVariant[] = [
   "pill",
   "grid",
   "ring",
+  "apple",
 ];
 
 export const BUTTON_LABELS: Record<ButtonVariant, string> = {
@@ -33,6 +34,7 @@ export const BUTTON_LABELS: Record<ButtonVariant, string> = {
   pill: "Pill",
   grid: "Grid",
   ring: "Ring",
+  apple: "Apple",
 };
 
 type Props = {
@@ -125,6 +127,11 @@ function TriggerButton({
     return <PillTrigger chatOpen={chatOpen} onClick={onClick} ariaLabel={ariaLabel} />;
   }
 
+  // ── apple: iMessage-style soft circle with label below ──
+  if (variant === "apple") {
+    return <AppleTrigger chatOpen={chatOpen} onClick={onClick} ariaLabel={ariaLabel} />;
+  }
+
   // Shared base style — pill fill, no border (matches humanoid card/pills)
   const base: CSSProperties = {
     width: 40,
@@ -190,7 +197,7 @@ function ChatInputTrigger({
         alignItems: "center",
         justifyContent: expanded ? "space-between" : "center",
         padding: expanded ? "0 12px 0 16px" : 0,
-        background: hover ? SURFACE_HOVER : SURFACE,
+        background: hover ? "var(--c-surface-hover, #EBEBEB)" : "var(--c-surface)",
         border: "none",
         color: inkColor,
         textAlign: "left",
@@ -221,6 +228,57 @@ function ChatInputTrigger({
           <IconQuestion size={16} />
         </span>
       )}
+    </button>
+  );
+}
+
+function AppleTrigger({
+  chatOpen,
+  onClick,
+  ariaLabel,
+}: {
+  chatOpen: boolean;
+  onClick: () => void;
+  ariaLabel: string;
+}) {
+  const [hover, setHover] = useState(false);
+  const fill = hover || chatOpen ? "rgba(0,0,0,0.10)" : "rgba(0,0,0,0.06)";
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      aria-label={ariaLabel}
+      className="fixed bottom-6 left-1/2 z-50 cursor-pointer flex flex-col items-center"
+      style={{
+        transform: "translateX(-50%)",
+        background: "transparent",
+        border: "none",
+        padding: 0,
+        gap: 9,
+      }}
+    >
+      <span
+        className="flex items-center justify-center rounded-full"
+        style={{
+          width: 52,
+          height: 52,
+          background: fill,
+          color: "rgba(0,0,0,0.78)",
+          transition: "background 220ms ease",
+        }}
+      >
+        {chatOpen ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        ) : (
+          <IconQuestion size={20} />
+        )}
+      </span>
+      <span style={{ fontSize: 12, color: "rgba(0,0,0,0.6)", fontWeight: 400, letterSpacing: "-0.005em" }}>
+        {chatOpen ? "Close" : "Help"}
+      </span>
     </button>
   );
 }

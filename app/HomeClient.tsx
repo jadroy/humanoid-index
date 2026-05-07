@@ -29,7 +29,7 @@ import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { getRobotDescription } from "@/lib/robotDescription";
-import { SURFACE, SURFACE_HOVER } from "@/lib/surface";
+import { SURFACE } from "@/lib/surface";
 import {
   LayoutSwitcher,
   NAV_STYLES,
@@ -360,7 +360,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -484,7 +484,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillGap, setStatPillGap] = useState(4);         // px — gap between pills
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
   const [statPillPadY, setStatPillPadY] = useState(11);      // px — vertical button padding (sets closed height)
-  const [statPillBg, setStatPillBg] = useState(SURFACE);
+  const [statPillBg, setStatPillBg] = useState("var(--c-surface)");
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
   const [blurbFontSize, setBlurbFontSize] = useState(13);
   const [blurbFloat, setBlurbFloat] = useState(false);
@@ -1209,7 +1209,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       {!comparing && (() => {
         const alwaysMode = addCtaMode === "always";
         const addShown = alwaysMode || addHover || addHintVisible;
-        const opacity = addShown ? 1 : 0;
         const scale = alwaysMode ? 1 : (addShown ? 1 : 0.75);
         return (
           <div
@@ -1220,19 +1219,36 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             onMouseLeave={() => setAddHover(false)}
           >
             <div
-              className="rounded-full flex items-center justify-center transition-all duration-300"
+              className="flex flex-col items-center"
               style={{
-                width: 40,
-                height: 40,
-                background: addHover ? SURFACE_HOVER : SURFACE,
-                opacity,
+                gap: 9,
                 transform: `scale(${scale})`,
+                transition: "transform 240ms cubic-bezier(0.22,1,0.36,1)",
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round">
-                <line x1="8" y1="3" x2="8" y2="13" />
-                <line x1="3" y1="8" x2="13" y2="8" />
-              </svg>
+              <div
+                className="rounded-full flex items-center justify-center"
+                style={{
+                  width: 52,
+                  height: 52,
+                  background: addHover ? "rgba(0,0,0,0.10)" : "rgba(0,0,0,0.06)",
+                  transition: "background 220ms ease",
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
+                  <line x1="10" y1="4" x2="10" y2="16" />
+                  <line x1="4" y1="10" x2="16" y2="10" />
+                </svg>
+              </div>
+              <span style={{
+                fontSize: 12,
+                color: "rgba(0,0,0,0.6)",
+                fontWeight: 400,
+                letterSpacing: "-0.005em",
+                userSelect: "none",
+              }}>
+                Add
+              </span>
             </div>
           </div>
         );
@@ -2282,7 +2298,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     transition: `gap ${sDur} ${ease}`,
                   }}>
                     <div className="flex-1 min-w-0 flex items-center" style={{
-                      background: "#FAFAFA",
+                      background: "var(--c-surface)",
                       padding: "10px 12px",
                       borderRadius: leftRadius,
                       transform: leftTransform,
@@ -2293,7 +2309,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       {headerCell(hL)}
                     </div>
                     <div className="flex-1 min-w-0 flex items-center" style={{
-                      background: "#FAFAFA",
+                      background: "var(--c-surface)",
                       padding: "10px 12px",
                       borderRadius: rightRadius,
                       transform: rightTransform,
@@ -2648,7 +2664,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
                 maxWidth: comparing ? robotMaxW - 100 : robotMaxW,
                 borderRadius: cardRadius,
-                background: (!comparing && h.sceneUrl) ? cardBg : "#FAFAFA",
+                background: (!comparing && h.sceneUrl) ? cardBg : "var(--c-surface)",
                 backdropFilter: (!comparing && h.sceneUrl) ? cardBackdropFilter : undefined,
                 WebkitBackdropFilter: (!comparing && h.sceneUrl) ? cardBackdropFilter : undefined,
                 pointerEvents: "auto",
@@ -3109,6 +3125,49 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div>
               <label className="text-[12px] text-neutral-500 flex justify-between">Image blur <span className="tabular-nums text-neutral-400">{sceneBlur}px</span></label>
               <input type="range" min={0} max={30} value={sceneBlur} onChange={(e) => setSceneBlur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+          </div>
+          <div className="space-y-3 pt-3 border-t border-neutral-100">
+            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Surface</p>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Base <span className="tabular-nums text-neutral-400">{surfaceColor}</span></label>
+              <div className="flex gap-1.5 mt-1.5 items-center">
+                {["#ffffff", "#f7f7f7", "#f2f2f2", "#ececec", "#e5e5e5"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => onSurfaceColorChange(c)}
+                    className="w-6 h-6 rounded cursor-pointer"
+                    style={{ background: c, border: surfaceColor.toLowerCase() === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={surfaceColor}
+                  onChange={(e) => onSurfaceColorChange(e.target.value)}
+                  className="w-6 h-6 rounded cursor-pointer border border-neutral-200"
+                  style={{ padding: 0 }}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Hover <span className="tabular-nums text-neutral-400">{surfaceHover}</span></label>
+              <div className="flex gap-1.5 mt-1.5 items-center">
+                {["#f2f2f2", "#ebebeb", "#e5e5e5", "#dcdcdc", "#d4d4d4"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => onSurfaceHoverChange(c)}
+                    className="w-6 h-6 rounded cursor-pointer"
+                    style={{ background: c, border: surfaceHover.toLowerCase() === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={surfaceHover}
+                  onChange={(e) => onSurfaceHoverChange(e.target.value)}
+                  className="w-6 h-6 rounded cursor-pointer border border-neutral-200"
+                  style={{ padding: 0 }}
+                />
+              </div>
             </div>
           </div>
           <div className="space-y-3 pt-3 border-t border-neutral-100">
@@ -3828,6 +3887,8 @@ export default function HomeClient() {
   const [indexView, setIndexView] = useState<IndexView>("timeline");
 
   const [navStyle, setNavStyle] = useState<NavStyle>("sunday");
+  const [surfaceColor, setSurfaceColor] = useState(SURFACE);
+  const [surfaceHover, setSurfaceHover] = useState("#EBEBEB");
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
   const [chatOpen, setChatOpen] = useState(false);
   const [showChatTuner, setShowChatTuner] = useState(false);
@@ -4018,6 +4079,8 @@ export default function HomeClient() {
       className="min-h-screen bg-white"
       style={{
         fontFamily: epetriMode ? "var(--font-epetri)" : FONTS[fontIdx].family,
+        ["--c-surface" as string]: surfaceColor,
+        ["--c-surface-hover" as string]: surfaceHover,
         ...(epetriMode ? EPETRI_FONT_OVERRIDES : {}),
       } as React.CSSProperties}
     >
@@ -4082,7 +4145,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>

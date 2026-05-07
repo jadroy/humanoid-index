@@ -2,7 +2,6 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/LogoMark";
-import { SURFACE } from "@/lib/surface";
 
 export const ALL_LAYOUTS = ["E", "Z"] as const;
 export type Layout = (typeof ALL_LAYOUTS)[number];
@@ -15,7 +14,7 @@ export const layoutLabels: Record<Layout, string> = {
 export const INDEX_VIEWS = ["grid", "timeline"] as const;
 export type IndexView = (typeof INDEX_VIEWS)[number];
 
-export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday"] as const;
+export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple"] as const;
 export type NavStyle = (typeof NAV_STYLES)[number];
 
 export const SWITCHER_STYLES = ["text", "drag", "single", "toggle", "pill", "slash", "dot", "dash", "brackets", "ghost", "divider"] as const;
@@ -223,7 +222,6 @@ export function LayoutSwitcher({
   const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} ringColor="#fff" />;
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [navHover, setNavHover] = useState(false);
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
@@ -231,7 +229,7 @@ export function LayoutSwitcher({
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  const frost = { background: SURFACE } as React.CSSProperties;
+  const frost = { background: "var(--c-surface)" } as React.CSSProperties;
 
   const subInline = (activeColor: string, inactiveColor: string, separatorColor: string): React.ReactNode =>
     active === "Z" ? (
@@ -626,20 +624,15 @@ export function LayoutSwitcher({
         >
           <div className="flex justify-center">
             <div
-              onMouseEnter={() => setNavHover(true)}
-              onMouseLeave={() => setNavHover(false)}
               className="pointer-events-auto overflow-hidden"
               style={{
                 width: menuOpen ? "min(760px, calc(100vw - 48px))" : "min(280px, 100%)",
                 borderRadius: menuOpen ? 28 : 999,
-                background: menuOpen ? "rgba(255,255,255,1)" : "rgba(245,245,245,0.55)",
-                backdropFilter: menuOpen ? "blur(0px)" : "blur(20px) saturate(1.4)",
-                WebkitBackdropFilter: menuOpen ? "blur(0px)" : "blur(20px) saturate(1.4)",
-                border: menuOpen ? "1px solid rgba(0,0,0,0.04)" : "1px solid rgba(255,255,255,0.6)",
+                background: menuOpen ? "rgba(255,255,255,1)" : "var(--c-surface)",
+                border: menuOpen ? "1px solid rgba(0,0,0,0.04)" : "none",
                 boxShadow: menuOpen ? "0 24px 60px -24px rgba(0,0,0,0.25)" : "0 0 0 rgba(0,0,0,0)",
                 color: SUNDAY_INK,
-                opacity: menuOpen || navHover ? 1 : 0.7,
-                transition: "width 420ms cubic-bezier(0.22,1,0.36,1), border-radius 360ms cubic-bezier(0.22,1,0.36,1), background 320ms ease, border-color 320ms ease, box-shadow 360ms ease, opacity 240ms ease",
+                transition: "width 420ms cubic-bezier(0.22,1,0.36,1), border-radius 360ms cubic-bezier(0.22,1,0.36,1), background 320ms ease, border-color 320ms ease, box-shadow 360ms ease",
               }}
             >
               {/* Header — always visible, padding morphs */}
@@ -758,6 +751,70 @@ export function LayoutSwitcher({
           </div>
         </nav>
       </>
+    );
+  }
+
+  // ── Style: apple — thin full-width bar, no border, uniform full-opacity labels ──
+  else if (navStyle === "apple") {
+    const appleItems: Array<{ label: string; onClick: () => void }> = [
+      { label: "Scroll", onClick: () => { if (active !== "E") onChange("E"); } },
+      { label: "Grid", onClick: () => { if (active !== "Z") onChange("Z"); if (indexView !== "grid") onIndexViewChange("grid"); } },
+      { label: "Timeline", onClick: () => { if (active !== "Z") onChange("Z"); if (indexView !== "timeline") onIndexViewChange("timeline"); } },
+    ];
+    navEl = (
+      <nav
+        className="fixed left-0 right-0 z-50 pointer-events-auto"
+        style={{
+          top: 0,
+          background: "rgba(251, 251, 253, 0.92)",
+          backdropFilter: "saturate(1.6) blur(12px)",
+          WebkitBackdropFilter: "saturate(1.6) blur(12px)",
+        }}
+      >
+        <div className="mx-auto flex items-center" style={{ maxWidth: 1024, height: 40, paddingLeft: 24, paddingRight: 24 }}>
+          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 10 }}>
+            {mark}
+            <button
+              onClick={handleClick}
+              className="cursor-pointer"
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                fontSize: 14,
+                fontWeight: 500,
+                color: "var(--c-ink)",
+                letterSpacing: "-0.02em",
+                lineHeight: 1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Humanoid Index
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center" style={{ gap: 36 }}>
+            {appleItems.map((it) => (
+              <button
+                key={it.label}
+                onClick={it.onClick}
+                className="text-[13px] cursor-pointer"
+                style={{
+                  color: "var(--c-ink)",
+                  fontWeight: 400,
+                  letterSpacing: "-0.01em",
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  lineHeight: 1,
+                }}
+              >
+                {it.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ flex: "0 0 auto", width: 32 }} />
+        </div>
+      </nav>
     );
   }
 
