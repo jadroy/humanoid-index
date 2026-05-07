@@ -15,7 +15,7 @@ export const layoutLabels: Record<Layout, string> = {
 export const INDEX_VIEWS = ["grid", "timeline"] as const;
 export type IndexView = (typeof INDEX_VIEWS)[number];
 
-export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip"] as const;
+export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip", "chip2"] as const;
 export type NavStyle = (typeof NAV_STYLES)[number];
 
 export const SWITCHER_STYLES = ["text", "drag", "single", "toggle", "pill", "slash", "dot", "dash", "brackets", "ghost", "divider"] as const;
@@ -196,16 +196,21 @@ function ChipNav({
   onChange,
   onIndexViewChange,
   onLogoClick,
+  chipStyle,
+  wordmark,
 }: {
   active: Layout;
   indexView: IndexView;
   onChange: (l: Layout) => void;
   onIndexViewChange: (v: IndexView) => void;
   onLogoClick: () => void;
+  chipStyle?: React.CSSProperties;
+  wordmark?: React.ReactNode;
 }) {
   const tabsRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [thumb, setThumb] = useState({ left: 0, width: 0, ready: false });
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const isScroll = active === "E";
   const isGrid = active === "Z" && indexView === "grid";
@@ -216,13 +221,14 @@ function ChipNav({
     { label: "Timeline", isActive: isTimeline, onClick: () => { if (active !== "Z") onChange("Z"); if (indexView !== "timeline") onIndexViewChange("timeline"); } },
   ];
   const activeIdx = items.findIndex((it) => it.isActive);
+  const displayIdx = hoverIdx ?? activeIdx;
 
   useLayoutEffect(() => {
-    const target = tabRefs.current[activeIdx];
+    const target = tabRefs.current[displayIdx];
     const wrap = tabsRef.current;
     if (!target || !wrap) return;
     const measure = () => {
-      const t = tabRefs.current[activeIdx];
+      const t = tabRefs.current[displayIdx];
       const w = tabsRef.current;
       if (!t || !w) return;
       setThumb({ left: t.offsetLeft, width: t.offsetWidth, ready: true });
@@ -232,19 +238,24 @@ function ChipNav({
     ro.observe(wrap);
     tabRefs.current.forEach((el) => el && ro.observe(el));
     return () => ro.disconnect();
-  }, [activeIdx]);
+  }, [displayIdx]);
 
   return (
     <nav
       className="fixed left-0 right-0 z-50 pointer-events-auto"
       style={{ top: 0, background: "transparent" }}
     >
-      <div className="mx-auto flex items-center" style={{ maxWidth: 1024, height: 48, paddingLeft: 24, paddingRight: 24 }}>
-        <Chip active onClick={onLogoClick} style={{ flex: "0 0 auto" }}>
-          Humanoid Index
+      <div className="flex items-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+        <Chip active onClick={onLogoClick} style={{ flex: "0 0 auto", ...chipStyle }}>
+          {wordmark ?? "Humanoid Index"}
         </Chip>
         <div className="flex-1 flex justify-center">
-          <div ref={tabsRef} className="relative flex items-center" style={{ gap: 4 }}>
+          <div
+            ref={tabsRef}
+            className="relative flex items-center"
+            style={{ gap: 4 }}
+            onMouseLeave={() => setHoverIdx(null)}
+          >
             <div
               aria-hidden
               style={{
@@ -257,8 +268,8 @@ function ChipNav({
                 borderRadius: 999,
                 opacity: thumb.ready ? 1 : 0,
                 transition: thumb.ready
-                  ? "left 320ms cubic-bezier(0.22, 1, 0.36, 1), width 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease"
-                  : "opacity 200ms ease",
+                  ? "left 220ms cubic-bezier(0.22, 1, 0.36, 1), width 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease"
+                  : "opacity 180ms ease",
                 pointerEvents: "none",
               }}
             />
@@ -267,7 +278,8 @@ function ChipNav({
                 key={it.label}
                 ref={(el) => { tabRefs.current[i] = el; }}
                 onClick={it.onClick}
-                style={{ position: "relative" }}
+                style={{ position: "relative", ...chipStyle }}
+                onMouseEnter={() => setHoverIdx(i)}
               >
                 {it.label}
               </Chip>
@@ -919,6 +931,26 @@ export function LayoutSwitcher({
         onChange={onChange}
         onIndexViewChange={onIndexViewChange}
         onLogoClick={handleClick}
+      />
+    );
+  }
+
+  // ── Style: chip2 — chip nav, Geist medium 12px, #5F6059, "Index" at 63% ──
+  else if (navStyle === "chip2") {
+    navEl = (
+      <ChipNav
+        active={active}
+        indexView={indexView}
+        onChange={onChange}
+        onIndexViewChange={onIndexViewChange}
+        onLogoClick={handleClick}
+        chipStyle={{
+          fontSize: 13,
+          fontWeight: 500,
+          letterSpacing: "normal",
+          color: "rgba(95, 96, 89, 0.8)",
+        }}
+        wordmark="Humanoid Index"
       />
     );
   }
