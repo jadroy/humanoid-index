@@ -15,7 +15,7 @@ export const layoutLabels: Record<Layout, string> = {
 export const INDEX_VIEWS = ["grid", "timeline"] as const;
 export type IndexView = (typeof INDEX_VIEWS)[number];
 
-export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip", "chip2"] as const;
+export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip", "chip2", "centered", "centered2"] as const;
 export type NavStyle = (typeof NAV_STYLES)[number];
 
 export const SWITCHER_STYLES = ["text", "drag", "single", "toggle", "pill", "slash", "dot", "dash", "brackets", "ghost", "divider"] as const;
@@ -932,6 +932,32 @@ export function LayoutSwitcher({
         onIndexViewChange={onIndexViewChange}
         onLogoClick={handleClick}
       />
+    );
+  }
+
+  // ── Style: centered — bare wordmark, no chip background (launch candidate) ──
+  // ── Style: centered2 — same wordmark with SURFACE chip behind ──
+  else if (navStyle === "centered" || navStyle === "centered2") {
+    navEl = (
+      <nav
+        className="fixed left-0 right-0 z-50 pointer-events-auto"
+        style={{ top: 0, background: "transparent" }}
+      >
+        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+          <Chip
+            onClick={handleClick}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              letterSpacing: "normal",
+              color: "rgba(95, 96, 89, 0.8)",
+              background: navStyle === "centered2" ? "#F9F9F9" : "transparent",
+            }}
+          >
+            Humanoid Index
+          </Chip>
+        </div>
+      </nav>
     );
   }
 

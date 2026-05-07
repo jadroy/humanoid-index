@@ -3941,7 +3941,7 @@ export default function HomeClient() {
   const [layout, setLayout] = useState<Layout>("E");
   const [indexView, setIndexView] = useState<IndexView>("timeline");
 
-  const [navStyle, setNavStyle] = useState<NavStyle>("sunday");
+  const [navStyle, setNavStyle] = useState<NavStyle>("centered");
   const [surfaceColor, setSurfaceColor] = useState(SURFACE);
   const [surfaceHover, setSurfaceHover] = useState("#EBEBEB");
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
