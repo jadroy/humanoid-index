@@ -2,6 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/LogoMark";
+import { SURFACE } from "@/lib/surface";
 
 export const ALL_LAYOUTS = ["E", "Z"] as const;
 export type Layout = (typeof ALL_LAYOUTS)[number];
@@ -230,7 +231,7 @@ export function LayoutSwitcher({
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  const frost = { background: "rgba(255,255,255,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" } as React.CSSProperties;
+  const frost = { background: SURFACE } as React.CSSProperties;
 
   const subInline = (activeColor: string, inactiveColor: string, separatorColor: string): React.ReactNode =>
     active === "Z" ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { SURFACE, SURFACE_HOVER } from "@/lib/surface";
 
 export type ButtonVariant =
   | "dots"
@@ -169,7 +170,7 @@ function ChatInputTrigger({
 }) {
   const [hover, setHover] = useState(false);
   const expanded = hover || chatOpen;
-  const inkColor = chatOpen ? "#555" : "#b4b4b4";
+  const inkColor = chatOpen ? "#555" : "#737373";
   const ease = "cubic-bezier(0.32, 0.72, 0, 1)";
   const dur = 620;
   return (
@@ -189,7 +190,7 @@ function ChatInputTrigger({
         alignItems: "center",
         justifyContent: expanded ? "space-between" : "center",
         padding: expanded ? "0 12px 0 16px" : 0,
-        background: hover ? "#EBEBEB" : "#F4F4F4",
+        background: hover ? SURFACE_HOVER : SURFACE,
         border: "none",
         color: inkColor,
         textAlign: "left",

@@ -29,6 +29,7 @@ import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { getRobotDescription } from "@/lib/robotDescription";
+import { SURFACE, SURFACE_HOVER } from "@/lib/surface";
 import {
   LayoutSwitcher,
   NAV_STYLES,
@@ -483,7 +484,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillGap, setStatPillGap] = useState(4);         // px — gap between pills
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
   const [statPillPadY, setStatPillPadY] = useState(11);      // px — vertical button padding (sets closed height)
-  const [statPillBg, setStatPillBg] = useState("#FAFAFA");
+  const [statPillBg, setStatPillBg] = useState(SURFACE);
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
   const [blurbFontSize, setBlurbFontSize] = useState(13);
   const [blurbFloat, setBlurbFloat] = useState(false);
@@ -581,7 +582,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [sceneOpacity, setSceneOpacity] = useState(79);
   const [sceneBlur, setSceneBlur] = useState(0);
   // Humanoid card fill tuner
-  const [cardFillColor, setCardFillColor] = useState("#FAFAFA");
+  const [cardFillColor, setCardFillColor] = useState(SURFACE);
   const [cardFillAlpha, setCardFillAlpha] = useState(63);
   const [cardBlur, setCardBlur] = useState(28);
 
@@ -1208,7 +1209,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       {!comparing && (() => {
         const alwaysMode = addCtaMode === "always";
         const addShown = alwaysMode || addHover || addHintVisible;
-        const opacity = alwaysMode ? 0.55 : (addShown ? 1 : 0);
+        const opacity = addShown ? 1 : 0;
         const scale = alwaysMode ? 1 : (addShown ? 1 : 0.75);
         return (
           <div
@@ -1223,12 +1224,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               style={{
                 width: 40,
                 height: 40,
-                background: "#ebebeb",
+                background: addHover ? SURFACE_HOVER : SURFACE,
                 opacity,
                 transform: `scale(${scale})`,
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round">
                 <line x1="8" y1="3" x2="8" y2="13" />
                 <line x1="3" y1="8" x2="13" y2="8" />
               </svg>
