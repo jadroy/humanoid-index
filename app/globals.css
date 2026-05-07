@@ -364,6 +364,44 @@ h1, h2, h3, h4, h5, h6 {
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+/* iOS-style grouped pill list — single rounded container, hairline dividers
+   between rows. Pills lose their own background/radius and inherit the
+   container's surface. Fill / ring / divider are tunable via data-attrs. */
+.pills-grouped {
+  background: var(--grouped-fill, #F9F9F9);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.pills-grouped[data-ring="true"] {
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.05);
+}
+.pills-grouped > * {
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+.pills-grouped > .pill-button:hover {
+  background: rgba(0,0,0,0.03) !important;
+}
+.pills-grouped > .pill-button:active {
+  background: rgba(0,0,0,0.05) !important;
+}
+.pills-grouped[data-divider="full"] > * + * {
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.pills-grouped[data-divider="inset"] > * + * {
+  position: relative;
+}
+.pills-grouped[data-divider="inset"] > * + *::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 1px;
+  background: rgba(0,0,0,0.06);
+  pointer-events: none;
+}
+
 main {
   --c-ink: #343433;
   --c-ink-bold: #171717;

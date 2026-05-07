@@ -43,7 +43,7 @@ import { useSpring, SCROLL_PRESETS, type PresetKey } from "@/hooks/useSpring";
 import { useIsDev } from "@/hooks/useIsDev";
 import { ArcDots, ARC_STYLES, ARC_PRESETS, arcStyleLabels, MARKER_VARIANTS, type ArcStyle } from "@/components/ArcDots";
 import OptionsMenu, { BUTTON_VARIANTS, BUTTON_LABELS, type ButtonVariant } from "@/components/OptionsMenu";
-import { FONTS } from "@/lib/fonts";
+import { FONTS, FAVORITE_FONTS } from "@/lib/fonts";
 import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSettings } from "@/lib/cardPhysics";
 
 const MOBILE_BREAKPOINT = 768;
@@ -384,6 +384,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
+  const [pillsLayout, setPillsLayout] = useState<"stack" | "grouped">("stack");
+  const [groupedFill, setGroupedFill] = useState<string>("#F9F9F9");
+  const [groupedDivider, setGroupedDivider] = useState<"full" | "inset" | "none">("full");
+  const [groupedRing, setGroupedRing] = useState<boolean>(true);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("arc-names");
   const [arcMarkerVariant, setArcMarkerVariant] = useState(0);
@@ -484,9 +488,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillGap, setStatPillGap] = useState(4);         // px — gap between pills
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
   const [statPillPadY, setStatPillPadY] = useState(11);      // px — vertical button padding (sets closed height)
-  const [statPillBg, setStatPillBg] = useState("var(--c-surface)");
+  const [statPillBg, setStatPillBg] = useState("#F9F9F9");
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
-  const [blurbFontSize, setBlurbFontSize] = useState(13);
+  const [blurbFontSize, setBlurbFontSize] = useState(12.7);
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [splitBlurb, setSplitBlurb] = useState(false);
   const [expandedBlurbs, setExpandedBlurbs] = useState<Set<string>>(new Set());
@@ -535,7 +539,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       return next;
     });
   };
-  const [pillLabelFontSize, setPillLabelFontSize] = useState(13);
+  const [pillLabelFontSize, setPillLabelFontSize] = useState(12.7);
   const [pillLabelFont, setPillLabelFont] = useState<string>("var(--font-geist-sans)");
   const [pillLabelLetterSpacing, setPillLabelLetterSpacing] = useState(-0.01);
   const [pillLabelWeight, setPillLabelWeight] = useState(500);
@@ -1229,19 +1233,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               <div
                 className="rounded-full flex items-center justify-center"
                 style={{
-                  width: 52,
-                  height: 52,
+                  width: 44,
+                  height: 44,
                   background: addHover ? "rgba(0,0,0,0.10)" : "rgba(0,0,0,0.06)",
                   transition: "background 220ms ease",
                 }}
               >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
                   <line x1="10" y1="4" x2="10" y2="16" />
                   <line x1="4" y1="10" x2="16" y2="10" />
                 </svg>
               </div>
               <span style={{
-                fontSize: 12,
+                fontSize: 11,
                 color: "rgba(0,0,0,0.6)",
                 fontWeight: 400,
                 letterSpacing: "-0.005em",
@@ -1289,7 +1293,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 4,
-                  fontSize: Math.max(13, blurbFontSize - 1),
+                  fontSize: Math.max(11, blurbFontSize - 1),
                   color: "#999",
                   fontWeight: 450,
                   background: "rgba(255,255,255,0.92)",
@@ -1394,7 +1398,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   bottom: statPillPadY,
                   right: statPillPadX,
                   paddingLeft: 28,
-                  fontSize: Math.max(13, blurbFontSize - 1),
+                  fontSize: Math.max(11, blurbFontSize - 1),
                   color: isHovered ? "#666" : "#a8a8a8",
                   fontWeight: 450,
                   fontStyle: "italic",
@@ -1491,7 +1495,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 >
                   <p
                     className="leading-[1.5]"
-                    style={{ fontSize: blurbFontSize, color: bubble.ink || "#7a7a7a", fontWeight: 450, letterSpacing: "0.005em" }}
+                    style={{ fontSize: blurbFontSize, color: bubble.ink || "var(--c-ink)", opacity: 0.6, fontWeight: 500, letterSpacing: "0.015em" }}
                   >
                     {fullText}
                   </p>
@@ -1637,7 +1641,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       <p
                         key={`blurb-float-${h.id}`}
                         className="leading-[1.5] info-fade-in"
-                        style={{ fontSize: blurbFontSize, color: bubble.ink || "#7a7a7a", fontWeight: 450, letterSpacing: "0.005em" }}
+                        style={{ fontSize: blurbFontSize, color: bubble.ink || "var(--c-ink)", opacity: 0.6, fontWeight: 500, letterSpacing: "0.015em" }}
                       >
                         {fullText}
                       </p>
@@ -1659,7 +1663,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
+                    <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
                     <p className="text-[13px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.42 }}>
                       {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
                     </p>
@@ -1690,8 +1694,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           // to be ~4px shorter than the standard pills; we match them on a tighter target
           // close to the previous action-pill feel.
           const pillRowHeight = statPillPadY * 2 + Math.round(pillLabelFontSize * 1.2);
+          const grouped = pillsLayout === "grouped";
           const pillsNode = (
-              <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11, marginTop: blurbFloat && !useSplit ? "auto" : undefined }}>
+              <div
+                className={`flex flex-col pointer-events-auto${grouped ? " pills-grouped" : ""}`}
+                data-divider={grouped ? groupedDivider : undefined}
+                data-ring={grouped ? String(groupedRing) : undefined}
+                style={{
+                  gap: grouped ? 0 : statPillGap,
+                  position: "relative",
+                  zIndex: 11,
+                  marginTop: blurbFloat && !useSplit ? "auto" : undefined,
+                  ...(grouped ? ({ ["--grouped-fill" as string]: groupedFill } as React.CSSProperties) : {}),
+                }}
+              >
                 {sections.map((s) => {
                   if (blurbFloat && s.key === "desc") return null;
                   const empty = !s.show;
@@ -2094,9 +2110,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         className="leading-[1.5]"
                         style={{
                           fontSize: blurbFontSize,
-                          color: compareBlurb.isGenerated ? (bubble.ink || "#7a7a7a") : (bubble.inkDim || "#a8a8a8"),
-                          fontWeight: 450,
-                          letterSpacing: "0.005em",
+                          color: bubble.ink || "var(--c-ink)",
+                          opacity: compareBlurb.isGenerated ? 0.6 : 0.4,
+                          fontWeight: 500,
+                          letterSpacing: "0.015em",
                         }}
                       >
                         {fullText}
@@ -2162,8 +2179,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.42 }}>{h.manufacturer}</p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.42 }}>{h.manufacturer}</p>
               </div>
             </div>
           );
@@ -2237,9 +2254,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         className="leading-[1.5] info-fade-in"
                         style={{
                           fontSize: blurbFontSize,
-                          color: compareBlurb.isGenerated ? (bubble.ink || "#7a7a7a") : (bubble.inkDim || "#a8a8a8"),
-                          fontWeight: 450,
-                          letterSpacing: "0.005em",
+                          color: bubble.ink || "var(--c-ink)",
+                          opacity: compareBlurb.isGenerated ? 0.6 : 0.4,
+                          fontWeight: 500,
+                          letterSpacing: "0.015em",
                         }}
                       >
                         {fullText}
@@ -2646,8 +2664,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42 }}>{h.manufacturer}</p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42 }}>{h.manufacturer}</p>
               </div>
             </div>
           );
@@ -2664,7 +2682,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
                 maxWidth: comparing ? robotMaxW - 100 : robotMaxW,
                 borderRadius: cardRadius,
-                background: (!comparing && h.sceneUrl) ? cardBg : "var(--c-surface)",
+                background: (!comparing && h.sceneUrl) ? cardBg : "#F9F9F9",
                 backdropFilter: (!comparing && h.sceneUrl) ? cardBackdropFilter : undefined,
                 WebkitBackdropFilter: (!comparing && h.sceneUrl) ? cardBackdropFilter : undefined,
                 pointerEvents: "auto",
@@ -3295,6 +3313,43 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           )}
           <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
+          <div className="pt-2 border-t border-neutral-100 space-y-2">
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400">Pills layout</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(["stack", "grouped"] as const).map((v) => (
+                <button key={v} onClick={() => setPillsLayout(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${pillsLayout === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>
+                  {v === "stack" ? "Separate pills" : "Grouped (iOS)"}
+                </button>
+              ))}
+            </div>
+            {pillsLayout === "grouped" && (
+              <>
+                <div>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">Fill <span className="tabular-nums text-neutral-400">{groupedFill}</span></label>
+                  <div className="flex gap-1.5 mt-1.5 items-center">
+                    {["#F9F9F9", "#F4F4F4", "#FFFFFF", "#FAFAFA"].map((c) => (
+                      <button key={c} onClick={() => setGroupedFill(c)} className="w-6 h-6 rounded cursor-pointer" style={{ background: c, border: groupedFill.toLowerCase() === c.toLowerCase() ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }} />
+                    ))}
+                    <input type="color" value={groupedFill} onChange={(e) => setGroupedFill(e.target.value)} className="w-6 h-6 rounded cursor-pointer border border-neutral-200" style={{ padding: 0 }} />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[12px] text-neutral-500 mb-1.5">Divider</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(["full", "inset", "none"] as const).map((v) => (
+                      <button key={v} onClick={() => setGroupedDivider(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${groupedDivider === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[12px] text-neutral-500 flex-1">Outer ring</label>
+                  <button onClick={() => setGroupedRing(!groupedRing)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${groupedRing ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{groupedRing ? "On" : "Off"}</button>
+                </div>
+              </>
+            )}
+          </div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Nav</p>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
@@ -3954,6 +4009,10 @@ export default function HomeClient() {
   const [allCaps, setAllCaps] = useState(false);
 
   const [fontIdx, setFontIdx] = useState(0);
+  const [favIdx, setFavIdx] = useState(0);
+  const [fontMode, setFontMode] = useState<"all" | "fav">("all");
+  const fontModeRef = useRef<"all" | "fav">("all");
+  useEffect(() => { fontModeRef.current = fontMode; }, [fontMode]);
   const [showFontToast, setShowFontToast] = useState(false);
   const [epetriMode, setEpetriMode] = useState(false);
   const toastTimeout = useRef<ReturnType<typeof setTimeout>>(null);
@@ -3996,7 +4055,17 @@ export default function HomeClient() {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (isDev) {
         if (e.key === "f" && !e.metaKey && !e.ctrlKey) {
-          setFontIdx((i) => (i + 1) % FONTS.length);
+          const wasAll = fontModeRef.current === "all";
+          setFontMode("all");
+          if (wasAll) setFontIdx((i) => (i + 1) % FONTS.length);
+          setShowFontToast(true);
+          if (toastTimeout.current) clearTimeout(toastTimeout.current);
+          toastTimeout.current = setTimeout(() => setShowFontToast(false), 1800);
+        }
+        if (e.key === "g" && !e.metaKey && !e.ctrlKey) {
+          const wasFav = fontModeRef.current === "fav";
+          setFontMode("fav");
+          if (wasFav) setFavIdx((i) => (i + 1) % FAVORITE_FONTS.length);
           setShowFontToast(true);
           if (toastTimeout.current) clearTimeout(toastTimeout.current);
           toastTimeout.current = setTimeout(() => setShowFontToast(false), 1800);
@@ -4078,7 +4147,9 @@ export default function HomeClient() {
     <main
       className="min-h-screen bg-white"
       style={{
-        fontFamily: epetriMode ? "var(--font-epetri)" : FONTS[fontIdx].family,
+        fontFamily: epetriMode
+          ? "var(--font-epetri)"
+          : (fontMode === "fav" ? FAVORITE_FONTS[favIdx].family : FONTS[fontIdx].family),
         ["--c-surface" as string]: surfaceColor,
         ["--c-surface-hover" as string]: surfaceHover,
         ...(epetriMode ? EPETRI_FONT_OVERRIDES : {}),
@@ -4157,8 +4228,14 @@ export default function HomeClient() {
           style={{ background: "rgba(0,0,0,0.06)", backdropFilter: "blur(12px)" }}
         >
           <p className="text-[12px] tracking-wide" style={{ color: "#999" }}>
-            <span style={{ color: "#737373", fontWeight: 500 }}>{FONTS[fontIdx].name}</span>
-            <span className="ml-2 tabular-nums" style={{ color: "#c4c4c4" }}>{fontIdx + 1}/{FONTS.length}</span>
+            <span style={{ color: "#737373", fontWeight: 500 }}>
+              {fontMode === "fav" ? FAVORITE_FONTS[favIdx].name : FONTS[fontIdx].name}
+            </span>
+            <span className="ml-2 tabular-nums" style={{ color: "#c4c4c4" }}>
+              {fontMode === "fav"
+                ? `${favIdx + 1}/${FAVORITE_FONTS.length}`
+                : `${fontIdx + 1}/${FONTS.length}`}
+            </span>
           </p>
         </div>
       )}

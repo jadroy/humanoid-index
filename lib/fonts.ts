@@ -27,3 +27,14 @@ export const FONTS = [
   { name: "Anta", family: "var(--font-anta)" },
   { name: "Syne", family: "var(--font-syne)" },
 ] as const;
+
+// Favorites cycle — close to the target feel. Bound to "g".
+export const FAVORITE_FONTS = [
+  { name: "Geist Sans", family: "var(--font-geist-sans)" },
+  { name: "Inter", family: "var(--font-inter)" },
+  { name: "Mona Sans", family: "var(--font-mona-sans)" },
+  { name: "Albert Sans", family: "var(--font-albert-sans)" },
+  { name: "Fustat", family: "var(--font-fustat)" },
+  { name: "Nunito Sans", family: "var(--font-nunito-sans)" },
+  { name: "Plus Jakarta Sans", family: "var(--font-plus-jakarta-sans)" },
+] as const;

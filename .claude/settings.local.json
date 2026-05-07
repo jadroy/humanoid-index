@@ -120,7 +120,12 @@
       "WebFetch(domain:www.unitree.com)",
       "WebFetch(domain:www.figure.ai)",
       "WebFetch(domain:www.gotokepler.com)",
-      "Bash(ffprobe -v error -show_entries stream=codec_name,width,height,duration -of default=noprint_wrappers=1 /Users/royjad/CODE/humanoid-index/public/robots/oli-guanjie.mp4)"
+      "Bash(ffprobe -v error -show_entries stream=codec_name,width,height,duration -of default=noprint_wrappers=1 /Users/royjad/CODE/humanoid-index/public/robots/oli-guanjie.mp4)",
+      "Bash(mkdir -p ~/Library/Fonts)",
+      "Bash(cp ~/Downloads/Mona-Sans/Mona-Sans/MonaSans-regular.ttf ~/Library/Fonts/)",
+      "Bash(cp ~/Downloads/Mona-Sans/Mona-Sans/MonaSans-italic.ttf ~/Library/Fonts/)",
+      "Bash(cp ~/Downloads/Albert-Sans/Albert-Sans/AlbertSans-regular.ttf ~/Library/Fonts/)",
+      "Bash(cp ~/Downloads/Albert-Sans/Albert-Sans/AlbertSans-italic.ttf ~/Library/Fonts/)"
     ],
     "deny": [],
     "ask": []

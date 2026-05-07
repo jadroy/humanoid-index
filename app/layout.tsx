@@ -23,6 +23,11 @@ import {
   Tektur,
   Anta,
   Syne,
+  Mona_Sans,
+  Albert_Sans,
+  Fustat,
+  Nunito_Sans,
+  Plus_Jakarta_Sans,
 } from "next/font/google";
 import "./globals.css";
 import SearchModal from "@/components/SearchModal";
@@ -48,6 +53,11 @@ const majorMono = Major_Mono_Display({ subsets: ["latin"], weight: "400", variab
 const tektur = Tektur({ subsets: ["latin"], variable: "--font-tektur" });
 const anta = Anta({ subsets: ["latin"], weight: "400", variable: "--font-anta" });
 const syne = Syne({ subsets: ["latin"], variable: "--font-syne" });
+const monaSans = Mona_Sans({ subsets: ["latin"], variable: "--font-mona-sans" });
+const albertSans = Albert_Sans({ subsets: ["latin"], variable: "--font-albert-sans" });
+const fustat = Fustat({ subsets: ["latin"], variable: "--font-fustat" });
+const nunitoSans = Nunito_Sans({ subsets: ["latin"], variable: "--font-nunito-sans" });
+const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-plus-jakarta-sans" });
 
 const fontVars = [
   GeistSans.variable,
@@ -77,6 +87,11 @@ const fontVars = [
   tektur.variable,
   anta.variable,
   syne.variable,
+  monaSans.variable,
+  albertSans.variable,
+  fustat.variable,
+  nunitoSans.variable,
+  plusJakartaSans.variable,
 ].join(" ");
 
 export const metadata: Metadata = {
