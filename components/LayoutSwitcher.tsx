@@ -2,6 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/LogoMark";
+import { Chip } from "@/lib/design/primitives/Chip";
 
 export const ALL_LAYOUTS = ["E", "Z"] as const;
 export type Layout = (typeof ALL_LAYOUTS)[number];
@@ -14,7 +15,7 @@ export const layoutLabels: Record<Layout, string> = {
 export const INDEX_VIEWS = ["grid", "timeline"] as const;
 export type IndexView = (typeof INDEX_VIEWS)[number];
 
-export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple"] as const;
+export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip"] as const;
 export type NavStyle = (typeof NAV_STYLES)[number];
 
 export const SWITCHER_STYLES = ["text", "drag", "single", "toggle", "pill", "slash", "dot", "dash", "brackets", "ghost", "divider"] as const;
@@ -184,6 +185,98 @@ function SingleSwitcher({ active, onChange }: { active: Layout; onChange: (l: La
         {layoutLabels[other]}
       </span>
     </button>
+  );
+}
+
+// ─── Chip Nav (apple bar + sliding SURFACE thumb on active tab) ─
+
+function ChipNav({
+  active,
+  indexView,
+  onChange,
+  onIndexViewChange,
+  onLogoClick,
+}: {
+  active: Layout;
+  indexView: IndexView;
+  onChange: (l: Layout) => void;
+  onIndexViewChange: (v: IndexView) => void;
+  onLogoClick: () => void;
+}) {
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [thumb, setThumb] = useState({ left: 0, width: 0, ready: false });
+
+  const isScroll = active === "E";
+  const isGrid = active === "Z" && indexView === "grid";
+  const isTimeline = active === "Z" && indexView === "timeline";
+  const items = [
+    { label: "Scroll", isActive: isScroll, onClick: () => { if (active !== "E") onChange("E"); } },
+    { label: "Grid", isActive: isGrid, onClick: () => { if (active !== "Z") onChange("Z"); if (indexView !== "grid") onIndexViewChange("grid"); } },
+    { label: "Timeline", isActive: isTimeline, onClick: () => { if (active !== "Z") onChange("Z"); if (indexView !== "timeline") onIndexViewChange("timeline"); } },
+  ];
+  const activeIdx = items.findIndex((it) => it.isActive);
+
+  useLayoutEffect(() => {
+    const target = tabRefs.current[activeIdx];
+    const wrap = tabsRef.current;
+    if (!target || !wrap) return;
+    const measure = () => {
+      const t = tabRefs.current[activeIdx];
+      const w = tabsRef.current;
+      if (!t || !w) return;
+      setThumb({ left: t.offsetLeft, width: t.offsetWidth, ready: true });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrap);
+    tabRefs.current.forEach((el) => el && ro.observe(el));
+    return () => ro.disconnect();
+  }, [activeIdx]);
+
+  return (
+    <nav
+      className="fixed left-0 right-0 z-50 pointer-events-auto"
+      style={{ top: 0, background: "transparent" }}
+    >
+      <div className="mx-auto flex items-center" style={{ maxWidth: 1024, height: 48, paddingLeft: 24, paddingRight: 24 }}>
+        <Chip active onClick={onLogoClick} style={{ flex: "0 0 auto" }}>
+          Humanoid Index
+        </Chip>
+        <div className="flex-1 flex justify-center">
+          <div ref={tabsRef} className="relative flex items-center" style={{ gap: 4 }}>
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                left: thumb.left,
+                width: thumb.width,
+                background: "var(--c-surface)",
+                borderRadius: 999,
+                opacity: thumb.ready ? 1 : 0,
+                transition: thumb.ready
+                  ? "left 320ms cubic-bezier(0.22, 1, 0.36, 1), width 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease"
+                  : "opacity 200ms ease",
+                pointerEvents: "none",
+              }}
+            />
+            {items.map((it, i) => (
+              <Chip
+                key={it.label}
+                ref={(el) => { tabRefs.current[i] = el; }}
+                onClick={it.onClick}
+                style={{ position: "relative" }}
+              >
+                {it.label}
+              </Chip>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex: "0 0 auto", width: 32 }} />
+      </div>
+    </nav>
   );
 }
 
@@ -772,35 +865,34 @@ export function LayoutSwitcher({
         }}
       >
         <div className="mx-auto flex items-center" style={{ maxWidth: 1024, height: 40, paddingLeft: 24, paddingRight: 24 }}>
-          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 10 }}>
-            {mark}
-            <button
-              onClick={handleClick}
-              className="cursor-pointer"
-              style={{
-                background: "transparent",
-                border: "none",
-                padding: 0,
-                fontSize: 14,
-                fontWeight: 500,
-                color: "var(--c-ink)",
-                letterSpacing: "-0.02em",
-                lineHeight: 1,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Humanoid Index
-            </button>
-          </div>
+          <button
+            onClick={handleClick}
+            className="cursor-pointer"
+            style={{
+              flex: "0 0 auto",
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              fontSize: 13,
+              fontWeight: 400,
+              color: "var(--c-ink)",
+              letterSpacing: "-0.01em",
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Humanoid Index
+          </button>
           <div className="flex-1 flex items-center justify-center" style={{ gap: 36 }}>
             {appleItems.map((it) => (
               <button
                 key={it.label}
                 onClick={it.onClick}
-                className="text-[13px] cursor-pointer"
+                className="cursor-pointer"
                 style={{
-                  color: "var(--c-ink)",
+                  fontSize: 13,
                   fontWeight: 400,
+                  color: "var(--c-ink)",
                   letterSpacing: "-0.01em",
                   background: "transparent",
                   border: "none",
@@ -815,6 +907,19 @@ export function LayoutSwitcher({
           <div style={{ flex: "0 0 auto", width: 32 }} />
         </div>
       </nav>
+    );
+  }
+
+  // ── Style: chip — apple bar + sliding SURFACE thumb on active tab ──
+  else if (navStyle === "chip") {
+    navEl = (
+      <ChipNav
+        active={active}
+        indexView={indexView}
+        onChange={onChange}
+        onIndexViewChange={onIndexViewChange}
+        onLogoClick={handleClick}
+      />
     );
   }
 
