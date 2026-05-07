@@ -85,6 +85,7 @@ export const humanoids: Humanoid[] = [
     name: "K2",
     manufacturer: "Kepler Robotics",
     logoUrl: "/robots/Kepler-robotics.svg",
+    manufacturerUrl: "https://www.gotokepler.com",
     year: 2025,
     cost: "$30K",
     status: "Prototype",

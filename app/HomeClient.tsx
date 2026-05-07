@@ -131,7 +131,7 @@ function VideoSlide({ src, fit, position, playing, credit }: { src: string; fit:
         style={position ? { objectPosition: position } : undefined}
       />
       {credit && (
-        <div className="absolute bottom-2 left-3 z-[2] text-[11px] tracking-tight text-white/40 pointer-events-auto opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
+        <div className="absolute bottom-2 left-3 z-[2] text-[11px] tracking-tight text-white/40 pointer-events-auto">
           {credit.prefix && <span>{credit.prefix} </span>}
           {credit.href ? (
             <a
@@ -478,7 +478,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statsGap, setStatsGap] = useState(8);     // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(28);  // px
   // Stat-pill tuners
-  const [statPillRadius, setStatPillRadius] = useState(16);  // px — softer than cardRadius (28); full-round felt too tic-tac on short pills
+  const [statPillRadius, setStatPillRadius] = useState(12);  // px — softer than cardRadius (28); full-round felt too tic-tac on short pills
   const [statPillRadiusOpen, setStatPillRadiusOpen] = useState(14);  // px — tighter radius when a pill is expanded
   const [statPillGap, setStatPillGap] = useState(4);         // px — gap between pills
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
@@ -555,6 +555,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   } as const;
   type SplitButtonColor = keyof typeof SPLIT_BUTTON_COLORS;
   const [splitButtonColor, setSplitButtonColor] = useState<SplitButtonColor>("accent");
+  const [splitConsolidate, setSplitConsolidate] = useState(true); // Drop the standalone Status pill in single view and prepend its dot to the Buy pill's left side.
   const [actionHoverTint, setActionHoverTint] = useState<"none" | "charcoal" | "slate" | "stone">("none");
   const actionHoverColor = actionHoverTint === "slate" ? "#6B7280" : actionHoverTint === "stone" ? "#78716C" : "#52525B";
   const actionHoverPct = actionHoverTint === "none" ? "0%" : "10%";
@@ -997,7 +998,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   useEffect(() => {
     setSpinActive(false);
     setVideoPaused(false);
-  }, [springL.index, comparing]);
+    setGalleryIdx({});
+  }, [springL.index, springR.index, comparing]);
 
   // Auto-resume video when user changes slides — pause is per-current-view, not sticky
   useEffect(() => {
@@ -1563,6 +1565,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           const robotDesc = getRobotDescription(h);
           const pillBg = statPillBg;
           const pillBackdrop: string | undefined = undefined;
+          const statusColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : h.status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
           const useSplit = splitBlurb && blurbFloat && !!robotDesc.text;
           const blurbNode = blurbFloat && robotDesc.text && (() => {
                 const isExpanded = expandedBlurbs.has(h.id);
@@ -1657,12 +1660,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             if (empty && hideLabel) return false;
             return true;
           };
-          const lastVisibleKey = [...sections].reverse().find(isPillVisible)?.key;
-          const pillRadiusFor = (isLast: boolean, isOpen: boolean) => {
-            const top = isOpen ? statPillRadiusOpen : statPillRadius;
-            const bottom = isLast ? cardRadius : (isOpen ? statPillRadiusOpen : statPillRadius);
-            return `${top}px ${top}px ${bottom}px ${bottom}px`;
+          // Split variant consolidates the Status pill's dot/info into the Buy pill, so we
+          // also drop "status" from the layout calculations to keep fusion + last-pill
+          // anchoring correct.
+          const splitConsolidatesStatus = splitConsolidate && actionVariant === "split" && sections.some((s) => s.key === "purchase" && s.show);
+          const visibleKeys = sections.filter(isPillVisible).map((s) => s.key).filter((k) => !(splitConsolidatesStatus && k === "status"));
+          const lastVisibleKey = visibleKeys[visibleKeys.length - 1];
+          const pillRadiusFor = (_key: string, isOpen: boolean) => {
+            return isOpen ? statPillRadiusOpen : statPillRadius;
           };
+          // Single source of truth for pill row height. Action pills (with a button) used
+          // to be ~4px shorter than the standard pills; we match them on a tighter target
+          // close to the previous action-pill feel.
+          const pillRowHeight = statPillPadY * 2 + Math.round(pillLabelFontSize * 1.2);
           const pillsNode = (
               <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11, marginTop: blurbFloat && !useSplit ? "auto" : undefined }}>
                 {sections.map((s) => {
@@ -1670,6 +1680,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const empty = !s.show;
                   const hideLabel = s.key === "desc" && infoMode === "bare";
                   if (empty && hideLabel) return null;
+                  // Split variant consolidates Status into the Buy pill (colored dot prepended
+                  // to the price/label), so drop the standalone Status row in single view.
+                  if (splitConsolidatesStatus && s.key === "status") return null;
                   const isLast = s.key === lastVisibleKey;
                   const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
@@ -1679,7 +1692,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const actionAccent = isAction && actionVariant === "accent";
                   const actionDark = isAction && actionVariant === "dark";
                   const actionHairline = isAction && actionVariant === "hairline";
-                  const actionSplit = isAction && actionVariant === "split";
+                  // In split mode, always render the purchase pill via the split branch — even
+                  // with no URL — so the row math matches the URL'd version (otherwise the
+                  // fall-through to the standard pillEl produces a slightly taller row).
+                  const actionSplit = s.key === "purchase" && actionVariant === "split";
                   const actionLabelColor = actionAccent ? "var(--c-accent)" : pillLabelColor;
                   const actionPillBg = actionDark ? "#ECECEC" : pillBg;
                   const actionText = isAction ? ((s as { text?: string }).text ?? "") : "";
@@ -1707,39 +1723,53 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   }
                   // Split variant: Apple-style price text + accent "Buy" button inside one pill.
                   if (actionSplit) {
-                    const href = (s as any).href as string;
+                    const href = (s as any).href as string | undefined;
                     const price = (s as { price?: string }).price;
+                    const fallbackText = (s as { text?: string }).text ?? "";
                     const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
                     const ctaKind = (s as { ctaKind?: "buy" | "visit" }).ctaKind ?? "buy";
                     const ctaBg = ctaKind === "visit" ? "#E8E8ED" : SPLIT_BUTTON_COLORS[splitButtonColor];
                     const ctaColor = ctaKind === "visit" ? "#1d1d1f" : "#fff";
+                    const Outer = (href ? "a" : "div") as React.ElementType;
+                    const outerProps = href
+                      ? { href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
+                      : {};
+                    const labelText = price ?? (href ? " " : fallbackText);
+                    const labelColor = href ? pillLabelColor : "#c0c0c0";
                     return (
-                      <a
+                      <Outer
                         key={s.key}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="pill-button w-full"
+                        {...outerProps}
+                        className={href ? "pill-button w-full" : "w-full"}
                         style={{
                           ["--pill-bg" as string]: pillBg,
                           background: pillBg,
-                          borderRadius: pillRadiusFor(isLast, false),
-                          padding: `0 ${Math.max(0, statPillPadY - 6)}px 0 ${statPillPadX}px`,
+                          borderRadius: pillRadiusFor(s.key, false),
+                          padding: href
+                            ? `0 ${Math.max(0, statPillPadY - 6)}px 0 ${statPillPadX}px`
+                            : `0 ${statPillPadX}px`,
                           textDecoration: "none",
                           display: "block",
                           WebkitTapHighlightColor: "transparent",
                         }}
                       >
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${Math.max(0, statPillPadY - 6)}px 0`, gap: 8 }}>
-                          <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
-                            {price ?? " "}
+                        <div className="w-full flex items-center justify-between" style={{ minHeight: pillRowHeight, gap: 8 }}>
+                          <span className="inline-flex items-center" style={{ gap: 8, fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: labelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
+                            {splitConsolidatesStatus && h.status && (
+                              <span className="relative flex h-2 w-2 flex-shrink-0">
+                                {h.status === "In Production" && <span className="absolute inline-flex h-full w-full rounded-full animate-ping" style={{ background: statusColor, opacity: 0.4 }} />}
+                                <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: statusColor }} />
+                              </span>
+                            )}
+                            <span>{labelText}</span>
                           </span>
-                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: ctaBg, color: ctaColor, borderRadius: Math.max(8, statPillRadius - 6), padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2 }}>
-                            {cta}
-                          </span>
+                          {href && (
+                            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: ctaBg, color: ctaColor, borderRadius: Math.max(8, statPillRadius - 6), padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2 }}>
+                              {cta}
+                            </span>
+                          )}
                         </div>
-                      </a>
+                      </Outer>
                     );
                   }
                   const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
@@ -1756,7 +1786,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         backdropFilter: s.key === "desc" ? undefined : pillBackdrop,
                         WebkitBackdropFilter: s.key === "desc" ? undefined : pillBackdrop,
                         border: "none",
-                        borderRadius: pillRadiusFor(isLast, isOpen),
+                        borderRadius: pillRadiusFor(s.key, isOpen),
                         padding: `0 ${statPillPadX}px`,
                         overflow: s.key === "desc" ? "visible" : "hidden",
                         cursor: (isLink || interactive) ? "pointer" : "default",
@@ -1775,13 +1805,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           style={{
                             position: "absolute",
                             inset: 0,
-                            borderRadius: pillRadiusFor(isLast, isOpen),
+                            borderRadius: pillRadiusFor(s.key, isOpen),
                             pointerEvents: "none",
                           }}
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: actionLabelColor }}>
+                        <div className="w-full flex items-center justify-between" style={{ minHeight: pillRowHeight, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: actionLabelColor }}>
                           {actionAccent ? (
                             <span className="inline-flex items-center" style={{ gap: 6, color: actionLabelColor, fontSize: pillLabelFontSize, lineHeight: 1.2 }}>
                               <span aria-hidden style={{ fontSize: pillLabelFontSize, opacity: 0.85 }}>↗</span>
@@ -2129,10 +2159,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             return true;
           };
           const lastVisibleKey = [...sections].reverse().find(isPillVisible)?.key;
-          const pillRadiusFor = (isLast: boolean, isOpen: boolean) => {
-            const top = isOpen ? statPillRadiusOpen : statPillRadius;
-            const bottom = isLast ? cardRadius : (isOpen ? statPillRadiusOpen : statPillRadius);
-            return `${top}px ${top}px ${bottom}px ${bottom}px`;
+          const pillRadiusFor = (_isLast: boolean, isOpen: boolean) => {
+            return isOpen ? statPillRadiusOpen : statPillRadius;
           };
 
           return (
@@ -2292,7 +2320,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const actionAccent = isAction && actionVariant === "accent";
                   const actionDark = isAction && actionVariant === "dark";
                   const actionHairline = isAction && actionVariant === "hairline";
-                  const actionSplit = isAction && actionVariant === "split";
+                  // In split mode, always render the purchase pill via the split branch — even
+                  // with no URL — so the row math matches the URL'd version (otherwise the
+                  // fall-through to the standard pillEl produces a slightly taller row).
+                  const actionSplit = s.key === "purchase" && actionVariant === "split";
                   const actionLabelColor = actionAccent ? "var(--c-accent)" : pillLabelColor;
                   const actionPillBg = actionDark ? "#ECECEC" : pillBg;
                   const actionText = isAction ? ((s as { text?: string }).text ?? "") : "";
@@ -2519,7 +2550,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     background: mCurrentIsVideo
                       ? "linear-gradient(to bottom, transparent, rgba(0,0,0,0.7))"
                       : "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))",
-                    transition: "background 320ms ease",
                   }}
                 >
                   <div className="flex gap-1.5">
@@ -3313,6 +3343,18 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ))}
               </div>
             </div>
+            {actionVariant === "split" && (
+              <div className="flex items-center gap-2">
+                <label className="text-[12px] text-neutral-500 flex-1">Consolidate Status into Buy pill</label>
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${splitConsolidate ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+                  onClick={() => setSplitConsolidate(!splitConsolidate)}
+                >
+                  {splitConsolidate ? "On" : "Off"}
+                </button>
+              </div>
+            )}
             {actionVariant === "split" && (
               <div>
                 <label className="text-[12px] text-neutral-500 mb-1.5 block">Buy button color</label>
