@@ -106,6 +106,51 @@ function useIsMobile() {
   return isMobile;
 }
 
+function VideoSlide({ src, fit, position, playing, credit }: { src: string; fit: "contain" | "cover"; position?: string; playing: boolean; credit?: { prefix?: string; name: string; href?: string } }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    if (playing) {
+      v.play().catch(() => {});
+    } else {
+      v.pause();
+    }
+  }, [playing]);
+  return (
+    <>
+      <video
+        ref={ref}
+        key={src}
+        src={src}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        className={fit === "cover" ? "w-full h-full object-cover" : "w-full h-full object-contain"}
+        style={position ? { objectPosition: position } : undefined}
+      />
+      {credit && (
+        <div className="absolute bottom-2 left-3 z-[2] text-[11px] tracking-tight text-white/40 pointer-events-auto opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
+          {credit.prefix && <span>{credit.prefix} </span>}
+          {credit.href ? (
+            <a
+              href={credit.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/55 hover:text-white/85 transition-colors"
+            >
+              {credit.name}
+            </a>
+          ) : (
+            <span>{credit.name}</span>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 
 
 
@@ -334,6 +379,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const spinAnimatingRef = useRef(false);
   const [spinPlaying, setSpinPlaying] = useState(false);
   const [spinExiting, setSpinExiting] = useState(false);
+  const [videoPaused, setVideoPaused] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
@@ -432,7 +478,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statsGap, setStatsGap] = useState(8);     // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(28);  // px
   // Stat-pill tuners
-  const [statPillRadius, setStatPillRadius] = useState(28);  // px — matches cardRadius so pills sit flush with card corners
+  const [statPillRadius, setStatPillRadius] = useState(16);  // px — softer than cardRadius (28); full-round felt too tic-tac on short pills
   const [statPillRadiusOpen, setStatPillRadiusOpen] = useState(14);  // px — tighter radius when a pill is expanded
   const [statPillGap, setStatPillGap] = useState(4);         // px — gap between pills
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
@@ -950,7 +996,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // Drop spin viewer when the active humanoid changes or compare mode toggles
   useEffect(() => {
     setSpinActive(false);
+    setVideoPaused(false);
   }, [springL.index, comparing]);
+
+  // Auto-resume video when user changes slides — pause is per-current-view, not sticky
+  useEffect(() => {
+    setVideoPaused(false);
+  }, [galleryIdx]);
 
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
@@ -1468,17 +1520,31 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             // Sunday Memo isn't for sale — the founding-family beta is the only way in,
             // so the cost pill becomes a link to their beta program instead of a price.
             const isSundayBeta = h.manufacturer === "Sunday Robotics";
-            const href = isSundayBeta ? "https://www.sunday.ai/beta-program" : (h.purchaseUrl || undefined);
+            const buyHref = isSundayBeta ? "https://www.sunday.ai/beta-program" : (h.purchaseUrl || undefined);
+            const visitHref = !buyHref ? (h.infoUrl || h.manufacturerUrl) : undefined;
+            const href = buyHref || visitHref;
             const hasCost = h.cost && h.cost !== "N/A";
             const hasUrl = !!href;
-            const text = isSundayBeta ? "Apply to the 2026 Beta" : (hasCost ? h.cost! : (hasUrl ? "Buy" : "Not for sale"));
+            const ctaKind: "buy" | "visit" = buyHref ? "buy" : "visit";
+            const ctaText = isSundayBeta ? "Apply" : (ctaKind === "buy" ? "Buy" : "Visit");
+            const availabilityLabel: string | undefined = (
+              h.availability === "enterprise" ? "Enterprise only" :
+              h.availability === "research" ? "Research only" :
+              h.availability === "discontinued" ? "Discontinued" :
+              h.availability === "prototype" ? "Not yet for sale" :
+              undefined
+            );
+            // Left-side text in split mode: price first, then availability label, then nothing.
+            const leftLabel = hasCost ? h.cost! : availabilityLabel;
+            const text = isSundayBeta ? "Apply to the 2026 Beta" : (hasCost ? h.cost! : (availabilityLabel ?? (hasUrl ? ctaText : "Not for sale")));
             return {
               key: "purchase",
               show: true,
               href,
               text,
-              price: hasCost ? h.cost! : undefined,
-              ctaText: isSundayBeta ? "Apply" : "Buy",
+              price: leftLabel,
+              ctaText,
+              ctaKind,
               label: (
                 <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: hasUrl ? pillLabelColor : "#c0c0c0", textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>{text}</p>
               ),
@@ -1581,6 +1647,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   {h.id.startsWith("legend") && <span className="flex-shrink-0 text-[12px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
                 </div>
               );
+          // The last visible pill in the column should anchor to the card's bottom corners
+          // (cardRadius), keeping its top corners on the smaller statPillRadius rhythm.
+          // Computed once so every variant (pill/split/etc.) can share the formula.
+          const isPillVisible = (s: typeof sections[number]) => {
+            if (blurbFloat && s.key === "desc") return false;
+            const empty = !s.show;
+            const hideLabel = s.key === "desc" && infoMode === "bare";
+            if (empty && hideLabel) return false;
+            return true;
+          };
+          const lastVisibleKey = [...sections].reverse().find(isPillVisible)?.key;
+          const pillRadiusFor = (isLast: boolean, isOpen: boolean) => {
+            const top = isOpen ? statPillRadiusOpen : statPillRadius;
+            const bottom = isLast ? cardRadius : (isOpen ? statPillRadiusOpen : statPillRadius);
+            return `${top}px ${top}px ${bottom}px ${bottom}px`;
+          };
           const pillsNode = (
               <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11, marginTop: blurbFloat && !useSplit ? "auto" : undefined }}>
                 {sections.map((s) => {
@@ -1588,6 +1670,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const empty = !s.show;
                   const hideLabel = s.key === "desc" && infoMode === "bare";
                   if (empty && hideLabel) return null;
+                  const isLast = s.key === lastVisibleKey;
                   const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
@@ -1627,6 +1710,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     const href = (s as any).href as string;
                     const price = (s as { price?: string }).price;
                     const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
+                    const ctaKind = (s as { ctaKind?: "buy" | "visit" }).ctaKind ?? "buy";
+                    const ctaBg = ctaKind === "visit" ? "#E8E8ED" : SPLIT_BUTTON_COLORS[splitButtonColor];
+                    const ctaColor = ctaKind === "visit" ? "#1d1d1f" : "#fff";
                     return (
                       <a
                         key={s.key}
@@ -1638,18 +1724,18 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         style={{
                           ["--pill-bg" as string]: pillBg,
                           background: pillBg,
-                          borderRadius: statPillRadius,
-                          padding: `0 ${statPillPadX}px`,
+                          borderRadius: pillRadiusFor(isLast, false),
+                          padding: `0 ${Math.max(0, statPillPadY - 6)}px 0 ${statPillPadX}px`,
                           textDecoration: "none",
                           display: "block",
                           WebkitTapHighlightColor: "transparent",
                         }}
                       >
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, gap: 8 }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${Math.max(0, statPillPadY - 6)}px 0`, gap: 8 }}>
                           <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
                             {price ?? " "}
                           </span>
-                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: SPLIT_BUTTON_COLORS[splitButtonColor], color: "#fff", borderRadius: 999, padding: "4px 12px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.4 }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: ctaBg, color: ctaColor, borderRadius: Math.max(8, statPillRadius - 6), padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2 }}>
                             {cta}
                           </span>
                         </div>
@@ -1670,7 +1756,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         backdropFilter: s.key === "desc" ? undefined : pillBackdrop,
                         WebkitBackdropFilter: s.key === "desc" ? undefined : pillBackdrop,
                         border: "none",
-                        borderRadius: isOpen ? statPillRadiusOpen : statPillRadius,
+                        borderRadius: pillRadiusFor(isLast, isOpen),
                         padding: `0 ${statPillPadX}px`,
                         overflow: s.key === "desc" ? "visible" : "hidden",
                         cursor: (isLink || interactive) ? "pointer" : "default",
@@ -1689,7 +1775,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           style={{
                             position: "absolute",
                             inset: 0,
-                            borderRadius: isOpen ? statPillRadiusOpen : statPillRadius,
+                            borderRadius: pillRadiusFor(isLast, isOpen),
                             pointerEvents: "none",
                           }}
                         />
@@ -2035,6 +2121,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           );
 
+          const isPillVisible = (s: typeof sections[number]) => {
+            if (blurbFloat && s.key === "desc") return false;
+            const empty = !s.show;
+            const hideLabel = s.key === "desc" && infoMode === "bare";
+            if (empty && hideLabel) return false;
+            return true;
+          };
+          const lastVisibleKey = [...sections].reverse().find(isPillVisible)?.key;
+          const pillRadiusFor = (isLast: boolean, isOpen: boolean) => {
+            const top = isOpen ? statPillRadiusOpen : statPillRadius;
+            const bottom = isLast ? cardRadius : (isOpen ? statPillRadiusOpen : statPillRadius);
+            return `${top}px ${top}px ${bottom}px ${bottom}px`;
+          };
+
           return (
             <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
               {blurbFloat && (() => {
@@ -2183,6 +2283,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const empty = !s.show;
                   const hideLabel = s.key === "desc" && infoMode === "bare";
                   if (empty && hideLabel) return null;
+                  const isLast = s.key === lastVisibleKey;
                   const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
@@ -2222,6 +2323,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     const href = (s as any).href as string;
                     const price = (s as { price?: string }).price;
                     const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
+                    const ctaKind = (s as { ctaKind?: "buy" | "visit" }).ctaKind ?? "buy";
+                    const ctaBg = ctaKind === "visit" ? "#E8E8ED" : SPLIT_BUTTON_COLORS[splitButtonColor];
+                    const ctaColor = ctaKind === "visit" ? "#1d1d1f" : "#fff";
                     return (
                       <a
                         key={s.key}
@@ -2233,18 +2337,18 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         style={{
                           ["--pill-bg" as string]: pillBg,
                           background: pillBg,
-                          borderRadius: statPillRadius,
-                          padding: `0 ${statPillPadX}px`,
+                          borderRadius: pillRadiusFor(isLast, false),
+                          padding: `0 ${Math.max(0, statPillPadY - 6)}px 0 ${statPillPadX}px`,
                           textDecoration: "none",
                           display: "block",
                           WebkitTapHighlightColor: "transparent",
                         }}
                       >
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, gap: 8 }}>
+                        <div className="w-full flex items-center justify-between" style={{ padding: `${Math.max(0, statPillPadY - 6)}px 0`, gap: 8 }}>
                           <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
                             {price ?? " "}
                           </span>
-                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: SPLIT_BUTTON_COLORS[splitButtonColor], color: "#fff", borderRadius: 999, padding: "4px 12px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.4 }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: ctaBg, color: ctaColor, borderRadius: Math.max(8, statPillRadius - 6), padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2 }}>
                             {cta}
                           </span>
                         </div>
@@ -2265,7 +2369,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         backdropFilter: s.key === "desc" ? undefined : pillBackdrop,
                         WebkitBackdropFilter: s.key === "desc" ? undefined : pillBackdrop,
                         border: "none",
-                        borderRadius: isOpen ? statPillRadiusOpen : statPillRadius,
+                        borderRadius: pillRadiusFor(isLast, isOpen),
                         padding: `0 ${statPillPadX}px`,
                         overflow: s.key === "desc" ? "visible" : "hidden",
                         cursor: (isLink || interactive) ? "pointer" : "default",
@@ -2284,7 +2388,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           style={{
                             position: "absolute",
                             inset: 0,
-                            borderRadius: isOpen ? statPillRadiusOpen : statPillRadius,
+                            borderRadius: pillRadiusFor(isLast, isOpen),
                             pointerEvents: "none",
                           }}
                         />
@@ -2342,12 +2446,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         };
 
         const renderMedia = (mh: typeof humanoids[0], mIdx: number, markPriority: boolean) => {
-          const mGallery = mh.media?.filter((m) => m.type === "image") || [];
-          const mItems: { src: string; position?: string; fit?: "contain" | "cover" }[] = [];
-          if (mh.imageUrl) mItems.push({ src: mh.imageUrl, position: mh.imagePosition, fit: mh.imageFit });
-          for (const m of mGallery) mItems.push({ src: m.url, position: m.position ?? mh.imagePosition, fit: m.fit ?? mh.imageFit });
+          const mGallery = mh.media || [];
+          const mItems: { kind: "image" | "video"; src: string; position?: string; fit?: "contain" | "cover"; credit?: { prefix?: string; name: string; href?: string } }[] = [];
+          if (mh.imageUrl) mItems.push({ kind: "image", src: mh.imageUrl, position: mh.imagePosition, fit: mh.imageFit });
+          for (const m of mGallery) mItems.push({ kind: m.type, src: m.url, position: m.position ?? mh.imagePosition, fit: m.fit ?? mh.imageFit, credit: m.credit });
           const mHasGallery = mItems.length > 1;
           const mCurrent = galleryIdx[mIdx] || 0;
+          const mCurrentIsVideo = mItems[mCurrent]?.kind === "video";
 
           const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
             const el = e.currentTarget;
@@ -2383,12 +2488,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ) : mItems.length > 0 ? mItems.map((item, i) => {
                   const isCover = item.fit === "cover";
                   const isBottom = !!item.position?.includes("bottom");
+                  const isVideo = item.kind === "video";
                   return (
-                    <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: isCover ? 0 : isBottom ? "24px 24px 0 24px" : 24 }}>
+                    <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: isVideo || isCover ? 0 : isBottom ? "24px 24px 0 24px" : 24, background: isVideo ? "#000000" : undefined }}>
                       <div className="relative w-full h-full">
-                        {/* key={src} forces remount on humanoid swap — without it, next/image's reused <img> can paint one frame without object-fit during fast scroll, flashing the image at natural size cropped to the box. */}
-                        <Image key={item.src} src={item.src} alt={`${mh.name} ${i + 1}`} fill className={isCover ? "object-cover" : "object-contain"} style={item.position ? { objectPosition: item.position } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
-                        {isBottom && (
+                        {isVideo ? (
+                          <VideoSlide src={item.src} fit={isCover ? "cover" : "contain"} position={item.position} playing={i === mCurrent && !videoPaused} credit={item.credit} />
+                        ) : (
+                          /* key={src} forces remount on humanoid swap — without it, next/image's reused <img> can paint one frame without object-fit during fast scroll, flashing the image at natural size cropped to the box. */
+                          <Image key={item.src} src={item.src} alt={`${mh.name} ${i + 1}`} fill className={isCover ? "object-cover" : "object-contain"} style={item.position ? { objectPosition: item.position } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
+                        )}
+                        {isBottom && !isVideo && (
                           <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]" style={{ height: bottomFadeH, background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))` }} />
                         )}
                       </div>
@@ -2404,7 +2514,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               {mHasGallery && (
                 <div
                   className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
-                  style={{ height: 28, background: "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))" }}
+                  style={{
+                    height: 28,
+                    background: mCurrentIsVideo
+                      ? "linear-gradient(to bottom, transparent, rgba(0,0,0,0.7))"
+                      : "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))",
+                    transition: "background 320ms ease",
+                  }}
                 >
                   <div className="flex gap-1.5">
                     {mItems.map((_, i) => (
@@ -2412,7 +2528,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         width: 5,
                         height: 5,
                         borderRadius: "50%",
-                        background: i === mCurrent ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)",
+                        background: mCurrentIsVideo
+                          ? (i === mCurrent ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)")
+                          : (i === mCurrent ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)"),
                         transition: "background 0.2s ease",
                       }} />
                     ))}
@@ -2451,10 +2569,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         };
 
         const renderRobot = (h: typeof humanoids[0], _dist: number, hIdx: number, isFirst: boolean) => {
-          const gallery = h.media?.filter((m) => m.type === "image") || [];
+          const gallery = h.media || [];
           const allImages = [h.imageUrl, ...gallery.map((m) => m.url)].filter(Boolean) as string[];
+          const allKinds: ("image" | "video")[] = [
+            ...(h.imageUrl ? ["image" as const] : []),
+            ...gallery.map((m) => m.type),
+          ];
           const hasGallery = allImages.length > 1;
           const currentImg = galleryIdx[hIdx] || 0;
+          const currentIsVideo = allKinds[currentImg] === "video";
 
           const scrollGallery = (idx: number) => {
             const el = galleryScrollRefs.current[hIdx];
@@ -2533,7 +2656,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       onShareView?.();
                     }}
                     aria-label="Copy link"
-                    className="absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-neutral-500 transition-all duration-200 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md opacity-0 group-hover/card:opacity-100"
+                    className={`absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 opacity-0 group-hover/card:opacity-100 ${
+                      currentIsVideo
+                        ? "text-white/70 hover:text-white hover:bg-white/15"
+                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
+                    }`}
                   >
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -2597,6 +2724,23 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     }`}
                   >
                     <Box width={17} height={17} strokeWidth={1.75} />
+                  </button>
+                )}
+                {/* Video play/pause — appears when on a video slide; lives in the bottom-right cluster */}
+                {isFirst && !comparing && currentIsVideo && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setVideoPaused((p) => !p);
+                    }}
+                    aria-label={videoPaused ? "Play video" : "Pause video"}
+                    className="absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-white/70 transition-all duration-200 hover:text-white hover:bg-white/15 opacity-0 group-hover/card:opacity-100"
+                  >
+                    {videoPaused ? (
+                      <Play width={17} height={17} strokeWidth={1.75} />
+                    ) : (
+                      <Pause width={17} height={17} strokeWidth={1.75} />
+                    )}
                   </button>
                 )}
               </div>

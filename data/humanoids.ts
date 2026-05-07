@@ -1,10 +1,11 @@
 export interface MediaItem {
   type: 'image' | 'video';
-  url: string; // For images: path to file, For videos: YouTube video ID
+  url: string; // For images: path to file, For videos: path to MP4
   caption?: string;
   thumbnail?: string; // For videos, preview image
   position?: string; // CSS object-position override for this slide (falls back to humanoid-level)
   fit?: "contain" | "cover"; // CSS object-fit override for this slide
+  credit?: { prefix?: string; name: string; href?: string }; // Source attribution rendered on the slide
 }
 
 export interface Humanoid {
@@ -14,6 +15,7 @@ export interface Humanoid {
   year?: number;
   cost?: string; // Cost in a displayable format (e.g., "$50K", "$150K", "N/A")
   status?: "In Production" | "Prototype" | "Concept" | "Discontinued" | "Anticipated";
+  availability?: "consumer" | "enterprise" | "research" | "prototype" | "discontinued"; // Drives the left-side label when there's no price (Enterprise only / Research only / etc.)
   height?: number; // in cm
   weight?: number; // in kg
   dof?: number; // degrees of freedom
@@ -23,7 +25,8 @@ export interface Humanoid {
   imagePosition?: string; // CSS object-position override (default: "center")
   imageFit?: "contain" | "cover"; // CSS object-fit override (default: "contain")
   logoUrl?: string; // Company logo
-  manufacturerUrl?: string; // Company website
+  manufacturerUrl?: string; // Company website (generic homepage)
+  infoUrl?: string; // Specific product/info page — preferred Visit target when not for sale
   media?: MediaItem[]; // Additional images and videos
   purchaseUrl?: string; // Link to buy/learn more about the robot
   sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
@@ -60,6 +63,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "14",
     name: "Oli",
+    infoUrl: "https://www.limxdynamics.com/en/products/oli",
     manufacturer: "LimX Dynamics",
     imageUrl: "/robots/oli.png",
     logoUrl: "/robots/Limx.svg",
@@ -73,6 +77,7 @@ export const humanoids: Humanoid[] = [
     media: [
       { type: 'image', url: '/robots/oli-side.png', caption: 'Side profile' },
       { type: 'image', url: '/robots/oli-wave.webp', caption: 'Waving', position: 'bottom' },
+      { type: 'video', url: '/robots/oli-guanjie.mp4', caption: 'Joints', fit: 'cover', position: 'bottom', credit: { prefix: 'via', name: 'LimX Dynamics', href: 'https://www.limxdynamics.com/en/products/oli' } },
     ],
   },
   {
@@ -93,6 +98,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "1",
     name: "Optimus Gen 2",
+    availability: "prototype",
     manufacturer: "Tesla",
     imageUrl: "/robots/optimus-HD.png",
     logoUrl: "/robots/Tesla-logo.png",
@@ -112,6 +118,7 @@ export const humanoids: Humanoid[] = [
     manufacturer: "Boston Dynamics",
     logoUrl: "/robots/Boston_Dynamics-logo.svg",
     manufacturerUrl: "https://www.bostondynamics.com",
+    infoUrl: "https://bostondynamics.com/products/atlas/",
     imageUrl: "/robots/atlas.png",
     year: 2024,
     cost: "N/A",
@@ -129,9 +136,10 @@ export const humanoids: Humanoid[] = [
     manufacturer: "1X Technologies",
     logoUrl: "/robots/1x-nofill.svg",
     manufacturerUrl: "https://www.1x.tech",
+    infoUrl: "https://www.1x.tech/discover/neo-home-robot",
     imageUrl: "/robots/neo.png",
     year: 2024,
-    cost: "N/A",
+    cost: "$20K",
     status: "Prototype",
     height: 165,
     weight: 30,
@@ -143,6 +151,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "7",
     name: "Figure 02",
+    availability: "enterprise",
     manufacturer: "Figure AI",
     logoUrl: "/robots/Figure-ai.svg",
     imageUrl: "/robots/figure.png",
@@ -157,6 +166,8 @@ export const humanoids: Humanoid[] = [
   {
     id: "8",
     name: "Phoenix",
+    availability: "enterprise",
+    infoUrl: "https://www.sanctuary.ai/blog/sanctuary-ai-unveils-phoenix-a-humanoid-general-purpose-robot-designed-for-work",
     manufacturer: "Sanctuary AI",
     logoUrl: "/robots/Sanctuary.png",
     year: 2024,
@@ -171,6 +182,8 @@ export const humanoids: Humanoid[] = [
   {
     id: "10",
     name: "Apollo",
+    availability: "enterprise",
+    infoUrl: "https://apptronik.com/apollo",
     manufacturer: "Apptronik",
     logoUrl: "/robots/Apptronik.png",
     imageUrl: "/robots/apollo.png",
@@ -197,11 +210,12 @@ export const humanoids: Humanoid[] = [
     dof: 23,
     maxSpeed: 2.0,
     description: "Compact, affordable humanoid with advanced mobility for research and commercial use.",
-    purchaseUrl: "https://shop.unitree.com/",
+    purchaseUrl: "https://shop.unitree.com/products/unitree-g1",
   },
   {
     id: "12",
     name: "H1",
+    infoUrl: "https://www.unitree.com/h1/",
     manufacturer: "Unitree",
     logoUrl: "/robots/Unitree-logo.svg",
     manufacturerUrl: "https://www.unitree.com",
@@ -218,6 +232,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "15",
     name: "Astribot S1",
+    availability: "enterprise",
     manufacturer: "Astribot",
     imageUrl: "/robots/s1.png",
     logoUrl: "/robots/Astribot.png",
@@ -232,6 +247,8 @@ export const humanoids: Humanoid[] = [
   {
     id: "17",
     name: "Tiangong",
+    availability: "research",
+    infoUrl: "https://x-humanoid.com/bt.html",
     manufacturer: "Beijing Humanoid Robot Center",
     logoUrl: "/robots/Beijing-humanoid-robot-center.png",
     year: 2024,
@@ -247,6 +264,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "18",
     name: "Menteebot",
+    availability: "prototype",
     manufacturer: "Mentee Robotics",
     logoUrl: "/robots/Mentee-robotics.png",
     manufacturerUrl: "https://www.menteebot.com",
@@ -262,6 +280,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "5",
     name: "Digit",
+    infoUrl: "https://agilityrobotics.com/products/digit",
     manufacturer: "Agility Robotics",
     logoUrl: "/robots/Agility2.svg",
     manufacturerUrl: "https://www.agilityrobotics.com",
@@ -278,6 +297,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "9",
     name: "Walker X",
+    infoUrl: "https://www.ubtrobot.com/en/humanoid/products/walker-x",
     manufacturer: "Ubtech",
     logoUrl: "/robots/Ubtech.png",
     year: 2023,
@@ -293,6 +313,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "13",
     name: "GR-1",
+    infoUrl: "https://www.fftai.com/products-gr1",
     manufacturer: "Fourier Intelligence",
     logoUrl: "/robots/Fourier.png",
     imageUrl: "/robots/gr1-front.png",
@@ -312,6 +333,8 @@ export const humanoids: Humanoid[] = [
   {
     id: "19",
     name: "Eve",
+    availability: "enterprise",
+    infoUrl: "https://www.1x.tech/eve",
     manufacturer: "1X Technologies",
     logoUrl: "/robots/1x-nofill.svg",
     manufacturerUrl: "https://www.1x.tech",
@@ -328,6 +351,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "20",
     name: "Ameca",
+    infoUrl: "https://engineeredarts.com/robot/ameca/",
     manufacturer: "Engineered Arts",
     logoUrl: "/robots/Engineered-arts.svg",
     year: 2021,
@@ -346,6 +370,8 @@ export const humanoids: Humanoid[] = [
   {
     id: "23",
     name: "Armar-6",
+    availability: "research",
+    infoUrl: "https://h2t.iar.kit.edu/english/397.php",
     manufacturer: "KIT",
     logoUrl: "/robots/KIT.png",
     imageUrl: "/robots/armar-6.png",
@@ -362,6 +388,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "24",
     name: "Talos",
+    infoUrl: "https://pal-robotics.com/robot/talos/",
     manufacturer: "PAL Robotics",
     logoUrl: "/robots/PAL.svg",
     manufacturerUrl: "https://pal-robotics.com",
@@ -379,6 +406,8 @@ export const humanoids: Humanoid[] = [
   {
     id: "legend-2",
     name: "Sophia",
+    availability: "research",
+    infoUrl: "https://www.hansonrobotics.com/sophia/",
     manufacturer: "Hanson Robotics",
     logoUrl: "/robots/Hanson-robotics.png",
     imageUrl: "/robots/sophia.png",
@@ -391,6 +420,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "21",
     name: "Pepper",
+    infoUrl: "https://us.softbankrobotics.com/pepper",
     manufacturer: "SoftBank Robotics",
     logoUrl: "/robots/Softbank-robotics.svg",
     imageUrl: "/robots/pepper.png",
@@ -406,6 +436,8 @@ export const humanoids: Humanoid[] = [
   {
     id: "26",
     name: "Hydraulic Atlas",
+    availability: "discontinued",
+    infoUrl: "https://bostondynamics.com/blog/electric-new-era-for-atlas/",
     manufacturer: "Boston Dynamics",
     logoUrl: "/robots/Boston_Dynamics-logo.svg",
     manufacturerUrl: "https://www.bostondynamics.com",
@@ -432,6 +464,7 @@ export const humanoids: Humanoid[] = [
   {
     id: "25",
     name: "Roboy",
+    availability: "research",
     manufacturer: "Devanthro",
     logoUrl: "/robots/Devanthro.png",
     imageUrl: "/robots/roboy.png",
@@ -447,6 +480,8 @@ export const humanoids: Humanoid[] = [
   {
     id: "legend-1",
     name: "ASIMO",
+    availability: "discontinued",
+    infoUrl: "https://global.honda/en/robotics/asimo/",
     manufacturer: "Honda",
     logoUrl: "/robots/Honda.svg",
     imageUrl: "/robots/asimo.png",
