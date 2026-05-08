@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
+import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from "react";
 import { Toaster, toast } from "sonner";
 import { Box, Pause, Play } from "lucide-react";
 import { humanoids } from "@/data/humanoids";
@@ -152,8 +152,157 @@ function VideoSlide({ src, fit, position, playing, credit }: { src: string; fit:
   );
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Gallery pubsub — per-card image-index updates stay local so
+// swiping inside a gallery doesn't repaint Browse.
+// ═══════════════════════════════════════════════════════════════
+type GallerySubscribe = (mIdx: number, cb: (idx: number) => void) => () => void;
+type GalleryRead = (mIdx: number) => number;
 
+function useGalleryIdx(mIdx: number, subscribe: GallerySubscribe, read: GalleryRead) {
+  const [idx, setIdx] = useState(() => read(mIdx));
+  useEffect(() => {
+    setIdx(read(mIdx));
+    return subscribe(mIdx, setIdx);
+  }, [mIdx, subscribe, read]);
+  return idx;
+}
 
+function GalleryDots({ mIdx, count, isVideoOn, subscribe, read }: {
+  mIdx: number;
+  count: number;
+  isVideoOn: (i: number) => boolean;
+  subscribe: GallerySubscribe;
+  read: GalleryRead;
+}) {
+  const current = useGalleryIdx(mIdx, subscribe, read);
+  const currentIsVideo = isVideoOn(current);
+  return (
+    <div
+      className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
+      style={{
+        height: 28,
+        background: currentIsVideo
+          ? "linear-gradient(to bottom, transparent, rgba(0,0,0,0.7))"
+          : "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))",
+      }}
+    >
+      <div className="flex gap-1.5">
+        {Array.from({ length: count }, (_, i) => (
+          <div key={i} style={{
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: currentIsVideo
+              ? (i === current ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)")
+              : (i === current ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)"),
+            transition: "background 0.2s ease",
+          }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GalleryArrows({ mIdx, count, scroll, subscribe, read }: {
+  mIdx: number;
+  count: number;
+  scroll: (idx: number) => void;
+  subscribe: GallerySubscribe;
+  read: GalleryRead;
+}) {
+  const current = useGalleryIdx(mIdx, subscribe, read);
+  return (
+    <>
+      {current > 0 && (
+        <button
+          className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[5]"
+          style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
+          onClick={(e) => { e.stopPropagation(); scroll(current - 1); }}
+        >
+          <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,1.5 2,5 6,8.5" /></svg>
+        </button>
+      )}
+      {current < count - 1 && (
+        <button
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[5]"
+          style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
+          onClick={(e) => { e.stopPropagation(); scroll(current + 1); }}
+        >
+          <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,1.5 6,5 2,8.5" /></svg>
+        </button>
+      )}
+    </>
+  );
+}
+
+function GalleryVideoSlide({ mIdx, slideIdx, videoPaused, subscribe, read, src, fit, position, credit }: {
+  mIdx: number;
+  slideIdx: number;
+  videoPaused: boolean;
+  subscribe: GallerySubscribe;
+  read: GalleryRead;
+  src: string;
+  fit: "contain" | "cover";
+  position?: string;
+  credit?: { prefix?: string; name: string; href?: string };
+}) {
+  const current = useGalleryIdx(mIdx, subscribe, read);
+  return <VideoSlide src={src} fit={fit} position={position} playing={slideIdx === current && !videoPaused} credit={credit} />;
+}
+
+function GalleryShareButton({ mIdx, allKinds, subscribe, read, onClick }: {
+  mIdx: number;
+  allKinds: ("image" | "video")[];
+  subscribe: GallerySubscribe;
+  read: GalleryRead;
+  onClick: () => void;
+}) {
+  const current = useGalleryIdx(mIdx, subscribe, read);
+  const currentIsVideo = allKinds[current] === "video";
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      aria-label="Copy link"
+      className={`absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 opacity-0 group-hover/card:opacity-100 ${
+        currentIsVideo
+          ? "text-white/70 hover:text-white hover:bg-white/15"
+          : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
+      }`}
+    >
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      </svg>
+    </button>
+  );
+}
+
+function GalleryVideoPauseButton({ mIdx, allKinds, subscribe, read, videoPaused, onToggle }: {
+  mIdx: number;
+  allKinds: ("image" | "video")[];
+  subscribe: GallerySubscribe;
+  read: GalleryRead;
+  videoPaused: boolean;
+  onToggle: () => void;
+}) {
+  const current = useGalleryIdx(mIdx, subscribe, read);
+  const currentIsVideo = allKinds[current] === "video";
+  if (!currentIsVideo) return null;
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      aria-label={videoPaused ? "Play video" : "Pause video"}
+      className="absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-white/70 transition-all duration-200 hover:text-white hover:bg-white/15 opacity-0 group-hover/card:opacity-100"
+    >
+      {videoPaused ? (
+        <Play width={17} height={17} strokeWidth={1.75} />
+      ) : (
+        <Pause width={17} height={17} strokeWidth={1.75} />
+      )}
+    </button>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Stat comparison
@@ -378,6 +527,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [spinActive, setSpinActive] = useState(false);
   const spinViewerRef = useRef<SpinViewerHandle>(null);
   const spinAnimatingRef = useRef(false);
+  const spinLoopRef = useRef(false);
   const [spinPlaying, setSpinPlaying] = useState(false);
   const [spinExiting, setSpinExiting] = useState(false);
   const [videoPaused, setVideoPaused] = useState(false);
@@ -462,8 +612,35 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [tagMarkerSize, setTagMarkerSize] = useState(4);
   const [tagMarkerOp, setTagMarkerOp] = useState(0.32);
   // Per-card gallery index: keyed by humanoid index
-  const [galleryIdx, setGalleryIdx] = useState<Record<number, number>>({});
+  // Per-card image-index lives in a ref + pubsub so swiping inside one
+  // gallery doesn't re-render the whole Browse subtree. Subscribers
+  // (dots, arrows, video slides, share/pause buttons) update locally.
+  const galleryIdxRef = useRef<Record<number, number>>({});
+  const galleryListenersRef = useRef<Map<number, Set<(idx: number) => void>>>(new Map());
   const galleryScrollRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  // Tracked via mouseenter/leave so the global wheel handler can pass
+  // horizontal-dominant scroll through to the gallery without doing a
+  // DOM walk on every wheel tick.
+  const hoveringGalleryRef = useRef(false);
+
+  const readGalleryIdx = useCallback<GalleryRead>((mIdx) => galleryIdxRef.current[mIdx] ?? 0, []);
+  const subscribeGalleryIdx = useCallback<GallerySubscribe>((mIdx, cb) => {
+    let set = galleryListenersRef.current.get(mIdx);
+    if (!set) { set = new Set(); galleryListenersRef.current.set(mIdx, set); }
+    set.add(cb);
+    return () => { set!.delete(cb); };
+  }, []);
+  const writeGalleryIdx = useCallback((mIdx: number, idx: number) => {
+    if ((galleryIdxRef.current[mIdx] ?? 0) === idx) return;
+    galleryIdxRef.current[mIdx] = idx;
+    galleryListenersRef.current.get(mIdx)?.forEach((cb) => cb(idx));
+    setVideoPaused(false);
+  }, []);
+  const resetGalleryIdx = useCallback(() => {
+    const all = galleryIdxRef.current;
+    for (const k of Object.keys(all)) all[Number(k)] = 0;
+    galleryListenersRef.current.forEach((set) => set.forEach((cb) => cb(0)));
+  }, []);
   // Inner-card refs — spring subscriptions drive a subtle "give" transform
   const leftCardRef = useRef<HTMLDivElement | null>(null);
   const rightCardRef = useRef<HTMLDivElement | null>(null);
@@ -589,6 +766,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [cardFillColor, setCardFillColor] = useState(SURFACE);
   const [cardFillAlpha, setCardFillAlpha] = useState(63);
   const [cardBlur, setCardBlur] = useState(28);
+  // Page background tint — 0 = pure white, higher = more grey
+  const [pageBgLevel, setPageBgLevel] = useState(0);
+  const pageBg = `rgb(${255 - pageBgLevel}, ${255 - pageBgLevel}, ${255 - pageBgLevel})`;
+  const pageBgHex = `#${(255 - pageBgLevel).toString(16).padStart(2, "0").repeat(3).toUpperCase()}`;
 
   // Adaptive arc positioning
   const [windowWidth, setWindowWidth] = useState(1920);
@@ -834,8 +1015,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     };
 
     const onWheel = (e: WheelEvent) => {
-      if ((e.target as HTMLElement)?.closest?.("[data-tuner]")) return;
-      if ((e.target as HTMLElement)?.closest?.("[data-gallery-scroll]") && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      // Tuners only exist in dev; skip the DOM walk in production.
+      if (isDev && (e.target as HTMLElement)?.closest?.("[data-tuner]")) return;
+      // Hover ref replaces a closest() walk on every wheel tick.
+      if (hoveringGalleryRef.current && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
       e.preventDefault();
       const now = performance.now();
       const dt = now - lastTime;
@@ -879,7 +1062,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     };
     window.addEventListener("wheel", onWheel, { passive: false });
     return () => { window.removeEventListener("wheel", onWheel); clearTimeout(decay); };
-  }, [springL.go, springL.nudge, springR.go, springR.nudge]);
+  }, [springL.go, springL.nudge, springR.go, springR.nudge, isDev]);
 
   // Keyboard — arrows control active side, tab switches, esc exits
   useEffect(() => {
@@ -1003,13 +1186,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   useEffect(() => {
     setSpinActive(false);
     setVideoPaused(false);
-    setGalleryIdx({});
-  }, [springL.index, springR.index, comparing]);
-
-  // Auto-resume video when user changes slides — pause is per-current-view, not sticky
-  useEffect(() => {
-    setVideoPaused(false);
-  }, [galleryIdx]);
+    resetGalleryIdx();
+  }, [springL.index, springR.index, comparing, resetGalleryIdx]);
 
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
@@ -1065,7 +1243,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const sceneActive = !!focusedH?.sceneUrl;
   const sceneBackgroundImage = focusedH?.sceneUrl ? `url(${focusedH.sceneUrl})` : undefined;
 
-  const sceneMask = (() => {
+  const sceneMask = useMemo(() => {
     const peak = scenePeakAlpha / 100;
     switch (sceneShape) {
       case "radial": {
@@ -1083,19 +1261,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       case "top": return `linear-gradient(to bottom, rgba(0,0,0,${peak}) 0%, transparent ${sceneSize}%)`;
       case "bottom": return `linear-gradient(to top, rgba(0,0,0,${peak}) 0%, transparent ${sceneSize}%)`;
     }
-  })();
+  }, [sceneShape, sceneSize, sceneSoftness, scenePeakAlpha]);
 
-  const cardBg = (() => {
+  const cardBg = useMemo(() => {
     const hex = cardFillColor.replace("#", "");
     const r = parseInt(hex.slice(0, 2), 16);
     const g = parseInt(hex.slice(2, 4), 16);
     const b = parseInt(hex.slice(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${cardFillAlpha / 100})`;
-  })();
-  const cardBackdropFilter = cardBlur > 0 ? `blur(${cardBlur}px)` : undefined;
+  }, [cardFillColor, cardFillAlpha]);
+  const cardBackdropFilter = useMemo(
+    () => cardBlur > 0 ? `blur(${cardBlur}px)` : undefined,
+    [cardBlur],
+  );
 
   return (
-    <div className="h-screen overflow-hidden select-none relative bg-white" style={{ ["--action-hover-tint" as string]: actionHoverColor, ["--action-hover-pct" as string]: actionHoverPct, ["--action-active-pct" as string]: actionActivePct }}>
+    <div className="h-screen overflow-hidden select-none relative" style={{ background: pageBg, ["--action-hover-tint" as string]: actionHoverColor, ["--action-hover-pct" as string]: actionHoverPct, ["--action-active-pct" as string]: actionActivePct }}>
       <div
         aria-hidden
         style={{
@@ -1233,8 +1414,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               <div
                 className="rounded-full flex items-center justify-center"
                 style={{
-                  width: 44,
-                  height: 44,
+                  width: 40,
+                  height: 40,
                   background: addHover ? "rgba(0,0,0,0.10)" : "rgba(0,0,0,0.06)",
                   transition: "background 220ms ease",
                 }}
@@ -1433,7 +1614,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 transition: `width 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
               }} />
             </div>
-            <p className="text-[12px] flex-shrink-0 tabular-nums" style={{ color: "var(--c-ink-body)", minWidth: 42 }}>{value}</p>
+            <p className="text-[12px] flex-shrink-0 tabular-nums" style={{ color: "var(--c-ink-body)", minWidth: 42, fontFamily: "var(--font-geist-pixel-square)" }}>{value}</p>
           </div>
         );
 
@@ -2039,9 +2220,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
           const compareRow = (label: string, valL: string | null, valR: string | null) => (
             <div className="flex items-baseline justify-between gap-2" style={{ marginTop: 6 }}>
-              <p className="text-[12px] tabular-nums flex-1 text-left" style={{ color: valL ? "var(--c-ink-body)" : "#c4c4c4" }}>{valL || "—"}</p>
+              <p className="text-[12px] tabular-nums flex-1 text-left" style={{ color: valL ? "var(--c-ink-body)" : "#c4c4c4", fontFamily: "var(--font-geist-pixel-square)" }}>{valL || "—"}</p>
               <p className="text-[12px] uppercase text-center" style={{ color: "#a3a3a3", letterSpacing: "0.02em", minWidth: 44 }}>{label}</p>
-              <p className="text-[12px] tabular-nums flex-1 text-right" style={{ color: valR ? "var(--c-ink-body)" : "#c4c4c4" }}>{valR || "—"}</p>
+              <p className="text-[12px] tabular-nums flex-1 text-right" style={{ color: valR ? "var(--c-ink-body)" : "#c4c4c4", fontFamily: "var(--font-geist-pixel-square)" }}>{valR || "—"}</p>
             </div>
           );
 
@@ -2517,15 +2698,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           if (mh.imageUrl) mItems.push({ kind: "image", src: mh.imageUrl, position: mh.imagePosition, fit: mh.imageFit });
           for (const m of mGallery) mItems.push({ kind: m.type, src: m.url, position: m.position ?? mh.imagePosition, fit: m.fit ?? mh.imageFit, credit: m.credit });
           const mHasGallery = mItems.length > 1;
-          const mCurrent = galleryIdx[mIdx] || 0;
-          const mCurrentIsVideo = mItems[mCurrent]?.kind === "video";
 
           const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
             const el = e.currentTarget;
-            const idx = Math.round(el.scrollLeft / el.clientWidth);
-            if (idx !== (galleryIdx[mIdx] || 0)) {
-              setGalleryIdx((prev) => ({ ...prev, [mIdx]: idx }));
-            }
+            writeGalleryIdx(mIdx, Math.round(el.scrollLeft / el.clientWidth));
           };
 
           return (
@@ -2536,7 +2712,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               )}
               <div
                 ref={(el) => { galleryScrollRefs.current[mIdx] = el; }}
-                data-gallery-scroll={mHasGallery ? "" : undefined}
                 className="scrollbar-hide"
                 style={{
                   display: "flex",
@@ -2546,6 +2721,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   scrollSnapType: "x mandatory",
                 }}
                 onScroll={mHasGallery ? onScroll : undefined}
+                onMouseEnter={mHasGallery ? () => { hoveringGalleryRef.current = true; } : undefined}
+                onMouseLeave={mHasGallery ? () => { hoveringGalleryRef.current = false; } : undefined}
               >
                 {mh.status === "Anticipated" ? (
                   <div className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
@@ -2559,7 +2736,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: isVideo || isCover ? 0 : isBottom ? "24px 24px 0 24px" : 24, background: isVideo ? "#000000" : undefined }}>
                       <div className="relative w-full h-full">
                         {isVideo ? (
-                          <VideoSlide src={item.src} fit={isCover ? "cover" : "contain"} position={item.position} playing={i === mCurrent && !videoPaused} credit={item.credit} />
+                          <GalleryVideoSlide mIdx={mIdx} slideIdx={i} videoPaused={videoPaused} subscribe={subscribeGalleryIdx} read={readGalleryIdx} src={item.src} fit={isCover ? "cover" : "contain"} position={item.position} credit={item.credit} />
                         ) : (
                           /* key={src} forces remount on humanoid swap — without it, next/image's reused <img> can paint one frame without object-fit during fast scroll, flashing the image at natural size cropped to the box. */
                           <Image key={item.src} src={item.src} alt={`${mh.name} ${i + 1}`} fill className={isCover ? "object-cover" : "object-contain"} style={item.position ? { objectPosition: item.position } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
@@ -2578,29 +2755,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
               {/* Dot strip — overlaid at bottom with fade, revealed on card hover */}
               {mHasGallery && (
-                <div
-                  className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
-                  style={{
-                    height: 28,
-                    background: mCurrentIsVideo
-                      ? "linear-gradient(to bottom, transparent, rgba(0,0,0,0.7))"
-                      : "linear-gradient(to bottom, transparent, rgba(255,255,255,0.8))",
-                  }}
-                >
-                  <div className="flex gap-1.5">
-                    {mItems.map((_, i) => (
-                      <div key={i} style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: "50%",
-                        background: mCurrentIsVideo
-                          ? (i === mCurrent ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)")
-                          : (i === mCurrent ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.15)"),
-                        transition: "background 0.2s ease",
-                      }} />
-                    ))}
-                  </div>
-                </div>
+                <GalleryDots
+                  mIdx={mIdx}
+                  count={mItems.length}
+                  isVideoOn={(i) => mItems[i]?.kind === "video"}
+                  subscribe={subscribeGalleryIdx}
+                  read={readGalleryIdx}
+                />
               )}
             </>
           );
@@ -2641,8 +2802,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             ...gallery.map((m) => m.type),
           ];
           const hasGallery = allImages.length > 1;
-          const currentImg = galleryIdx[hIdx] || 0;
-          const currentIsVideo = allKinds[currentImg] === "video";
 
           const scrollGallery = (idx: number) => {
             const el = galleryScrollRefs.current[hIdx];
@@ -2715,23 +2874,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   </div>
                 )}
                 {isFirst && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onShareView?.();
-                    }}
-                    aria-label="Copy link"
-                    className={`absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 opacity-0 group-hover/card:opacity-100 ${
-                      currentIsVideo
-                        ? "text-white/70 hover:text-white hover:bg-white/15"
-                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
-                    }`}
-                  >
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    </svg>
-                  </button>
+                  <GalleryShareButton
+                    mIdx={hIdx}
+                    allKinds={allKinds}
+                    subscribe={subscribeGalleryIdx}
+                    read={readGalleryIdx}
+                    onClick={() => onShareView?.()}
+                  />
                 )}
                 {/* Auto-rotate (play/pause) — appears next to the 3D toggle while active */}
                 {isFirst && !comparing && SPIN_ROBOTS[h.id] && spinActive && (
@@ -2739,16 +2888,21 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     onClick={async (e) => {
                       e.stopPropagation();
                       if (spinPlaying) {
+                        spinLoopRef.current = false;
                         spinViewerRef.current?.cancelPlay();
                         return;
                       }
                       if (spinAnimatingRef.current) return;
                       spinAnimatingRef.current = true;
+                      spinLoopRef.current = true;
                       setSpinPlaying(true);
                       try {
-                        await spinViewerRef.current?.playRotation();
+                        while (spinLoopRef.current) {
+                          await spinViewerRef.current?.playRotation();
+                        }
                       } finally {
                         spinAnimatingRef.current = false;
+                        spinLoopRef.current = false;
                         setSpinPlaying(false);
                       }
                     }}
@@ -2792,42 +2946,27 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   </button>
                 )}
                 {/* Video play/pause — appears when on a video slide; lives in the bottom-right cluster */}
-                {isFirst && !comparing && currentIsVideo && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setVideoPaused((p) => !p);
-                    }}
-                    aria-label={videoPaused ? "Play video" : "Pause video"}
-                    className="absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-white/70 transition-all duration-200 hover:text-white hover:bg-white/15 opacity-0 group-hover/card:opacity-100"
-                  >
-                    {videoPaused ? (
-                      <Play width={17} height={17} strokeWidth={1.75} />
-                    ) : (
-                      <Pause width={17} height={17} strokeWidth={1.75} />
-                    )}
-                  </button>
+                {isFirst && !comparing && (
+                  <GalleryVideoPauseButton
+                    mIdx={hIdx}
+                    allKinds={allKinds}
+                    subscribe={subscribeGalleryIdx}
+                    read={readGalleryIdx}
+                    videoPaused={videoPaused}
+                    onToggle={() => setVideoPaused((p) => !p)}
+                  />
                 )}
               </div>
 
               {/* Hover arrows — anchored to the active humanoid's gallery */}
-              {hasGallery && currentImg > 0 && (
-                <button
-                  className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[5]"
-                  style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
-                  onClick={(e) => { e.stopPropagation(); scrollGallery(currentImg - 1); }}
-                >
-                  <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,1.5 2,5 6,8.5" /></svg>
-                </button>
-              )}
-              {hasGallery && currentImg < allImages.length - 1 && (
-                <button
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[5]"
-                  style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
-                  onClick={(e) => { e.stopPropagation(); scrollGallery(currentImg + 1); }}
-                >
-                  <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,1.5 6,5 2,8.5" /></svg>
-                </button>
+              {hasGallery && (
+                <GalleryArrows
+                  mIdx={hIdx}
+                  count={allImages.length}
+                  scroll={scrollGallery}
+                  subscribe={subscribeGalleryIdx}
+                  read={readGalleryIdx}
+                />
               )}
 
               {buyLayout === "chip" && renderBuyChip(h)}
@@ -2925,13 +3064,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         width: 32,
                         height: 32,
                         borderRadius: 999,
-                        background: "#ebebeb",
+                        background: "var(--c-surface)",
                         opacity: splitHover ? 1 : 0,
                         transform: `scale(${splitHover ? 1 : 0.75})`,
                         transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                       }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#999" strokeWidth="1.5" strokeLinecap="round">
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth="1.5" strokeLinecap="round">
                         <line x1="4" y1="8" x2="12" y2="8" />
                       </svg>
                     </div>
@@ -2959,17 +3098,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       width: 26,
                       height: 26,
                       borderRadius: 999,
-                      background: "rgba(255,255,255,0.85)",
-                      backdropFilter: "blur(8px)",
-                      WebkitBackdropFilter: "blur(8px)",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
-                      opacity: 0.5,
+                      background: "var(--c-surface)",
+                      opacity: 0.7,
                       transition: "opacity 180ms ease, transform 180ms ease",
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "scale(1.06)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.5"; e.currentTarget.style.transform = "scale(1)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; e.currentTarget.style.transform = "scale(1)"; }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="#666" strokeWidth="1.6" strokeLinecap="round">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth="1.6" strokeLinecap="round">
                       <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" />
                       <line x1="9.5" y1="2.5" x2="2.5" y2="9.5" />
                     </svg>
@@ -3143,6 +3279,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div>
               <label className="text-[12px] text-neutral-500 flex justify-between">Image blur <span className="tabular-nums text-neutral-400">{sceneBlur}px</span></label>
               <input type="range" min={0} max={30} value={sceneBlur} onChange={(e) => setSceneBlur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+          </div>
+          <div className="space-y-3 pt-3 border-t border-neutral-100">
+            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Page</p>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Tint <span className="tabular-nums text-neutral-400">{pageBgHex}</span></label>
+              <input type="range" min={0} max={30} value={pageBgLevel} onChange={(e) => setPageBgLevel(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
             </div>
           </div>
           <div className="space-y-3 pt-3 border-t border-neutral-100">
@@ -4008,11 +4151,8 @@ export default function HomeClient() {
   }, []);
   const [allCaps, setAllCaps] = useState(false);
 
-  const [fontIdx, setFontIdx] = useState(0);
-  const [favIdx, setFavIdx] = useState(0);
-  const [fontMode, setFontMode] = useState<"all" | "fav">("all");
-  const fontModeRef = useRef<"all" | "fav">("all");
-  useEffect(() => { fontModeRef.current = fontMode; }, [fontMode]);
+  const [fontState, setFontState] = useState<{ mode: "all" | "fav"; allIdx: number; favIdx: number }>({ mode: "all", allIdx: 0, favIdx: 0 });
+  const { mode: fontMode, allIdx: fontIdx, favIdx } = fontState;
   const [showFontToast, setShowFontToast] = useState(false);
   const [epetriMode, setEpetriMode] = useState(false);
   const toastTimeout = useRef<ReturnType<typeof setTimeout>>(null);
@@ -4055,17 +4195,21 @@ export default function HomeClient() {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (isDev) {
         if (e.key === "f" && !e.metaKey && !e.ctrlKey) {
-          const wasAll = fontModeRef.current === "all";
-          setFontMode("all");
-          if (wasAll) setFontIdx((i) => (i + 1) % FONTS.length);
+          setFontState((s) => ({
+            mode: "all",
+            allIdx: s.mode === "all" ? (s.allIdx + 1) % FONTS.length : s.allIdx,
+            favIdx: s.favIdx,
+          }));
           setShowFontToast(true);
           if (toastTimeout.current) clearTimeout(toastTimeout.current);
           toastTimeout.current = setTimeout(() => setShowFontToast(false), 1800);
         }
         if (e.key === "g" && !e.metaKey && !e.ctrlKey) {
-          const wasFav = fontModeRef.current === "fav";
-          setFontMode("fav");
-          if (wasFav) setFavIdx((i) => (i + 1) % FAVORITE_FONTS.length);
+          setFontState((s) => ({
+            mode: "fav",
+            allIdx: s.allIdx,
+            favIdx: s.mode === "fav" ? (s.favIdx + 1) % FAVORITE_FONTS.length : s.favIdx,
+          }));
           setShowFontToast(true);
           if (toastTimeout.current) clearTimeout(toastTimeout.current);
           toastTimeout.current = setTimeout(() => setShowFontToast(false), 1800);

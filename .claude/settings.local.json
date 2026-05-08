@@ -125,7 +125,10 @@
       "Bash(cp ~/Downloads/Mona-Sans/Mona-Sans/MonaSans-regular.ttf ~/Library/Fonts/)",
       "Bash(cp ~/Downloads/Mona-Sans/Mona-Sans/MonaSans-italic.ttf ~/Library/Fonts/)",
       "Bash(cp ~/Downloads/Albert-Sans/Albert-Sans/AlbertSans-regular.ttf ~/Library/Fonts/)",
-      "Bash(cp ~/Downloads/Albert-Sans/Albert-Sans/AlbertSans-italic.ttf ~/Library/Fonts/)"
+      "Bash(cp ~/Downloads/Albert-Sans/Albert-Sans/AlbertSans-italic.ttf ~/Library/Fonts/)",
+      "Bash(lsof -i :3001 -sTCP:LISTEN)",
+      "Bash(lsof -i :3002 -sTCP:LISTEN)",
+      "Bash(kill 20488)"
     ],
     "deny": [],
     "ask": []

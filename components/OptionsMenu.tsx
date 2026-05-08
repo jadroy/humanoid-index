@@ -261,15 +261,15 @@ function AppleTrigger({
       <span
         className="flex items-center justify-center rounded-full"
         style={{
-          width: 44,
-          height: 44,
+          width: 40,
+          height: 40,
           background: fill,
           color: "rgba(0,0,0,0.78)",
           transition: "background 220ms ease",
         }}
       >
         {chatOpen ? (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         ) : (

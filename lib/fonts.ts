@@ -37,4 +37,5 @@ export const FAVORITE_FONTS = [
   { name: "Fustat", family: "var(--font-fustat)" },
   { name: "Nunito Sans", family: "var(--font-nunito-sans)" },
   { name: "Plus Jakarta Sans", family: "var(--font-plus-jakarta-sans)" },
+  { name: "Open Sans", family: "var(--font-open-sans)" },
 ] as const;

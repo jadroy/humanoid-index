@@ -28,6 +28,7 @@ import {
   Fustat,
   Nunito_Sans,
   Plus_Jakarta_Sans,
+  Open_Sans,
 } from "next/font/google";
 import "./globals.css";
 import SearchModal from "@/components/SearchModal";
@@ -58,6 +59,7 @@ const albertSans = Albert_Sans({ subsets: ["latin"], variable: "--font-albert-sa
 const fustat = Fustat({ subsets: ["latin"], variable: "--font-fustat" });
 const nunitoSans = Nunito_Sans({ subsets: ["latin"], variable: "--font-nunito-sans" });
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-plus-jakarta-sans" });
+const openSans = Open_Sans({ subsets: ["latin"], variable: "--font-open-sans" });
 
 const fontVars = [
   GeistSans.variable,
@@ -92,6 +94,7 @@ const fontVars = [
   fustat.variable,
   nunitoSans.variable,
   plusJakartaSans.variable,
+  openSans.variable,
 ].join(" ");
 
 export const metadata: Metadata = {
