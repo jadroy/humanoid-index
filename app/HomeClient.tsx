@@ -535,6 +535,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
   const [pillsLayout, setPillsLayout] = useState<"stack" | "grouped">("stack");
+  const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill">("beside");
   const [groupedFill, setGroupedFill] = useState<string>("#F9F9F9");
   const [groupedDivider, setGroupedDivider] = useState<"full" | "inset" | "none">("full");
   const [groupedRing, setGroupedRing] = useState<boolean>(true);
@@ -1695,6 +1696,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               {h.maxSpeed ? barViz("Speed", formatSpeed(h.maxSpeed), speedPct, 0.26) : null}
             </div>
           ) },
+          ...(yearPlacement === "pill" ? [{
+            key: "year",
+            show: !!h.year,
+            label: (
+              <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Year</p>
+            ),
+            preview: h.year ? (
+              <span className="text-[12px]" style={{ color: "var(--c-ink-body)", fontWeight: 500 }}>{h.year}</span>
+            ) : null,
+            detail: null as React.ReactNode,
+          }] : []),
           { key: "status", show: !!h.status, label: (
             <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Status</p>
           ), preview: h.status ? (
@@ -1844,10 +1856,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>{h.name}</p>
-                    <p className="text-[13px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.42 }}>
-                      {h.manufacturer}{h.year ? ` · ${h.year}` : ''}
+                    <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined }}>
+                      {h.name}
+                      {yearPlacement === "after-name" && h.year ? <span style={{ marginLeft: 6, opacity: 0.42, fontWeight: 400 }}>{h.year}</span> : null}
                     </p>
+                    <p className="text-[13px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.42 }}>
+                      {h.manufacturer}{yearPlacement === "beside" && h.year ? ` · ${h.year}` : ''}
+                    </p>
+                    {yearPlacement === "below" && h.year ? (
+                      <p className="text-[12px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.32 }}>{h.year}</p>
+                    ) : null}
                   </div>
                   {h.id.startsWith("legend") && <span className="flex-shrink-0 text-[12px] uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ color: "#b08d57", background: "rgba(176,141,87,0.1)", letterSpacing: "0.06em" }}>Legend</span>}
                 </div>
@@ -1901,7 +1919,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
-                  const interactive = !forcedOpen && !empty && !isLink && s.key !== "purchase";
+                  const interactive = !forcedOpen && !empty && !isLink && s.key !== "purchase" && s.key !== "year";
                   const isAction = s.key === "purchase" && isLink;
                   const actionAccent = isAction && actionVariant === "accent";
                   const actionDark = isAction && actionVariant === "dark";
@@ -2360,8 +2378,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.42 }}>{h.manufacturer}</p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>
+                  {h.name}
+                  {yearPlacement === "after-name" && h.year ? <span style={{ marginLeft: 6, opacity: 0.42, fontWeight: 400 }}>{h.year}</span> : null}
+                </p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.42 }}>
+                  {h.manufacturer}{yearPlacement === "beside" && h.year ? ` · ${h.year}` : ''}
+                </p>
+                {yearPlacement === "below" && h.year ? (
+                  <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.32 }}>{h.year}</p>
+                ) : null}
               </div>
             </div>
           );
@@ -2531,7 +2557,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
-                  const interactive = !forcedOpen && !empty && !isLink && s.key !== "purchase";
+                  const interactive = !forcedOpen && !empty && !isLink && s.key !== "purchase" && s.key !== "year";
                   const isAction = s.key === "purchase" && isLink;
                   const actionAccent = isAction && actionVariant === "accent";
                   const actionDark = isAction && actionVariant === "dark";
@@ -2823,8 +2849,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>{h.name}</p>
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42 }}>{h.manufacturer}</p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>
+                  {h.name}
+                  {yearPlacement === "after-name" && h.year ? <span style={{ marginLeft: 6, opacity: 0.42, fontWeight: 400 }}>{h.year}</span> : null}
+                </p>
+                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42 }}>
+                  {h.manufacturer}{yearPlacement === "beside" && h.year ? ` · ${h.year}` : ''}
+                </p>
+                {yearPlacement === "below" && h.year ? (
+                  <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.32 }}>{h.year}</p>
+                ) : null}
               </div>
             </div>
           );
@@ -2861,7 +2895,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     {renderMedia(h, hIdx, isFirst)}
                   </div>
                 )}
-                {/* Spin viewer — mounted only during active 3D; instant in/out at wrapper level */}
+                {/* Spin viewer — mounted only during active 3D; unmounts the moment exit fade starts so the static flash isn't covered */}
                 {spinActive && !spinExiting && isFirst && SPIN_ROBOTS[h.id] && (
                   <div className="absolute inset-0">
                     <SpinViewer
@@ -3093,8 +3127,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     aria-label="Remove from compare"
                     className="absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
                     style={{
-                      top: 8,
-                      right: 8,
+                      top: 4,
+                      right: 4,
                       width: 26,
                       height: 26,
                       borderRadius: 999,
@@ -3456,6 +3490,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           )}
           <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
           <div className="pt-2 border-t border-neutral-100 space-y-2">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">Pills layout</p>
             <div className="flex flex-wrap gap-1.5">
