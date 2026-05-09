@@ -231,7 +231,9 @@ function ArcCurrentMarker({ markerVariant = 1, markerColor, mirrored, aInset, aT
   );
 }
 
-function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR, aStepDeg, aTextGap, aLineOp, aFsMax, aFsMin, aFontFamily, aAllCaps, markerVariant, markerAccentColor, aMaskFade, ghostDots = true }: {
+export type ArcBoundary = "off" | "dots" | "arc" | "wedge";
+
+function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR, aStepDeg, aTextGap, aLineOp, aFsMax, aFsMin, aFontFamily, aAllCaps, markerVariant, markerAccentColor, aMaskFade, boundary = "off" }: {
   index: number;
   subscribe: SpringSubscribe;
   mirrored?: boolean;
@@ -242,20 +244,21 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
   markerVariant?: number;
   markerAccentColor?: string;
   aMaskFade?: number;
-  ghostDots?: boolean;
+  boundary?: ArcBoundary;
 }) {
   const wheelR = aWheelR;
   const r = wheelR - aTextGap;
   const items: { i: number; ghost: boolean }[] = [];
   for (let n = index - 14; n <= index + 15; n++) {
     const outOfRange = n < 0 || n >= humanoids.length;
-    if (outOfRange && !ghostDots) continue;
+    if (outOfRange && boundary !== "dots") continue;
     items.push({ i: n, ghost: outOfRange });
   }
   const textRefs = useRef<Array<SVGTextElement | null>>([]);
   const nameRefs = useRef<Array<SVGTSpanElement | null>>([]);
   const hitRefs = useRef<Array<SVGRectElement | null>>([]);
   const ghostRefs = useRef<Array<SVGCircleElement | null>>([]);
+  const boundaryRef = useRef<SVGPathElement | null>(null);
   // Tangent distance to the adjacent item — used to size click rects so they tile.
   const stepH = r * Math.sin((aStepDeg * Math.PI) / 180);
 
@@ -314,6 +317,53 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
     return subscribe(update);
   }, [items, subscribe, mirrored, wheelR, r, aStepDeg, aFsMax, aFsMin, stepH, markerAccentColor]);
 
+  // Boundary fill (arc / wedge): render a path that covers the angular range
+  // where ghost items would be — keeps the wheel visually "complete" at list ends.
+  useLayoutEffect(() => {
+    if (boundary !== "arc" && boundary !== "wedge") return;
+    const N = humanoids.length;
+    const stepRad = (aStepDeg * Math.PI) / 180;
+    const baseAngle = mirrored ? Math.PI : 0;
+    const mir = mirrored ? -1 : 1;
+    const SPAN = 14; // how far past the list edge to extend the fill
+    const PAD = 0.5; // gap between last real name and the fill
+
+    const update = (pos: number) => {
+      const path = boundaryRef.current;
+      if (!path) return;
+      const ranges: Array<[number, number]> = [];
+      if (pos < SPAN) {
+        const oEnd = -pos - PAD;
+        const oStart = -SPAN;
+        if (oStart < oEnd) ranges.push([oStart, oEnd]);
+      }
+      if (pos > N - 1 - SPAN) {
+        const oStart = (N - 1 - pos) + PAD;
+        const oEnd = SPAN;
+        if (oStart < oEnd) ranges.push([oStart, oEnd]);
+      }
+      let d = "";
+      for (const [oA, oB] of ranges) {
+        const θ1 = baseAngle + mir * oA * stepRad;
+        const θ2 = baseAngle + mir * oB * stepRad;
+        const x1 = wheelR + Math.cos(θ1) * r;
+        const y1 = wheelR + Math.sin(θ1) * r;
+        const x2 = wheelR + Math.cos(θ2) * r;
+        const y2 = wheelR + Math.sin(θ2) * r;
+        const dθ = θ2 - θ1;
+        const sweep = dθ > 0 ? 1 : 0;
+        const largeArc = Math.abs(dθ) > Math.PI ? 1 : 0;
+        if (boundary === "wedge") {
+          d += `M ${wheelR} ${wheelR} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} ${sweep} ${x2} ${y2} Z `;
+        } else {
+          d += `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} ${sweep} ${x2} ${y2} `;
+        }
+      }
+      path.setAttribute("d", d);
+    };
+    return subscribe(update);
+  }, [subscribe, boundary, mirrored, wheelR, r, aStepDeg]);
+
   const fade = Math.max(0, Math.min(45, aMaskFade ?? 22));
   const maskGradient = `linear-gradient(to bottom, transparent 0%, black ${fade}%, black ${100 - fade}%, transparent 100%)`;
 
@@ -343,6 +393,15 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
       >
         <circle cx={wheelR} cy={wheelR} r={r} fill="none" stroke="#ebebeb" strokeWidth="0.5" style={{ opacity: aLineOp }} />
+        {(boundary === "arc" || boundary === "wedge") && (
+          <path
+            ref={boundaryRef}
+            fill={boundary === "wedge" ? "#ececec" : "none"}
+            stroke={boundary === "arc" ? "#d4d4d4" : "none"}
+            strokeWidth={boundary === "arc" ? 1 : 0}
+            style={{ pointerEvents: "none" }}
+          />
+        )}
         {items.map(({ i, ghost }, idx) => {
           if (ghost) {
             return (
@@ -520,14 +579,14 @@ function ArcTagWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR,
   );
 }
 
-export function ArcDots({ index, subscribe, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10, arcDiskGap: aDiskGap = 26, arcDiskColor: aDiskColor = "#f5f5f5", arcFontFamily: aFontFamily, arcAllCaps: aAllCaps, arcMaskFade: aMaskFade = 22, arcMarkerVariant = 0, arcMarkerColor, arcGhostDots = true, entered, tagFsMin: tFsMin = 11, tagFsMax: tFsMax = 14, tagOpMin: tOpMin = 1, tagOpMax: tOpMax = 1, tagGreyMin: tGreyMin = 64, tagGreyMax: tGreyMax = 213, tagPillOp: tPillOp = 0.03, tagFalloff: tFalloff = 2, tagPadX: tPadX = 0, tagPadY: tPadY = 0, tagRadius: tRadius = 20, tagMarkerSize: tMarkerSize = 4, tagMarkerOp: tMarkerOp = 0.32 }: { index: number; subscribe: SpringSubscribe; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number; arcDiskGap?: number; arcDiskColor?: string; arcFontFamily?: string; arcAllCaps?: boolean; arcMaskFade?: number; arcMarkerVariant?: number; arcMarkerColor?: string; arcGhostDots?: boolean; entered?: boolean; tagFsMin?: number; tagFsMax?: number; tagOpMin?: number; tagOpMax?: number; tagGreyMin?: number; tagGreyMax?: number; tagPillOp?: number; tagFalloff?: number; tagPadX?: number; tagPadY?: number; tagRadius?: number; tagMarkerSize?: number; tagMarkerOp?: number }) {
+export function ArcDots({ index, subscribe, mirrored, onClickItem, dimmed, variant = "pills", drumAngle: dAngle = 18, drumRadius: dRadius = 152, drumFsMax: dFsMax = 20, drumFsMin: dFsMin = 8, drumFwMax: dFwMax = 500, drumCompression: dComp = 0.59, drumOpPower: dOpPow = 4.0, drumXOffset: dXOff = 120, drumTracking: dTrack = 0.04, drumRange: dRange = 2, drumMaskFade: dMaskFade = 35, arcInset: aInset = 80, arcWheelR: aWheelR = 700, arcStepDeg: aStepDeg = 3.5, arcTextGap: aTextGap = 15, arcLineOp: aLineOp = 0.5, arcFsMax: aFsMax = 22, arcFsMin: aFsMin = 10, arcDiskGap: aDiskGap = 26, arcDiskColor: aDiskColor = "#f5f5f5", arcFontFamily: aFontFamily, arcAllCaps: aAllCaps, arcMaskFade: aMaskFade = 22, arcMarkerVariant = 0, arcMarkerColor, arcBoundary = "off", entered, tagFsMin: tFsMin = 11, tagFsMax: tFsMax = 14, tagOpMin: tOpMin = 1, tagOpMax: tOpMax = 1, tagGreyMin: tGreyMin = 64, tagGreyMax: tGreyMax = 213, tagPillOp: tPillOp = 0.03, tagFalloff: tFalloff = 2, tagPadX: tPadX = 0, tagPadY: tPadY = 0, tagRadius: tRadius = 20, tagMarkerSize: tMarkerSize = 4, tagMarkerOp: tMarkerOp = 0.32 }: { index: number; subscribe: SpringSubscribe; mirrored?: boolean; onClickItem: (idx: number) => void; dimmed?: boolean; variant?: ArcStyle; drumAngle?: number; drumRadius?: number; drumFsMax?: number; drumFsMin?: number; drumFwMax?: number; drumCompression?: number; drumOpPower?: number; drumXOffset?: number; drumTracking?: number; drumRange?: number; drumMaskFade?: number; arcInset?: number; arcWheelR?: number; arcStepDeg?: number; arcTextGap?: number; arcLineOp?: number; arcFsMax?: number; arcFsMin?: number; arcDiskGap?: number; arcDiskColor?: string; arcFontFamily?: string; arcAllCaps?: boolean; arcMaskFade?: number; arcMarkerVariant?: number; arcMarkerColor?: string; arcBoundary?: ArcBoundary; entered?: boolean; tagFsMin?: number; tagFsMax?: number; tagOpMin?: number; tagOpMax?: number; tagGreyMin?: number; tagGreyMax?: number; tagPillOp?: number; tagFalloff?: number; tagPadX?: number; tagPadY?: number; tagRadius?: number; tagMarkerSize?: number; tagMarkerOp?: number }) {
   // arc-timeline / arc-names / arc-tag take the imperative path to avoid React reconciliation per frame
   if (variant === "arc-timeline") {
     return <ArcTimelineWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} aDiskGap={aDiskGap} aDiskColor={aDiskColor} entered={entered} />;
   }
   if (variant === "arc-names") {
     { const resolvedAccent = arcMarkerColor ?? MARKER_VARIANTS.find(m => m.id === arcMarkerVariant)?.accentColor;
-      return <ArcNamesWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} aFontFamily={aFontFamily} aAllCaps={aAllCaps} markerVariant={arcMarkerVariant} markerAccentColor={resolvedAccent} aMaskFade={aMaskFade} ghostDots={arcGhostDots} />; }
+      return <ArcNamesWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aLineOp={aLineOp} aFsMax={aFsMax} aFsMin={aFsMin} aFontFamily={aFontFamily} aAllCaps={aAllCaps} markerVariant={arcMarkerVariant} markerAccentColor={resolvedAccent} aMaskFade={aMaskFade} boundary={arcBoundary} />; }
   }
   if (variant === "arc-tag") {
     return <ArcTagWheel index={index} subscribe={subscribe} mirrored={mirrored} onClickItem={onClickItem} aInset={aInset} aWheelR={aWheelR} aStepDeg={aStepDeg} aTextGap={aTextGap} aDiskGap={aDiskGap} aDiskColor={aDiskColor} entered={entered} tagFsMin={tFsMin} tagFsMax={tFsMax} tagOpMin={tOpMin} tagOpMax={tOpMax} tagGreyMin={tGreyMin} tagGreyMax={tGreyMax} tagPillOp={tPillOp} tagFalloff={tFalloff} tagPadX={tPadX} tagPadY={tPadY} tagRadius={tRadius} tagMarkerSize={tMarkerSize} tagMarkerOp={tMarkerOp} />;

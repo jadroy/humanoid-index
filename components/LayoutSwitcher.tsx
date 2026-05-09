@@ -15,7 +15,7 @@ export const layoutLabels: Record<Layout, string> = {
 export const INDEX_VIEWS = ["grid", "timeline"] as const;
 export type IndexView = (typeof INDEX_VIEWS)[number];
 
-export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip", "chip2", "centered", "centered2"] as const;
+export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip", "chip2", "centered", "centered2", "wordmark", "share", "share-center", "share-flip"] as const;
 export type NavStyle = (typeof NAV_STYLES)[number];
 
 export const SWITCHER_STYLES = ["text", "drag", "single", "toggle", "pill", "slash", "dot", "dash", "brackets", "ghost", "divider"] as const;
@@ -935,8 +935,8 @@ export function LayoutSwitcher({
     );
   }
 
-  // ── Style: centered — bare wordmark, no chip background (launch candidate) ──
-  // ── Style: centered2 — same wordmark with SURFACE chip behind ──
+  // ── Style: centered — bare wordmark text, no chip background (launch candidate) ──
+  // ── Style: centered2 — same wordmark text with SURFACE chip behind ──
   else if (navStyle === "centered" || navStyle === "centered2") {
     navEl = (
       <nav
@@ -955,6 +955,148 @@ export function LayoutSwitcher({
             }}
           >
             Humanoid Index
+          </Chip>
+        </div>
+      </nav>
+    );
+  }
+
+  // ── Style: share — Humanoid Index left, Share button right ──
+  else if (navStyle === "share") {
+    navEl = (
+      <nav
+        className="fixed left-0 right-0 z-50 pointer-events-auto"
+        style={{ top: 0, background: "transparent" }}
+      >
+        <div className="flex items-center justify-between" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+          <Chip
+            onClick={handleClick}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              letterSpacing: "normal",
+              color: "rgba(95, 96, 89, 0.8)",
+              background: "transparent",
+            }}
+          >
+            Humanoid Index
+          </Chip>
+          <Chip
+            onClick={() => onShareSite?.()}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              letterSpacing: "normal",
+              color: "rgba(95, 96, 89, 0.8)",
+              background: "transparent",
+            }}
+          >
+            Share
+          </Chip>
+        </div>
+      </nav>
+    );
+  }
+
+  // ── Style: share-flip — Humanoid Index centered; on hover, current rolls up
+  // and out while Share rises up into place from below (3D reel/flap motion). ──
+  else if (navStyle === "share-flip") {
+    const flipFace: React.CSSProperties = {
+      position: "absolute",
+      inset: 0,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 13,
+      fontWeight: 500,
+      letterSpacing: "normal",
+      color: "rgba(95, 96, 89, 0.8)",
+      whiteSpace: "nowrap",
+      lineHeight: 1,
+      backfaceVisibility: "hidden",
+      WebkitBackfaceVisibility: "hidden",
+    };
+    navEl = (
+      <nav
+        className="fixed left-0 right-0 z-50 pointer-events-auto"
+        style={{ top: 0, background: "transparent" }}
+      >
+        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+          <button
+            onClick={() => onShareSite?.()}
+            className="cursor-pointer flip-share-btn"
+            style={{
+              background: "transparent",
+              border: "none",
+              padding: "3px 8px",
+              display: "inline-block",
+            }}
+          >
+            <span
+              style={{
+                position: "relative",
+                display: "inline-block",
+                minWidth: 96,
+                height: 12,
+                perspective: "500px",
+                transformStyle: "preserve-3d",
+              }}
+            >
+              <span className="flip-share-cur" style={flipFace}>Humanoid Index</span>
+              <span className="flip-share-next" style={flipFace}>Share</span>
+            </span>
+          </button>
+        </div>
+      </nav>
+    );
+  }
+
+  // ── Style: share-center — just "Share" centered, nothing else ──
+  else if (navStyle === "share-center") {
+    navEl = (
+      <nav
+        className="fixed left-0 right-0 z-50 pointer-events-auto"
+        style={{ top: 0, background: "transparent" }}
+      >
+        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+          <Chip
+            onClick={() => onShareSite?.()}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              letterSpacing: "normal",
+              color: "rgba(95, 96, 89, 0.8)",
+              background: "transparent",
+            }}
+          >
+            Share
+          </Chip>
+        </div>
+      </nav>
+    );
+  }
+
+  // ── Style: wordmark — centered SVG wordmark logo ──
+  else if (navStyle === "wordmark") {
+    navEl = (
+      <nav
+        className="fixed left-0 right-0 z-50 pointer-events-auto"
+        style={{ top: 0, background: "transparent" }}
+      >
+        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+          <Chip
+            onClick={handleClick}
+            style={{
+              background: "transparent",
+              display: "inline-flex",
+              alignItems: "center",
+            }}
+          >
+            <img
+              src="/wordmark.svg"
+              alt="Humanoid Index"
+              style={{ height: 13, width: "auto", display: "block", opacity: 0.8 }}
+            />
           </Chip>
         </div>
       </nav>

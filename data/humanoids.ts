@@ -33,6 +33,32 @@ export interface Humanoid {
 }
 
 export const humanoids: Humanoid[] = [
+  // ── DENSITY EXPERIMENT (2026-05-08) — stub entries, no images, remove if not keeping ──
+  { id: "30", name: "Igris-C", manufacturer: "Robros", year: 2025, status: "Prototype" },
+  { id: "31", name: "Bonobo", manufacturer: "RT Corporation", year: 2025, status: "Prototype" },
+  { id: "32", name: "Moz", manufacturer: "Spirit.AI", year: 2025, status: "Prototype" },
+  { id: "33", name: "TARS", manufacturer: "TARS Robotics", year: 2025, status: "Prototype" },
+  { id: "34", name: "Yao-Guang", manufacturer: "Ti5 Robot", year: 2025, status: "Prototype" },
+  { id: "35", name: "T1 Pro", manufacturer: "TLIBOT", year: 2025, status: "Prototype" },
+  { id: "36", name: "T-HR3", manufacturer: "Toyota", year: 2017, status: "Prototype" },
+  { id: "37", name: "Walker S2", manufacturer: "UBTech", year: 2025, status: "Prototype" },
+  { id: "38", name: "UCR-01", manufacturer: "Under Control Robotics", year: 2025, status: "Prototype" },
+  { id: "39", name: "uME", manufacturer: "United Robotics Group", year: 2025, status: "Prototype" },
+  { id: "40", name: "H2", manufacturer: "Unitree", year: 2025, status: "Prototype" },
+  { id: "41", name: "R1", manufacturer: "Unitree", year: 2025, status: "In Production" },
+  { id: "42", name: "Martian", manufacturer: "UniX AI", year: 2025, status: "Prototype" },
+  { id: "43", name: "Motion 1", manufacturer: "Vinmotion", year: 2025, status: "Prototype" },
+  { id: "44", name: "VR-M2", manufacturer: "VinRobotics", year: 2025, status: "Prototype" },
+  { id: "45", name: "VR-H1", manufacturer: "VinRobotics", year: 2025, status: "Prototype" },
+  { id: "46", name: "Xiao Wei", manufacturer: "Vizum", year: 2025, status: "Prototype" },
+  { id: "47", name: "Calvin-40", manufacturer: "Wandercraft", year: 2025, status: "Prototype" },
+  { id: "48", name: "THEMIS", manufacturer: "Westwood Robotics", year: 2025, status: "Prototype" },
+  { id: "49", name: "Cyborg-R01", manufacturer: "Xborg Robotics", year: 2025, status: "Prototype" },
+  { id: "50", name: "CyberOne", manufacturer: "Xiaomi", year: 2022, status: "Prototype" },
+  { id: "51", name: "Iron", manufacturer: "Xpeng", year: 2024, status: "Prototype" },
+  { id: "52", name: "NAVIAI I2", manufacturer: "Zhejiang Lab", year: 2025, status: "Prototype" },
+  { id: "53", name: "TR5", manufacturer: "Zhicheng AI", year: 2025, status: "Prototype" },
+  // ── end density experiment ──
   // 2026 (anticipated) — hidden until details are public
   // {
   //   id: "27",
@@ -77,7 +103,8 @@ export const humanoids: Humanoid[] = [
     media: [
       { type: 'image', url: '/robots/oli-side.png', caption: 'Side profile' },
       { type: 'image', url: '/robots/oli-wave.webp', caption: 'Waving', position: 'bottom' },
-      { type: 'video', url: '/robots/oli-guanjie.mp4', caption: 'Joints', fit: 'cover', position: 'bottom', credit: { prefix: 'via', name: 'LimX Dynamics', href: 'https://www.limxdynamics.com/en/products/oli' } },
+      // launch: hidden until ship — restore for Oli video slide
+      // { type: 'video', url: '/robots/oli-guanjie.mp4', caption: 'Joints', fit: 'cover', position: 'bottom', credit: { prefix: 'via', name: 'LimX Dynamics', href: 'https://www.limxdynamics.com/en/products/oli' } },
     ],
   },
   {

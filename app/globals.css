@@ -903,3 +903,38 @@ main {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Nav — share-flip: current rolls UP and out, new rises from below.
+   Both faces translate upward in sync; rotateX gives a 3D reel feel. */
+.flip-share-cur,
+.flip-share-next {
+  transition: transform 400ms cubic-bezier(0.34, 1.4, 0.64, 1), opacity 280ms ease;
+  will-change: transform, opacity;
+}
+.flip-share-cur {
+  transform: translateY(0) rotateX(0deg);
+  opacity: 1;
+}
+.flip-share-next {
+  transform: translateY(100%) rotateX(-55deg);
+  opacity: 0;
+}
+.flip-share-btn:hover .flip-share-cur {
+  transform: translateY(-100%) rotateX(55deg);
+  opacity: 0;
+}
+.flip-share-btn:hover .flip-share-next {
+  transform: translateY(0) rotateX(0deg);
+  opacity: 1;
+}
+
+/* Compare minus (−) — always visible, with a small lift on hover. */
+.compare-x-bounce {
+  opacity: 0.7;
+  transform: translateY(0) scale(1);
+  transition: opacity 200ms ease, transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.compare-x-bounce:hover {
+  opacity: 1;
+  transform: translateY(-1px) scale(1.015);
+}

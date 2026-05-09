@@ -18,11 +18,12 @@ const SPIN_ROBOTS: Record<
     credit?: { prefix?: string; name: string; href?: string };
   }
 > = {
-  "3": {
-    frameCount: 30,
-    path: "/spin/memo",
-    credit: { prefix: "via", name: "Sunday Robotics", href: "https://www.sundayrobotics.com" },
-  },
+  // launch: hidden until ship — restore for Memo 3D viewer
+  // "3": {
+  //   frameCount: 30,
+  //   path: "/spin/memo",
+  //   credit: { prefix: "via", name: "Sunday Robotics", href: "https://www.sundayrobotics.com" },
+  // },
 };
 import { WelcomeModal, WelcomeStyleSwitcher, type WelcomeStyle } from "@/components/WelcomeModal";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
@@ -597,7 +598,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [arcDiskGap, setArcDiskGap] = useState(26);
   const [arcDiskColor, setArcDiskColor] = useState("#f5f5f5");
   const [arcMaskFade, setArcMaskFade] = useState(22);
-  const [arcGhostDots, setArcGhostDots] = useState(true);
+  const [arcBoundary, setArcBoundary] = useState<"off" | "dots" | "arc" | "wedge">("off");
   // Arc-tag tuning
   const [tagFsMin, setTagFsMin] = useState(11);
   const [tagFsMax, setTagFsMax] = useState(14);
@@ -727,7 +728,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // Action-pill variant — "pill" matches the data rows; "text" reads as a footer text-link;
   // "accent" tints label + arrow with --c-accent and prepends ↗; "dark" inverts the pill
   // (black base, white text); "hairline" prepends a 1px seam above the row to demote it.
-  const [actionVariant, setActionVariant] = useState<"pill" | "text" | "accent" | "dark" | "hairline" | "split">("pill");
+  const [actionVariant, setActionVariant] = useState<"pill" | "text" | "accent" | "dark" | "hairline" | "split">("split");
   const SPLIT_BUTTON_COLORS = {
     accent: "var(--c-accent)",
     "apple-blue": "#0071e3",
@@ -1341,7 +1342,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcMaskFade={arcMaskFade}
           arcMarkerVariant={arcMarkerVariant}
           arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
-          arcGhostDots={arcGhostDots}
+          arcBoundary={arcBoundary}
           entered={introDone}
           tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
           tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -1382,7 +1383,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             arcMaskFade={arcMaskFade}
             arcMarkerVariant={arcMarkerVariant}
             arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
-            arcGhostDots={arcGhostDots}
+            arcBoundary={arcBoundary}
             entered={introDone}
             tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
             tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -1395,7 +1396,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       {!comparing && (() => {
         const alwaysMode = addCtaMode === "always";
         const addShown = alwaysMode || addHover || addHintVisible;
-        const scale = alwaysMode ? 1 : (addShown ? 1 : 0.75);
+        const baseScale = alwaysMode ? 1 : (addShown ? 1 : 0.75);
+        const hoverScale = addHover ? 1.015 : 1;
+        const liftY = addHover ? -1 : 0;
         return (
           <div
             className="absolute top-0 bottom-0 right-0 flex items-center justify-center cursor-pointer"
@@ -1408,8 +1411,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               className="flex flex-col items-center"
               style={{
                 gap: 9,
-                transform: `scale(${scale})`,
-                transition: "transform 240ms cubic-bezier(0.22,1,0.36,1)",
+                transform: `translateY(${liftY}px) scale(${baseScale * hoverScale})`,
+                opacity: addHover ? 1 : (alwaysMode ? 0.7 : 1),
+                transition: "transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease",
               }}
             >
               <div
@@ -1417,7 +1421,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 style={{
                   width: 40,
                   height: 40,
-                  background: addHover ? "rgba(0,0,0,0.10)" : "rgba(0,0,0,0.06)",
+                  background: addHover ? "rgba(0,0,0,0.075)" : "rgba(0,0,0,0.06)",
                   transition: "background 220ms ease",
                 }}
               >
@@ -1427,13 +1431,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 </svg>
               </div>
               <span style={{
-                fontSize: 11,
-                color: "rgba(0,0,0,0.6)",
-                fontWeight: 400,
-                letterSpacing: "-0.005em",
+                fontSize: 12,
+                color: "rgba(95, 96, 89, 0.8)",
+                fontWeight: 500,
+                letterSpacing: "normal",
                 userSelect: "none",
               }}>
-                Add
+                Compare
               </span>
             </div>
           </div>
@@ -1959,9 +1963,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     const price = (s as { price?: string }).price;
                     const fallbackText = (s as { text?: string }).text ?? "";
                     const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
-                    const ctaKind = (s as { ctaKind?: "buy" | "visit" }).ctaKind ?? "buy";
-                    const ctaBg = ctaKind === "visit" ? "#E8E8ED" : SPLIT_BUTTON_COLORS[splitButtonColor];
-                    const ctaColor = ctaKind === "visit" ? "#1d1d1f" : "#fff";
+                    const ctaBg = "#E8E8ED";
+                    const ctaColor = "#1d1d1f";
                     const Outer = (href ? "a" : "div") as React.ElementType;
                     const outerProps = href
                       ? { href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
@@ -2596,9 +2599,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     const href = (s as any).href as string;
                     const price = (s as { price?: string }).price;
                     const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
-                    const ctaKind = (s as { ctaKind?: "buy" | "visit" }).ctaKind ?? "buy";
-                    const ctaBg = ctaKind === "visit" ? "#E8E8ED" : SPLIT_BUTTON_COLORS[splitButtonColor];
-                    const ctaColor = ctaKind === "visit" ? "#1d1d1f" : "#fff";
+                    const ctaBg = "#E8E8ED";
+                    const ctaColor = "#1d1d1f";
                     return (
                       <a
                         key={s.key}
@@ -3113,7 +3115,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
 
               {/* Right robot — compare only */}
-              <div className="flex-shrink-0 relative" style={{
+              <div className="flex-shrink-0 relative compare-rcard" style={{
                 opacity: comparing ? 1 : 0,
                 transform: `translateX(${splitHover ? 12 : 0}px) scale(${comparing ? 1 : 0.95})`,
                 width: comparing ? "auto" : 0,
@@ -3125,7 +3127,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   <button
                     onClick={exitCompare}
                     aria-label="Remove from compare"
-                    className="absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
+                    className="compare-x-bounce absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
                     style={{
                       top: 4,
                       right: 4,
@@ -3133,15 +3135,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       height: 26,
                       borderRadius: 999,
                       background: "var(--c-surface)",
-                      opacity: 0.7,
-                      transition: "opacity 180ms ease, transform 180ms ease",
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "scale(1.06)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; e.currentTarget.style.transform = "scale(1)"; }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth="1.6" strokeLinecap="round">
-                      <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" />
-                      <line x1="9.5" y1="2.5" x2="2.5" y2="9.5" />
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth="1.5" strokeLinecap="round">
+                      <line x1="4" y1="8" x2="12" y2="8" />
                     </svg>
                   </button>
                 )}
@@ -3842,7 +3839,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{arcFsMin}px</span></label><input type="range" min={6} max={20} value={arcFsMin} onChange={(e) => setArcFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Disk gap <span className="tabular-nums text-neutral-400">{arcDiskGap}px</span></label><input type="range" min={0} max={280} value={arcDiskGap} onChange={(e) => setArcDiskGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Edge fade <span className="tabular-nums text-neutral-400">{arcMaskFade}%</span></label><input type="range" min={0} max={45} value={arcMaskFade} onChange={(e) => setArcMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div className="flex items-center justify-between"><label className="text-[12px] text-neutral-500">Ghost dots</label><button onClick={() => setArcGhostDots(v => !v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcGhostDots ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcGhostDots ? "On" : "Off"}</button></div>
+            <div>
+              <label className="text-[12px] text-neutral-500 mb-1.5 block">Boundary fill</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(["off", "dots", "arc", "wedge"] as const).map((b) => (
+                  <button
+                    key={b}
+                    onClick={() => setArcBoundary(b)}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcBoundary === b ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {b === "off" ? "Off" : b === "dots" ? "Dots" : b === "arc" ? "Arc" : "Wedge"}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div>
               <label className="text-[12px] text-neutral-500 flex justify-between">Disk color <span className="tabular-nums text-neutral-400">{arcDiskColor}</span></label>
               <div className="flex items-center gap-1.5 mt-1.5">
@@ -4485,12 +4495,29 @@ export default function HomeClient() {
         </div>
       )}
 
-      <OptionsMenu
-        variant={buttonVariant}
-        chatOpen={chatOpen}
-        setChatOpen={setChatOpen}
-        visible={introDone}
-      />
+      {/* Launch: chat trigger hidden, replaced with credit link.
+          To bring chat back, swap this for the <OptionsMenu .../> block. */}
+      {introDone && (
+        <div className="intro-nav fixed bottom-0 left-0 right-0 z-[48] pointer-events-none flex items-center justify-center" style={{ paddingBottom: 24 }}>
+          <a
+            href="https://royjad.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pointer-events-auto transition-opacity hover:opacity-70"
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              letterSpacing: "normal",
+              lineHeight: 1,
+              color: "rgba(95, 96, 89, 0.5)",
+              padding: "6px 12px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Crafted by Roy Jad
+          </a>
+        </div>
+      )}
 
       <Toaster
         position="bottom-center"

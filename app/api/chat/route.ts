@@ -62,6 +62,10 @@ Dataset:
 ${ROBOT_LIST}`;
 
 export async function POST(req: NextRequest) {
+  // Launch gate — chat trigger is hidden from the UI; lock the route too.
+  // Remove this block when re-enabling chat (along with restoring <OptionsMenu> in HomeClient).
+  return new Response(null, { status: 404 });
+
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "anonymous";
 
@@ -99,8 +103,8 @@ export async function POST(req: NextRequest) {
       messages: [{ role: "user", content: query }],
     });
 
-    const raw =
-      msg.content[0].type === "text" ? msg.content[0].text.trim() : "";
+    const first = msg.content[0] as { type: string; text: string };
+    const raw = first?.type === "text" ? first.text.trim() : "";
 
     // Strip markdown code fences if the model wraps despite instructions
     const cleaned = raw
