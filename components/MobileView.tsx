@@ -35,59 +35,69 @@ const USE_CASE_BY_ID: Record<string, UseCase> = {
   "16": "industrial",// K2 (Kepler) — manufacturing
 };
 
+const TILE_BG = SURFACE; // unified neutral surface across all category tiles
+
 const CATEGORIES: { key: "all" | UseCase; label: string; icon: React.ReactNode; tint: string }[] = [
-  { key: "all",        label: "All",        tint: "#F4F2EE", icon: <IconAll /> },
-  { key: "home",       label: "Home",       tint: "#FBE9D8", icon: <IconHome /> },
-  { key: "industrial", label: "Industrial", tint: "#E6E9F2", icon: <IconIndustrial /> },
-  { key: "research",   label: "Research",   tint: "#E5F0E8", icon: <IconResearch /> },
-  { key: "companion",  label: "Companion",  tint: "#F4E5EE", icon: <IconCompanion /> },
+  { key: "all",        label: "All",        tint: TILE_BG, icon: <IconAll /> },
+  { key: "home",       label: "Home",       tint: TILE_BG, icon: <IconHome /> },
+  { key: "industrial", label: "Industrial", tint: TILE_BG, icon: <IconIndustrial /> },
+  { key: "research",   label: "Research",   tint: TILE_BG, icon: <IconResearch /> },
+  { key: "companion",  label: "Companion",  tint: TILE_BG, icon: <IconCompanion /> },
 ];
 
 function IconAll() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <circle cx="7" cy="7" r="2.2" fill="#9b8c6a" />
-      <circle cx="17" cy="7" r="2.2" fill="#9b8c6a" />
-      <circle cx="7" cy="17" r="2.2" fill="#9b8c6a" />
-      <circle cx="17" cy="17" r="2.2" fill="#9b8c6a" />
-    </svg>
+    <Image
+      src="/categories/all.png"
+      alt=""
+      width={52}
+      height={52}
+      style={{ objectFit: "contain" }}
+    />
   );
 }
 function IconHome() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path d="M4 11l8-7 8 7v8a1.5 1.5 0 01-1.5 1.5H5.5A1.5 1.5 0 014 19v-8z" stroke="#c47d3a" strokeWidth="1.6" strokeLinejoin="round" fill="#fff5ea" />
-      <rect x="10" y="13" width="4" height="6" rx="0.6" fill="#c47d3a" />
-    </svg>
+    <Image
+      src="/categories/home.png"
+      alt=""
+      width={52}
+      height={52}
+      style={{ objectFit: "contain" }}
+    />
   );
 }
 function IconIndustrial() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path d="M4 20V11l5 3V11l5 3V8l5 3v9H4z" fill="#eef0f8" stroke="#5b6794" strokeWidth="1.5" strokeLinejoin="round" />
-      <rect x="10" y="16" width="2" height="4" fill="#5b6794" />
-      <rect x="14" y="16" width="2" height="4" fill="#5b6794" />
-    </svg>
+    <Image
+      src="/categories/industrial.png"
+      alt=""
+      width={52}
+      height={52}
+      style={{ objectFit: "contain" }}
+    />
   );
 }
 function IconResearch() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path d="M10 4v6L5 19a1.5 1.5 0 001.3 2.2h11.4A1.5 1.5 0 0019 19l-5-9V4" stroke="#3f7a52" strokeWidth="1.6" strokeLinejoin="round" fill="#eef7f0" />
-      <path d="M9 4h6" stroke="#3f7a52" strokeWidth="1.6" strokeLinecap="round" />
-      <circle cx="11" cy="16" r="1.2" fill="#3f7a52" />
-      <circle cx="14.5" cy="14" r="0.9" fill="#3f7a52" />
-    </svg>
+    <Image
+      src="/categories/research.png"
+      alt=""
+      width={52}
+      height={52}
+      style={{ objectFit: "contain" }}
+    />
   );
 }
 function IconCompanion() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="8" fill="#fbeaf3" stroke="#a3537a" strokeWidth="1.6" />
-      <circle cx="9.5" cy="11" r="1.1" fill="#a3537a" />
-      <circle cx="14.5" cy="11" r="1.1" fill="#a3537a" />
-      <path d="M9 14.5c.8 1 1.8 1.5 3 1.5s2.2-.5 3-1.5" stroke="#a3537a" strokeWidth="1.6" strokeLinecap="round" fill="none" />
-    </svg>
+    <Image
+      src="/categories/companion.png"
+      alt=""
+      width={52}
+      height={52}
+      style={{ objectFit: "contain" }}
+    />
   );
 }
 
@@ -225,8 +235,7 @@ function CategoryRow({
                 width: 58,
                 height: 58,
                 borderRadius: 18,
-                background: c.tint,
-                border: `2px solid ${isActive ? "var(--c-ink)" : "transparent"}`,
+                background: isActive ? SURFACE : "transparent",
                 boxSizing: "border-box",
               }}
             >
