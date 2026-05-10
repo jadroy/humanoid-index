@@ -1401,8 +1401,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         const liftY = addHover ? -1 : 0;
         return (
           <div
-            className="absolute top-0 bottom-0 right-0 flex items-center justify-center cursor-pointer"
-            style={{ width: "calc(38% - 24px)", zIndex: 10 }}
+            className="absolute top-0 bottom-0 flex items-center justify-center cursor-pointer"
+            style={{ width: 140, right: "calc(19% - 82px)", zIndex: 10 }}
             onClick={() => { setAddHover(false); enterCompare(); }}
             onMouseEnter={() => setAddHover(true)}
             onMouseLeave={() => setAddHover(false)}
