@@ -226,8 +226,8 @@ function CategoryRow({
                 height: 58,
                 borderRadius: 18,
                 background: c.tint,
-                outline: isActive ? "2px solid var(--c-ink)" : "2px solid transparent",
-                outlineOffset: 2,
+                border: `2px solid ${isActive ? "var(--c-ink)" : "transparent"}`,
+                boxSizing: "border-box",
               }}
             >
               {c.icon}
@@ -252,10 +252,111 @@ function CategoryRow({
   );
 }
 
+// ── Quick filter pills ────────────────────────────────────────
+type PillKey = "buy" | "cheap" | "new" | "legends";
+
+const PILLS: { key: PillKey; label: string; icon: React.ReactNode; match: (h: Humanoid) => boolean }[] = [
+  {
+    key: "buy",
+    label: "For sale",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path d="M3 5h10l-1 7.5a1 1 0 01-1 .9H5a1 1 0 01-1-.9L3 5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M6 5V3.8a2 2 0 014 0V5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+    match: (h) => Boolean(h.purchaseUrl) || (Boolean(h.cost) && h.cost !== "N/A"),
+  },
+  {
+    key: "cheap",
+    label: "Under $25K",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="5.6" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M9.6 6.4a1.7 1.7 0 00-1.6-.9c-1 0-1.6.5-1.6 1.2 0 1.7 3.4.6 3.4 2.2 0 .8-.7 1.3-1.7 1.3-1 0-1.7-.5-1.9-1.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    ),
+    match: (h) => {
+      if (!h.cost || h.cost === "N/A") return false;
+      const m = h.cost.match(/\$?([\d.]+)\s*([Kk]|[Mm])?/);
+      if (!m) return false;
+      const n = parseFloat(m[1]);
+      const unit = m[2]?.toLowerCase();
+      const inK = unit === "m" ? n * 1000 : unit === "k" ? n : n / 1000;
+      return inK > 0 && inK < 25;
+    },
+  },
+  {
+    key: "new",
+    label: "New",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path d="M8 2l1.4 3.4L13 6.6l-2.6 2.4.8 3.5L8 10.9 4.8 12.5l.8-3.5L3 6.6l3.6-1.2L8 2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" fill="none" />
+      </svg>
+    ),
+    match: (h) => h.year === 2025,
+  },
+  {
+    key: "legends",
+    label: "Legends",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path d="M3 5h10v1.5a3 3 0 01-3 3H6a3 3 0 01-3-3V5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M3 5l-1 1.5a1.5 1.5 0 001.5 1.5M13 5l1 1.5a1.5 1.5 0 01-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <path d="M6.5 9.5v2M9.5 9.5v2M5 12.5h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+    match: (h) => (h.year ?? 9999) < 2020,
+  },
+];
+
+function PillRow({ active, onChange }: { active: PillKey | null; onChange: (k: PillKey | null) => void }) {
+  return (
+    <div
+      className="flex overflow-x-auto pb-1 scrollbar-hide"
+      style={{
+        gap: 8,
+        paddingLeft: PAGE_X,
+        paddingRight: PAGE_X,
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      {PILLS.map((p) => {
+        const isActive = active === p.key;
+        return (
+          <button
+            key={p.key}
+            type="button"
+            onClick={() => onChange(isActive ? null : p.key)}
+            className="inline-flex items-center gap-1.5 shrink-0 transition-all"
+            style={{
+              height: 32,
+              padding: "0 12px",
+              borderRadius: 999,
+              fontSize: 13,
+              fontWeight: 500,
+              letterSpacing: "-0.01em",
+              background: isActive ? "var(--c-ink)" : "#fff",
+              color: isActive ? "#fff" : "var(--c-ink)",
+              border: `1px solid ${isActive ? "var(--c-ink)" : "rgba(0,0,0,0.12)"}`,
+            }}
+          >
+            <span aria-hidden style={{ display: "inline-flex", color: isActive ? "#fff" : "var(--c-ink)" }}>
+              {p.icon}
+            </span>
+            {p.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────
 export default function MobileView() {
   const list = useMemo(() => humanoids.filter((h) => h.imageUrl), []);
   const [active, setActive] = useState<"all" | UseCase>("all");
+  const [pill, setPill] = useState<PillKey | null>(null);
 
   const counts = useMemo(() => {
     const c: Record<"all" | UseCase, number> = { all: list.length, home: 0, industrial: 0, research: 0, companion: 0 };
@@ -266,7 +367,10 @@ export default function MobileView() {
     return c;
   }, [list]);
 
-  const filtered = active === "all" ? list : list.filter((h) => USE_CASE_BY_ID[h.id] === active);
+  const pillDef = pill ? PILLS.find((p) => p.key === pill) : null;
+  const filtered = list
+    .filter((h) => active === "all" || USE_CASE_BY_ID[h.id] === active)
+    .filter((h) => (pillDef ? pillDef.match(h) : true));
 
   // For "all", show the curated multi-rail layout. For a category, show a single rail.
   const newest = filtered.filter((h) => h.year === 2025);
@@ -326,8 +430,12 @@ export default function MobileView() {
         <CategoryRow active={active} onChange={setActive} counts={counts} />
       </div>
 
-      <div className="flex flex-col gap-7 pt-2 pb-12">
-        {active === "all" ? (
+      <div className="pb-2">
+        <PillRow active={pill} onChange={setPill} />
+      </div>
+
+      <div className="flex flex-col gap-7 pt-2 pb-6">
+        {active === "all" && pill === null ? (
           <>
             <Row title="New in 2025" subtitle="The freshest humanoids." items={newest} />
             <Row title="In production" subtitle="Available to buy or deploy." items={inProduction} />
@@ -335,9 +443,85 @@ export default function MobileView() {
             {everythingElse.length > 0 && <Row title="Everything else" items={everythingElse} />}
           </>
         ) : (
-          <Row title={activeLabel} subtitle={`${filtered.length} robots`} items={filtered} />
+          <Row
+            title={pillDef?.label ?? activeLabel}
+            subtitle={`${filtered.length} robots`}
+            items={filtered}
+          />
         )}
       </div>
+
+      {/* Browse all — 2-column grid (DoorDash Browse style) */}
+      <BrowseGrid items={list} />
     </main>
+  );
+}
+
+function BrowseGrid({ items }: { items: Humanoid[] }) {
+  return (
+    <section className="flex flex-col gap-3 pt-4 pb-12">
+      <div style={{ paddingLeft: PAGE_X, paddingRight: PAGE_X }}>
+        <h2
+          className="text-[20px] font-semibold tracking-tight"
+          style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}
+        >
+          Browse all
+        </h2>
+      </div>
+      <div
+        className="grid gap-2.5"
+        style={{
+          paddingLeft: PAGE_X,
+          paddingRight: PAGE_X,
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+        }}
+      >
+        {items.map((h) => (
+          <BrowseTile key={h.id} h={h} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BrowseTile({ h }: { h: Humanoid }) {
+  return (
+    <div
+      className="relative overflow-hidden"
+      style={{
+        aspectRatio: "1.32 / 1",
+        borderRadius: 16,
+        background: SURFACE,
+      }}
+    >
+      <div className="absolute top-0 left-0 right-0 z-10" style={{ padding: "12px 14px" }}>
+        <p
+          className="text-[15px] font-semibold truncate"
+          style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.15 }}
+        >
+          {h.name}
+        </p>
+        <p
+          className="text-[11px] font-medium truncate mt-0.5"
+          style={{ color: "var(--c-ink)", opacity: 0.42, lineHeight: 1.15 }}
+        >
+          {h.manufacturer}
+        </p>
+      </div>
+      {h.imageUrl && (
+        <Image
+          src={h.imageUrl}
+          alt={h.name}
+          fill
+          sizes="50vw"
+          className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
+          style={{
+            objectPosition: "bottom right",
+            // Push the image into the bottom-right with a slight bleed off the edges
+            padding: h.imageFit === "cover" ? 0 : "32% 0 0 30%",
+          }}
+        />
+      )}
+    </div>
   );
 }
