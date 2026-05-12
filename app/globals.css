@@ -570,54 +570,6 @@ main {
   opacity: 0;
 }
 
-/* ── Site-wide font tune on initial reveal ─────────────── */
-/* Universal selector + !important forces all inline fontFamily declarations into
-   epetri AIRY. Class drops when timer elapses, inline styles take over. */
-.tune-font-epetri, .tune-font-epetri * { font-family: var(--font-epetri) !important; }
-
-/* ── Intro wordmark — epetri flicker → legible ─────────── */
-.intro-wordmark {
-  display: grid;
-  place-items: center;
-  height: 18px;
-  font-size: 13px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--c-ink);
-  opacity: 0.78;
-}
-.intro-word {
-  grid-area: 1 / 1;
-  white-space: nowrap;
-  opacity: 0;
-}
-/* Epetri held, then resolves to Geist. Total animation = 1.05s, after 0.35s logo delay. */
-.intro-wordmark-enter .intro-word-epetri {
-  animation: intro-word-epetri 1.05s steps(1, end) 0.35s forwards;
-}
-.intro-wordmark-enter .intro-word-final {
-  animation: intro-word-final 1.05s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
-}
-.intro-wordmark-exit {
-  animation: intro-wordmark-fade 0.3s ease forwards;
-}
-.intro-wordmark-exit .intro-word-final {
-  opacity: 1;
-}
-
-@keyframes intro-word-epetri {
-  0%, 60% { opacity: 1; }
-  61%, 100% { opacity: 0; }
-}
-@keyframes intro-word-final {
-  0%, 60% { opacity: 0; }
-  72%, 100% { opacity: 1; }
-}
-@keyframes intro-wordmark-fade {
-  0% { opacity: 0.78; }
-  100% { opacity: 0; }
-}
-
 @keyframes index-subnav-in {
   0% { opacity: 0; }
   100% { opacity: 1; }

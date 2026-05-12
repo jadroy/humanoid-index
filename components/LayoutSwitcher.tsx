@@ -1276,7 +1276,7 @@ export function LayoutSwitcher({
               </svg>
             </button>
           </div>
-          <div className="flex justify-center">
+          <div className="flex justify-center items-center">
             <Chip
               onClick={() => onRandomHumanoid?.()}
               onMouseEnter={() => setTrioSpinHover(true)}
@@ -1319,7 +1319,7 @@ export function LayoutSwitcher({
               </span>
             </Chip>
           </div>
-          <div className="flex justify-end" />
+          <div className="flex justify-end items-center" />
         </div>
       </nav>
     );

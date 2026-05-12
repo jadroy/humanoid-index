@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from "react";
 import { Toaster, toast } from "sonner";
-import { Pause, Play, ArrowUpRight } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -4332,23 +4332,11 @@ export default function HomeClient() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [buttonVariant, setButtonVariant] = useState<ButtonVariant>("outlined");
-  // Initial-view font tune: hold the site in epetri AIRY for a beat, then release to Geist.
-  const [tuneOn, setTuneOn] = useState(true);
-
   useEffect(() => {
-    // Phase 1: logo sits for a beat, then exits
     const t1 = setTimeout(() => setIntroPhase("exit"), 1400);
-    // Phase 2: overlay unmounts, content expands in
     const t2 = setTimeout(() => setIntroPhase("done"), 1750);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
-
-  // Release the epetri hold ~650ms after content reveals.
-  useEffect(() => {
-    if (introPhase !== "done") return;
-    const t = window.setTimeout(() => setTuneOn(false), 650);
-    return () => clearTimeout(t);
-  }, [introPhase]);
 
   // Welcome modal — show after intro completes, once per visitor
   useEffect(() => {
@@ -4463,11 +4451,9 @@ export default function HomeClient() {
     return <MobileComingSoon />;
   }
 
-  const tuneClass = introPhase === "done" && tuneOn ? "tune-font-epetri" : "";
-
   return (
     <main
-      className={`min-h-screen bg-white ${tuneClass}`.trim()}
+      className="min-h-screen bg-white"
       style={{
         fontFamily: epetriMode
           ? "var(--font-epetri)"
@@ -4509,11 +4495,6 @@ export default function HomeClient() {
                 <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
                 <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
               </svg>
-            </div>
-            {/* Wordmark — held in epetri AIRY, resolves to Geist */}
-            <div className={introPhase === "logo" ? "intro-wordmark intro-wordmark-enter" : "intro-wordmark intro-wordmark-exit"}>
-              <span className="intro-word intro-word-epetri" style={{ fontFamily: "var(--font-epetri)" }}>humanoid index</span>
-              <span className="intro-word intro-word-final">humanoid index</span>
             </div>
           </div>
         </div>
@@ -4638,46 +4619,25 @@ export default function HomeClient() {
 
       {/* Launch: chat trigger hidden, replaced with credit link.
           To bring chat back, swap this for the <OptionsMenu .../> block. */}
-      {introDone && (
-        <div className="intro-nav fixed bottom-0 left-0 right-0 z-[48] pointer-events-none flex items-center justify-between" style={{ paddingBottom: 24, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              letterSpacing: "normal",
-              lineHeight: 1,
-              color: "rgba(95, 96, 89, 0.5)",
-              padding: "6px 0",
-              whiteSpace: "nowrap",
-            }}
+      {introDone && (() => {
+        const creditStyle: React.CSSProperties = {
+          fontSize: 12,
+          fontWeight: 500,
+          letterSpacing: "normal",
+          lineHeight: 1,
+          color: "rgba(95, 96, 89, 0.5)",
+          whiteSpace: "nowrap",
+        };
+        return (
+          <div
+            className="fixed bottom-6 left-0 right-0 z-[48] pointer-events-none flex items-center justify-between"
+            style={{ height: 36, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}
           >
-            © 2026
-          </span>
-          <a
-            href="https://royjad.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group/extlink pointer-events-auto transition-opacity hover:opacity-70 inline-flex items-center gap-1"
-            style={{
-              fontSize: 13,
-              fontWeight: 500,
-              letterSpacing: "normal",
-              lineHeight: 1,
-              color: "rgba(95, 96, 89, 0.5)",
-              padding: "6px 12px",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Crafted by Roy Jad
-            <ArrowUpRight
-              width={12}
-              height={12}
-              strokeWidth={2}
-              className="opacity-0 -mt-px transition-opacity duration-150 group-hover/extlink:opacity-80"
-            />
-          </a>
-        </div>
-      )}
+            <span style={creditStyle}>© 2026</span>
+            <span style={creditStyle}>Crafted by Roy Jad</span>
+          </div>
+        );
+      })()}
 
       <SiteOptionsMenu
         shareLabel={shareViewLabel}
