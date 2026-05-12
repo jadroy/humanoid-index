@@ -697,6 +697,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
   const [statPillPadY, setStatPillPadY] = useState(12);      // px — vertical button padding (sets closed height)
   const [statPillBg, setStatPillBg] = useState("transparent");
+  const [newBadgeFontSize, setNewBadgeFontSize] = useState(11); // px — "New" badge label size
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("pill");
   const [blurbFontSize, setBlurbFontSize] = useState(12.7);
   const [blurbFloat, setBlurbFloat] = useState(false);
@@ -1358,6 +1359,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         }}
         hintRobotNames={sceneRobotNames}
         onJumpToAvailable={sceneHint ? () => { if (comparing) exitCompare(); springL.jumpTo(sceneHint.index); } : undefined}
+        visible={introDone}
       />
 
       {/* Neighbor-image preloader — off-screen Next/Image tags matching the
@@ -2805,7 +2807,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <>
               {/* New badge — rides with the humanoid */}
               {mh.year === 2025 && (
-                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 text-[12px] font-semibold" style={{ borderRadius: Math.max(3, cardRadius - 1), background: "#8e8e93", color: "#ffffff" }}>New</div>
+                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 font-semibold" style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "#8e8e93", color: "#ffffff" }}>New</div>
               )}
               <div
                 ref={(el) => { galleryScrollRefs.current[mIdx] = el; }}
@@ -2977,8 +2979,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     />
                     {h.year === 2025 && (
                       <div
-                        className="absolute top-3 left-3 z-20 px-2 py-0.5 text-[12px] font-semibold pointer-events-none"
-                        style={{ borderRadius: Math.max(3, cardRadius - 1), background: "#8e8e93", color: "#ffffff" }}
+                        className="absolute top-3 left-3 z-20 px-2 py-0.5 font-semibold pointer-events-none"
+                        style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "#8e8e93", color: "#ffffff" }}
                       >
                         New
                       </div>
@@ -3859,6 +3861,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             </div>
           </div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400">New Badge</p>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Font size <span className="tabular-nums text-neutral-400">{newBadgeFontSize}px</span></label><input type="range" min={8} max={16} value={newBadgeFontSize} onChange={(e) => setNewBadgeFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+          </div>
           {(arcStyle === "crown" || arcStyle === "arc-timeline" || arcStyle === "arc-names" || arcStyle === "arc-tag") && (
           <div className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(70); }}>Reset</button></div>
@@ -4630,7 +4636,7 @@ export default function HomeClient() {
         };
         return (
           <div
-            className="fixed bottom-6 left-0 right-0 z-[48] pointer-events-none flex items-center justify-between"
+            className="intro-credit fixed bottom-6 left-0 right-0 z-[48] pointer-events-none flex items-center justify-between"
             style={{ height: 36, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}
           >
             <span style={creditStyle}>© 2026</span>

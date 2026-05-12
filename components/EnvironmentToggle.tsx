@@ -10,9 +10,10 @@ type Props = {
   onToggle: () => void;
   hintRobotNames?: string[];
   onJumpToAvailable?: () => void;
+  visible?: boolean;
 };
 
-export default function EnvironmentToggle({ available, enabled, onToggle, hintRobotNames, onJumpToAvailable }: Props) {
+export default function EnvironmentToggle({ available, enabled, onToggle, hintRobotNames, onJumpToAvailable, visible = true }: Props) {
   const [hover, setHover] = useState(false);
   const [hintHover, setHintHover] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -35,12 +36,13 @@ export default function EnvironmentToggle({ available, enabled, onToggle, hintRo
     : "";
 
   if (!mounted) return null;
+  if (!visible) return null;
 
   return createPortal(
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="fixed z-[1000]"
+      className="intro-nav fixed z-[1000]"
       style={{ top: 8, right: "var(--nav-x, 24px)", display: "inline-flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}
     >
       <button

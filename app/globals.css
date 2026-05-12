@@ -513,14 +513,29 @@ main {
   }
 }
 
-@keyframes intro-nav-slide {
+@keyframes intro-hud-in-top {
   0% {
     opacity: 0;
-    transform: translateY(-12px);
+    filter: blur(8px);
+    transform: translateY(-18px) scale(0.97);
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes intro-hud-in-bottom {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(18px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -566,8 +581,11 @@ main {
 }
 
 .intro-nav {
-  animation: intro-nav-slide 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
-  opacity: 0;
+  animation: intro-hud-in-top 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+.intro-credit {
+  animation: intro-hud-in-bottom 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
 }
 
 @keyframes index-subnav-in {
