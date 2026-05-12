@@ -21,12 +21,13 @@ const SPIN_ROBOTS: Record<
   "3": {
     frameCount: 30,
     path: "/spin/memo",
-    credit: { prefix: "Via", name: "Sunday Robotics", href: "https://sunday.ai" },
+    credit: { prefix: "Via", name: "sunday.ai" },
   },
 };
-import { WelcomeModal, WelcomeStyleSwitcher, type WelcomeStyle } from "@/components/WelcomeModal";
+import { WelcomeModal } from "@/components/WelcomeModal";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import SiteOptionsMenu from "@/components/SiteOptionsMenu";
+import EnvironmentToggle from "@/components/EnvironmentToggle";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { getRobotDescription } from "@/lib/robotDescription";
@@ -217,7 +218,7 @@ function GalleryArrows({ mIdx, count, scroll, subscribe, read }: {
     <>
       {current > 0 && (
         <button
-          className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[5]"
+          className="absolute left-1.5 top-1/2 -translate-y-1/2 -translate-x-0.5 group-hover/card:translate-x-0 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-[opacity,transform] duration-200 ease-out cursor-pointer z-[5]"
           style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
           onClick={(e) => { e.stopPropagation(); scroll(current - 1); }}
         >
@@ -226,7 +227,7 @@ function GalleryArrows({ mIdx, count, scroll, subscribe, read }: {
       )}
       {current < count - 1 && (
         <button
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-opacity duration-200 cursor-pointer z-[5]"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 translate-x-0.5 group-hover/card:translate-x-0 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-[opacity,transform] duration-200 ease-out cursor-pointer z-[5]"
           style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
           onClick={(e) => { e.stopPropagation(); scroll(current + 1); }}
         >
@@ -265,7 +266,7 @@ function GalleryShareButton({ mIdx, allKinds, subscribe, read, onClick }: {
     <button
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       aria-label="Copy link"
-      className={`absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 opacity-0 group-hover/card:opacity-100 ${
+      className={`absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ease-out opacity-0 -translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0 ${
         currentIsVideo
           ? "text-white/70 hover:text-white hover:bg-white/15"
           : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
@@ -526,6 +527,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
   const spinViewerRef = useRef<SpinViewerHandle>(null);
+  const spinViewerRightRef = useRef<SpinViewerHandle>(null);
   const spinLoopRef = useRef(false);
   const [spinPlaying, setSpinPlaying] = useState(false);
   const [videoPaused, setVideoPaused] = useState(false);
@@ -755,12 +757,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
   // Scene background tuner
   const [showSceneTuner, setShowSceneTuner] = useState(false);
-  const [sceneShape, setSceneShape] = useState<"radial" | "horizontal" | "vertical" | "top" | "bottom">("bottom");
-  const [sceneSize, setSceneSize] = useState(39);
-  const [sceneSoftness, setSceneSoftness] = useState(35);
-  const [scenePeakAlpha, setScenePeakAlpha] = useState(48);
+  const [sceneShape, setSceneShape] = useState<"radial" | "horizontal" | "vertical" | "top" | "bottom">("radial");
+  const [sceneSize, setSceneSize] = useState(72);
+  const [sceneSoftness, setSceneSoftness] = useState(62);
+  const [scenePeakAlpha, setScenePeakAlpha] = useState(75);
   const [sceneOpacity, setSceneOpacity] = useState(79);
   const [sceneBlur, setSceneBlur] = useState(0);
+  const [sceneEnabled, setSceneEnabled] = useState(false);
+  const [sceneInteracted, setSceneInteracted] = useState(false);
   // Humanoid card fill tuner
   const [cardFillColor, setCardFillColor] = useState(SURFACE);
   const [cardFillAlpha, setCardFillAlpha] = useState(63);
@@ -1243,7 +1247,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const preloadSizes = `${Math.round(robotW)}vw`;
 
   const focusedH = !comparing ? humanoids[springL.index] : undefined;
-  const sceneActive = !!focusedH?.sceneUrl;
+  const sceneAvailable = !!focusedH?.sceneUrl;
+  const sceneActive = sceneEnabled && sceneAvailable;
+  const sceneHint = useMemo(() => {
+    const idx = humanoids.findIndex((h) => !!h.sceneUrl);
+    return idx >= 0 ? { index: idx, name: humanoids[idx].name } : null;
+  }, []);
+  const sceneRobotNames = useMemo(
+    () => humanoids.filter((h) => !!h.sceneUrl).map((h) => h.name),
+    [],
+  );
   const sceneBackgroundImage = focusedH?.sceneUrl ? `url(${focusedH.sceneUrl})` : undefined;
 
   const sceneMask = useMemo(() => {
@@ -1286,17 +1299,36 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           position: "absolute",
           inset: 0,
           zIndex: 0,
-          backgroundImage: sceneActive ? sceneBackgroundImage : undefined,
+          backgroundImage: sceneAvailable ? sceneBackgroundImage : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          opacity: sceneActive ? sceneOpacity / 100 : 0,
+          opacity: sceneAvailable ? sceneOpacity / 100 : 0,
           filter: sceneBlur > 0 ? `blur(${sceneBlur}px)` : undefined,
-          transition: "opacity 0.5s ease",
+          maskRepeat: "no-repeat",
+          WebkitMaskRepeat: "no-repeat",
+          maskPosition: "center",
+          WebkitMaskPosition: "center",
+          maskSize: sceneInteracted ? undefined : (sceneActive ? "135% 135%" : "0% 0%"),
+          WebkitMaskSize: sceneInteracted ? undefined : (sceneActive ? "135% 135%" : "0% 0%"),
+          animation: sceneInteracted
+            ? `${sceneActive ? "scene-bloom" : "scene-collapse"} ${sceneActive ? 1800 : 800}ms cubic-bezier(0.32, 0.72, 0, 1) forwards`
+            : undefined,
+          transition: "opacity 500ms ease",
           pointerEvents: "none",
           WebkitMaskImage: sceneMask,
           maskImage: sceneMask,
         }}
       />
+      <EnvironmentToggle
+        available={sceneAvailable}
+        enabled={sceneEnabled}
+        onToggle={() => {
+          setSceneInteracted(true);
+          setSceneEnabled((v) => !v);
+        }}
+        hintRobotNames={sceneRobotNames}
+      />
+
       {/* Neighbor-image preloader — off-screen Next/Image tags matching the
           card's sizes, so the optimized variants are cached before crossings. */}
       <div aria-hidden style={{ position: "absolute", left: -99999, top: 0, width: `${robotW}vw`, height: `${robotH}vh`, maxWidth: robotMaxW, pointerEvents: "none", opacity: 0 }}>
@@ -2892,21 +2924,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             >
               {/* Media area */}
               <div className="relative flex-1 min-h-0 overflow-hidden">
-                {/* Static — hidden on the focused card when SpinViewer takes over */}
-                {!(isFirst && !comparing && SPIN_ROBOTS[h.id]) && (
+                {/* Static — hidden when SpinViewer takes over (either side in compare). */}
+                {!SPIN_ROBOTS[h.id] && (
                   <div className="absolute inset-0">
                     {renderMedia(h, hIdx, isFirst)}
                   </div>
                 )}
-                {/* Spin viewer — auto-mounted for spin-enabled robots on the focused card */}
-                {isFirst && !comparing && SPIN_ROBOTS[h.id] && (
+                {/* Spin viewer — auto-mounted for spin-enabled robots on either side.
+                    In compare we suppress the pill hint so it stays a hidden-delight drag. */}
+                {SPIN_ROBOTS[h.id] && (
                   <div className="absolute inset-0">
                     <SpinViewer
-                      ref={spinViewerRef}
+                      ref={isFirst ? spinViewerRef : spinViewerRightRef}
                       frameCount={SPIN_ROBOTS[h.id]!.frameCount}
                       path={SPIN_ROBOTS[h.id]!.path}
                       credit={SPIN_ROBOTS[h.id]!.credit}
-                      showHint={!spinPlaying}
+                      showHint={isFirst && !comparing && !spinPlaying}
                       className="w-full h-full"
                     />
                     {h.year === 2025 && (
@@ -2950,10 +2983,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       }
                     }}
                     aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
-                    className={`absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ${
+                    className={`absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ease-out ${
                       spinPlaying
                         ? "bg-white/75 backdrop-blur-md text-neutral-800 opacity-100"
-                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md opacity-0 group-hover/card:opacity-100"
+                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0"
                     }`}
                   >
                     {spinPlaying ? (
@@ -4119,6 +4152,81 @@ function GuideChat({ onSelect, config }: { onSelect: (idx: number) => void; conf
   );
 }
 
+function MobileComingSoon() {
+  const labelStyle: React.CSSProperties = {
+    fontSize: 13,
+    fontWeight: 500,
+    letterSpacing: "normal",
+    lineHeight: 1,
+    color: "rgba(95, 96, 89, 0.75)",
+    padding: "10px 16px",
+    borderRadius: 999,
+    background: "rgba(0,0,0,0.05)",
+    border: "none",
+    cursor: "pointer",
+    WebkitTapHighlightColor: "transparent",
+  };
+
+  const onShare = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "https://humanoid-index.com";
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: "Humanoid Index", url });
+        return;
+      } catch {
+        // user cancelled or share failed — fall through to copy
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("Link copied");
+    } catch {
+      toast("Couldn't copy link");
+    }
+  };
+
+  const onCopy = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "https://humanoid-index.com";
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("Link copied");
+    } catch {
+      toast("Couldn't copy link");
+    }
+  };
+
+  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  return (
+    <main className="min-h-[100dvh] bg-white flex flex-col items-center justify-center" style={{ padding: 24, gap: 20 }}>
+      <p
+        style={{
+          fontSize: 16,
+          fontWeight: 500,
+          letterSpacing: "normal",
+          lineHeight: 1.4,
+          color: "rgba(95, 96, 89, 0.5)",
+          textAlign: "center",
+          maxWidth: 280,
+        }}
+      >
+        Mobile experience coming soon. Open on desktop for the full thing.
+      </p>
+      <div className="flex items-center" style={{ gap: 10 }}>
+        {canShare && (
+          <button type="button" onClick={onShare} style={labelStyle}>
+            Send to my computer
+          </button>
+        )}
+        <button type="button" onClick={onCopy} style={labelStyle}>
+          Copy link
+        </button>
+      </div>
+      <Toaster position="bottom-center" offset={32} />
+    </main>
+  );
+}
+
 // ─── Fonts ─────────────────────────────────────────────────────
 export default function HomeClient() {
   const isMobile = useIsMobile();
@@ -4203,28 +4311,34 @@ export default function HomeClient() {
   // ── Intro animation state ──
   const [introPhase, setIntroPhase] = useState<"logo" | "exit" | "done">("logo");
   const [showWelcome, setShowWelcome] = useState(false);
-  const [welcomeStyle, setWelcomeStyle] = useState<WelcomeStyle>("minimal");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [buttonVariant, setButtonVariant] = useState<ButtonVariant>("outlined");
+  // Initial-view font tune: hold the site in epetri AIRY for a beat, then release to Geist.
+  const [tuneOn, setTuneOn] = useState(true);
 
   useEffect(() => {
     // Phase 1: logo sits for a beat, then exits
-    const t1 = setTimeout(() => setIntroPhase("exit"), 800);
+    const t1 = setTimeout(() => setIntroPhase("exit"), 1400);
     // Phase 2: overlay unmounts, content expands in
-    const t2 = setTimeout(() => setIntroPhase("done"), 1150);
+    const t2 = setTimeout(() => setIntroPhase("done"), 1750);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  // Welcome modal — gated to dev mode for now (Ctrl+Shift+D to enable)
+  // Release the epetri hold ~650ms after content reveals.
   useEffect(() => {
-    if (!isDev) return;
-    const t = setTimeout(() => {
-      if (typeof window === "undefined") return;
-      if (window.localStorage.getItem("hi:welcome-seen") === "1") return;
-      setShowWelcome(true);
-    }, 1500);
+    if (introPhase !== "done") return;
+    const t = window.setTimeout(() => setTuneOn(false), 650);
     return () => clearTimeout(t);
-  }, [isDev]);
+  }, [introPhase]);
+
+  // Welcome modal — show after intro completes, once per visitor
+  useEffect(() => {
+    if (introPhase !== "done") return;
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem("hi:welcome-seen") === "1") return;
+    const t = setTimeout(() => setShowWelcome(true), 200);
+    return () => clearTimeout(t);
+  }, [introPhase]);
 
   const dismissWelcome = useCallback(() => {
     setShowWelcome(false);
@@ -4327,12 +4441,14 @@ export default function HomeClient() {
     return <main className="min-h-[100dvh] bg-white" />;
   }
   if (isMobile) {
-    return <MobileView />;
+    return <MobileComingSoon />;
   }
+
+  const tuneClass = introPhase === "done" && tuneOn ? "tune-font-epetri" : "";
 
   return (
     <main
-      className="min-h-screen bg-white"
+      className={`min-h-screen bg-white ${tuneClass}`.trim()}
       style={{
         fontFamily: epetriMode
           ? "var(--font-epetri)"
@@ -4345,34 +4461,41 @@ export default function HomeClient() {
       {/* ── Intro overlay ── */}
       {introPhase !== "done" && (
         <div className="intro-overlay">
-          <div className="relative flex items-center justify-center" style={{ width: 56, height: 56 }}>
-            {/* Ring */}
-            <svg
-              width="56" height="56" viewBox="0 0 56 56" fill="none"
-              className="absolute inset-0"
-              style={{ transform: "rotate(-90deg)" }}
-            >
-              <circle
-                cx="28" cy="28" r="18"
-                stroke="var(--c-ink)" strokeWidth="1" fill="none"
-                strokeDasharray="113" strokeDashoffset="113"
-                strokeLinecap="round"
-                style={{
-                  opacity: 0.1,
-                  animation: introPhase === "logo"
-                    ? "intro-ring-draw 0.7s cubic-bezier(0.33, 1, 0.68, 1) 0.35s forwards"
-                    : "intro-ring-fade 0.3s ease forwards",
-                }}
-              />
-            </svg>
-            {/* Logo */}
-            <svg
-              width="24" height="24" viewBox="0 0 20 20" fill="none"
-              className={introPhase === "logo" ? "intro-logo-enter" : "intro-logo-exit"}
-            >
-              <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
-              <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
-            </svg>
+          <div className="flex flex-col items-center" style={{ gap: 22 }}>
+            <div className="relative flex items-center justify-center" style={{ width: 56, height: 56 }}>
+              {/* Ring */}
+              <svg
+                width="56" height="56" viewBox="0 0 56 56" fill="none"
+                className="absolute inset-0"
+                style={{ transform: "rotate(-90deg)" }}
+              >
+                <circle
+                  cx="28" cy="28" r="18"
+                  stroke="var(--c-ink)" strokeWidth="1" fill="none"
+                  strokeDasharray="113" strokeDashoffset="113"
+                  strokeLinecap="round"
+                  style={{
+                    opacity: 0.1,
+                    animation: introPhase === "logo"
+                      ? "intro-ring-draw 0.7s cubic-bezier(0.33, 1, 0.68, 1) 0.35s forwards"
+                      : "intro-ring-fade 0.3s ease forwards",
+                  }}
+                />
+              </svg>
+              {/* Logo */}
+              <svg
+                width="24" height="24" viewBox="0 0 20 20" fill="none"
+                className={introPhase === "logo" ? "intro-logo-enter" : "intro-logo-exit"}
+              >
+                <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+                <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+              </svg>
+            </div>
+            {/* Wordmark — held in epetri AIRY, resolves to Geist */}
+            <div className={introPhase === "logo" ? "intro-wordmark intro-wordmark-enter" : "intro-wordmark intro-wordmark-exit"}>
+              <span className="intro-word intro-word-epetri" style={{ fontFamily: "var(--font-epetri)" }}>humanoid index</span>
+              <span className="intro-word intro-word-final">humanoid index</span>
+            </div>
           </div>
         </div>
       )}
@@ -4524,6 +4647,12 @@ export default function HomeClient() {
         </div>
       )}
 
+      <SiteOptionsMenu
+        shareLabel={shareViewLabel}
+        onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
+        visible={introDone}
+      />
+
       <Toaster
         position="bottom-center"
         offset={32}
@@ -4533,16 +4662,9 @@ export default function HomeClient() {
 
       {chatOpen && <GuideChat onSelect={handleSelectHumanoid} config={chatConfig} />}
 
-      {showWelcome && (
-        <>
-          <WelcomeModal style={welcomeStyle} onClose={dismissWelcome} />
-          <WelcomeStyleSwitcher style={welcomeStyle} onChange={setWelcomeStyle} />
-        </>
-      )}
+      {showWelcome && <WelcomeModal onClose={dismissWelcome} />}
 
       {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
-
-      <SiteOptionsMenu onShortcuts={() => setShowShortcuts(true)} visible={introDone} />
     </main>
   );
 }

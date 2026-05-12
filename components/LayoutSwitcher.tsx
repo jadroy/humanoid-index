@@ -15,7 +15,7 @@ export const layoutLabels: Record<Layout, string> = {
 export const INDEX_VIEWS = ["grid", "timeline"] as const;
 export type IndexView = (typeof INDEX_VIEWS)[number];
 
-export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip", "chip2", "centered", "centered2", "wordmark", "wordmark2", "share", "share-center", "share-flip", "filters"] as const;
+export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip", "chip2", "trio", "centered", "centered2", "wordmark", "wordmark2", "share", "share-center", "share-flip", "filters"] as const;
 export type NavStyle = (typeof NAV_STYLES)[number];
 
 export const SWITCHER_STYLES = ["text", "drag", "single", "toggle", "pill", "slash", "dot", "dash", "brackets", "ghost", "divider"] as const;
@@ -281,6 +281,132 @@ function FiltersNav({ onShareSite, onLogoClick }: { onShareSite?: () => void; on
   );
 }
 
+// ─── Flip Label (preview-only: swaps front → back via various transitions) ─
+
+function FlipLabel({
+  mode,
+  hover,
+  front,
+  back,
+}: {
+  mode: "flip" | "slide-up" | "fade" | "slide-horiz" | "blur";
+  hover: boolean;
+  front: React.ReactNode;
+  back: React.ReactNode;
+}) {
+  const dur = "360ms cubic-bezier(0.22, 1, 0.36, 1)";
+  const backCenter: React.CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  };
+
+  if (mode === "flip") {
+    return (
+      <span style={{ position: "relative", display: "inline-block", perspective: 600 }}>
+        <span
+          style={{
+            display: "inline-block",
+            transformStyle: "preserve-3d",
+            transition: `transform ${dur}`,
+            transform: hover ? "rotateX(180deg)" : "rotateX(0deg)",
+          }}
+        >
+          <span style={{ display: "inline-block", backfaceVisibility: "hidden" }}>{front}</span>
+          <span style={{ ...backCenter, backfaceVisibility: "hidden", transform: "rotateX(180deg)" }}>{back}</span>
+        </span>
+      </span>
+    );
+  }
+  if (mode === "slide-up") {
+    return (
+      <span style={{ position: "relative", display: "inline-block", overflow: "hidden", verticalAlign: "bottom" }}>
+        <span
+          style={{
+            display: "inline-block",
+            transition: `transform ${dur}, opacity ${dur}`,
+            transform: hover ? "translateY(-110%)" : "translateY(0)",
+            opacity: hover ? 0 : 1,
+          }}
+        >
+          {front}
+        </span>
+        <span
+          style={{
+            ...backCenter,
+            transition: `transform ${dur}, opacity ${dur}`,
+            transform: hover ? "translateY(0)" : "translateY(110%)",
+            opacity: hover ? 1 : 0,
+          }}
+        >
+          {back}
+        </span>
+      </span>
+    );
+  }
+  if (mode === "fade") {
+    return (
+      <span style={{ position: "relative", display: "inline-block" }}>
+        <span style={{ display: "inline-block", transition: `opacity ${dur}`, opacity: hover ? 0 : 1 }}>{front}</span>
+        <span style={{ ...backCenter, transition: `opacity ${dur}`, opacity: hover ? 1 : 0 }}>{back}</span>
+      </span>
+    );
+  }
+  if (mode === "slide-horiz") {
+    return (
+      <span style={{ position: "relative", display: "inline-block", overflow: "hidden", verticalAlign: "bottom" }}>
+        <span
+          style={{
+            display: "inline-block",
+            transition: `transform ${dur}, opacity ${dur}`,
+            transform: hover ? "translateX(-110%)" : "translateX(0)",
+            opacity: hover ? 0 : 1,
+          }}
+        >
+          {front}
+        </span>
+        <span
+          style={{
+            ...backCenter,
+            transition: `transform ${dur}, opacity ${dur}`,
+            transform: hover ? "translateX(0)" : "translateX(110%)",
+            opacity: hover ? 1 : 0,
+          }}
+        >
+          {back}
+        </span>
+      </span>
+    );
+  }
+  // blur
+  return (
+    <span style={{ position: "relative", display: "inline-block" }}>
+      <span
+        style={{
+          display: "inline-block",
+          transition: `opacity ${dur}, filter ${dur}`,
+          opacity: hover ? 0 : 1,
+          filter: hover ? "blur(6px)" : "blur(0)",
+        }}
+      >
+        {front}
+      </span>
+      <span
+        style={{
+          ...backCenter,
+          transition: `opacity ${dur}, filter ${dur}`,
+          opacity: hover ? 1 : 0,
+          filter: hover ? "blur(0)" : "blur(6px)",
+        }}
+      >
+        {back}
+      </span>
+    </span>
+  );
+}
+
 // ─── Chip Nav (apple bar + sliding SURFACE thumb on active tab) ─
 
 function ChipNav({
@@ -304,6 +430,10 @@ function ChipNav({
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [thumb, setThumb] = useState({ left: 0, width: 0, ready: false });
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [wordmarkHover, setWordmarkHover] = useState(false);
+  const FLIP_MODES = ["flip", "slide-up", "fade", "slide-horiz", "blur"] as const;
+  type FlipMode = (typeof FLIP_MODES)[number];
+  const [flipMode, setFlipMode] = useState<FlipMode>("flip");
 
   const isScroll = active === "E";
   const isGrid = active === "Z" && indexView === "grid";
@@ -339,9 +469,35 @@ function ChipNav({
       style={{ top: 0, background: "transparent" }}
     >
       <div className="flex items-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
-        <Chip active onClick={onLogoClick} style={{ flex: "0 0 auto", ...chipStyle }}>
-          {wordmark ?? "Humanoid Index"}
+        <Chip
+          active
+          onClick={onLogoClick}
+          onMouseEnter={() => setWordmarkHover(true)}
+          onMouseLeave={() => setWordmarkHover(false)}
+          style={{ flex: "0 0 auto", ...chipStyle }}
+        >
+          <FlipLabel mode={flipMode} hover={wordmarkHover} front={wordmark ?? "Humanoid Index"} back="Shuffle" />
         </Chip>
+        <button
+          onClick={() => {
+            const i = FLIP_MODES.indexOf(flipMode);
+            setFlipMode(FLIP_MODES[(i + 1) % FLIP_MODES.length]);
+          }}
+          style={{
+            marginLeft: 8,
+            fontSize: 11,
+            color: "rgba(95, 96, 89, 0.6)",
+            background: "rgba(95, 96, 89, 0.06)",
+            border: "none",
+            borderRadius: 999,
+            padding: "4px 10px",
+            cursor: "pointer",
+            fontVariantNumeric: "tabular-nums",
+          }}
+          title="Cycle flip transition"
+        >
+          {flipMode} ↻
+        </button>
         <div className="flex-1 flex justify-center">
           <div
             ref={tabsRef}
@@ -436,20 +592,16 @@ export function LayoutSwitcher({
   const shufflePill = onRandomHumanoid ? (
     <Chip
       onClick={() => onRandomHumanoid()}
-      className="hover:bg-black/5 transition-colors"
+      className="transition-colors"
       style={{
-        color: "rgba(95, 96, 89, 0.8)",
-        background: "transparent",
-        padding: "6px 10px",
+        fontSize: 13,
+        fontWeight: 500,
+        letterSpacing: "normal",
+        color: "rgba(95, 96, 89, 0.85)",
+        background: "rgba(95, 96, 89, 0.08)",
       }}
     >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }} aria-label="Shuffle">
-        <polyline points="16 3 21 3 21 8" />
-        <line x1="4" y1="20" x2="21" y2="3" />
-        <polyline points="21 16 21 21 16 21" />
-        <line x1="15" y1="15" x2="21" y2="21" />
-        <line x1="4" y1="4" x2="9" y2="9" />
-      </svg>
+      Shuffle
     </Chip>
   ) : null;
 
@@ -1049,6 +1201,83 @@ export function LayoutSwitcher({
         onIndexViewChange={onIndexViewChange}
         onLogoClick={handleClick}
       />
+    );
+  }
+
+  // ── Style: trio — Humanoid Index left, Shuffle center (lighter chip), Share right.
+  //    No tab switcher; shuffle is the only central action. ──
+  else if (navStyle === "trio") {
+    navEl = (
+      <nav
+        className="fixed left-0 right-0 z-50 pointer-events-auto"
+        style={{ top: 0, background: "transparent" }}
+      >
+        <div
+          className="grid items-center"
+          style={{
+            height: 48,
+            paddingLeft: "var(--nav-x, 24px)",
+            paddingRight: "var(--nav-x, 24px)",
+            gridTemplateColumns: "1fr auto 1fr",
+          }}
+        >
+          <div className="flex justify-start">
+            <Chip
+              onClick={handleClick}
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                letterSpacing: "normal",
+                color: "rgba(95, 96, 89, 0.85)",
+                background: "transparent",
+              }}
+            >
+              Humanoid Index
+            </Chip>
+          </div>
+          <div className="flex justify-center">
+            <Chip
+              onClick={() => onRandomHumanoid?.()}
+              className="trio-spin hover:bg-black/5 transition-colors"
+              style={{
+                color: "rgba(95, 96, 89, 0.75)",
+                background: "rgba(95, 96, 89, 0.06)",
+                padding: 0,
+                width: 28,
+                height: 28,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <span
+                key={luckyNonce}
+                style={{
+                  display: "inline-flex",
+                  animation: luckyNonce > 0 ? "trio-spin 600ms cubic-bezier(0.22, 1, 0.36, 1)" : undefined,
+                }}
+              >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-label="Shuffle"
+                style={{ display: "block" }}
+              >
+                <path d="M21 12a9 9 0 1 1-3.5-7.1" />
+                <polyline points="21 4 21 9 16 9" />
+              </svg>
+              </span>
+            </Chip>
+          </div>
+          <div className="flex justify-end" />
+        </div>
+      </nav>
     );
   }
 

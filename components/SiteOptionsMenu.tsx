@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { SURFACE, SURFACE_HOVER, INK_MEDIUM, INK_MUTED } from "@/lib/design/tokens";
 
 const CONTACT_EMAIL = "jadroy77@gmail.com";
@@ -8,18 +8,34 @@ const CONTACT_EMAIL = "jadroy77@gmail.com";
 const MAILTO = {
   feedback: `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Humanoid Index — feedback")}`,
   suggest: `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Humanoid Index — suggest a humanoid")}&body=${encodeURIComponent("Name:\nManufacturer:\nLink:\n\nWhy it belongs:")}`,
-  subscribe: `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Subscribe")}&body=${encodeURIComponent("Add me to the list — notify me when new humanoids are added.")}`,
 };
 
 type Props = {
-  onShortcuts: () => void;
+  shareLabel: string;
+  onShare: () => void;
   visible: boolean;
 };
 
-export default function SiteOptionsMenu({ onShortcuts, visible }: Props) {
+export default function SiteOptionsMenu({ shareLabel, onShare, visible }: Props) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const ghostRef = useRef<HTMLDivElement>(null);
+  const [popoverWidth, setPopoverWidth] = useState<number | null>(null);
+
+  // Measure the natural width of the menu content via a hidden ghost,
+  // then drive the visible popover's width with a CSS transition so
+  // dynamic share labels (e.g. "Share Atlas vs Optimus") slide in/out
+  // smoothly instead of snapping.
+  useLayoutEffect(() => {
+    const el = ghostRef.current;
+    if (!el) return;
+    const measure = () => setPopoverWidth(Math.ceil(el.scrollWidth));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [shareLabel]);
 
   useEffect(() => {
     if (!open) return;
@@ -37,11 +53,14 @@ export default function SiteOptionsMenu({ onShortcuts, visible }: Props) {
     };
   }, [open]);
 
-  const items: { label: string; onSelect: () => void }[] = [
-    { label: "Submit feedback", onSelect: () => window.open(MAILTO.feedback) },
-    { label: "Suggest a humanoid", onSelect: () => window.open(MAILTO.suggest) },
-    { label: "Get notified", onSelect: () => window.open(MAILTO.subscribe) },
-    { label: "Keyboard shortcuts", onSelect: () => onShortcuts() },
+  type MenuEntry =
+    | { kind: "item"; label: string; icon: ReactNode; onSelect: () => void }
+    | { kind: "divider" };
+  const items: MenuEntry[] = [
+    { kind: "item", label: shareLabel, icon: <IconLink />, onSelect: () => onShare() },
+    { kind: "divider" },
+    { kind: "item", label: "Submit feedback", icon: <IconChat />, onSelect: () => window.open(MAILTO.feedback) },
+    { kind: "item", label: "Suggest a humanoid", icon: <IconPlus />, onSelect: () => window.open(MAILTO.suggest) },
   ];
 
   return (
@@ -49,34 +68,85 @@ export default function SiteOptionsMenu({ onShortcuts, visible }: Props) {
       ref={wrapRef}
       className={`fixed bottom-6 right-6 z-[49] ${visible ? "intro-nav" : "opacity-0 pointer-events-none"}`}
     >
+      {/* Hidden ghost: measures the natural content width as shareLabel changes. */}
+      <div
+        ref={ghostRef}
+        aria-hidden
+        style={{
+          position: "fixed",
+          visibility: "hidden",
+          pointerEvents: "none",
+          top: 0,
+          left: -9999,
+          padding: 6,
+          display: "inline-flex",
+          flexDirection: "column",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {items.map((it, i) =>
+          it.kind === "item" ? (
+            <div
+              key={`g-${i}`}
+              style={{
+                padding: "7px 11px",
+                fontSize: 12.5,
+                fontWeight: 500,
+                letterSpacing: "-0.005em",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span style={{ width: 15, height: 15, display: "inline-block", flexShrink: 0 }} />
+              <span>{it.label}</span>
+            </div>
+          ) : null,
+        )}
+      </div>
+
       {open && (
         <div
           role="menu"
           style={{
             position: "absolute",
-            bottom: 44,
+            bottom: 48,
             right: 0,
+            width: popoverWidth ?? "auto",
             minWidth: 200,
-            background: "#FFFFFF",
-            border: "1px solid rgba(0,0,0,0.06)",
-            borderRadius: 12,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)",
+            background: "rgba(38, 38, 38, 0.86)",
+            backdropFilter: "blur(28px) saturate(180%)",
+            WebkitBackdropFilter: "blur(28px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 14,
+            boxShadow: "0 14px 32px rgba(0,0,0,0.24), 0 2px 6px rgba(0,0,0,0.10)",
             padding: 6,
             display: "flex",
             flexDirection: "column",
             gap: 1,
+            transition: "width 320ms cubic-bezier(0.22, 1, 0.36, 1)",
+            overflow: "hidden",
           }}
         >
-          {items.map((it) => (
-            <MenuItem
-              key={it.label}
-              label={it.label}
-              onClick={() => {
-                it.onSelect();
-                setOpen(false);
-              }}
-            />
-          ))}
+          {items.map((it, i) =>
+            it.kind === "divider" ? (
+              <div
+                key={`d-${i}`}
+                aria-hidden
+                style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "4px 10px" }}
+              />
+            ) : (
+              <MenuItem
+                key={it.label}
+                label={it.label}
+                icon={it.icon}
+                onClick={() => {
+                  it.onSelect();
+                  setOpen(false);
+                }}
+              />
+            ),
+          )}
         </div>
       )}
 
@@ -110,7 +180,7 @@ export default function SiteOptionsMenu({ onShortcuts, visible }: Props) {
   );
 }
 
-function MenuItem({ label, onClick }: { label: string; onClick: () => void }) {
+function MenuItem({ label, icon, onClick }: { label: string; icon: ReactNode; onClick: () => void }) {
   const [hover, setHover] = useState(false);
   return (
     <button
@@ -120,19 +190,50 @@ function MenuItem({ label, onClick }: { label: string; onClick: () => void }) {
       onMouseLeave={() => setHover(false)}
       style={{
         textAlign: "left",
-        padding: "8px 12px",
+        padding: "7px 11px",
         border: "none",
-        background: hover ? SURFACE : "transparent",
+        background: hover ? "rgba(255,255,255,0.08)" : "transparent",
         borderRadius: 8,
-        fontSize: 13,
+        fontSize: 12.5,
+        fontWeight: 500,
         letterSpacing: "-0.005em",
-        color: INK_MEDIUM,
+        color: "rgba(255,255,255,0.95)",
         cursor: "pointer",
         whiteSpace: "nowrap",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
         transition: "background 140ms ease",
       }}
     >
-      {label}
+      <span style={{ display: "inline-flex", color: "rgba(255,255,255,0.7)", flexShrink: 0 }}>{icon}</span>
+      <span>{label}</span>
     </button>
+  );
+}
+
+function IconLink() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
+      <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
+    </svg>
+  );
+}
+
+function IconChat() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 12a8 8 0 0 1-11.3 7.3L4 21l1.7-5.7A8 8 0 1 1 21 12z" />
+    </svg>
+  );
+}
+
+function IconPlus() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
   );
 }

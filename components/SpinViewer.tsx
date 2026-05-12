@@ -267,7 +267,7 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
 
       {credit && (
         <div
-          className={`absolute bottom-2 left-3 text-[11px] tracking-tight text-neutral-400 transition-opacity duration-200 opacity-0 group-hover/card:opacity-100 ${
+          className={`absolute bottom-2 left-3 text-[12px] tracking-tight text-neutral-400 transition-[opacity,transform] duration-200 ease-out opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0 ${
             loaded ? "" : "!opacity-0"
           }`}
         >

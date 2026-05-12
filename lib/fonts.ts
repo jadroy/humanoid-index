@@ -26,6 +26,15 @@ export const FONTS = [
   { name: "Tektur", family: "var(--font-tektur)" },
   { name: "Anta", family: "var(--font-anta)" },
   { name: "Syne", family: "var(--font-syne)" },
+  // Epetri (Atypography) cuts
+  { name: "Epetri AIRY", family: "var(--font-epetri)" },
+  { name: "Epetri AIRY alt", family: "var(--font-epetri-alt)" },
+  { name: "Epetri TITE", family: "var(--font-epetri-tite)" },
+  { name: "Epetri TITE alt", family: "var(--font-epetri-tite-alt)" },
+  { name: "Epetri TITE Pixel", family: "var(--font-epetri-tite-pixel)" },
+  { name: "Epetri Pixel", family: "var(--font-epetri-pixel)" },
+  { name: "Epetri Index", family: "var(--font-epetri-index)" },
+  { name: "Epetri CFIndex", family: "var(--font-epetri-cfindex)" },
 ] as const;
 
 // Favorites cycle — close to the target feel. Bound to "g".
