@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from "react";
 import { Toaster, toast } from "sonner";
-import { Pause, Play } from "lucide-react";
+import { Pause, Play, ArrowUpRight } from "lucide-react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -21,7 +21,7 @@ const SPIN_ROBOTS: Record<
   "3": {
     frameCount: 30,
     path: "/spin/memo",
-    credit: { prefix: "via", name: "Sunday Robotics", href: "https://www.sundayrobotics.com" },
+    credit: { prefix: "Via", name: "Sunday Robotics", href: "https://sunday.ai" },
   },
 };
 import { WelcomeModal, WelcomeStyleSwitcher, type WelcomeStyle } from "@/components/WelcomeModal";
@@ -2906,8 +2906,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       frameCount={SPIN_ROBOTS[h.id]!.frameCount}
                       path={SPIN_ROBOTS[h.id]!.path}
                       credit={SPIN_ROBOTS[h.id]!.credit}
+                      showHint={!spinPlaying}
                       className="w-full h-full"
                     />
+                    {h.year === 2025 && (
+                      <div
+                        className="absolute top-3 left-3 z-20 px-2 py-0.5 text-[12px] font-semibold pointer-events-none"
+                        style={{ borderRadius: Math.max(3, cardRadius - 1), background: "#8e8e93", color: "#ffffff" }}
+                      >
+                        New
+                      </div>
+                    )}
                   </div>
                 )}
                 {isFirst && (
@@ -4493,7 +4502,7 @@ export default function HomeClient() {
             href="https://royjad.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="pointer-events-auto transition-opacity hover:opacity-70"
+            className="group/extlink pointer-events-auto transition-opacity hover:opacity-70 inline-flex items-center gap-1"
             style={{
               fontSize: 13,
               fontWeight: 500,
@@ -4505,6 +4514,12 @@ export default function HomeClient() {
             }}
           >
             Crafted by Roy Jad
+            <ArrowUpRight
+              width={12}
+              height={12}
+              strokeWidth={2}
+              className="opacity-0 -mt-px transition-opacity duration-150 group-hover/extlink:opacity-80"
+            />
           </a>
         </div>
       )}

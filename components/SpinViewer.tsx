@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { RotateCw } from "lucide-react";
+import { RotateCw, ArrowUpRight } from "lucide-react";
 
 interface SpinViewerProps {
   frameCount: number;
@@ -30,6 +30,10 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
   const unwindingRef = useRef(false);
   const playCancelRef = useRef<(() => void) | null>(null);
   const pillRef = useRef<HTMLDivElement>(null);
+  const pillTargetRef = useRef<{ x: number; y: number } | null>(null);
+  const pillCurrentRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const pillRafRef = useRef(0);
+  const pillFirstMoveRef = useRef(true);
   const [loaded, setLoaded] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [pillReady, setPillReady] = useState(false);
@@ -53,6 +57,7 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
     imagesRef.current = imgs;
     return () => {
       alive = false;
+      if (pillRafRef.current) cancelAnimationFrame(pillRafRef.current);
     };
   }, [frameCount, path]);
 
@@ -165,8 +170,32 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      pillRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
-      if (!pillReady) setPillReady(true);
+      pillTargetRef.current = { x, y };
+      if (pillFirstMoveRef.current) {
+        pillCurrentRef.current = { x, y };
+        pillFirstMoveRef.current = false;
+        pillRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        if (!pillReady) setPillReady(true);
+      }
+      if (!pillRafRef.current) {
+        const step = () => {
+          const t = pillTargetRef.current;
+          const c = pillCurrentRef.current;
+          if (!t || !pillRef.current) {
+            pillRafRef.current = 0;
+            return;
+          }
+          c.x += (t.x - c.x) * 0.15;
+          c.y += (t.y - c.y) * 0.15;
+          pillRef.current.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
+          if (Math.abs(t.x - c.x) < 0.3 && Math.abs(t.y - c.y) < 0.3) {
+            pillRafRef.current = 0;
+            return;
+          }
+          pillRafRef.current = requestAnimationFrame(step);
+        };
+        pillRafRef.current = requestAnimationFrame(step);
+      }
     }
     const d = dragRef.current;
     if (!d) return;
@@ -188,7 +217,7 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
     setDragging(false);
   };
 
-  const pillVisible = loaded && hovered && pillReady && !dragging;
+  const pillVisible = showHint && loaded && hovered && pillReady && !dragging;
 
   return (
     <div className={`relative ${className}`} style={style}>
@@ -198,7 +227,7 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
         height={1000}
         className={`select-none transition-opacity duration-500 ${
           loaded ? "opacity-100" : "opacity-0"
-        } ${pillVisible ? "cursor-none" : "cursor-grab active:cursor-grabbing"}`}
+        } cursor-grab active:cursor-grabbing`}
         style={{
           width: "100%",
           height: "100%",
@@ -210,21 +239,31 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => { setHovered(false); setPillReady(false); }}
+        onMouseLeave={() => {
+          setHovered(false);
+          setPillReady(false);
+          pillFirstMoveRef.current = true;
+          if (pillRafRef.current) {
+            cancelAnimationFrame(pillRafRef.current);
+            pillRafRef.current = 0;
+          }
+        }}
       />
 
-      {showHint && (
+      <div
+        ref={pillRef}
+        className="pointer-events-none absolute z-10"
+        style={{ left: 0, top: 0, willChange: "transform" }}
+      >
         <div
-          ref={pillRef}
-          className={`pointer-events-none absolute z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-neutral-900 text-white text-[13px] tracking-tight whitespace-nowrap transition-opacity duration-150 ${
-            pillVisible ? "opacity-100" : "opacity-0"
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-neutral-900/70 backdrop-blur-sm text-white text-[13px] font-medium tracking-tight whitespace-nowrap origin-top -translate-x-1/2 translate-y-[4px] transition-[opacity,transform] duration-200 ease-out ${
+            pillVisible ? "opacity-100 scale-100" : "opacity-0 scale-90"
           }`}
-          style={{ left: 0, top: 0, willChange: "transform" }}
         >
           <span>Drag to rotate</span>
           <RotateCw width={12} height={12} strokeWidth={2} className="opacity-70" />
         </div>
-      )}
+      </div>
 
       {credit && (
         <div
@@ -238,8 +277,15 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
               href={credit.href}
               target="_blank"
               rel="noopener noreferrer"
+              className="group/extlink inline-flex items-center gap-0.5"
             >
               {credit.name}
+              <ArrowUpRight
+                width={10}
+                height={10}
+                strokeWidth={2}
+                className="opacity-0 -mt-px transition-opacity duration-150 group-hover/extlink:opacity-70"
+              />
             </a>
           ) : (
             <span>{credit.name}</span>
