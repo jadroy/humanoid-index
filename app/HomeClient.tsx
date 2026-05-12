@@ -3105,13 +3105,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         width: 32,
                         height: 32,
                         borderRadius: 999,
-                        background: "var(--c-surface)",
+                        background: "rgba(0,0,0,0.11)",
                         opacity: splitHover ? 1 : 0,
                         transform: `scale(${splitHover ? 1 : 0.75})`,
                         transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                       }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth="1.5" strokeLinecap="round">
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
                         <line x1="4" y1="8" x2="12" y2="8" />
                       </svg>
                     </div>
@@ -3139,10 +3139,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       width: 26,
                       height: 26,
                       borderRadius: 999,
-                      background: "var(--c-surface)",
+                      background: "rgba(0,0,0,0.11)",
                     }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth="1.5" strokeLinecap="round">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
                       <line x1="4" y1="8" x2="12" y2="8" />
                     </svg>
                   </button>
