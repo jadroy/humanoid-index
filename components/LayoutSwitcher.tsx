@@ -3,6 +3,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/LogoMark";
 import { Chip } from "@/lib/design/primitives/Chip";
+import { SURFACE_HOVER_SOFT } from "@/lib/design/tokens";
 
 export const ALL_LAYOUTS = ["E", "Z"] as const;
 export type Layout = (typeof ALL_LAYOUTS)[number];
@@ -573,6 +574,9 @@ export function LayoutSwitcher({
     if (active !== "E") onChange("E" as Layout);
     onRandomHumanoid?.();
   };
+
+  const [trioSpinHover, setTrioSpinHover] = useState(false);
+  const [trioCopyHover, setTrioCopyHover] = useState(false);
 
   const mark = <LogoMark onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} />;
   const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} ringColor="#fff" />;
@@ -1221,27 +1225,67 @@ export function LayoutSwitcher({
             gridTemplateColumns: "1fr auto 1fr",
           }}
         >
-          <div className="flex justify-start">
+          <div className="group flex justify-start items-center" style={{ gap: 0 }}>
             <Chip
-              onClick={handleClick}
+              onClick={() => onShareSite?.()}
               style={{
                 fontSize: 13,
                 fontWeight: 500,
                 letterSpacing: "normal",
                 color: "rgba(95, 96, 89, 0.85)",
                 background: "transparent",
+                padding: "6px 4px 6px 12px",
               }}
             >
               Humanoid Index
             </Chip>
+            <button
+              onClick={() => onShareSite?.()}
+              onMouseEnter={() => setTrioCopyHover(true)}
+              onMouseLeave={() => setTrioCopyHover(false)}
+              aria-label="Copy link"
+              className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 999,
+                border: "none",
+                background: trioCopyHover ? SURFACE_HOVER_SOFT : "transparent",
+                color: "rgba(95, 96, 89, 0.7)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                transition: "background 200ms ease, opacity 200ms ease",
+              }}
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+                style={{ display: "block" }}
+              >
+                <rect x="9" y="9" width="11" height="11" rx="2.5" />
+                <path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" />
+              </svg>
+            </button>
           </div>
           <div className="flex justify-center">
             <Chip
               onClick={() => onRandomHumanoid?.()}
-              className="trio-spin hover:bg-black/5 transition-colors"
+              onMouseEnter={() => setTrioSpinHover(true)}
+              onMouseLeave={() => setTrioSpinHover(false)}
+              className="trio-spin"
               style={{
                 color: "rgba(95, 96, 89, 0.75)",
-                background: "rgba(95, 96, 89, 0.06)",
+                background: trioSpinHover ? SURFACE_HOVER_SOFT : "transparent",
+                transition: "background 200ms ease",
                 padding: 0,
                 width: 28,
                 height: 28,

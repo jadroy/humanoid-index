@@ -375,6 +375,7 @@ h1, h2, h3, h4, h5, h6 {
    compresses. Uses --pill-bg so inline tuner overrides flow through. */
 .pill-button {
   background: var(--pill-bg, #FCFCFC);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 .pill-button:hover {
   background: color-mix(in srgb, var(--pill-bg, #FCFCFC) 78%, white 22%);

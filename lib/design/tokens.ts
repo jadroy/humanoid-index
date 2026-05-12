@@ -6,6 +6,7 @@
 export const SURFACE = "#F4F4F4";
 export const SURFACE_HOVER = "#EBEBEB";
 export const SURFACE_ACTIVE = "#E0E0E0";
+export const SURFACE_HOVER_SOFT = "rgba(95, 96, 89, 0.04)";
 
 export const INK = "#343433";
 export const INK_MEDIUM = "#494440";

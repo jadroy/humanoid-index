@@ -494,6 +494,36 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
 // Single bot:  ?h=<id>
 // Compare:     ?compare=<leftId>,<rightId>
 // IDs come straight from humanoids.ts; compare takes precedence on hydration.
+function OgPreview({ src }: { src: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div
+      style={{
+        width: 200,
+        height: 105,
+        borderRadius: 10,
+        overflow: "hidden",
+        background: "rgba(0,0,0,0.04)",
+      }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        width={200}
+        height={105}
+        onLoad={() => setLoaded(true)}
+        style={{
+          display: "block",
+          objectFit: "cover",
+          clipPath: loaded ? "inset(0 0 0 0)" : "inset(100% 0 0 0)",
+          transition: "clip-path 520ms cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+      />
+    </div>
+  );
+}
+
 function parseShareParams(): { leftId: string | null; compareIds: string[] } {
   if (typeof window === "undefined") return { leftId: null, compareIds: [] };
   const p = new URLSearchParams(window.location.search);
@@ -661,13 +691,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statsGap, setStatsGap] = useState(8);     // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(28);  // px
   // Stat-pill tuners
-  const [statPillRadius, setStatPillRadius] = useState(12);  // px — softer than cardRadius (28); full-round felt too tic-tac on short pills
-  const [statPillRadiusOpen, setStatPillRadiusOpen] = useState(14);  // px — tighter radius when a pill is expanded
+  const [statPillRadius, setStatPillRadius] = useState(9999);  // px — fully rounded (capsule)
+  const [statPillRadiusOpen, setStatPillRadiusOpen] = useState(20);  // px — tighter radius when expanded so content isn't clipped at corners
   const [statPillGap, setStatPillGap] = useState(4);         // px — gap between pills
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
-  const [statPillPadY, setStatPillPadY] = useState(11);      // px — vertical button padding (sets closed height)
-  const [statPillBg, setStatPillBg] = useState("#F9F9F9");
-  const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("bare");
+  const [statPillPadY, setStatPillPadY] = useState(12);      // px — vertical button padding (sets closed height)
+  const [statPillBg, setStatPillBg] = useState("transparent");
+  const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("pill");
   const [blurbFontSize, setBlurbFontSize] = useState(12.7);
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [splitBlurb, setSplitBlurb] = useState(false);
@@ -1327,6 +1357,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           setSceneEnabled((v) => !v);
         }}
         hintRobotNames={sceneRobotNames}
+        onJumpToAvailable={sceneHint ? () => { if (comparing) exitCompare(); springL.jumpTo(sceneHint.index); } : undefined}
       />
 
       {/* Neighbor-image preloader — off-screen Next/Image tags matching the
@@ -2269,6 +2300,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         const renderMergedStats = () => {
           const pillBg = statPillBg;
           const pillBackdrop: string | undefined = undefined;
+          const pillRowHeight = statPillPadY * 2 + Math.round(pillLabelFontSize * 1.2);
           const heightL = hL.height ?? 0, heightR = hR.height ?? 0;
           const weightL = hL.weight ?? 0, weightR = hR.weight ?? 0;
           const dofL = hL.dof ?? 0, dofR = hR.dof ?? 0;
@@ -2593,7 +2625,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const hideLabel = s.key === "desc" && infoMode === "bare";
                   if (empty && hideLabel) return null;
                   const isLast = s.key === lastVisibleKey;
-                  const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
+                  // In compare, the merged blurb has no label and always belongs open.
+                  const forcedOpen = s.key === "desc" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
                   const interactive = !forcedOpen && !empty && !isLink && s.key !== "purchase" && s.key !== "year";
@@ -2648,7 +2681,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           display: "block",
                         }}
                       >
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${Math.max(0, statPillPadY - 6)}px 0`, gap: 8 }}>
+                        <div className="w-full flex items-center justify-between" style={{ minHeight: pillRowHeight, gap: 8 }}>
                           <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
                             {price ?? " "}
                           </span>
@@ -2705,7 +2738,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         />
                       )}
                       {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ padding: `${statPillPadY}px 0`, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: actionLabelColor }}>
+                        <div className="w-full flex items-center justify-between" style={{ minHeight: pillRowHeight, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: actionLabelColor }}>
                           {actionAccent ? (
                             <span className="inline-flex items-center" style={{ gap: 6, color: actionLabelColor, fontSize: pillLabelFontSize, lineHeight: 1.2 }}>
                               <span aria-hidden style={{ fontSize: pillLabelFontSize, opacity: 0.85 }}>↗</span>
@@ -4235,7 +4268,7 @@ export default function HomeClient() {
   const [layout, setLayout] = useState<Layout>("E");
   const [indexView, setIndexView] = useState<IndexView>("timeline");
 
-  const [navStyle, setNavStyle] = useState<NavStyle>("share-flip");
+  const [navStyle, setNavStyle] = useState<NavStyle>("trio");
   const [surfaceColor, setSurfaceColor] = useState(SURFACE);
   const [surfaceHover, setSurfaceHover] = useState("#EBEBEB");
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
@@ -4279,21 +4312,7 @@ export default function HomeClient() {
           cursor: "pointer",
         }}
       >
-        {ogUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={ogUrl}
-            alt=""
-            width={200}
-            height={105}
-            style={{
-              display: "block",
-              borderRadius: 10,
-              objectFit: "cover",
-              background: "rgba(0,0,0,0.03)",
-            }}
-          />
-        )}
+        {ogUrl && <OgPreview src={ogUrl} />}
         <div style={{ fontSize: 12, color: "#737373", padding: "6px 8px 2px", letterSpacing: "-0.005em" }}>
           {label}
         </div>
@@ -4620,7 +4639,20 @@ export default function HomeClient() {
       {/* Launch: chat trigger hidden, replaced with credit link.
           To bring chat back, swap this for the <OptionsMenu .../> block. */}
       {introDone && (
-        <div className="intro-nav fixed bottom-0 left-0 right-0 z-[48] pointer-events-none flex items-center justify-center" style={{ paddingBottom: 24 }}>
+        <div className="intro-nav fixed bottom-0 left-0 right-0 z-[48] pointer-events-none flex items-center justify-between" style={{ paddingBottom: 24, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              letterSpacing: "normal",
+              lineHeight: 1,
+              color: "rgba(95, 96, 89, 0.5)",
+              padding: "6px 0",
+              whiteSpace: "nowrap",
+            }}
+          >
+            © 2026
+          </span>
           <a
             href="https://royjad.com/"
             target="_blank"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { SURFACE, SURFACE_HOVER, INK_MEDIUM, INK_MUTED } from "@/lib/design/tokens";
+import { SURFACE_HOVER_SOFT, INK_MEDIUM, INK_MUTED } from "@/lib/design/tokens";
 
 const CONTACT_EMAIL = "jadroy77@gmail.com";
 
@@ -66,7 +66,8 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible }: Props)
   return (
     <div
       ref={wrapRef}
-      className={`fixed bottom-6 right-6 z-[49] ${visible ? "intro-nav" : "opacity-0 pointer-events-none"}`}
+      className={`fixed bottom-6 left-1/2 z-[49] ${visible ? "intro-nav" : "opacity-0 pointer-events-none"}`}
+      style={{ transform: "translateX(-50%)" }}
     >
       {/* Hidden ghost: measures the natural content width as shareLabel changes. */}
       <div
@@ -111,7 +112,8 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible }: Props)
           style={{
             position: "absolute",
             bottom: 48,
-            right: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
             width: popoverWidth ?? "auto",
             minWidth: 200,
             background: "rgba(38, 38, 38, 0.86)",
@@ -160,7 +162,7 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible }: Props)
           width: 36,
           height: 36,
           borderRadius: 999,
-          background: open || hover ? SURFACE_HOVER : SURFACE,
+          background: open || hover ? SURFACE_HOVER_SOFT : "transparent",
           border: "none",
           color: open ? INK_MEDIUM : "#737373",
           display: "flex",

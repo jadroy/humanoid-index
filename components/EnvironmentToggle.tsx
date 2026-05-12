@@ -2,22 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { SURFACE, SURFACE_HOVER } from "@/lib/design/tokens";
+import { SURFACE_HOVER_SOFT } from "@/lib/design/tokens";
 
 type Props = {
   available: boolean;
   enabled: boolean;
   onToggle: () => void;
   hintRobotNames?: string[];
+  onJumpToAvailable?: () => void;
 };
 
-export default function EnvironmentToggle({ available, enabled, onToggle, hintRobotNames }: Props) {
+export default function EnvironmentToggle({ available, enabled, onToggle, hintRobotNames, onJumpToAvailable }: Props) {
   const [hover, setHover] = useState(false);
+  const [hintHover, setHintHover] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const showTooltip = !available && !!hintRobotNames && hintRobotNames.length > 0 && hover;
   const ink = !available ? "#b4b4b4" : enabled ? "#1d1d1f" : "#737373";
-  const bg = !available ? SURFACE : enabled ? "#E8E8ED" : hover ? SURFACE_HOVER : SURFACE;
+  const bg = available && enabled
+    ? "#E8E8ED"
+    : hover
+      ? SURFACE_HOVER_SOFT
+      : "transparent";
   const label = !available ? "Coming soon" : "Environment";
 
   const hintText = hintRobotNames && hintRobotNames.length > 0
@@ -67,23 +73,38 @@ export default function EnvironmentToggle({ available, enabled, onToggle, hintRo
         </svg>
         {label}
       </button>
-      <span
+      <button
+        onClick={onJumpToAvailable}
+        onMouseEnter={() => setHintHover(true)}
+        onMouseLeave={() => setHintHover(false)}
+        aria-label={hintText}
+        aria-hidden={!showTooltip}
+        tabIndex={showTooltip ? 0 : -1}
         style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 3,
           fontSize: 11,
           fontWeight: 400,
           letterSpacing: "-0.005em",
-          color: "#9a9a9a",
+          color: hintHover ? "#737373" : "#9a9a9a",
           whiteSpace: "nowrap",
           paddingRight: 4,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
           opacity: showTooltip ? 1 : 0,
           transform: showTooltip ? "translateY(0)" : "translateY(-3px)",
-          transition: "opacity 200ms ease, transform 200ms ease",
-          pointerEvents: "none",
+          transition: "opacity 200ms ease, transform 200ms ease, color 180ms ease",
+          pointerEvents: showTooltip ? "auto" : "none",
         }}
-        aria-hidden
       >
-        {hintText}
-      </span>
+        <span>{hintText}</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ display: "block" }}>
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="13 6 19 12 13 18" />
+        </svg>
+      </button>
     </div>,
     document.body,
   );
