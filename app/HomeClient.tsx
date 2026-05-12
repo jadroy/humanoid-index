@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from "react";
 import { Toaster, toast } from "sonner";
-import { Box, Pause, Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -525,12 +525,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [hideUnbuyable, setHideUnbuyable] = useState(false);
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
-  const [spinActive, setSpinActive] = useState(false);
   const spinViewerRef = useRef<SpinViewerHandle>(null);
-  const spinAnimatingRef = useRef(false);
   const spinLoopRef = useRef(false);
   const [spinPlaying, setSpinPlaying] = useState(false);
-  const [spinExiting, setSpinExiting] = useState(false);
   const [videoPaused, setVideoPaused] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
@@ -1186,9 +1183,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     return () => clearTimeout(t);
   }, [springL.index, springR.index, comparing]);
 
-  // Drop spin viewer when the active humanoid changes or compare mode toggles
+  // Stop auto-rotate when the active humanoid changes or compare mode toggles
   useEffect(() => {
-    setSpinActive(false);
+    spinLoopRef.current = false;
+    spinViewerRef.current?.cancelPlay();
+    setSpinPlaying(false);
     setVideoPaused(false);
     resetGalleryIdx();
   }, [springL.index, springR.index, comparing, resetGalleryIdx]);
@@ -2893,17 +2892,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             >
               {/* Media area */}
               <div className="relative flex-1 min-h-0 overflow-hidden">
-                {/* Static — instant on entry, fades in on exit (mirrors SpinViewer's canvas fade-in) */}
-                {(!spinActive || spinExiting) && (
-                  <div
-                    className="absolute inset-0"
-                    style={spinExiting ? { animation: "spin-static-in 500ms ease-out forwards" } : undefined}
-                  >
+                {/* Static — hidden on the focused card when SpinViewer takes over */}
+                {!(isFirst && !comparing && SPIN_ROBOTS[h.id]) && (
+                  <div className="absolute inset-0">
                     {renderMedia(h, hIdx, isFirst)}
                   </div>
                 )}
-                {/* Spin viewer — mounted only during active 3D; unmounts the moment exit fade starts so the static flash isn't covered */}
-                {spinActive && !spinExiting && isFirst && SPIN_ROBOTS[h.id] && (
+                {/* Spin viewer — auto-mounted for spin-enabled robots on the focused card */}
+                {isFirst && !comparing && SPIN_ROBOTS[h.id] && (
                   <div className="absolute inset-0">
                     <SpinViewer
                       ref={spinViewerRef}
@@ -2923,8 +2919,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     onClick={() => onShareView?.()}
                   />
                 )}
-                {/* Auto-rotate (play/pause) — appears next to the 3D toggle while active */}
-                {isFirst && !comparing && SPIN_ROBOTS[h.id] && spinActive && (
+                {/* Auto-rotate (play/pause) — bottom-right, only for spin-enabled robots */}
+                {isFirst && !comparing && SPIN_ROBOTS[h.id] && (
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
@@ -2933,8 +2929,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         spinViewerRef.current?.cancelPlay();
                         return;
                       }
-                      if (spinAnimatingRef.current) return;
-                      spinAnimatingRef.current = true;
                       spinLoopRef.current = true;
                       setSpinPlaying(true);
                       try {
@@ -2942,48 +2936,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                           await spinViewerRef.current?.playRotation();
                         }
                       } finally {
-                        spinAnimatingRef.current = false;
                         spinLoopRef.current = false;
                         setSpinPlaying(false);
                       }
                     }}
                     aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
-                    className="absolute bottom-2 right-[44px] z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-neutral-500 transition-all duration-200 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
+                    className={`absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ${
+                      spinPlaying
+                        ? "bg-white/75 backdrop-blur-md text-neutral-800 opacity-100"
+                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md opacity-0 group-hover/card:opacity-100"
+                    }`}
                   >
                     {spinPlaying ? (
                       <Pause width={17} height={17} strokeWidth={1.75} />
                     ) : (
                       <Play width={17} height={17} strokeWidth={1.75} />
                     )}
-                  </button>
-                )}
-                {/* 3D toggle — bottom-right, mirrors the share button */}
-                {isFirst && !comparing && SPIN_ROBOTS[h.id] && (
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (spinAnimatingRef.current) return;
-                      if (spinActive) {
-                        spinAnimatingRef.current = true;
-                        await spinViewerRef.current?.unwind();
-                        // Fade the spin layer out, mirroring the entry fade-in
-                        setSpinExiting(true);
-                        await new Promise((r) => setTimeout(r, 500));
-                        setSpinActive(false);
-                        setSpinExiting(false);
-                        spinAnimatingRef.current = false;
-                      } else {
-                        setSpinActive(true);
-                      }
-                    }}
-                    aria-label={spinActive ? "Exit 3D view" : "View in 3D"}
-                    className={`absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ${
-                      spinActive
-                        ? "bg-white/75 backdrop-blur-md text-neutral-800 opacity-100"
-                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md opacity-0 group-hover/card:opacity-100"
-                    }`}
-                  >
-                    <Box width={17} height={17} strokeWidth={1.75} />
                   </button>
                 )}
                 {/* Video play/pause — appears when on a video slide; lives in the bottom-right cluster */}

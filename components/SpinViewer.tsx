@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { RotateCw } from "lucide-react";
 
 interface SpinViewerProps {
   frameCount: number;
@@ -28,8 +29,11 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
   const dragRef = useRef<{ startX: number; startFrame: number } | null>(null);
   const unwindingRef = useRef(false);
   const playCancelRef = useRef<(() => void) | null>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [pillReady, setPillReady] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -105,7 +109,7 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
       playRotation: () =>
         new Promise<void>((resolve) => {
           const start = frameRef.current;
-          const duration = 1400;
+          const duration = 1250;
           const t0 = performance.now();
           let cancelled = false;
           unwindingRef.current = true;
@@ -153,10 +157,17 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
     if (!loaded || unwindingRef.current) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { startX: e.clientX, startFrame: frameRef.current };
-    if (!hasInteracted) setHasInteracted(true);
+    setDragging(true);
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType === "mouse" && pillRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      pillRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+      if (!pillReady) setPillReady(true);
+    }
     const d = dragRef.current;
     if (!d) return;
     const dx = e.clientX - d.startX;
@@ -174,7 +185,10 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
     dragRef.current = null;
+    setDragging(false);
   };
+
+  const pillVisible = loaded && hovered && pillReady && !dragging;
 
   return (
     <div className={`relative ${className}`} style={style}>
@@ -182,9 +196,9 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
         ref={canvasRef}
         width={800}
         height={1000}
-        className={`select-none cursor-grab active:cursor-grabbing transition-opacity duration-500 ${
+        className={`select-none transition-opacity duration-500 ${
           loaded ? "opacity-100" : "opacity-0"
-        }`}
+        } ${pillVisible ? "cursor-none" : "cursor-grab active:cursor-grabbing"}`}
         style={{
           width: "100%",
           height: "100%",
@@ -195,22 +209,27 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => { setHovered(false); setPillReady(false); }}
       />
 
       {showHint && (
         <div
-          className={`pointer-events-none absolute left-1/2 bottom-2 -translate-x-1/2 text-[12px] tracking-tight text-neutral-400 transition-opacity duration-500 ${
-            loaded && !hasInteracted ? "opacity-100" : "opacity-0"
+          ref={pillRef}
+          className={`pointer-events-none absolute z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-neutral-900 text-white text-[13px] tracking-tight whitespace-nowrap transition-opacity duration-150 ${
+            pillVisible ? "opacity-100" : "opacity-0"
           }`}
+          style={{ left: 0, top: 0, willChange: "transform" }}
         >
-          Drag to rotate
+          <span>Drag to rotate</span>
+          <RotateCw width={12} height={12} strokeWidth={2} className="opacity-70" />
         </div>
       )}
 
       {credit && (
         <div
-          className={`absolute bottom-2 left-3 text-[11px] tracking-tight text-neutral-400 transition-opacity duration-500 ${
-            loaded ? "opacity-100" : "opacity-0"
+          className={`absolute bottom-2 left-3 text-[11px] tracking-tight text-neutral-400 transition-opacity duration-200 opacity-0 group-hover/card:opacity-100 ${
+            loaded ? "" : "!opacity-0"
           }`}
         >
           {credit.prefix && <span>{credit.prefix} </span>}
@@ -219,7 +238,6 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
               href={credit.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-neutral-500 hover:text-neutral-700 transition-colors"
             >
               {credit.name}
             </a>
