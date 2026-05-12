@@ -697,7 +697,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillPadX, setStatPillPadX] = useState(16);      // px — horizontal padding inside pill
   const [statPillPadY, setStatPillPadY] = useState(12);      // px — vertical button padding (sets closed height)
   const [statPillBg, setStatPillBg] = useState("transparent");
-  const [newBadgeFontSize, setNewBadgeFontSize] = useState(11); // px — "New" badge label size
+  const [newBadgeFontSize, setNewBadgeFontSize] = useState(12); // px — "New" badge label size
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("pill");
   const [blurbFontSize, setBlurbFontSize] = useState(12.7);
   const [blurbFloat, setBlurbFloat] = useState(false);
