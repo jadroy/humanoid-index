@@ -2325,7 +2325,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               key: "desc",
               show: true,
               bubble: !!compareBlurb.long,
-              label: null,
+              label: (
+                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Info</p>
+              ),
               detail: (() => {
                 const isExpanded = expandedBlurbs.has(compareBlurbId);
                 const canExpand = !!compareBlurb.long;
@@ -2627,8 +2629,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   const hideLabel = s.key === "desc" && infoMode === "bare";
                   if (empty && hideLabel) return null;
                   const isLast = s.key === lastVisibleKey;
-                  // In compare, the merged blurb has no label and always belongs open.
-                  const forcedOpen = s.key === "desc" && !empty;
+                  const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
                   const isOpen = !empty && openStat.has(s.key);
                   const isLink = !!((s as { href?: string }).href);
                   const interactive = !forcedOpen && !empty && !isLink && s.key !== "purchase" && s.key !== "year";
