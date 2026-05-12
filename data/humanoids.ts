@@ -32,7 +32,10 @@ export interface Humanoid {
   sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
 }
 
-export const humanoids: Humanoid[] = [
+// Flip to false to hide the 2026-05-08 density-experiment stubs (ids 30–135).
+const SHOW_EXPERIMENT_STUBS = false;
+
+const allHumanoids: Humanoid[] = [
   // ── DENSITY EXPERIMENT (2026-05-08) — stub entries, no images, remove if not keeping ──
   { id: "30", name: "Igris-C", manufacturer: "Robros", year: 2025, status: "Prototype" },
   { id: "31", name: "Bonobo", manufacturer: "RT Corporation", year: 2025, status: "Prototype" },
@@ -58,6 +61,91 @@ export const humanoids: Humanoid[] = [
   { id: "51", name: "Iron", manufacturer: "Xpeng", year: 2024, status: "Prototype" },
   { id: "52", name: "NAVIAI I2", manufacturer: "Zhejiang Lab", year: 2025, status: "Prototype" },
   { id: "53", name: "TR5", manufacturer: "Zhicheng AI", year: 2025, status: "Prototype" },
+  // batch 2 (A–E)
+  { id: "54", name: "NEO Gamma", manufacturer: "1X Technologies", year: 2025, status: "Prototype" },
+  { id: "55", name: "Elixis", manufacturer: "Addverb", year: 2025, status: "Prototype" },
+  { id: "56", name: "Alice 4", manufacturer: "AeiROBOT", year: 2025, status: "Prototype" },
+  { id: "57", name: "Alice 3", manufacturer: "AeiROBOT", year: 2024, status: "Prototype" },
+  { id: "58", name: "Raise A1", manufacturer: "AgiBot", year: 2025, status: "Prototype" },
+  { id: "59", name: "A2 Max", manufacturer: "AgiBot", year: 2025, status: "Prototype" },
+  { id: "60", name: "Yuanzheng A2", manufacturer: "AgiBot", year: 2025, status: "Prototype" },
+  { id: "61", name: "Cloud X2-N", manufacturer: "AgiBot", year: 2025, status: "Prototype" },
+  { id: "62", name: "AgileONE", manufacturer: "Agile Robots", year: 2025, status: "Prototype" },
+  { id: "63", name: "AIDOL", manufacturer: "AIDOL", year: 2025, status: "Prototype" },
+  { id: "64", name: "Abi", manufacturer: "Andromeda Robotics", year: 2025, status: "Prototype" },
+  { id: "65", name: "QDH", manufacturer: "Apptronik", year: 2025, status: "Prototype" },
+  { id: "66", name: "ARTROBOT", manufacturer: "ARTROBOT", year: 2025, status: "Prototype" },
+  { id: "67", name: "Genesis", manufacturer: "BFF Robotics", year: 2025, status: "Prototype" },
+  { id: "68", name: "K1", manufacturer: "Booster Robotics", year: 2025, status: "Prototype" },
+  { id: "69", name: "T1", manufacturer: "Booster Robotics", year: 2025, status: "Prototype" },
+  { id: "70", name: "Borg 01", manufacturer: "Borg Robotics", year: 2025, status: "Prototype" },
+  { id: "71", name: "Elf 3", manufacturer: "BXI Robotics", year: 2025, status: "Prototype" },
+  { id: "72", name: "Yogi", manufacturer: "Cartwheel Robotics", year: 2025, status: "Prototype" },
+  { id: "73", name: "CETC No. 1", manufacturer: "CETC", year: 2025, status: "Prototype" },
+  { id: "74", name: "AiMOGA", manufacturer: "Chery", year: 2025, status: "Prototype" },
+  { id: "75", name: "Protoclone", manufacturer: "Clone Robotics", year: 2025, status: "Prototype" },
+  { id: "76", name: "ORCA", manufacturer: "Cyan Robotics", year: 2025, status: "Prototype" },
+  { id: "77", name: "Cyborg-W01", manufacturer: "Cyborg Robotics", year: 2025, status: "Prototype" },
+  { id: "78", name: "DR01", manufacturer: "DEEP Robotics", year: 2025, status: "Prototype" },
+  { id: "79", name: "Atom", manufacturer: "Dobot Robotics", year: 2025, status: "Prototype" },
+  { id: "80", name: "cinnamon 1", manufacturer: "donut Robotics", year: 2025, status: "Prototype" },
+  { id: "81", name: "Walker 02", manufacturer: "DroidUp", year: 2025, status: "Prototype" },
+  { id: "82", name: "SE01", manufacturer: "EngineAI", year: 2025, status: "Prototype" },
+  // batch 3 (E–L)
+  { id: "83", name: "Codroid", manufacturer: "Estun", year: 2025, status: "Prototype" },
+  { id: "84", name: "Figure 03", manufacturer: "Figure AI", year: 2025, status: "Prototype" },
+  { id: "85", name: "FF Futurist", manufacturer: "Faraday Future", year: 2025, status: "Prototype" },
+  { id: "86", name: "FF Master", manufacturer: "Faraday Future", year: 2025, status: "Prototype" },
+  { id: "87", name: "Sprout", manufacturer: "Fauna Robotics", year: 2025, status: "Prototype" },
+  { id: "88", name: "Phantom MK1", manufacturer: "Foundation", year: 2025, status: "Prototype" },
+  { id: "89", name: "GR-2", manufacturer: "Fourier Intelligence", year: 2024, status: "Prototype" },
+  { id: "90", name: "GR-3", manufacturer: "Fourier Intelligence", year: 2025, status: "Prototype" },
+  { id: "91", name: "Haribit", manufacturer: "Haribit", year: 2025, status: "Prototype" },
+  { id: "92", name: "Mini Hi", manufacturer: "High Torque", year: 2025, status: "Prototype" },
+  { id: "93", name: "Honor", manufacturer: "Honor", year: 2025, status: "Prototype" },
+  { id: "94", name: "HopeJr", manufacturer: "Hugging Face", year: 2025, status: "Prototype" },
+  { id: "95", name: "HMND 01", manufacturer: "Humanoid", year: 2025, status: "Prototype" },
+  { id: "96", name: "Qinglong", manufacturer: "Humanoid Robot", year: 2024, status: "Prototype" },
+  { id: "97", name: "iCub", manufacturer: "IIT", year: 2008, status: "In Production" },
+  { id: "98", name: "iFLYTEK", manufacturer: "iFLYTEK", year: 2025, status: "Prototype" },
+  { id: "99", name: "Nadia", manufacturer: "IHMC Robotics", year: 2024, status: "Prototype" },
+  { id: "100", name: "Nylo", manufacturer: "IntBot", year: 2025, status: "Prototype" },
+  { id: "101", name: "FlexCo", manufacturer: "Iono Robotics", year: 2025, status: "Prototype" },
+  { id: "102", name: "K-1", manufacturer: "JAKA", year: 2025, status: "Prototype" },
+  { id: "103", name: "Z-Bot", manufacturer: "JoyIn", year: 2025, status: "Prototype" },
+  { id: "104", name: "K-Bot", manufacturer: "K-Scale", year: 2025, status: "Prototype" },
+  { id: "105", name: "Kaleido", manufacturer: "Kawasaki", year: 2017, status: "Prototype" },
+  { id: "106", name: "XMAN-R1", manufacturer: "Keenon Robotics", year: 2025, status: "Prototype" },
+  { id: "107", name: "Kuavo-My", manufacturer: "Leju", year: 2025, status: "Prototype" },
+  { id: "108", name: "KAPEX", manufacturer: "LG Electronics", year: 2025, status: "Prototype" },
+  { id: "109", name: "Li-Gong D1", manufacturer: "Li-Gong", year: 2025, status: "Prototype" },
+  // batch 4 (L–R)
+  { id: "110", name: "CASBOT 01", manufacturer: "Lingbao", year: 2025, status: "Prototype" },
+  { id: "111", name: "LUS2", manufacturer: "Lumos Robotics", year: 2025, status: "Prototype" },
+  { id: "112", name: "Xingzhe", manufacturer: "LY iTech", year: 2025, status: "Prototype" },
+  { id: "113", name: "MagicBot G1", manufacturer: "Magiclab", year: 2025, status: "Prototype" },
+  { id: "114", name: "MagicBot Z1", manufacturer: "Magiclab", year: 2025, status: "Prototype" },
+  { id: "115", name: "Matrix-1", manufacturer: "Matrix Robotics", year: 2025, status: "Prototype" },
+  { id: "116", name: "4NE1", manufacturer: "NEURA Robotics", year: 2024, status: "Prototype" },
+  { id: "117", name: "Dora", manufacturer: "NEURA Robotics", year: 2025, status: "Prototype" },
+  { id: "118", name: "N2", manufacturer: "Noetix Robotics", year: 2025, status: "Prototype" },
+  { id: "119", name: "Bumi", manufacturer: "Noetix Robotics", year: 2025, status: "Prototype" },
+  { id: "120", name: "Qinglong V3.0", manufacturer: "Openloong", year: 2025, status: "Prototype" },
+  { id: "121", name: "KangarooPRO", manufacturer: "PAL Robotics", year: 2025, status: "Prototype" },
+  { id: "122", name: "Assembler", manufacturer: "Persona AI", year: 2025, status: "Prototype" },
+  { id: "123", name: "Builder", manufacturer: "Persona AI", year: 2025, status: "Prototype" },
+  { id: "124", name: "Fabricator", manufacturer: "Persona AI", year: 2025, status: "Prototype" },
+  { id: "125", name: "Miner", manufacturer: "Persona AI", year: 2025, status: "Prototype" },
+  { id: "126", name: "Welder", manufacturer: "Persona AI", year: 2025, status: "Prototype" },
+  { id: "127", name: "C1", manufacturer: "PHYBOT", year: 2025, status: "Prototype" },
+  { id: "128", name: "Adam", manufacturer: "PNDBotics", year: 2025, status: "Prototype" },
+  { id: "129", name: "Pudu D9", manufacturer: "Pudu Robotics", year: 2025, status: "Prototype" },
+  { id: "130", name: "HUB02", manufacturer: "Rainbow Robotics", year: 2025, status: "Prototype" },
+  { id: "131", name: "F-Series", manufacturer: "Realbotix", year: 2024, status: "In Production" },
+  { id: "132", name: "Mini Hi", manufacturer: "Robify Robotics", year: 2025, status: "Prototype" },
+  { id: "133", name: "Mini Pi+", manufacturer: "Robify Robotics", year: 2025, status: "Prototype" },
+  { id: "134", name: "ROBOTO ORIGIN", manufacturer: "RoboParty", year: 2025, status: "Prototype" },
+  { id: "135", name: "L7", manufacturer: "Robotera", year: 2025, status: "Prototype" },
   // ── end density experiment ──
   // 2026 (anticipated) — hidden until details are public
   // {
@@ -522,3 +610,9 @@ export const humanoids: Humanoid[] = [
     description: "Honda's pioneering bipedal humanoid. Retired in 2022 after 20 years of development.",
   },
 ];
+
+const EXPERIMENT_STUB_IDS = new Set(Array.from({ length: 106 }, (_, i) => String(30 + i)));
+
+export const humanoids: Humanoid[] = SHOW_EXPERIMENT_STUBS
+  ? allHumanoids
+  : allHumanoids.filter((h) => !EXPERIMENT_STUB_IDS.has(h.id));

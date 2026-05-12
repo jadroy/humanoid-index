@@ -928,6 +928,30 @@ main {
   opacity: 1;
 }
 
+/* Nav — share-reveal: "Share" expands to "Share what you're looking at" on hover. */
+.share-reveal-extra {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateX(-4px);
+  transition: max-width 420ms cubic-bezier(0.32, 0.72, 0, 1), opacity 280ms ease 60ms, transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.share-reveal:hover .share-reveal-extra {
+  max-width: 240px;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Action pill CTA chip — only the inner chip is clickable; press-only feedback. */
+.cta-chip {
+  transition: transform 160ms ease;
+}
+.cta-chip:active {
+  transform: scale(0.98);
+}
+
 /* Compare minus (−) — always visible, with a small lift on hover. */
 .compare-x-bounce {
   opacity: 0.7;

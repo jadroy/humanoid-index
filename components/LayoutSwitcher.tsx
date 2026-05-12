@@ -15,7 +15,7 @@ export const layoutLabels: Record<Layout, string> = {
 export const INDEX_VIEWS = ["grid", "timeline"] as const;
 export type IndexView = (typeof INDEX_VIEWS)[number];
 
-export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip", "chip2", "centered", "centered2", "wordmark", "share", "share-center", "share-flip"] as const;
+export const NAV_STYLES = ["floating", "pill", "underline", "bordered", "minimal", "solid", "sunday", "apple", "chip", "chip2", "centered", "centered2", "wordmark", "wordmark2", "share", "share-center", "share-flip", "filters"] as const;
 export type NavStyle = (typeof NAV_STYLES)[number];
 
 export const SWITCHER_STYLES = ["text", "drag", "single", "toggle", "pill", "slash", "dot", "dash", "brackets", "ghost", "divider"] as const;
@@ -188,6 +188,99 @@ function SingleSwitcher({ active, onChange }: { active: Layout; onChange: (l: La
   );
 }
 
+// ─── Filters Nav (brand left, filter chip row middle, share right) ─
+
+const FILTER_PILLS = [
+  { id: "production", label: "In production" },
+  { id: "prototype", label: "Prototype" },
+  { id: "discontinued", label: "Discontinued" },
+  { id: "purchaseable", label: "Purchaseable" },
+] as const;
+type FilterId = (typeof FILTER_PILLS)[number]["id"];
+
+function FiltersNav({ onShareSite, onLogoClick }: { onShareSite?: () => void; onLogoClick: () => void }) {
+  const [active, setActive] = useState<Set<FilterId>>(new Set());
+  const toggle = (id: FilterId) => {
+    setActive((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  return (
+    <nav
+      className="fixed left-0 right-0 z-50 pointer-events-auto"
+      style={{ top: 0, background: "transparent" }}
+    >
+      <div
+        className="grid items-center"
+        style={{
+          height: 48,
+          paddingLeft: "var(--nav-x, 24px)",
+          paddingRight: "var(--nav-x, 24px)",
+          gridTemplateColumns: "1fr auto 1fr",
+        }}
+      >
+        <div className="flex justify-start">
+          <Chip
+            onClick={onLogoClick}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              letterSpacing: "normal",
+              color: "rgba(95, 96, 89, 0.8)",
+              background: "transparent",
+            }}
+          >
+            Humanoid Index
+          </Chip>
+        </div>
+        <div className="flex justify-center items-center" style={{ gap: 4 }}>
+          {FILTER_PILLS.map((p) => {
+            const on = active.has(p.id);
+            return (
+              <button
+                key={p.id}
+                onClick={() => toggle(p.id)}
+                className="filter-pill cursor-pointer"
+                aria-pressed={on}
+                style={{
+                  background: on ? "rgba(29, 29, 31, 0.92)" : "rgba(95, 96, 89, 0.08)",
+                  color: on ? "#ffffff" : "rgba(95, 96, 89, 0.85)",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  letterSpacing: "normal",
+                  padding: "5px 11px",
+                  borderRadius: 999,
+                  border: "none",
+                  whiteSpace: "nowrap",
+                  transition: "background 200ms ease, color 200ms ease",
+                }}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex justify-end">
+          <Chip
+            onClick={() => onShareSite?.()}
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              letterSpacing: "normal",
+              color: "rgba(95, 96, 89, 0.8)",
+              background: "transparent",
+            }}
+          >
+            Share
+          </Chip>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
 // ─── Chip Nav (apple bar + sliding SURFACE thumb on active tab) ─
 
 function ChipNav({
@@ -305,6 +398,7 @@ export function LayoutSwitcher({
   indexView,
   onIndexViewChange,
   onShareSite,
+  shareViewLabel,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
@@ -317,6 +411,7 @@ export function LayoutSwitcher({
   indexView: IndexView;
   onIndexViewChange: (v: IndexView) => void;
   onShareSite?: () => void;
+  shareViewLabel?: string;
 }) {
   const handleClick = () => {
     if (active !== "E") onChange("E" as Layout);
@@ -335,6 +430,28 @@ export function LayoutSwitcher({
   }, [menuOpen]);
 
   const frost = { background: "var(--c-surface)" } as React.CSSProperties;
+
+  // Discoverable shuffle affordance — sits next to the wordmark in launch nav variants.
+  // Wordmark click also still fires shuffle as a fallback.
+  const shufflePill = onRandomHumanoid ? (
+    <Chip
+      onClick={() => onRandomHumanoid()}
+      className="hover:bg-black/5 transition-colors"
+      style={{
+        color: "rgba(95, 96, 89, 0.8)",
+        background: "transparent",
+        padding: "6px 10px",
+      }}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }} aria-label="Shuffle">
+        <polyline points="16 3 21 3 21 8" />
+        <line x1="4" y1="20" x2="21" y2="3" />
+        <polyline points="21 16 21 21 16 21" />
+        <line x1="15" y1="15" x2="21" y2="21" />
+        <line x1="4" y1="4" x2="9" y2="9" />
+      </svg>
+    </Chip>
+  ) : null;
 
   const subInline = (activeColor: string, inactiveColor: string, separatorColor: string): React.ReactNode =>
     active === "Z" ? (
@@ -943,7 +1060,7 @@ export function LayoutSwitcher({
         className="fixed left-0 right-0 z-50 pointer-events-auto"
         style={{ top: 0, background: "transparent" }}
       >
-        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)", gap: 4 }}>
           <Chip
             onClick={handleClick}
             style={{
@@ -956,6 +1073,7 @@ export function LayoutSwitcher({
           >
             Humanoid Index
           </Chip>
+          {shufflePill}
         </div>
       </nav>
     );
@@ -1051,8 +1169,11 @@ export function LayoutSwitcher({
     );
   }
 
-  // ── Style: share-center — just "Share" centered, nothing else ──
+  // ── Style: share-center — "Share" centered; reveals current humanoid(s) on hover ──
   else if (navStyle === "share-center") {
+    const suffix = shareViewLabel && shareViewLabel.startsWith("Share ")
+      ? shareViewLabel.slice(5).trim()
+      : "";
     navEl = (
       <nav
         className="fixed left-0 right-0 z-50 pointer-events-auto"
@@ -1061,23 +1182,100 @@ export function LayoutSwitcher({
         <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
           <Chip
             onClick={() => onShareSite?.()}
+            className="share-reveal"
             style={{
               fontSize: 13,
               fontWeight: 500,
               letterSpacing: "normal",
               color: "rgba(95, 96, 89, 0.8)",
               background: "transparent",
+              whiteSpace: "nowrap",
+              display: "inline-flex",
+              alignItems: "center",
             }}
           >
-            Share
+            <span>Share</span>
+            {suffix && <span className="share-reveal-extra">&nbsp;{suffix}</span>}
           </Chip>
         </div>
       </nav>
     );
   }
 
-  // ── Style: wordmark — centered SVG wordmark logo ──
+  // ── Style: filters — brand left, filter chip cluster middle, share right ──
+  else if (navStyle === "filters") {
+    navEl = <FiltersNav onShareSite={onShareSite} onLogoClick={handleClick} />;
+  }
+
+  // ── Style: wordmark — left logo, center shuffle, right share ──
   else if (navStyle === "wordmark") {
+    navEl = (
+      <nav
+        className="fixed left-0 right-0 z-50 pointer-events-auto"
+        style={{ top: 0, background: "transparent" }}
+      >
+        <div
+          className="grid items-center"
+          style={{
+            height: 48,
+            paddingLeft: "var(--nav-x, 24px)",
+            paddingRight: "var(--nav-x, 24px)",
+            gridTemplateColumns: "1fr auto 1fr",
+          }}
+        >
+          <div className="flex justify-start">
+            <Chip
+              onClick={handleClick}
+              style={{
+                background: "transparent",
+                display: "inline-flex",
+                alignItems: "center",
+              }}
+            >
+              <span
+                role="img"
+                aria-label="Humanoid Index"
+                style={{
+                  height: 11,
+                  width: 117,
+                  display: "block",
+                  background: "rgba(95, 96, 89, 0.8)",
+                  WebkitMaskImage: "url(/HI-logo.svg)",
+                  maskImage: "url(/HI-logo.svg)",
+                  WebkitMaskRepeat: "no-repeat",
+                  maskRepeat: "no-repeat",
+                  WebkitMaskSize: "contain",
+                  maskSize: "contain",
+                  WebkitMaskPosition: "center",
+                  maskPosition: "center",
+                }}
+              />
+            </Chip>
+          </div>
+          <div className="flex justify-center">
+            {shufflePill}
+          </div>
+          <div className="flex justify-end">
+            <Chip
+              onClick={() => onShareSite?.()}
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                letterSpacing: "normal",
+                color: "rgba(95, 96, 89, 0.8)",
+                background: "transparent",
+              }}
+            >
+              Share
+            </Chip>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  // ── Style: wordmark2 — centered SVG wordmark logo (older variant) ──
+  else if (navStyle === "wordmark2") {
     navEl = (
       <nav
         className="fixed left-0 right-0 z-50 pointer-events-auto"
@@ -1092,10 +1290,23 @@ export function LayoutSwitcher({
               alignItems: "center",
             }}
           >
-            <img
-              src="/wordmark.svg"
-              alt="Humanoid Index"
-              style={{ height: 13, width: "auto", display: "block", opacity: 0.8 }}
+            <span
+              role="img"
+              aria-label="Humanoid Index"
+              style={{
+                height: 11,
+                width: 117,
+                display: "block",
+                background: "rgba(95, 96, 89, 0.8)",
+                WebkitMaskImage: "url(/HI-logo.svg)",
+                maskImage: "url(/HI-logo.svg)",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+              }}
             />
           </Chip>
         </div>

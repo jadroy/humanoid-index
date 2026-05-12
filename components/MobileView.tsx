@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import { humanoids } from "@/data/humanoids";
 import type { Humanoid } from "@/data/humanoids";
-import { SURFACE } from "@/lib/design/tokens";
+import { SURFACE, SURFACE_HOVER } from "@/lib/design/tokens";
 
 const PAGE_X = 20;
 
@@ -235,7 +235,7 @@ function CategoryRow({
                 width: 58,
                 height: 58,
                 borderRadius: 18,
-                background: isActive ? SURFACE : "transparent",
+                background: isActive ? SURFACE_HOVER : c.tint,
                 boxSizing: "border-box",
               }}
             >

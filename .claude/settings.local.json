@@ -128,7 +128,14 @@
       "Bash(cp ~/Downloads/Albert-Sans/Albert-Sans/AlbertSans-italic.ttf ~/Library/Fonts/)",
       "Bash(lsof -i :3001 -sTCP:LISTEN)",
       "Bash(lsof -i :3002 -sTCP:LISTEN)",
-      "Bash(kill 20488)"
+      "Bash(kill 20488)",
+      "Bash(gunzip -k /Users/royjad/Downloads/Trace-20260508T184642.json.gz)",
+      "Bash(unzip *)",
+      "Bash(sort -k2 -rn)",
+      "Bash(gunzip -k /Users/royjad/Downloads/Trace-20260509T002117.json.gz)",
+      "Bash(lsof -i :3000 -sTCP:LISTEN -t)",
+      "Bash(pip3 install *)",
+      "Bash(rembg i *)"
     ],
     "deny": [],
     "ask": []

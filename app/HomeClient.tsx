@@ -18,15 +18,15 @@ const SPIN_ROBOTS: Record<
     credit?: { prefix?: string; name: string; href?: string };
   }
 > = {
-  // launch: hidden until ship — restore for Memo 3D viewer
-  // "3": {
-  //   frameCount: 30,
-  //   path: "/spin/memo",
-  //   credit: { prefix: "via", name: "Sunday Robotics", href: "https://www.sundayrobotics.com" },
-  // },
+  "3": {
+    frameCount: 30,
+    path: "/spin/memo",
+    credit: { prefix: "via", name: "Sunday Robotics", href: "https://www.sundayrobotics.com" },
+  },
 };
 import { WelcomeModal, WelcomeStyleSwitcher, type WelcomeStyle } from "@/components/WelcomeModal";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
+import SiteOptionsMenu from "@/components/SiteOptionsMenu";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { getRobotDescription } from "@/lib/robotDescription";
@@ -777,9 +777,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [windowWidth, setWindowWidth] = useState(1920);
   const [autoArcInset, setAutoArcInset] = useState(true);
 
-  // Arc text font: false = inherit (Geist Sans), true = Geist Mono
-  const [arcFontMono, setArcFontMono] = useState(false);
-  const arcFontFamily = arcFontMono ? "var(--font-geist-mono)" : undefined;
+  // Arc text font: family / weight / letter-spacing / italic
+  const [arcFontFamily, setArcFontFamily] = useState<string>("");
+  const [arcFontWeight, setArcFontWeight] = useState<number>(400);
+  const [arcLetterSpacing, setArcLetterSpacing] = useState<number>(-0.02); // em
+  const [arcItalic, setArcItalic] = useState<boolean>(false);
 
   useEffect(() => {
     setWindowWidth(window.innerWidth);
@@ -1337,7 +1339,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcFsMin={arcFsMin}
           arcDiskGap={arcDiskGap}
           arcDiskColor={arcDiskColor}
-          arcFontFamily={arcFontFamily}
+          arcFontFamily={arcFontFamily || undefined} arcFontWeight={arcFontWeight} arcLetterSpacing={`${arcLetterSpacing}em`} arcItalic={arcItalic}
           arcAllCaps={allCaps}
           arcMaskFade={arcMaskFade}
           arcMarkerVariant={arcMarkerVariant}
@@ -1378,7 +1380,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             arcFsMin={arcFsMin}
             arcDiskGap={arcDiskGap}
             arcDiskColor={arcDiskColor}
-            arcFontFamily={arcFontFamily}
+            arcFontFamily={arcFontFamily || undefined} arcFontWeight={arcFontWeight} arcLetterSpacing={`${arcLetterSpacing}em`} arcItalic={arcItalic}
             arcAllCaps={allCaps}
             arcMaskFade={arcMaskFade}
             arcMarkerVariant={arcMarkerVariant}
@@ -1965,7 +1967,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
                     const ctaBg = "#E8E8ED";
                     const ctaColor = "#1d1d1f";
-                    const Outer = (href ? "a" : "div") as React.ElementType;
+                    const Outer = "div" as React.ElementType;
                     const outerProps = href
                       ? { href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
                       : {};
@@ -1974,18 +1976,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     return (
                       <Outer
                         key={s.key}
-                        {...outerProps}
-                        className={href ? "pill-button w-full" : "w-full"}
+                        className="w-full"
                         style={{
-                          ["--pill-bg" as string]: pillBg,
                           background: pillBg,
                           borderRadius: pillRadiusFor(s.key, false),
                           padding: href
                             ? `0 ${Math.max(0, statPillPadY - 6)}px 0 ${statPillPadX}px`
                             : `0 ${statPillPadX}px`,
-                          textDecoration: "none",
                           display: "block",
-                          WebkitTapHighlightColor: "transparent",
                         }}
                       >
                         <div className="w-full flex items-center justify-between" style={{ minHeight: pillRowHeight, gap: 8 }}>
@@ -1999,9 +1997,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                             <span>{labelText}</span>
                           </span>
                           {href && (
-                            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: ctaBg, color: ctaColor, borderRadius: Math.max(8, statPillRadius - 6), padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2 }}>
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="cta-chip cursor-pointer"
+                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: ctaBg, color: ctaColor, borderRadius: Math.max(8, statPillRadius - 6), padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
+                            >
                               {cta}
-                            </span>
+                            </a>
                           )}
                         </div>
                       </Outer>
@@ -2602,32 +2607,32 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     const ctaBg = "#E8E8ED";
                     const ctaColor = "#1d1d1f";
                     return (
-                      <a
+                      <div
                         key={s.key}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="pill-button w-full"
+                        className="w-full"
                         style={{
-                          ["--pill-bg" as string]: pillBg,
                           background: pillBg,
                           borderRadius: pillRadiusFor(isLast, false),
                           padding: `0 ${Math.max(0, statPillPadY - 6)}px 0 ${statPillPadX}px`,
-                          textDecoration: "none",
                           display: "block",
-                          WebkitTapHighlightColor: "transparent",
                         }}
                       >
                         <div className="w-full flex items-center justify-between" style={{ padding: `${Math.max(0, statPillPadY - 6)}px 0`, gap: 8 }}>
                           <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
                             {price ?? " "}
                           </span>
-                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: ctaBg, color: ctaColor, borderRadius: Math.max(8, statPillRadius - 6), padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2 }}>
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="cta-chip cursor-pointer"
+                            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: ctaBg, color: ctaColor, borderRadius: Math.max(8, statPillRadius - 6), padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
+                          >
                             {cta}
-                          </span>
+                          </a>
                         </div>
-                      </a>
+                      </div>
                     );
                   }
                   const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
@@ -2766,8 +2771,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                         {isVideo ? (
                           <GalleryVideoSlide mIdx={mIdx} slideIdx={i} videoPaused={videoPaused} subscribe={subscribeGalleryIdx} read={readGalleryIdx} src={item.src} fit={isCover ? "cover" : "contain"} position={item.position} credit={item.credit} />
                         ) : (
-                          /* key={src} forces remount on humanoid swap — without it, next/image's reused <img> can paint one frame without object-fit during fast scroll, flashing the image at natural size cropped to the box. */
-                          <Image key={item.src} src={item.src} alt={`${mh.name} ${i + 1}`} fill className={isCover ? "object-cover" : "object-contain"} style={item.position ? { objectPosition: item.position } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
+                          /* No `key={item.src}` here — re-keying on src forces a fresh mount + image decode on every humanoid swap (~40% of decode + paint work in profiling). The previous workaround for a one-frame flash at natural size was `key={item.src}`; in current Next.js the flash appears gone or at most extremely rare, so the perf trade is worth it. If a flash returns, prefer a non-key fix (inline `objectFit` style, aspect-ratio on parent, or `Image.decode()` pre-swap). */
+                          <Image src={item.src} alt={`${mh.name} ${i + 1}`} fill className={isCover ? "object-cover" : "object-contain"} style={item.position ? { objectPosition: item.position } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
                         )}
                         {isBottom && !isVideo && (
                           <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]" style={{ height: bottomFadeH, background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))` }} />
@@ -3828,7 +3833,23 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Mini radius <span className="tabular-nums text-neutral-400">{miniCrownRadius}px</span></label><input type="range" min={20} max={100} value={miniCrownRadius} onChange={(e) => setMiniCrownRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Scroll threshold <span className="tabular-nums text-neutral-400">{wheelThreshold}</span></label><input type="range" min={5} max={100} value={wheelThreshold} onChange={(e) => { setCustomThreshold(Number(e.target.value)); setIsCustom(true); }} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">Auto position</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${autoArcInset ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoArcInset(!autoArcInset)}>{autoArcInset ? "On" : "Off"}</button><span className="text-[12px] tabular-nums text-neutral-300">{effectiveArcInset}px</span></div>
-            <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">Geist Mono</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${arcFontMono ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setArcFontMono(!arcFontMono)}>{arcFontMono ? "On" : "Off"}</button></div>
+            <div className="space-y-2 pt-1 pb-1">
+              <p className="text-[11px] tracking-widest uppercase text-neutral-400">Arc font</p>
+              <select
+                value={arcFontFamily}
+                onChange={(e) => setArcFontFamily(e.target.value)}
+                className="w-full text-[12px] border border-neutral-200 rounded px-1.5 py-1 cursor-pointer bg-white"
+                style={{ fontFamily: arcFontFamily || undefined }}
+              >
+                <option value="">Inherit (Geist Sans)</option>
+                {FONTS.map((f) => (
+                  <option key={f.name} value={f.family} style={{ fontFamily: f.family }}>{f.name}</option>
+                ))}
+              </select>
+              <div><label className="text-[12px] text-neutral-500 flex justify-between">Weight <span className="tabular-nums text-neutral-400">{arcFontWeight}</span></label><input type="range" min={100} max={900} step={100} value={arcFontWeight} onChange={(e) => setArcFontWeight(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+              <div><label className="text-[12px] text-neutral-500 flex justify-between">Letter spacing <span className="tabular-nums text-neutral-400">{arcLetterSpacing.toFixed(3)}em</span></label><input type="range" min={-80} max={150} value={Math.round(arcLetterSpacing * 1000)} onChange={(e) => setArcLetterSpacing(Number(e.target.value) / 1000)} className="w-full accent-neutral-900 h-1" /></div>
+              <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Italic</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${arcItalic ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setArcItalic(!arcItalic)}>{arcItalic ? "On" : "Off"}</button></div>
+            </div>
             <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">All Caps</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${allCaps ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => onAllCapsChange?.(!allCaps)}>{allCaps ? "On" : "Off"}</button></div>
             <div style={{ opacity: autoArcInset ? 0.3 : 1 }}><label className="text-[12px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => { setArcInset(Number(e.target.value)); setAutoArcInset(false); }} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Arc radius <span className="tabular-nums text-neutral-400">{arcWheelR}px</span></label><input type="range" min={80} max={1500} value={arcWheelR} onChange={(e) => setArcWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -4129,7 +4150,7 @@ export default function HomeClient() {
   const [layout, setLayout] = useState<Layout>("E");
   const [indexView, setIndexView] = useState<IndexView>("timeline");
 
-  const [navStyle, setNavStyle] = useState<NavStyle>("centered");
+  const [navStyle, setNavStyle] = useState<NavStyle>("share-flip");
   const [surfaceColor, setSurfaceColor] = useState(SURFACE);
   const [surfaceHover, setSurfaceHover] = useState("#EBEBEB");
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
@@ -4398,6 +4419,7 @@ export default function HomeClient() {
                 const origin = typeof window !== "undefined" ? window.location.origin : "";
                 copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
               }}
+              shareViewLabel={shareViewLabel}
             />
           </div>
         </div>
@@ -4536,6 +4558,8 @@ export default function HomeClient() {
       )}
 
       {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
+
+      <SiteOptionsMenu onShortcuts={() => setShowShortcuts(true)} visible={introDone} />
     </main>
   );
 }
