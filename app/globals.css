@@ -1094,11 +1094,11 @@ main {
 .cta-chip {
   transition: transform 160ms ease, background-color 180ms ease;
 }
-.cta-chip:hover {
-  background: #DCDCE2 !important;
+.cta-link:hover .cta-chip {
+  background: rgba(0,0,0,0.075) !important;
 }
-.cta-chip:active {
-  transform: scale(0.98);
+.cta-link:active .cta-chip {
+  transform: scale(0.94);
 }
 
 /* Compare minus (−) — always visible, with a small lift on hover. */

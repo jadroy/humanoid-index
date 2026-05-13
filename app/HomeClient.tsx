@@ -1814,7 +1814,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             const hasCost = h.cost && h.cost !== "N/A";
             const hasUrl = !!href;
             const ctaKind: "buy" | "visit" = buyHref ? "buy" : "visit";
-            const ctaText = isSundayBeta ? "Apply" : (ctaKind === "buy" ? "Buy" : "Visit");
+            const ctaText = isSundayBeta ? "Apply for Beta" : (ctaKind === "buy" ? "Buy" : "Visit");
             const availabilityLabel: string | undefined = (
               h.availability === "enterprise" ? "Enterprise only" :
               h.availability === "research" ? "Research only" :
@@ -2031,8 +2031,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     const price = (s as { price?: string }).price;
                     const fallbackText = (s as { text?: string }).text ?? "";
                     const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
-                    const ctaBg = "#E8E8ED";
-                    const ctaColor = "#1d1d1f";
+                    const ctaBg = "rgba(0,0,0,0.06)";
+                    const ctaColor = "rgba(95, 96, 89, 0.8)";
                     const Outer = "div" as React.ElementType;
                     const outerProps = href
                       ? { href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
@@ -2068,10 +2068,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="cta-chip cursor-pointer"
-                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: ctaBg, color: ctaColor, borderRadius: Math.max(8, statPillRadius - 6), padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
+                              className="cta-link cursor-pointer"
+                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, color: ctaColor, padding: "6px 4px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
                             >
-                              {cta}
+                              <span>{cta}</span>
+                              <span className="cta-chip" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: ctaBg, flexShrink: 0 }}>
+                                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                                  <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
+                                </svg>
+                              </span>
                             </a>
                           )}
                         </div>
@@ -2673,8 +2678,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     const href = (s as any).href as string;
                     const price = (s as { price?: string }).price;
                     const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
-                    const ctaBg = "#E8E8ED";
-                    const ctaColor = "#1d1d1f";
+                    const ctaBg = "rgba(0,0,0,0.06)";
+                    const ctaColor = "rgba(95, 96, 89, 0.8)";
                     return (
                       <div
                         key={s.key}
@@ -2695,10 +2700,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="cta-chip cursor-pointer"
-                            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: ctaBg, color: ctaColor, borderRadius: Math.max(8, statPillRadius - 6), padding: "6px 14px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
+                            className="cta-link cursor-pointer"
+                            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, color: ctaColor, padding: "6px 4px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
                           >
-                            {cta}
+                            <span>{cta}</span>
+                            <span className="cta-chip" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: ctaBg, flexShrink: 0 }}>
+                              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                                <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
+                              </svg>
+                            </span>
                           </a>
                         </div>
                       </div>
