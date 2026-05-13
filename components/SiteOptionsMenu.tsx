@@ -10,9 +10,10 @@ type Props = {
   shareLabel: string;
   onShare: () => void;
   visible: boolean;
+  inline?: boolean;
 };
 
-export default function SiteOptionsMenu({ shareLabel, onShare, visible }: Props) {
+export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline = false }: Props) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(false);
   const [sheet, setSheet] = useState<"feedback" | "suggest" | null>(null);
@@ -63,8 +64,10 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible }: Props)
   return (
     <div
       ref={wrapRef}
-      className={`fixed bottom-6 left-1/2 z-[49] ${visible ? "intro-nav" : "opacity-0 pointer-events-none"}`}
-      style={{ transform: "translateX(-50%)" }}
+      className={inline
+        ? `relative ${visible ? "intro-nav" : "opacity-0 pointer-events-none"}`
+        : `fixed bottom-6 left-1/2 z-[49] ${visible ? "intro-nav" : "opacity-0 pointer-events-none"}`}
+      style={inline ? undefined : { transform: "translateX(-50%)" }}
     >
       {/* Hidden ghost: measures the natural content width as shareLabel changes. */}
       <div

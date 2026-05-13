@@ -558,6 +558,7 @@ export function LayoutSwitcher({
   onShareSite,
   shareViewLabel,
   comparing = false,
+  joined = false,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
@@ -572,6 +573,7 @@ export function LayoutSwitcher({
   onShareSite?: () => void;
   shareViewLabel?: string;
   comparing?: boolean;
+  joined?: boolean;
 }) {
   const handleClick = () => {
     if (active !== "E") onChange("E" as Layout);
@@ -1241,12 +1243,12 @@ export function LayoutSwitcher({
         style={{ top: 0, background: "transparent" }}
       >
         <div
-          className="grid items-center"
+          className={joined ? "flex items-center justify-center" : "grid items-center"}
           style={{
             height: 48,
             paddingLeft: "var(--nav-x, 24px)",
             paddingRight: "var(--nav-x, 24px)",
-            gridTemplateColumns: "1fr auto 1fr",
+            ...(joined ? { gap: 28 } : { gridTemplateColumns: "1fr auto 1fr" }),
           }}
         >
           <div className="group flex justify-start items-center" style={{ gap: 0 }}>
@@ -1332,7 +1334,7 @@ export function LayoutSwitcher({
               </span>
             </Chip>
           </div>
-          <div className="flex justify-end items-center" />
+          {!joined && <div className="flex justify-end items-center" />}
         </div>
       </nav>
     );

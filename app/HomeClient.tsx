@@ -541,7 +541,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -551,7 +551,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [bottomFadeH, setBottomFadeH] = useState(40);
   const [bottomFadeOpacity, setBottomFadeOpacity] = useState(0.9);
   const [showTuner, setShowTuner] = useState(false);
-  const [buyLayout, setBuyLayout] = useState<"card" | "chip">("card");
+  const [buyLayout, setBuyLayout] = useState<"card" | "chip" | "below">("below");
   const [buyCardStyle, setBuyCardStyle] = useState<"split" | "dark">("split");
   const [hideUnbuyable, setHideUnbuyable] = useState(false);
   const [isCustom, setIsCustom] = useState(true);
@@ -690,6 +690,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [robotH, setRobotH] = useState(60);       // vh
   const [robotMaxW, setRobotMaxW] = useState(400); // px
   const [statsW, setStatsW] = useState(260);       // px
+  const [statsColScale, setStatsColScale] = useState(0.57); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(8);     // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(28);  // px
@@ -866,7 +867,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // since the card's robot image is letterboxed inside its 400px frame — matching
   // the frame exactly makes the pill column read as visually wider than the robot.
   const baseCardPx = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
-  const singleStatsW = Math.round(baseCardPx * 0.82);
+  const singleStatsW = Math.round(baseCardPx * statsColScale);
   const effectiveStatsW = splitBlurb && blurbFloat ? statsW * 2 + cardGap : singleStatsW;
 
   const centerHalfWidth = (() => {
@@ -917,19 +918,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
   // Publish a stable nav inset that ignores `comparing` so the logo and
   // share button stay anchored when entering/leaving compare mode.
+  // Aligns nav/footer with the inner content edges (card + gap + stats column),
+  // not with the wheels — the wheels sit further outside and use their own inset.
   useEffect(() => {
     if (!autoNavX) {
       document.documentElement.style.setProperty("--nav-x", `${navX}px`);
       return;
     }
-    const cardPxStable = Math.min(robotW * windowWidth / 100, robotMaxW);
-    const centerHalfStable = (cardPxStable + statsGap + statsW) / 2;
-    const availableStable = (windowWidth / 2) - centerHalfStable;
-    const adaptiveStable = Math.max(48, Math.round(availableStable - longestNamePx - arcHugBuffer + arcTextGap));
-    const inset = autoArcInset ? adaptiveStable : arcInset;
-    const x = Math.max(16, inset - arcTextGap);
+    const cardPxStable = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
+    const statsColStable = stackedInfo ? Math.round(cardPxStable * 0.82) : statsW;
+    const contentW = cardPxStable + statsGap + statsColStable;
+    const x = Math.max(16, Math.round((windowWidth - contentW) / 2));
     document.documentElement.style.setProperty("--nav-x", `${x}px`);
-  }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, autoArcInset, arcInset, arcTextGap, longestNamePx, arcHugBuffer]);
+  }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, stackedInfo]);
 
   // Publish nav top offset as a CSS variable
   useEffect(() => {
@@ -1742,16 +1743,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
         const barViz = (label: string, value: string, _pct: number, delay: number) => (
           <div
-            className="flex items-baseline justify-between"
+            className="flex items-baseline"
             style={{
               paddingTop: 5,
               paddingBottom: 5,
+              gap: 14,
               opacity: openStat.has("stats") ? 1 : 0,
               transform: openStat.has("stats") ? "translateY(0)" : "translateY(-2px)",
               transition: `opacity 0.4s ease ${delay}s, transform 0.4s ease ${delay}s`,
             }}
           >
-            <span className="text-[12px]" style={{ color: "#a3a3a3" }}>{label}</span>
+            <span className="text-[12px]" style={{ color: "#a3a3a3", width: 52, flexShrink: 0 }}>{label}</span>
             <span className="text-[12px] tabular-nums" style={{ color: "var(--c-ink-body)" }}>{value}</span>
           </div>
         );
@@ -2262,27 +2264,40 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               background: statPillBg,
               padding: `${statPillPadY}px ${statPillPadX}px`,
             };
+            // Stacked-info cards use a uniform 14px / Geist Sans rhythm.
+            // Headers carry slightly heavier weight; labels and values share the same
+            // size and weight, differentiated only by opacity (label = dim, value = full).
+            const cardFontSize = 12.5;
             const headerStyle: React.CSSProperties = {
-              fontSize: pillLabelFontSize,
-              fontFamily: pillLabelFont,
-              fontWeight: pillLabelWeight,
-              letterSpacing: `${pillLabelLetterSpacing}em`,
-              color: pillLabelColor,
-              textTransform: pillLabelUppercase ? "uppercase" : "none",
+              fontFamily: "var(--font-geist-sans)",
+              fontSize: cardFontSize,
+              fontWeight: 500,
+              color: "var(--c-ink)",
+              opacity: 0.82,
+              letterSpacing: "-0.01em",
             };
             const rowStyle: React.CSSProperties = {
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "baseline",
+              gap: 14,
               fontFamily: "var(--font-geist-sans)",
-              lineHeight: 1.6,
+              lineHeight: 1.55,
             };
-            const dimmed: React.CSSProperties = { color: "#a3a3a3", fontFamily: "var(--font-geist-sans)", fontSize: 12 };
-            const valueStyle: React.CSSProperties = {
-              color: "var(--c-ink-body)",
+            const dimmed: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
-              fontSize: 12,
-              fontWeight: 500,
+              fontSize: cardFontSize,
+              fontWeight: 400,
+              color: "var(--c-ink)",
+              opacity: 0.38,
+              minWidth: 64,
+              flexShrink: 0,
+            };
+            const valueStyle: React.CSSProperties = {
+              fontFamily: "var(--font-geist-sans)",
+              fontSize: cardFontSize,
+              fontWeight: 400,
+              color: "var(--c-ink)",
+              opacity: 0.68,
             };
             const purchaseSection = sections.find((s) => s.key === "purchase") as
               | { key: "purchase"; href?: string; text?: string; price?: string; ctaText?: string }
@@ -3453,6 +3468,62 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
             </div>
 
+            {buyLayout === "below" && !comparing && (() => {
+              const isSundayBeta = h.manufacturer === "Sunday Robotics";
+              const buyHref = isSundayBeta ? "https://www.sunday.ai/beta-program" : (h.purchaseUrl || undefined);
+              const visitHref = !buyHref ? (h.infoUrl || h.manufacturerUrl) : undefined;
+              const href = buyHref || visitHref;
+              const hasCost = h.cost && h.cost !== "N/A";
+              const ctaText = isSundayBeta ? "Apply for Beta" : (buyHref ? "Buy" : "Visit");
+              const availabilityLabel: string | undefined = (
+                h.availability === "enterprise" ? "Enterprise only" :
+                h.availability === "research" ? "Research only" :
+                h.availability === "discontinued" ? "Discontinued" :
+                h.availability === "prototype" ? "Not yet for sale" :
+                undefined
+              );
+              const leftLabel = hasCost ? h.cost! : availabilityLabel;
+              const fallbackText = isSundayBeta ? "Apply to the 2026 Beta" : (hasCost ? h.cost! : (availabilityLabel ?? (href ? ctaText : "Not for sale")));
+              const ctaBg = "rgba(0,0,0,0.06)";
+              const ctaColor = "rgba(95, 96, 89, 0.8)";
+              const labelText = leftLabel ?? (href ? " " : fallbackText);
+              const labelColor = href ? pillLabelColor : "#c0c0c0";
+              const pillRowHeightLocal = statPillPadY * 2 + Math.round(pillLabelFontSize * 1.2);
+              return (
+                <div
+                  style={{
+                    marginTop: 3,
+                    background: statPillBg,
+                    borderRadius: cardRadius * 0.6,
+                    padding: href ? `0 ${Math.max(0, statPillPadY - 6)}px 0 ${statPillPadX}px` : `0 ${statPillPadX}px`,
+                  }}
+                >
+                  <div className="w-full flex items-center justify-between" style={{ minHeight: pillRowHeightLocal, gap: 8 }}>
+                    <span className="inline-flex items-center" style={{ gap: 8, fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: labelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
+                      <span>{labelText}</span>
+                    </span>
+                    {href && (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="cta-link cursor-pointer pointer-events-auto"
+                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, color: ctaColor, padding: "6px 4px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
+                      >
+                        <span>{ctaText}</span>
+                        <span className="cta-chip" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: ctaBg, flexShrink: 0 }}>
+                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                            <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
+                          </svg>
+                        </span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {labelPosition === "below" && (
               <div
                 ref={isFirst ? leftLabelRef : rightLabelRef}
@@ -3916,13 +3987,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           <div className="pt-2 border-t border-neutral-100">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Buy</p>
             <div className="flex flex-wrap gap-1.5">
-              {(["card", "chip"] as const).map((v) => (
+              {(["card", "chip", "below"] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setBuyLayout(v)}
                   className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${buyLayout === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                 >
-                  {v === "card" ? "Stats card" : "Image chip"}
+                  {v === "card" ? "Stats card" : v === "chip" ? "Image chip" : "Below card"}
                 </button>
               ))}
             </div>
@@ -4008,6 +4079,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Nav</p>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
+            <div><p className="text-[12px] text-neutral-500 mb-1.5">Chrome</p><div className="flex flex-wrap gap-1.5">{(["split", "joined"] as const).map((s) => (<button key={s} onClick={() => onChromeVariantChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${chromeVariant === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             {navStyle === "underline" && (
               <div><p className="text-[12px] text-neutral-500 mb-1.5">Switcher</p><div className="flex flex-wrap gap-1.5">{SWITCHER_STYLES.map((s) => (<button key={s} onClick={() => onSwitcherStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${switcherStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             )}
@@ -4291,6 +4363,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             </div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Card↔Stats gap <span className="tabular-nums text-neutral-400">{statsGap}px</span></label><input type="range" min={0} max={80} value={statsGap} onChange={(e) => setStatsGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Column width <span className="tabular-nums text-neutral-400">{Math.round(statsColScale * 100)}%</span></label><input type="range" min={30} max={120} value={Math.round(statsColScale * 100)} onChange={(e) => setStatsColScale(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{statPillRadius}px</span></label><input type="range" min={0} max={40} value={statPillRadius} onChange={(e) => setStatPillRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{statPillGap}px</span></label><input type="range" min={0} max={16} value={statPillGap} onChange={(e) => setStatPillGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Padding X <span className="tabular-nums text-neutral-400">{statPillPadX}px</span></label><input type="range" min={6} max={28} value={statPillPadX} onChange={(e) => setStatPillPadX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -4738,6 +4811,7 @@ export default function HomeClient() {
   const [indexView, setIndexView] = useState<IndexView>("timeline");
 
   const [navStyle, setNavStyle] = useState<NavStyle>("trio");
+  const [chromeVariant, setChromeVariant] = useState<"split" | "joined">("split");
   const [surfaceColor, setSurfaceColor] = useState(SURFACE);
   const [surfaceHover, setSurfaceHover] = useState("#EBEBEB");
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
@@ -4991,6 +5065,7 @@ export default function HomeClient() {
               }}
               shareViewLabel={shareViewLabel}
               comparing={comparing}
+              joined={chromeVariant === "joined"}
             />
           </div>
         </div>
@@ -4998,7 +5073,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -5099,6 +5174,24 @@ export default function HomeClient() {
           color: "rgba(95, 96, 89, 0.5)",
           whiteSpace: "nowrap",
         };
+        if (chromeVariant === "joined") {
+          return (
+            <div
+              className="intro-credit fixed bottom-6 left-0 right-0 z-[48] flex items-center justify-center pointer-events-none"
+              style={{ height: 36 }}
+            >
+              <div className="flex items-center pointer-events-auto" style={{ gap: 28 }}>
+                <SiteOptionsMenu
+                  inline
+                  shareLabel={shareViewLabel}
+                  onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
+                  visible={introDone}
+                />
+                <span style={creditStyle}>Roy Jad © 2026</span>
+              </div>
+            </div>
+          );
+        }
         return (
           <div
             className="intro-credit fixed bottom-6 left-0 right-0 z-[48] pointer-events-none flex items-center justify-end"
@@ -5109,11 +5202,13 @@ export default function HomeClient() {
         );
       })()}
 
-      <SiteOptionsMenu
-        shareLabel={shareViewLabel}
-        onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
-        visible={introDone}
-      />
+      {chromeVariant !== "joined" && (
+        <SiteOptionsMenu
+          shareLabel={shareViewLabel}
+          onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
+          visible={introDone}
+        />
+      )}
 
       <Toaster
         position="bottom-center"
