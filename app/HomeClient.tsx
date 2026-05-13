@@ -893,6 +893,16 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     document.documentElement.style.setProperty("--collapse-ease", collapseEase);
   }, [collapseDurMs, collapseEase]);
 
+  // Corner-margin tuner — drives top/bottom (`--corner-y`) and side (`--corner-x`)
+  // insets for the trio nav + footer credit row.
+  const [showMarginTuner, setShowMarginTuner] = useState(false);
+  const [cornerY, setCornerY] = useState(5);
+  const [cornerX, setCornerX] = useState(30);
+  useEffect(() => {
+    document.documentElement.style.setProperty("--corner-y", `${cornerY}px`);
+    document.documentElement.style.setProperty("--corner-x", `${cornerX}px`);
+  }, [cornerY, cornerX]);
+
   const [showSceneTuner, setShowSceneTuner] = useState(false);
   const [sceneShape, setSceneShape] = useState<"radial" | "horizontal" | "vertical" | "top" | "bottom">("radial");
   const [sceneSize, setSceneSize] = useState(72);
@@ -1016,15 +1026,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     const x = Math.max(16, Math.round((windowWidth - contentW) / 2));
     document.documentElement.style.setProperty("--nav-x", `${x}px`);
   }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, stackedInfo, statsColScale, statsCollapsed, collapsedRailW]);
-
-  // Footer inset: matches the default content edges (card + gap + stats) but
-  // ignores collapse/stack toggles so it stays put as the user navigates.
-  useEffect(() => {
-    const cardPxStable = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
-    const contentW = cardPxStable + statsGap + statsW;
-    const x = Math.max(16, Math.round((windowWidth - contentW) / 2));
-    document.documentElement.style.setProperty("--footer-x", `${x}px`);
-  }, [windowWidth, robotW, robotMaxW, statsW, statsGap]);
 
   // Publish nav top offset as a CSS variable
   useEffect(() => {
@@ -2878,28 +2879,59 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
 
           return (
-            <div className="flex flex-col h-full pointer-events-auto" style={{ width: statsW, minWidth: statsW, position: "relative", zIndex: 11, justifyContent: "center" }}>
-              {blurbBlock}
-              <div className="flex flex-col" style={{ gap: compareRowGap, marginTop: blurbBlock ? stackGap : 0 }}>
-                {compareRow("Height", heightL ? formatHeight(heightL) : null, heightR ? formatHeight(heightR) : null)}
-                {compareRow("Weight", weightL ? formatWeight(weightL) : null, weightR ? formatWeight(weightR) : null)}
-                {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
-                {compareRow("Speed", speedL ? formatSpeed(speedL) : null, speedR ? formatSpeed(speedR) : null)}
-                {compareRow("Price", priceL, priceR)}
-              </div>
-              {hasStatus && <div style={{ marginTop: stackGap }}>{hairlineRule}</div>}
-              {hasStatus && (
-                <div className="flex items-center justify-between" style={{ gap: 8, marginTop: stackGap }}>
-                  <div className="flex items-center min-w-0" style={{ gap: 6 }}>
-                    {hL.status && <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: statusColor(hL.status), flexShrink: 0 }} />}
-                    <span style={hL.status ? valueStyle : missingValueStyle}>{hL.status || "—"}</span>
-                  </div>
-                  <div className="flex items-center min-w-0" style={{ gap: 6 }}>
-                    <span style={hR.status ? valueStyle : missingValueStyle}>{hR.status || "—"}</span>
-                    {hR.status && <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: statusColor(hR.status), flexShrink: 0 }} />}
-                  </div>
+            <div className="flex flex-col h-full pointer-events-auto" style={{ width: statsW, minWidth: statsW, position: "relative", zIndex: 11 }}>
+              <div className="flex flex-col" style={{ flex: 1, justifyContent: "center" }}>
+                {blurbBlock}
+                <div className="flex flex-col" style={{ gap: compareRowGap, marginTop: blurbBlock ? stackGap : 0 }}>
+                  {compareRow("Height", heightL ? formatHeight(heightL) : null, heightR ? formatHeight(heightR) : null)}
+                  {compareRow("Weight", weightL ? formatWeight(weightL) : null, weightR ? formatWeight(weightR) : null)}
+                  {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
+                  {compareRow("Speed", speedL ? formatSpeed(speedL) : null, speedR ? formatSpeed(speedR) : null)}
+                  {compareRow("Price", priceL, priceR)}
                 </div>
-              )}
+                {hasStatus && <div style={{ marginTop: stackGap }}>{hairlineRule}</div>}
+                {hasStatus && (
+                  <div className="flex items-center justify-between" style={{ gap: 8, marginTop: stackGap }}>
+                    <div className="flex items-center min-w-0" style={{ gap: 6 }}>
+                      {hL.status && <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: statusColor(hL.status), flexShrink: 0 }} />}
+                      <span style={hL.status ? valueStyle : missingValueStyle}>{hL.status || "—"}</span>
+                    </div>
+                    <div className="flex items-center min-w-0" style={{ gap: 6 }}>
+                      <span style={hR.status ? valueStyle : missingValueStyle}>{hR.status || "—"}</span>
+                      {hR.status && <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: statusColor(hR.status), flexShrink: 0 }} />}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
+                className="pointer-events-auto w-full flex items-center justify-between cursor-pointer"
+                style={{
+                  borderRadius: cardRadius,
+                  boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)",
+                  background: "transparent",
+                  padding: `0 ${statPillPadX}px`,
+                  minHeight: statPillPadY * 2 + Math.round(pillLabelFontSize * 1.2),
+                  gap: 8,
+                  color: pillLabelColor,
+                  fontSize: pillLabelFontSize,
+                  fontFamily: pillLabelFont,
+                  fontWeight: pillLabelWeight,
+                  letterSpacing: `${pillLabelLetterSpacing}em`,
+                  textTransform: pillLabelUppercase ? "uppercase" : "none",
+                  border: "none",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                <span>Copy comparison</span>
+                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: "rgba(0,0,0,0.06)", flexShrink: 0 }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                    <path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10 6" />
+                    <path d="M14 11a5 5 0 0 0-7.07 0L5.52 12.41a5 5 0 0 0 7.07 7.07L14 18" />
+                  </svg>
+                </span>
+              </button>
             </div>
           );
         };
@@ -3533,6 +3565,35 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           >
             C
           </button>
+          <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
+          <button
+            onClick={() => setShowMarginTuner(!showMarginTuner)}
+            className="cursor-pointer transition-colors duration-150"
+            style={{ fontSize: 10, color: showMarginTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
+          >
+            M
+          </button>
+        </div>
+      )}
+      {showMarginTuner && (
+        <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4">
+          <p className="text-[11px] tracking-widest uppercase text-neutral-500">Corner Margins</p>
+          <div>
+            <label className="text-[12px] text-neutral-500 flex justify-between">Top / Bottom <span className="tabular-nums text-neutral-400">{cornerY}px</span></label>
+            <input type="range" min={0} max={240} value={cornerY} onChange={(e) => setCornerY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+          </div>
+          <div>
+            <label className="text-[12px] text-neutral-500 flex justify-between">Sides <span className="tabular-nums text-neutral-400">{cornerX}px</span></label>
+            <input type="range" min={0} max={480} value={cornerX} onChange={(e) => setCornerX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+          </div>
+          <div className="pt-2 border-t border-neutral-100">
+            <button
+              onClick={() => { setCornerY(5); setCornerX(30); }}
+              className="text-[12px] text-neutral-400 hover:text-neutral-600 cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
         </div>
       )}
       {showSplitTuner && (
@@ -4769,7 +4830,6 @@ export default function HomeClient() {
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
   const [luckyNonce, setLuckyNonce] = useState(0);
   const [luckyUsed, setLuckyUsed] = useState(false);
-  const [diceRollNonce, setDiceRollNonce] = useState(0);
   const [hintNonce, setHintNonce] = useState(0);
   const [addHintNonce, setAddHintNonce] = useState(0);
   const [comparingUsed, setComparingUsed] = useState(false);
@@ -5013,6 +5073,8 @@ export default function HomeClient() {
               }}
               onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
               shareViewLabel={shareViewLabel}
+              shareUrlRef={shareUrlRef}
+              shareOgRef={shareOgRef}
               comparing={comparing}
               joined={chromeVariant === "joined"}
               onGoHome={goHome}
@@ -5124,42 +5186,15 @@ export default function HomeClient() {
           color: "rgba(95, 96, 89, 0.5)",
           whiteSpace: "nowrap",
         };
-        const handleDiceClick = () => {
-          setDiceRollNonce((n) => n + 1);
-          onRandomHumanoid();
-        };
-        const diceBtn = (
-          <button
-            type="button"
-            onClick={handleDiceClick}
-            aria-label="Shuffle"
-            style={{
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 2,
-              fontSize: 18,
-              lineHeight: 1,
-              color: "rgba(95, 96, 89, 0.85)",
-            }}
-          >
-            <span key={`a-${diceRollNonce}`} role="img" aria-hidden className={diceRollNonce ? "dice-roll-a" : undefined}>🎲</span>
-            {comparing && <span key={`b-${diceRollNonce}`} role="img" aria-hidden className={diceRollNonce ? "dice-roll-b" : undefined}>🎲</span>}
-          </button>
-        );
         return (
           <div
-            className="intro-credit fixed bottom-6 left-0 right-0 z-[48] pointer-events-none grid items-center"
-            style={{ height: 36, paddingLeft: "var(--footer-x, 24px)", paddingRight: "var(--footer-x, 24px)", gridTemplateColumns: "1fr auto 1fr" }}
+            className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none flex items-center justify-between"
+            style={{ bottom: "var(--corner-y, 5px)", height: 36, paddingLeft: "var(--corner-x, 30px)", paddingRight: "var(--corner-x, 30px)" }}
           >
-            <div className="flex justify-start items-center pointer-events-auto">
+            <div className="flex items-center pointer-events-auto">
               <span style={creditStyle}>Roy Jad © 2026</span>
             </div>
-            <div className="flex justify-center items-center pointer-events-auto">{diceBtn}</div>
-            <div className="flex justify-end items-center pointer-events-auto">
+            <div className="flex items-center pointer-events-auto">
               <SiteOptionsMenu
                 inline
                 shareLabel={shareViewLabel}

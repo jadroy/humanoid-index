@@ -55,8 +55,6 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline =
     | { kind: "item"; label: string; icon: ReactNode; onSelect: () => void }
     | { kind: "divider" };
   const items: MenuEntry[] = [
-    { kind: "item", label: shareLabel, icon: <IconLink />, onSelect: () => onShare() },
-    { kind: "divider" },
     { kind: "item", label: "Submit feedback", icon: <IconChat />, onSelect: () => setSheet("feedback") },
     { kind: "item", label: "Suggest a humanoid", icon: <IconPlus />, onSelect: () => setSheet("suggest") },
   ];
@@ -163,7 +161,7 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline =
           borderRadius: 999,
           background: open || hover ? SURFACE_HOVER_SOFT : "transparent",
           border: "none",
-          color: "rgba(95, 96, 89, 0.8)",
+          color: "rgba(95, 96, 89, 0.5)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
