@@ -945,12 +945,15 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     const cardPx = comparing
       ? Math.min((robotW - 8) * windowWidth / 100, robotMaxW - 100)
       : Math.min(robotW * windowWidth / 100, robotMaxW);
-    const statsPx = effectiveStatsW;
     const gap = statsGap;
     if (comparing) {
-      return cardPx + gap + statsPx / 2;
+      // Compare-mode middle column is a fixed statsW (see line ~3705) and is
+      // unaffected by the single-view collapsed/expanded toggle. Using
+      // effectiveStatsW here would shrink the half-width when stats are
+      // collapsed and leave the arcs sitting behind the cards.
+      return cardPx + gap + statsW / 2;
     }
-    return (cardPx + gap + statsPx) / 2;
+    return (cardPx + gap + effectiveStatsW) / 2;
   })();
 
   const availableSpace = (windowWidth / 2) - centerHalfWidth;
