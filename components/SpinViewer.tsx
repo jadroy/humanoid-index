@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { RotateCw, ArrowUpRight } from "lucide-react";
 
 interface SpinViewerProps {
@@ -38,6 +39,11 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
   const [hovered, setHovered] = useState(false);
   const [pillReady, setPillReady] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -167,9 +173,8 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.pointerType === "mouse" && pillRef.current) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const x = e.clientX;
+      const y = e.clientY;
       pillTargetRef.current = { x, y };
       if (pillFirstMoveRef.current) {
         pillCurrentRef.current = { x, y };
@@ -250,20 +255,24 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
         }}
       />
 
-      <div
-        ref={pillRef}
-        className="pointer-events-none absolute z-10"
-        style={{ left: 0, top: 0, willChange: "transform" }}
-      >
-        <div
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-neutral-900/70 backdrop-blur-sm text-white text-[13px] font-medium tracking-tight whitespace-nowrap origin-top -translate-x-1/2 translate-y-[4px] transition-[opacity,transform] duration-200 ease-out ${
-            pillVisible ? "opacity-100 scale-100" : "opacity-0 scale-90"
-          }`}
-        >
-          <span>Drag to rotate</span>
-          <RotateCw width={12} height={12} strokeWidth={2} className="opacity-70" />
-        </div>
-      </div>
+      {mounted &&
+        createPortal(
+          <div
+            ref={pillRef}
+            className="pointer-events-none fixed z-[60]"
+            style={{ left: 0, top: 0, willChange: "transform" }}
+          >
+            <div
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-neutral-900/70 backdrop-blur-sm text-white text-[13px] font-medium tracking-tight whitespace-nowrap origin-top -translate-x-1/2 translate-y-[4px] transition-[opacity,transform] duration-200 ease-out ${
+                pillVisible ? "opacity-100 scale-100" : "opacity-0 scale-90"
+              }`}
+            >
+              <span>Drag to rotate</span>
+              <RotateCw width={12} height={12} strokeWidth={2} className="opacity-70" />
+            </div>
+          </div>,
+          document.body
+        )}
 
       {credit && (
         <div

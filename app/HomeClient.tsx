@@ -3023,7 +3023,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       setSpinPlaying(true);
                       try {
                         while (spinLoopRef.current) {
-                          await spinViewerRef.current?.playRotation();
+                          const viewer = spinViewerRef.current;
+                          if (!viewer) break;
+                          await viewer.playRotation();
                         }
                       } finally {
                         spinLoopRef.current = false;
