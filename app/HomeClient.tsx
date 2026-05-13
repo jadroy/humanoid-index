@@ -599,6 +599,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [drumTracking, setDrumTracking] = useState(0.04);
   const [miniCrownRadius, setMiniCrownRadius] = useState(70);
   const [arcInset, setArcInset] = useState(150);
+  const [arcRightAlign, setArcRightAlign] = useState(true);
+  const [arcHugBuffer, setArcHugBuffer] = useState(38);
   const [navTop, setNavTop] = useState(12);
   const [autoNavX, setAutoNavX] = useState(true);
   const [navX, setNavX] = useState(24);
@@ -628,7 +630,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [arcDiskColor, setArcDiskColor] = useState("#f5f5f5");
   const [arcMaskFade, setArcMaskFade] = useState(22);
   const [arcBoundary, setArcBoundary] = useState<"off" | "dots" | "arc" | "wedge">("off");
-  const [arcInactiveOp, setArcInactiveOp] = useState(1);
+  const [arcInactiveOp, setArcInactiveOp] = useState(0.59);
   // Arc-tag tuning
   const [tagFsMin, setTagFsMin] = useState(11);
   const [tagFsMax, setTagFsMax] = useState(14);
@@ -713,14 +715,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   //   "hidden"      — no status indicator anywhere
   type StatusPlacement = "card" | "chip" | "label" | "consolidate" | "corner" | "hidden";
   const [statusPlacement, setStatusPlacement] = useState<StatusPlacement>("chip");
-  // Action row variants for the bottom CTA in single view (stackedInfo on):
-  //   "soft-split" — quiet label left, CTA chip right, inside a soft container
-  //   "full"       — full-width soft button, centered CTA
-  //   "left"       — CTA pushed to left inside a soft container
-  //   "dark"       — soft container with a solid dark button right-aligned
-  //   "bare"       — no container, CTA + chip right-aligned (current behavior)
-  type ActionRowVariant = "soft-split" | "full" | "left" | "dark" | "bare";
-  const [actionRowVariant, setActionRowVariant] = useState<ActionRowVariant>("soft-split");
+  // Action row variants for the bottom CTA in single view (stackedInfo on).
+  // The "split-X" variants share a layout: CTA text on the left, arrow chip on the right
+  // (space-between). They differ only in the surrounding container treatment.
+  //   "split-hairline" — thin 1px hairline border, no fill
+  //   "split-rule"     — single top hairline rule, otherwise transparent
+  //   "split-soft"     — very subtle filled background
+  //   "split-bare"     — no container chrome at all
+  //   "full"           — full-width soft button, centered CTA
+  //   "dark"           — soft container with a solid dark button right-aligned
+  type ActionRowVariant = "split-hairline" | "split-rule" | "split-soft" | "split-bare" | "full" | "dark";
+  const [actionRowVariant, setActionRowVariant] = useState<ActionRowVariant>("split-hairline");
   const [blurbFontSize, setBlurbFontSize] = useState(12.7);
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [splitBlurb, setSplitBlurb] = useState(false);
@@ -900,8 +905,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     return max;
   }, [arcFsMax, arcFontFamily, arcFontWeight, arcLetterSpacing, arcItalic, allCaps]);
 
-  const HUG_BUFFER = 24;
-  const adaptiveArcInset = Math.max(48, Math.round(availableSpace - longestNamePx - HUG_BUFFER + arcTextGap));
+  const adaptiveArcInset = Math.max(48, Math.round(availableSpace - longestNamePx - arcHugBuffer + arcTextGap));
   const effectiveArcInset = autoArcInset ? adaptiveArcInset : arcInset;
   const effectiveDrumXOffset = autoArcInset ? adaptiveDrumXOffset : drumXOffset;
 
@@ -921,11 +925,11 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     const cardPxStable = Math.min(robotW * windowWidth / 100, robotMaxW);
     const centerHalfStable = (cardPxStable + statsGap + statsW) / 2;
     const availableStable = (windowWidth / 2) - centerHalfStable;
-    const adaptiveStable = Math.max(48, Math.round(availableStable - longestNamePx - HUG_BUFFER + arcTextGap));
+    const adaptiveStable = Math.max(48, Math.round(availableStable - longestNamePx - arcHugBuffer + arcTextGap));
     const inset = autoArcInset ? adaptiveStable : arcInset;
     const x = Math.max(16, inset - arcTextGap);
     document.documentElement.style.setProperty("--nav-x", `${x}px`);
-  }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, autoArcInset, arcInset, arcTextGap, longestNamePx]);
+  }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, autoArcInset, arcInset, arcTextGap, longestNamePx, arcHugBuffer]);
 
   // Publish nav top offset as a CSS variable
   useEffect(() => {
@@ -1467,6 +1471,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
           arcBoundary={arcBoundary}
           arcInactiveOp={arcInactiveOp}
+          arcNameOuterOffset={arcRightAlign ? longestNamePx : 0}
           entered={introDone}
           tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
           tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -1509,6 +1514,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
             arcBoundary={arcBoundary}
             arcInactiveOp={arcInactiveOp}
+            arcNameOuterOffset={arcRightAlign ? longestNamePx : 0}
             entered={introDone}
             tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
             tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -2364,53 +2370,72 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             ) : null;
 
-            // Action button — price/availability is now a chip above, so this is purely the CTA.
+            // Action row — price/availability is now a chip above, so this row is purely the CTA.
+            // Split variants put the CTA text on the left and the arrow chip on the right; the
+            // container treatment is the only thing that varies.
             const purchasePill = purchaseSection?.href ? (() => {
               const href = purchaseSection.href!;
               const cta = purchaseSection.ctaText ?? "Buy";
-              const ctaKindRaw = (purchaseSection as { ctaKind?: "buy" | "visit" }).ctaKind;
-              const leftLabel = ctaKindRaw === "visit" ? "Learn more" : "Order";
               const ctaBg = "rgba(0,0,0,0.06)";
               const ctaColor = "rgba(95, 96, 89, 0.8)";
-              const containerStyle: React.CSSProperties = {
-                background: "rgba(0,0,0,0.035)",
-                borderRadius: cardRadius,
-                padding: `0 ${statPillPadX}px`,
-                minHeight: pillRowHeight,
-              };
-              const arrow = (
+
+              const arrowChip = (
                 <span className="cta-chip" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: ctaBg, flexShrink: 0 }}>
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
                     <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
                   </svg>
                 </span>
               );
-              const ctaLink = (
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="cta-link cursor-pointer"
-                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, color: ctaColor, padding: "6px 4px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
-                >
-                  <span>{cta}</span>
-                  {arrow}
-                </a>
-              );
 
-              if (actionRowVariant === "soft-split") {
+              const splitContainerByVariant: Record<"split-hairline" | "split-rule" | "split-soft" | "split-bare", React.CSSProperties> = {
+                "split-hairline": {
+                  borderRadius: cardRadius,
+                  boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)",
+                  background: "transparent",
+                },
+                "split-rule": {
+                  borderTop: "1px solid rgba(0,0,0,0.07)",
+                  borderRadius: 0,
+                  background: "transparent",
+                },
+                "split-soft": {
+                  borderRadius: cardRadius,
+                  background: "rgba(0,0,0,0.022)",
+                },
+                "split-bare": {
+                  background: "transparent",
+                },
+              };
+
+              if (actionRowVariant === "split-hairline" || actionRowVariant === "split-rule" || actionRowVariant === "split-soft" || actionRowVariant === "split-bare") {
                 return (
-                  <div className="w-full pointer-events-auto" style={containerStyle}>
-                    <div className="w-full flex items-center justify-between" style={{ minHeight: pillRowHeight, gap: 8 }}>
-                      <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
-                        {leftLabel}
-                      </span>
-                      {ctaLink}
-                    </div>
-                  </div>
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="pointer-events-auto w-full flex items-center justify-between cursor-pointer"
+                    style={{
+                      ...splitContainerByVariant[actionRowVariant],
+                      padding: `0 ${statPillPadX}px`,
+                      minHeight: pillRowHeight,
+                      gap: 8,
+                      color: pillLabelColor,
+                      fontSize: pillLabelFontSize,
+                      fontFamily: pillLabelFont,
+                      fontWeight: pillLabelWeight,
+                      letterSpacing: `${pillLabelLetterSpacing}em`,
+                      textTransform: pillLabelUppercase ? "uppercase" : "none",
+                      textDecoration: "none",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <span>{cta}</span>
+                    {arrowChip}
+                  </a>
                 );
               }
+
               if (actionRowVariant === "full") {
                 return (
                   <a
@@ -2418,44 +2443,48 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="cta-link cursor-pointer pointer-events-auto w-full flex items-center justify-center"
-                    style={{ ...containerStyle, gap: 8, color: ctaColor, fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
+                    className="pointer-events-auto w-full flex items-center justify-center cursor-pointer"
+                    style={{
+                      background: "rgba(0,0,0,0.022)",
+                      borderRadius: cardRadius,
+                      padding: `0 ${statPillPadX}px`,
+                      minHeight: pillRowHeight,
+                      gap: 8,
+                      color: ctaColor,
+                      fontSize: pillLabelFontSize,
+                      fontFamily: pillLabelFont,
+                      fontWeight: 500,
+                      letterSpacing: `${pillLabelLetterSpacing}em`,
+                      lineHeight: 1.2,
+                      textDecoration: "none",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
                   >
                     <span>{cta}</span>
-                    {arrow}
+                    {arrowChip}
                   </a>
                 );
               }
-              if (actionRowVariant === "left") {
-                return (
-                  <div className="w-full pointer-events-auto flex items-center" style={containerStyle}>
-                    {ctaLink}
-                  </div>
-                );
-              }
-              if (actionRowVariant === "dark") {
-                return (
-                  <div className="w-full pointer-events-auto flex items-center justify-end" style={containerStyle}>
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="cursor-pointer"
-                      style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "#1a1a1a", color: "#fff", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
-                    >
-                      <span>{cta}</span>
-                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
-                        <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
-                      </svg>
-                    </a>
-                  </div>
-                );
-              }
-              // "bare" — no container, right-aligned CTA
+
+              // "dark"
               return (
-                <div className="w-full flex justify-end pointer-events-auto" style={{ padding: `0 ${statPillPadX}px`, minHeight: pillRowHeight }}>
-                  {ctaLink}
+                <div
+                  className="w-full pointer-events-auto flex items-center justify-end"
+                  style={{ background: "transparent", padding: `0 ${statPillPadX}px`, minHeight: pillRowHeight }}
+                >
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="cursor-pointer"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "#1a1a1a", color: "#fff", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
+                  >
+                    <span>{cta}</span>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+                      <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
+                    </svg>
+                  </a>
                 </div>
               );
             })() : null;
@@ -4102,7 +4131,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div>
               <label className="text-[12px] text-neutral-500 mb-1.5 block">Action row</label>
               <div className="flex flex-wrap gap-1.5">
-                {(["soft-split", "full", "left", "dark", "bare"] as const).map((v) => (
+                {(["split-hairline", "split-rule", "split-soft", "split-bare", "full", "dark"] as const).map((v) => (
                   <button
                     key={v}
                     type="button"
@@ -4335,6 +4364,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Arc radius <span className="tabular-nums text-neutral-400">{arcWheelR}px</span></label><input type="range" min={80} max={1500} value={arcWheelR} onChange={(e) => setArcWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Step angle <span className="tabular-nums text-neutral-400">{arcStepDeg.toFixed(1)}°</span></label><input type="range" min={10} max={80} value={Math.round(arcStepDeg * 10)} onChange={(e) => setArcStepDeg(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Text gap <span className="tabular-nums text-neutral-400">{arcTextGap}px</span></label><input type="range" min={0} max={80} value={arcTextGap} onChange={(e) => setArcTextGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Right-align names</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${arcRightAlign ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setArcRightAlign(!arcRightAlign)}>{arcRightAlign ? "On" : "Off"}</button></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Hug gap <span className="tabular-nums text-neutral-400">{arcHugBuffer}px</span></label><input type="range" min={0} max={200} value={arcHugBuffer} onChange={(e) => setArcHugBuffer(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Line opacity <span className="tabular-nums text-neutral-400">{arcLineOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(arcLineOp * 100)} onChange={(e) => setArcLineOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Font max <span className="tabular-nums text-neutral-400">{arcFsMax}px</span></label><input type="range" min={12} max={40} value={arcFsMax} onChange={(e) => setArcFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{arcFsMin}px</span></label><input type="range" min={6} max={20} value={arcFsMin} onChange={(e) => setArcFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
