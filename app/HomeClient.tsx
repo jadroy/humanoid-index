@@ -524,6 +524,43 @@ function OgPreview({ src }: { src: string }) {
   );
 }
 
+// Session-level memory: once a logo src has loaded once in this tab, future
+// LogoImage mounts for that src start "loaded" and skip the swipe entirely.
+// Survives cardLabel remounts on scroll-swap (key={h.id}).
+const loadedLogoSrcs = new Set<string>();
+
+function LogoImage({ src, alt }: { src: string; alt: string; sizes?: string }) {
+  // Plain <img> instead of next/image: logos are 22–26px so optimization buys
+  // nothing, and the load event behaves more reliably than next/image's
+  // wrapped element in Next 16 (OgPreview uses the same pattern).
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [loaded, setLoaded] = useState(() => loadedLogoSrcs.has(src));
+  useLayoutEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      loadedLogoSrcs.add(src);
+      setLoaded(true);
+    }
+  }, [src]);
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      ref={imgRef}
+      src={src}
+      alt={alt}
+      onLoad={() => { loadedLogoSrcs.add(src); setLoaded(true); }}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        clipPath: loaded ? "inset(0 0 0 0)" : "inset(100% 0 0 0)",
+        transition: "clip-path 520ms cubic-bezier(0.22, 1, 0.36, 1)",
+      }}
+    />
+  );
+}
+
 function parseShareParams(): { leftId: string | null; compareIds: string[] } {
   if (typeof window === "undefined") return { leftId: null, compareIds: [] };
   const p = new URLSearchParams(window.location.search);
@@ -551,7 +588,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [bottomFadeH, setBottomFadeH] = useState(40);
   const [bottomFadeOpacity, setBottomFadeOpacity] = useState(0.9);
   const [showTuner, setShowTuner] = useState(false);
-  const [buyLayout, setBuyLayout] = useState<"card" | "chip" | "below">("below");
+  const [buyLayout, setBuyLayout] = useState<"card" | "chip" | "below">("card");
+  const [statsCollapsed, setStatsCollapsed] = useState(false);
+  const [statsHover, setStatsHover] = useState(false);
+  type CollapseVariant = "pull-tab" | "gap-zone" | "hover-fade" | "info-icon" | "none";
+  const [collapseVariant, setCollapseVariant] = useState<CollapseVariant>("info-icon");
+  useEffect(() => {
+    if (collapseVariant === "hover-fade" || collapseVariant === "none") {
+      setStatsCollapsed(false);
+    }
+  }, [collapseVariant]);
   const [buyCardStyle, setBuyCardStyle] = useState<"split" | "dark">("split");
   const [hideUnbuyable, setHideUnbuyable] = useState(false);
   const [isCustom, setIsCustom] = useState(true);
@@ -565,7 +611,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
   const [pillsLayout, setPillsLayout] = useState<"stack" | "grouped">("stack");
-  const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill" | "chip">("chip");
+  const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill" | "chip">("after-name");
   const [groupedFill, setGroupedFill] = useState<string>("#F9F9F9");
   const [groupedDivider, setGroupedDivider] = useState<"full" | "inset" | "none">("full");
   const [groupedRing, setGroupedRing] = useState<boolean>(true);
@@ -600,7 +646,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [miniCrownRadius, setMiniCrownRadius] = useState(70);
   const [arcInset, setArcInset] = useState(150);
   const [arcRightAlign, setArcRightAlign] = useState(true);
-  const [arcHugBuffer, setArcHugBuffer] = useState(38);
+  const [arcHugBuffer, setArcHugBuffer] = useState(50);
   const [navTop, setNavTop] = useState(12);
   const [autoNavX, setAutoNavX] = useState(true);
   const [navX, setNavX] = useState(24);
@@ -692,7 +738,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statsW, setStatsW] = useState(260);       // px
   const [statsColScale, setStatsColScale] = useState(0.57); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
-  const [statsGap, setStatsGap] = useState(8);     // px — gap between robot and stats
+  const [statsGap, setStatsGap] = useState(20);    // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(28);  // px
   // Stat-pill tuners
   const [statPillRadius, setStatPillRadius] = useState(9999);  // px — fully rounded (capsule)
@@ -707,6 +753,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // that fill the available height, with the action pill pinned at the bottom. Single view
   // only — compare and split-blurb modes keep their existing layouts.
   const [stackedInfo, setStackedInfo] = useState(true);
+  // When on, render uppercase eyebrows ("Specs"/"Notes") above each section in
+  // the stacked stats column. When off, sections are split by a single hairline.
+  const [showSectionEyebrows, setShowSectionEyebrows] = useState(false);
   // Where the status indicator (dot + word) lives when stackedInfo is on:
   //   "card"        — dedicated Status card pinned at the bottom of the stack (current)
   //   "chip"        — first chip in the tags row, colored dot + status word
@@ -715,7 +764,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   //   "corner"      — small floating dot on the robot card itself
   //   "hidden"      — no status indicator anywhere
   type StatusPlacement = "card" | "chip" | "label" | "consolidate" | "corner" | "hidden";
-  const [statusPlacement, setStatusPlacement] = useState<StatusPlacement>("chip");
+  const [statusPlacement, setStatusPlacement] = useState<StatusPlacement>("label");
   // Action row variants for the bottom CTA in single view (stackedInfo on).
   // The "split-X" variants share a layout: CTA text on the left, arrow chip on the right
   // (space-between). They differ only in the surrounding container treatment.
@@ -812,9 +861,29 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [splitShadowOp, setSplitShadowOp] = useState(0.12);
   const [splitDur, setSplitDur] = useState(320); // ms
   const [labelPosition, setLabelPosition] = useState<"stack" | "below" | "above">("above");
+  const [labelFadeOnScroll, setLabelFadeOnScroll] = useState(false);
   const [statsAlign, setStatsAlign] = useState<"top" | "center" | "bottom">("bottom");
 
   // Scene background tuner
+  // Collapse / layout-shift tuner — drives the stats column width transition
+  // and the arc inset transitions via CSS vars (`--collapse-dur`,
+  // `--collapse-ease`) so the i-toggle and compare add/subtract glide on one
+  // shared clock without prop drilling.
+  const [showCollapseTuner, setShowCollapseTuner] = useState(false);
+  const [collapseDurMs, setCollapseDurMs] = useState(360);
+  const COLLAPSE_EASE_PRESETS = [
+    { label: "Standard",  value: "cubic-bezier(0.4, 0, 0.2, 1)" },
+    { label: "Snappy",    value: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+    { label: "Out-expo",  value: "cubic-bezier(0.16, 1, 0.3, 1)" },
+    { label: "Out-cubic", value: "cubic-bezier(0.33, 1, 0.68, 1)" },
+    { label: "Linear",    value: "linear" },
+  ] as const;
+  const [collapseEase, setCollapseEase] = useState<string>(COLLAPSE_EASE_PRESETS[3].value);
+  useEffect(() => {
+    document.documentElement.style.setProperty("--collapse-dur", `${collapseDurMs}ms`);
+    document.documentElement.style.setProperty("--collapse-ease", collapseEase);
+  }, [collapseDurMs, collapseEase]);
+
   const [showSceneTuner, setShowSceneTuner] = useState(false);
   const [sceneShape, setSceneShape] = useState<"radial" | "horizontal" | "vertical" | "top" | "bottom">("radial");
   const [sceneSize, setSceneSize] = useState(72);
@@ -868,7 +937,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // the frame exactly makes the pill column read as visually wider than the robot.
   const baseCardPx = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
   const singleStatsW = Math.round(baseCardPx * statsColScale);
-  const effectiveStatsW = splitBlurb && blurbFloat ? statsW * 2 + cardGap : singleStatsW;
+  const collapsedRailW = 28;
+  const expandedStatsW = splitBlurb && blurbFloat ? statsW * 2 + cardGap : singleStatsW;
+  const effectiveStatsW = statsCollapsed ? collapsedRailW : expandedStatsW;
 
   const centerHalfWidth = (() => {
     const cardPx = comparing
@@ -926,11 +997,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
       return;
     }
     const cardPxStable = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
-    const statsColStable = stackedInfo ? Math.round(cardPxStable * 0.82) : statsW;
+    const statsColStable = statsCollapsed
+      ? collapsedRailW
+      : (stackedInfo ? Math.round(cardPxStable * statsColScale) : statsW);
     const contentW = cardPxStable + statsGap + statsColStable;
     const x = Math.max(16, Math.round((windowWidth - contentW) / 2));
     document.documentElement.style.setProperty("--nav-x", `${x}px`);
-  }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, stackedInfo]);
+  }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, stackedInfo, statsColScale, statsCollapsed, collapsedRailW]);
+
+  // Footer inset: matches the default content edges (card + gap + stats) but
+  // ignores collapse/stack toggles so it stays put as the user navigates.
+  useEffect(() => {
+    const cardPxStable = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
+    const contentW = cardPxStable + statsGap + statsW;
+    const x = Math.max(16, Math.round((windowWidth - contentW) / 2));
+    document.documentElement.style.setProperty("--footer-x", `${x}px`);
+  }, [windowWidth, robotW, robotMaxW, statsW, statsGap]);
 
   // Publish nav top offset as a CSS variable
   useEffect(() => {
@@ -1172,6 +1254,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         if (e.key === "t") { setShowTuner((v) => !v); return; }
         if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
         if (e.key === "b") { setShowSceneTuner((v) => !v); return; }
+        if (e.key === "i") { setShowCollapseTuner((v) => !v); return; }
       }
       const mod = e.metaKey || e.ctrlKey;
       const isJumpStart =
@@ -1984,9 +2067,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               })();
           const labelNode = labelPosition === "stack" && (
                 <div className="ui-frost flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: pillBg, backdropFilter: pillBackdrop, WebkitBackdropFilter: pillBackdrop, padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
-                  <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+                  <div className="logo-placeholder flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6 }}>
                     {h.logoUrl ? (
-                      <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${labelLogoSize}px`} />
+                      <LogoImage src={h.logoUrl} alt={h.manufacturer} sizes={`${labelLogoSize}px`} />
                     ) : (
                       <svg width={Math.round(labelLogoSize / 2)} height={Math.round(labelLogoSize / 2)} viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
                         <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
@@ -2257,47 +2340,49 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             );
           }
 
-          // Sunday-style stacked layout: visible cards filling the column, action pill anchored bottom.
+          // Sunday-style stacked layout: chromeless column anchored to the card's
+          // top/bottom edges. Eyebrow labels + hairline rules carry the structure
+          // that the gray cards used to.
           if (stackedInfo) {
             const cardBase: React.CSSProperties = {
-              borderRadius: cardRadius,
-              background: statPillBg,
-              padding: `${statPillPadY}px ${statPillPadX}px`,
+              padding: 0,
+              background: "transparent",
             };
-            // Stacked-info cards use a uniform 14px / Geist Sans rhythm.
-            // Headers carry slightly heavier weight; labels and values share the same
-            // size and weight, differentiated only by opacity (label = dim, value = full).
-            const cardFontSize = 12.5;
+            const stackGap = 16;
+            const sectionContentGap = 2;
+            const sectionContentMarginTop = 10;
+            const cardFontSize = 13;
             const headerStyle: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
-              fontSize: cardFontSize,
+              fontSize: 10.5,
               fontWeight: 500,
-              color: "var(--c-ink)",
-              opacity: 0.82,
-              letterSpacing: "-0.01em",
+              color: "var(--c-ink-muted)",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
             };
+            const hairlineRule = (
+              <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)" }} />
+            );
             const rowStyle: React.CSSProperties = {
               display: "flex",
               alignItems: "baseline",
               gap: 14,
               fontFamily: "var(--font-geist-sans)",
-              lineHeight: 1.55,
+              lineHeight: 1.7,
             };
             const dimmed: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: cardFontSize,
               fontWeight: 400,
-              color: "var(--c-ink)",
-              opacity: 0.38,
+              color: "var(--c-ink-muted)",
               minWidth: 64,
               flexShrink: 0,
             };
             const valueStyle: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: cardFontSize,
-              fontWeight: 400,
-              color: "var(--c-ink)",
-              opacity: 0.68,
+              fontWeight: 450,
+              color: "var(--c-ink-body)",
             };
             const purchaseSection = sections.find((s) => s.key === "purchase") as
               | { key: "purchase"; href?: string; text?: string; price?: string; ctaText?: string }
@@ -2322,21 +2407,24 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               gap: 6,
               padding: "4px 10px",
               borderRadius: 999,
-              background: "rgba(0,0,0,0.05)",
+              background: "rgba(0,0,0,0.035)",
               color: "var(--c-ink-body)",
               fontFamily: "var(--font-geist-sans)",
-              fontSize: 11.5,
-              fontWeight: 500,
+              fontSize: 12.5,
+              fontWeight: 450,
               letterSpacing: "-0.005em",
               lineHeight: 1.3,
               whiteSpace: "nowrap",
             };
-            // Consolidate the price/availability label from the action pill into the chip row.
+            // Meta chips (year/status/price) live elsewhere now: year + status dot in the
+            // label, price/availability in the below-card CTA. Notes is purely descriptors.
             const priceChipText = purchaseSection?.price;
             const showPriceChip = !!priceChipText;
-            const tagsCard = (h.tags && h.tags.length > 0) || showStatusChip || showYearChip || showPriceChip ? (
-              <div className="ui-frost" style={cardBase}>
-                <div className="flex flex-wrap" style={{ gap: 6 }}>
+            const hasDescriptorTags = !!(h.tags && h.tags.length > 0);
+            const notesCard = hasDescriptorTags || showStatusChip || showYearChip ? (
+              <div style={cardBase}>
+                {showSectionEyebrows && hasDescriptorTags && <p style={headerStyle}>Notes</p>}
+                <div className="flex flex-wrap" style={{ gap: 6, marginTop: showSectionEyebrows && hasDescriptorTags ? sectionContentMarginTop : 0 }}>
                   {showYearChip && <span style={chipStyle}>{h.year}</span>}
                   {showStatusChip && (
                     <span style={chipStyle}>
@@ -2344,7 +2432,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       {h.status}
                     </span>
                   )}
-                  {showPriceChip && <span style={chipStyle}>{priceChipText}</span>}
                   {h.tags?.map((tag) => (
                     <span key={tag} style={chipStyle}>{tag}</span>
                   ))}
@@ -2354,7 +2441,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
             // Always render the full universal stat set so cards line up across robots.
             // Missing metrics show as a dimmed em-dash rather than collapsing the row.
-            const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "#c4c4c4" };
+            const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "var(--c-ink-subtle)" };
             const renderStatRow = (label: string, value: string | number | null | undefined, formatter: (v: number) => string) => (
               <div style={rowStyle}>
                 <span style={dimmed}>{label}</span>
@@ -2364,21 +2451,22 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             );
             const statsCard = (
-              <div className="ui-frost" style={cardBase}>
-                <p style={headerStyle}>Stats</p>
-                <div className="flex flex-col" style={{ gap: 6, marginTop: 10 }}>
+              <div style={cardBase}>
+                {showSectionEyebrows && <p style={headerStyle}>Specs</p>}
+                <div className="flex flex-col" style={{ gap: sectionContentGap, marginTop: showSectionEyebrows ? sectionContentMarginTop : 0 }}>
                   {renderStatRow("Height", h.height, formatHeight)}
                   {renderStatRow("Weight", h.weight, formatWeight)}
                   {renderStatRow("DOF", h.dof, (v) => `${v}`)}
                   {renderStatRow("Speed", h.maxSpeed, formatSpeed)}
+                  {priceChipText && renderStatRow("Price", priceChipText, (v) => `${v}`)}
                 </div>
               </div>
             );
 
             const statusCard = h.status && statusPlacement === "card" ? (
-              <div className="ui-frost" style={{ ...cardBase, marginTop: "auto" }}>
-                <p style={headerStyle}>Status</p>
-                <div className="flex items-center" style={{ gap: 8, marginTop: 10 }}>
+              <div style={{ ...cardBase, marginTop: "auto" }}>
+                {showSectionEyebrows && <p style={headerStyle}>Status</p>}
+                <div className="flex items-center" style={{ gap: 8, marginTop: showSectionEyebrows ? sectionContentMarginTop : 0 }}>
                   {statusDot}
                   <span style={valueStyle}>{h.status}</span>
                 </div>
@@ -2504,23 +2592,43 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               );
             })() : null;
 
+            // Cards float as distinct frosted cards in the column with visible gaps
+            // between them. Inner column holds its expanded width during collapse so
+            // content doesn't reflow as the slot shrinks; opacity + translate handle
+            // the visual fade.
             return (
-              <div className="flex flex-col h-full pointer-events-auto" style={{ width: "100%", gap: statPillGap, position: "relative", zIndex: 11 }}>
+              <div className="flex flex-col h-full pointer-events-auto" style={{ width: "100%", gap: stackGap, position: "relative", zIndex: 11 }}>
                 <div
                   className="flex flex-col"
                   style={{
                     flex: 1,
                     minHeight: 0,
-                    gap: statPillGap,
+                    gap: stackGap,
                     overflowY: "auto",
+                    overflowX: "hidden",
+                    width: expandedStatsW,
+                    opacity: collapseVariant === "hover-fade" ? (statsHover ? 1 : 0.22) : (statsCollapsed ? 0 : 1),
+                    transform: statsCollapsed ? "translateX(8px)" : "translateX(0)",
+                    pointerEvents: statsCollapsed ? "none" : "auto",
+                    transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                   }}
                 >
                   {labelNode}
                   {statsCard}
-                  {tagsCard}
+                  {notesCard && !showSectionEyebrows ? hairlineRule : null}
+                  {notesCard}
                   {statusCard}
                 </div>
-                {purchasePill}
+                <div
+                  style={{
+                    width: expandedStatsW,
+                    opacity: collapseVariant === "hover-fade" ? (statsHover ? 1 : 0.22) : (statsCollapsed ? 0 : 1),
+                    pointerEvents: statsCollapsed ? "none" : "auto",
+                    transition: `opacity ${dur} ${ease}`,
+                  }}
+                >
+                  {purchasePill}
+                </div>
               </div>
             );
           }
@@ -2791,9 +2899,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
 
           const headerCell = (h: typeof humanoids[0]) => (
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 26, height: 26, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+              <div className="logo-placeholder flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 26, height: 26, borderRadius: cardRadius * 0.6 }}>
                 {h.logoUrl ? (
-                  <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes="26px" />
+                  <LogoImage src={h.logoUrl} alt={h.manufacturer} sizes="26px" />
                 ) : (
                   <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
                     <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
@@ -3265,10 +3373,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           };
 
           const cardLabel = (
-            <div key={h.id} className="flex items-center gap-2 px-0.5 info-fade-in">
-              <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
+            <div key={h.id} className={`flex items-center gap-2 px-0.5${labelFadeOnScroll ? " info-fade-in" : ""}`}>
+              <div className="logo-placeholder flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6 }}>
                 {h.logoUrl ? (
-                  <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${labelLogoSize}px`} />
+                  <LogoImage src={h.logoUrl} alt={h.manufacturer} sizes={`${labelLogoSize}px`} />
                 ) : (
                   <svg width={Math.round(labelLogoSize / 2)} height={Math.round(labelLogoSize / 2)} viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
                     <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
@@ -3297,6 +3405,32 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.32 }}>{h.year}</p>
                 ) : null}
               </div>
+              {/* Info-icon collapse affordance — sits opposite the label, on the
+                  far right of the label row. Outline circle with a standard "i". */}
+              {collapseVariant === "info-icon" && !comparing && isFirst && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
+                  aria-label={statsCollapsed ? "Show details" : "Hide details"}
+                  className="flex-shrink-0 cursor-pointer flex items-center justify-center"
+                  style={{
+                    width: labelLogoSize,
+                    height: labelLogoSize,
+                    borderRadius: 999,
+                    background: "transparent",
+                    color: "rgba(0,0,0,0.45)",
+                    border: "1px solid rgba(0,0,0,0.18)",
+                    padding: 0,
+                    fontFamily: "var(--font-geist-sans)",
+                    fontSize: Math.round(labelLogoSize * 0.55),
+                    fontWeight: 500,
+                    lineHeight: 1,
+                    pointerEvents: "auto",
+                    transition: `border-color ${dur} ${ease}, color ${dur} ${ease}`,
+                  }}
+                >
+                  i
+                </button>
+              )}
             </div>
           );
 
@@ -3563,6 +3697,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               <div
                 key={addHintVisible ? `nudge-${addNudgeKey}-s` : "idle-s"}
                 className={`flex-shrink-0 relative${addHintVisible ? " animate-add-nudge-double" : ""}`}
+                onMouseEnter={() => setStatsHover(true)}
+                onMouseLeave={() => setStatsHover(false)}
                 style={{
                   marginLeft: effectiveGap,
                   overflowX: "visible", overflowY: "visible",
@@ -3572,10 +3708,85 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     ? undefined
                     : !comparing && addHover && addCtaMode !== "always" ? "translateX(-16px)" : "translateX(0)",
                   transition: addHintVisible
-                    ? `width ${dur} ${ease}, height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left ${dur} ${ease}`
-                    : `width ${dur} ${ease}, height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left ${dur} ${ease}, transform ${dur} ${ease}`,
+                    ? `width var(--collapse-dur) var(--collapse-ease), height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left var(--collapse-dur) var(--collapse-ease)`
+                    : `width var(--collapse-dur) var(--collapse-ease), height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left var(--collapse-dur) var(--collapse-ease), transform ${dur} ${ease}`,
                 }}
               >
+                {/* Collapse affordance — variants swap the chrome but all toggle
+                    statsCollapsed. See `collapseVariant` for the active treatment. */}
+                {!comparing && (() => {
+                  const toggle = () => setStatsCollapsed((v) => !v);
+                  const chevron = (
+                    <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.72)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: statsCollapsed ? "rotate(180deg)" : "none", transition: `transform ${dur} ${ease}` }}>
+                      <path d="M10 4 L6 8 L10 12" />
+                    </svg>
+                  );
+
+                  if (collapseVariant === "pull-tab") {
+                    const hot = statsHover || statsCollapsed;
+                    return (
+                      <button
+                        onClick={toggle}
+                        aria-label={statsCollapsed ? "Expand stats" : "Collapse stats"}
+                        className="absolute cursor-pointer flex items-center justify-center"
+                        style={{
+                          top: "50%",
+                          left: -(effectiveGap - 1),
+                          transform: `translateY(-50%) translateX(-100%)`,
+                          width: hot ? 14 : 2,
+                          height: hot ? 28 : 36,
+                          borderTopLeftRadius: 4,
+                          borderBottomLeftRadius: 4,
+                          borderTopRightRadius: hot ? 4 : 0,
+                          borderBottomRightRadius: hot ? 4 : 0,
+                          background: hot ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.08)",
+                          transition: `width ${dur} ${ease}, height ${dur} ${ease}, background ${dur} ${ease}, border-radius ${dur} ${ease}`,
+                          zIndex: 50,
+                          border: "none",
+                          padding: 0,
+                          pointerEvents: "auto",
+                        }}
+                      >
+                        {hot ? chevron : null}
+                      </button>
+                    );
+                  }
+
+                  if (collapseVariant === "gap-zone") {
+                    const hot = statsHover || statsCollapsed;
+                    return (
+                      <button
+                        onClick={toggle}
+                        aria-label={statsCollapsed ? "Expand stats" : "Collapse stats"}
+                        className="absolute flex items-center justify-center"
+                        style={{
+                          top: 0,
+                          left: -effectiveGap,
+                          width: effectiveGap,
+                          height: "100%",
+                          background: "transparent",
+                          cursor: "col-resize",
+                          zIndex: 50,
+                          border: "none",
+                          padding: 0,
+                          pointerEvents: "auto",
+                        }}
+                      >
+                        <div className="flex flex-col items-center justify-center" style={{ gap: 4, opacity: hot ? 1 : 0, transition: `opacity ${dur} ${ease}` }}>
+                          <div style={{ width: 1, height: 28, background: "rgba(0,0,0,0.12)" }} />
+                          <div className="flex items-center justify-center" style={{ width: 16, height: 16, borderRadius: 999, background: "rgba(0,0,0,0.05)" }}>
+                            {chevron}
+                          </div>
+                          <div style={{ width: 1, height: 28, background: "rgba(0,0,0,0.12)" }} />
+                        </div>
+                      </button>
+                    );
+                  }
+
+                  // info-icon — rendered inside the card itself (see renderRobot).
+                  // hover-fade / none — no button; behavior handled in renderStats.
+                  return null;
+                })()}
                 <div className="absolute inset-0" style={{
                   opacity: comparing ? 0 : 1,
                   pointerEvents: comparing ? "none" : "auto",
@@ -3692,6 +3903,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           </button>
           <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
           <button
+            onClick={() => setShowCollapseTuner(!showCollapseTuner)}
+            className="cursor-pointer transition-colors duration-150"
+            style={{ fontSize: 10, color: showCollapseTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
+          >
+            I
+          </button>
+          <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
+          <button
             onClick={() => onToggleChatTuner?.()}
             className="cursor-pointer transition-colors duration-150"
             style={{ fontSize: 10, color: showChatTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
@@ -3712,6 +3931,20 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${labelPosition === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                 >
                   {v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Label Fade On Scroll</p>
+            <div className="flex gap-1.5">
+              {([["off", false], ["on", true]] as const).map(([k, v]) => (
+                <button
+                  key={k}
+                  onClick={() => setLabelFadeOnScroll(v)}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${labelFadeOnScroll === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {k}
                 </button>
               ))}
             </div>
@@ -3969,6 +4202,46 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           </div>
         </div>
       )}
+      {showCollapseTuner && (
+        <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[260px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Collapse</p>
+            <span className="text-[10px] text-neutral-400">i-toggle · compare</span>
+          </div>
+          <div>
+            <label className="text-[12px] text-neutral-500 flex justify-between">
+              Duration <span className="tabular-nums text-neutral-400">{collapseDurMs}ms</span>
+            </label>
+            <input
+              type="range"
+              min={50}
+              max={800}
+              step={10}
+              value={collapseDurMs}
+              onChange={(e) => setCollapseDurMs(Number(e.target.value))}
+              className="w-full accent-neutral-900 h-1"
+            />
+          </div>
+          <div>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Easing</p>
+            <div className="flex flex-wrap gap-1.5">
+              {COLLAPSE_EASE_PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => setCollapseEase(p.value)}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${collapseEase === p.value ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-[10px] text-neutral-400 leading-relaxed">
+            Drives the stats column width transition and the arc inset slide.
+            Test by toggling the i icon or entering/exiting compare.
+          </p>
+        </div>
+      )}
       {showTuner && (
         <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide" style={{ overscrollBehavior: "contain" }}>
           <div>
@@ -4215,6 +4488,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 ))}
               </div>
             </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[12px] text-neutral-500 flex-1">Section eyebrows (Specs / Notes)</label>
+              <button
+                type="button"
+                className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${showSectionEyebrows ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+                onClick={() => setShowSectionEyebrows(!showSectionEyebrows)}
+              >
+                {showSectionEyebrows ? "On" : "Off"}
+              </button>
+            </div>
             {actionVariant === "split" && (
               <div className="flex items-center gap-2">
                 <label className="text-[12px] text-neutral-500 flex-1">Consolidate Status into Buy pill</label>
@@ -4363,6 +4646,21 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             </div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Card↔Stats gap <span className="tabular-nums text-neutral-400">{statsGap}px</span></label><input type="range" min={0} max={80} value={statsGap} onChange={(e) => setStatsGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div>
+              <label className="text-[12px] text-neutral-500 mb-1.5 block">Collapse affordance</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(["pull-tab", "gap-zone", "hover-fade", "info-icon", "none"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setCollapseVariant(v)}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${collapseVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Column width <span className="tabular-nums text-neutral-400">{Math.round(statsColScale * 100)}%</span></label><input type="range" min={30} max={120} value={Math.round(statsColScale * 100)} onChange={(e) => setStatsColScale(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{statPillRadius}px</span></label><input type="range" min={0} max={40} value={statPillRadius} onChange={(e) => setStatPillRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Gap <span className="tabular-nums text-neutral-400">{statPillGap}px</span></label><input type="range" min={0} max={16} value={statPillGap} onChange={(e) => setStatPillGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -5192,11 +5490,34 @@ export default function HomeClient() {
             </div>
           );
         }
+        const handleShareSite = () => {
+          const origin = typeof window !== "undefined" ? window.location.origin : "";
+          copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
+        };
         return (
           <div
-            className="intro-credit fixed bottom-6 left-0 right-0 z-[48] pointer-events-none flex items-center justify-end"
-            style={{ height: 36, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}
+            className="intro-credit fixed bottom-6 left-0 right-0 z-[48] pointer-events-none flex items-center justify-between"
+            style={{ height: 36, paddingLeft: "var(--footer-x, 24px)", paddingRight: "var(--footer-x, 24px)" }}
           >
+            <button
+              type="button"
+              onClick={handleShareSite}
+              className="pointer-events-auto cursor-pointer"
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: "6px 12px 6px 4px",
+                fontSize: 13,
+                fontWeight: 500,
+                letterSpacing: "normal",
+                lineHeight: 1,
+                color: "rgba(95, 96, 89, 0.85)",
+                whiteSpace: "nowrap",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              Humanoid Index
+            </button>
             <span style={creditStyle}>Roy Jad © 2026</span>
           </div>
         );

@@ -124,7 +124,7 @@ function ArcTimelineWheel({ index, subscribe, mirrored, onClickItem, aInset, aWh
           top: "50%",
           ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
           transform: "translateY(-50%)",
-          transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: "left var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1)), right var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1))",
         }}
         viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
       >
@@ -223,7 +223,7 @@ function ArcCurrentMarker({ markerVariant = 1, markerColor, mirrored, aInset, aT
         opacity: marker.opacity ?? 0.5,
         display: "flex",
         alignItems: "center",
-        transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+        transition: "left var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1)), right var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1))",
       }}
     >
       <div style={mirrored ? { transform: "scaleX(-1)" } : undefined}>{marker.el}</div>
@@ -401,7 +401,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
           top: "50%",
           ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
           transform: "translateY(-50%)",
-          transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: "left var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1)), right var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1))",
         }}
         viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
       >
@@ -543,7 +543,7 @@ function ArcTagWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR,
           top: "50%",
           ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
           transform: "translateY(-50%)",
-          transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: "left var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1)), right var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1))",
         }}
         viewBox={`0 0 ${wheelR * 2} ${wheelR * 2}`}
       >
@@ -558,7 +558,7 @@ function ArcTagWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR,
           top: "50%",
           ...(mirrored ? { left: "auto", right: -wheelR * 2 + aInset } : { left: -wheelR * 2 + aInset }),
           transform: "translateY(-50%)",
-          transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: "left var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1)), right var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1))",
         }}
       >
         {items.map(({ i }, idx) => {
@@ -583,7 +583,7 @@ function ArcTagWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheelR,
           top: "50%",
           ...(mirrored ? { right: aInset - 10 } : { left: aInset - 10 }),
           transform: "translateY(-50%)",
-          transition: "left 0.55s cubic-bezier(0.16, 1, 0.3, 1), right 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: "left var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1)), right var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1))",
         }}
       >
         <svg width={tagMarkerSize} height={tagMarkerSize * 2} viewBox="0 0 6 12" fill="none">

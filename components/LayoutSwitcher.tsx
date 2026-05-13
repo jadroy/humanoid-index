@@ -2,7 +2,6 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/LogoMark";
-import { DiceIcon } from "@/components/DiceIcon";
 import { Chip } from "@/lib/design/primitives/Chip";
 import { SURFACE_HOVER_SOFT } from "@/lib/design/tokens";
 
@@ -580,13 +579,6 @@ export function LayoutSwitcher({
     onRandomHumanoid?.();
   };
 
-  const [trioSpinHover, setTrioSpinHover] = useState(false);
-  const [trioCopyHover, setTrioCopyHover] = useState(false);
-
-  const diceFaces = {
-    a: { top: 1, left: 2, right: 3 },
-    b: { top: 1, left: 3, right: 2 },
-  };
 
   const mark = <LogoMark onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} />;
   const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} ringColor="#fff" />;
@@ -1251,74 +1243,22 @@ export function LayoutSwitcher({
             ...(joined ? { gap: 28 } : { gridTemplateColumns: "1fr auto 1fr" }),
           }}
         >
-          <div className="group flex justify-start items-center" style={{ gap: 0 }}>
-            <Chip
-              onClick={() => onShareSite?.()}
-              style={{
-                fontSize: 13,
-                fontWeight: 500,
-                letterSpacing: "normal",
-                color: "rgba(95, 96, 89, 0.85)",
-                background: "transparent",
-                padding: "6px 4px 6px 12px",
-              }}
-            >
-              Humanoid Index
-            </Chip>
-            <button
-              onClick={() => onShareSite?.()}
-              onMouseEnter={() => setTrioCopyHover(true)}
-              onMouseLeave={() => setTrioCopyHover(false)}
-              aria-label="Copy link"
-              className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 999,
-                border: "none",
-                background: trioCopyHover ? SURFACE_HOVER_SOFT : "transparent",
-                color: "rgba(95, 96, 89, 0.7)",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 0,
-                transition: "background 200ms ease, opacity 200ms ease",
-              }}
-            >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-                style={{ display: "block" }}
-              >
-                <rect x="9" y="9" width="11" height="11" rx="2.5" />
-                <path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" />
-              </svg>
-            </button>
-          </div>
+          {/* Humanoid Index title moved to the footer. Keep an empty cell so the
+              grid columns stay symmetrical and the dice stays centered. */}
+          {!joined && <div />}
           <div className="flex justify-center items-center">
             <Chip
               onClick={() => onRandomHumanoid?.()}
-              onMouseEnter={() => setTrioSpinHover(true)}
-              onMouseLeave={() => setTrioSpinHover(false)}
               className="trio-spin"
               style={{
                 color: "rgba(95, 96, 89, 0.85)",
-                background: trioSpinHover ? SURFACE_HOVER_SOFT : "transparent",
-                transition: "background 200ms ease",
+                background: "transparent",
                 padding: 0,
                 width: comparing ? 58 : 36,
                 height: 36,
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                overflow: "hidden",
                 borderRadius: 999,
               }}
             >
@@ -1327,10 +1267,12 @@ export function LayoutSwitcher({
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 2,
+                  fontSize: 20,
+                  lineHeight: 1,
                 }}
               >
-                <DiceIcon faces={diceFaces.a} size={22} />
-                {comparing && <DiceIcon faces={diceFaces.b} size={22} />}
+                <span role="img" aria-label="Shuffle">🎲</span>
+                {comparing && <span role="img" aria-label="Shuffle">🎲</span>}
               </span>
             </Chip>
           </div>

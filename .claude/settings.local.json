@@ -135,7 +135,14 @@
       "Bash(gunzip -k /Users/royjad/Downloads/Trace-20260509T002117.json.gz)",
       "Bash(lsof -i :3000 -sTCP:LISTEN -t)",
       "Bash(pip3 install *)",
-      "Bash(rembg i *)"
+      "Bash(rembg i *)",
+      "Bash(xxd)",
+      "Bash(tee /tmp/dev-server.log)",
+      "Bash(ffmpeg -i \"/Users/royjad/Downloads/dice-roll-dice.gif\" -vsync 0 dice-roll-frame-%03d.png)",
+      "Bash(ffmpeg -i \"/Users/royjad/Downloads/dice-game.gif\" -vsync 0 dice-game-frame-%03d.png)",
+      "Bash(cp /tmp/dice-roll-frame-001.png /Users/royjad/CODE/humanoid-index/public/dice-still.png)",
+      "Bash(cp /tmp/dice-game-frame-001.png /Users/royjad/CODE/humanoid-index/public/dice-flat-still.png)",
+      "Bash(npm uninstall *)"
     ],
     "deny": [],
     "ask": []

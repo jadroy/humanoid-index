@@ -372,6 +372,12 @@ h1, h2, h3, h4, h5, h6 {
   animation: info-fade-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/* Flat gray placeholder — sits behind <Image fill>; the swipe-reveal clip-path
+   on the image itself plays the loader, so no shimmer needed here. */
+.logo-placeholder {
+  background-color: #EFEFEF;
+}
+
 /* Liquid-glass stat pill — hover lifts the base toward white, active gently
    compresses. Uses --pill-bg so inline tuner overrides flow through. */
 .pill-button {
