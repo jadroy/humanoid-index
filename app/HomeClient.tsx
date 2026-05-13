@@ -1675,17 +1675,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         const speedPct = Math.min(((h.maxSpeed ?? 0) / 5) * 100, 100);
         const statusColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : h.status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
 
-        const barViz = (label: string, value: string, pct: number, delay: number) => (
-          <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
-            <p className="text-[12px] w-[32px] text-right flex-shrink-0" style={{ color: "#aaa" }}>{label}</p>
-            <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "#EFEFEF" }}>
-              <div className="h-full rounded-full" style={{
-                width: openStat.has("stats") ? `${pct}%` : "0%",
-                background: "#c4c4c4",
-                transition: `width 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
-              }} />
-            </div>
-            <p className="text-[12px] flex-shrink-0 tabular-nums" style={{ color: "var(--c-ink-body)", minWidth: 42, fontFamily: "var(--font-geist-pixel-square)" }}>{value}</p>
+        const barViz = (label: string, value: string, _pct: number, delay: number) => (
+          <div
+            className="flex items-baseline justify-between"
+            style={{
+              paddingTop: 5,
+              paddingBottom: 5,
+              opacity: openStat.has("stats") ? 1 : 0,
+              transform: openStat.has("stats") ? "translateY(0)" : "translateY(-2px)",
+              transition: `opacity 0.4s ease ${delay}s, transform 0.4s ease ${delay}s`,
+            }}
+          >
+            <span className="text-[12px]" style={{ color: "#a3a3a3" }}>{label}</span>
+            <span className="text-[12px] tabular-nums" style={{ color: "var(--c-ink-body)" }}>{value}</span>
           </div>
         );
 
