@@ -24,7 +24,6 @@ const SPIN_ROBOTS: Record<
     credit: { prefix: "Via", name: "sunday.ai" },
   },
 };
-import { WelcomeModal } from "@/components/WelcomeModal";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import SiteOptionsMenu from "@/components/SiteOptionsMenu";
 import EnvironmentToggle from "@/components/EnvironmentToggle";
@@ -4872,29 +4871,12 @@ export default function HomeClient() {
 
   // ── Intro animation state ──
   const [introPhase, setIntroPhase] = useState<"logo" | "exit" | "done">("logo");
-  const [showWelcome, setShowWelcome] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [buttonVariant, setButtonVariant] = useState<ButtonVariant>("outlined");
   useEffect(() => {
     const t1 = setTimeout(() => setIntroPhase("exit"), 1400);
     const t2 = setTimeout(() => setIntroPhase("done"), 1750);
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
-
-  // Welcome modal — show after intro completes, once per visitor
-  useEffect(() => {
-    if (introPhase !== "done") return;
-    if (typeof window === "undefined") return;
-    if (window.localStorage.getItem("hi:welcome-seen") === "1") return;
-    const t = setTimeout(() => setShowWelcome(true), 200);
-    return () => clearTimeout(t);
-  }, [introPhase]);
-
-  const dismissWelcome = useCallback(() => {
-    setShowWelcome(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("hi:welcome-seen", "1");
-    }
   }, []);
 
   useEffect(() => {
@@ -4923,9 +4905,6 @@ export default function HomeClient() {
         }
         if (e.key === "e" && !e.metaKey && !e.ctrlKey) {
           setEpetriMode((v) => !v);
-        }
-        if (e.key === "w" && !e.metaKey && !e.ctrlKey) {
-          setShowWelcome((v) => !v);
         }
       }
       if ((e.key === "?" || e.key === "/") && !e.metaKey && !e.ctrlKey) {
@@ -5215,7 +5194,6 @@ export default function HomeClient() {
 
       {chatOpen && <GuideChat onSelect={handleSelectHumanoid} config={chatConfig} />}
 
-      {showWelcome && <WelcomeModal onClose={dismissWelcome} />}
 
       {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
     </main>
