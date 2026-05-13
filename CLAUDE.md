@@ -27,6 +27,21 @@ Gold standard examples:
 
 Avoid: pure stats sentences, metaphors, brand names readers won't know, dramatic em-dash flourishes.
 
+### Descriptor tags
+Each humanoid gets a `tags?: string[]` on its `Humanoid` entry in `data/humanoids.ts` — short chips rendered in the single-view stats column (Sunday-style stack). Hand-curated, not generated; tags are factual data labels where editorial judgment beats LLM output (e.g. "Amazon facilities", "BMW pilot", "DARPA pioneer").
+
+Convention:
+- **4–6 tags per robot.** Fewer if you genuinely can't fill the slots — empty trumps filler.
+- **Order**: origin country → use case → drive/actuation → 1–2 distinguishing notes (reception, milestone, pricing hook).
+- **Length**: 1–3 words. Title Case. Skip articles ("Best-selling", not "The best-selling").
+- **Vocabulary to reuse so tags stay groupable**:
+  - Country: "USA", "China", "Japan", "Germany", "UK", "Canada", "Israel", "Norway / USA", "Hong Kong", "Spain"
+  - Use case: "Home", "Industrial", "Logistics", "Research", "Service", "Security", "Showcase"
+  - Drive: "Electric", "Hydraulic", "Tendon-driven", plus form-factor when notable ("Wheeled base", "Dual-arm")
+  - Distinguishing notes — free-form but factual: customer pilots ("BMW pilot"), deployment ("Amazon facilities"), pricing ("$16K affordable"), milestones ("DARPA pioneer", "Retired 2024", "First robot citizen"), reception ("Best-selling", "Viral on social", "Widely deployed"), availability ("Enterprise only", "Beta program", "Open-source")
+- **Don't invent.** If you can't verify a customer pilot or sales claim, leave it out.
+- Robots without tags render no Tags card — that's fine, never auto-fill from other fields.
+
 ### Blurb scripts
 `scripts/generate-compare-blurbs.ts` and `scripts/generate-robot-descriptions.ts` use `claude-opus-4-7` (not Sonnet — Roy prefers Opus). Preview mode must write results into the live JSON (`data/compare-blurbs.json` or `data/robot-descriptions.json`), not only print to the terminal — Roy iterates by viewing rendered output, not terminal char counts. Both JSON files use `{ short, long }` entries.
 

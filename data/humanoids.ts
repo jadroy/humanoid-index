@@ -30,6 +30,7 @@ export interface Humanoid {
   media?: MediaItem[]; // Additional images and videos
   purchaseUrl?: string; // Link to buy/learn more about the robot
   sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
+  tags?: string[]; // Short descriptor chips — facets like origin country, use case, drive, vibe, reception
 }
 
 // Flip to false to hide the 2026-05-08 density-experiment stubs (ids 30–135).
@@ -173,6 +174,7 @@ const allHumanoids: Humanoid[] = [
     status: "Prototype",
     height: 122,
     description: "Domestic robot for household chores with a wheeled base and dual-arm system.",
+    tags: ["USA", "Home", "Wheeled base", "Dual-arm", "Beta program"],
   },
   {
     id: "14",
@@ -194,6 +196,7 @@ const allHumanoids: Humanoid[] = [
       // launch: hidden until ship — restore for Oli video slide
       // { type: 'video', url: '/robots/oli-guanjie.mp4', caption: 'Joints', fit: 'cover', position: 'bottom', credit: { prefix: 'via', name: 'LimX Dynamics', href: 'https://www.limxdynamics.com/en/products/oli' } },
     ],
+    tags: ["China", "Research", "Electric", "$22K affordable", "Agentic OS"],
   },
   {
     id: "16",
@@ -209,6 +212,7 @@ const allHumanoids: Humanoid[] = [
     dof: 40,
     imageUrl: "/robots/k2.png",
     description: "Affordable general-purpose humanoid for manufacturing and logistics.",
+    tags: ["China", "Industrial", "Electric", "$30K affordable"],
   },
   // 2024
   {
@@ -227,6 +231,7 @@ const allHumanoids: Humanoid[] = [
     dof: 28,
     maxSpeed: 2.5,
     description: "Tesla's second-gen humanoid with improved hands and enhanced balance capabilities.",
+    tags: ["USA", "Showcase", "Electric", "Highly hyped"],
   },
   {
     id: "2",
@@ -245,6 +250,7 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 2.5,
     description: "Fully electric successor to hydraulic Atlas for industrial applications.",
     sceneUrl: "/scenes/electric-atlas-scene.jpg",
+    tags: ["USA", "Industrial", "Electric", "Iconic mobility"],
   },
   {
     id: "4",
@@ -263,6 +269,7 @@ const allHumanoids: Humanoid[] = [
     description: "Lightweight bipedal humanoid for safe human interaction and home assistance.",
     purchaseUrl: "https://www.1x.tech/order",
     sceneUrl: "/scenes/neo-scene.png",
+    tags: ["Norway / USA", "Home", "Tendon-driven", "Soft & lightweight"],
   },
   {
     id: "7",
@@ -278,6 +285,7 @@ const allHumanoids: Humanoid[] = [
     weight: 70,
     dof: 40,
     description: "Second-gen humanoid from Figure AI with advanced AI and dexterous manipulation.",
+    tags: ["USA", "Industrial", "Electric", "BMW pilot", "Enterprise only"],
   },
   {
     id: "8",
@@ -294,6 +302,7 @@ const allHumanoids: Humanoid[] = [
     dof: 20,
     imageUrl: "/robots/phoenix.png",
     description: "General-purpose humanoid powered by Sanctuary AI's Carbon cognition system.",
+    tags: ["Canada", "Industrial", "Electric", "Carbon AI", "Enterprise only"],
   },
   {
     id: "10",
@@ -310,6 +319,7 @@ const allHumanoids: Humanoid[] = [
     weight: 73,
     dof: 34,
     description: "Modular humanoid for manufacturing and logistics with swappable battery packs.",
+    tags: ["USA", "Industrial", "Electric", "Modular battery", "Mercedes pilot"],
   },
   {
     id: "11",
@@ -327,6 +337,7 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 2.0,
     description: "Compact, affordable humanoid with advanced mobility for research and commercial use.",
     purchaseUrl: "https://shop.unitree.com/products/unitree-g1",
+    tags: ["China", "Research", "Electric", "$16K affordable", "Best-selling"],
   },
   {
     id: "12",
@@ -344,6 +355,7 @@ const allHumanoids: Humanoid[] = [
     dof: 19,
     maxSpeed: 3.3,
     description: "Full-size humanoid for industrial applications with high-speed locomotion.",
+    tags: ["China", "Research", "Electric", "Backflips", "Fast (3.3 m/s)"],
   },
   {
     id: "15",
@@ -359,6 +371,7 @@ const allHumanoids: Humanoid[] = [
     weight: 60,
     dof: 32,
     description: "Highly dexterous humanoid capable of complex tasks like cooking and pouring drinks.",
+    tags: ["China", "Showcase", "Electric", "Dexterous", "Enterprise only"],
   },
   {
     id: "17",
@@ -376,6 +389,7 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 2.0,
     imageUrl: "/robots/tiangong.png",
     description: "China's national humanoid project with advanced whole-body motion control.",
+    tags: ["China", "Research", "Electric", "State-backed", "Whole-body control"],
   },
   {
     id: "18",
@@ -391,6 +405,7 @@ const allHumanoids: Humanoid[] = [
     weight: 45,
     imageUrl: "/robots/menteebot-2.png",
     description: "AI-native humanoid for natural language interaction and household tasks.",
+    tags: ["Israel", "Home", "Electric", "AI-native", "Natural-language"],
   },
   // 2023
   {
@@ -409,6 +424,7 @@ const allHumanoids: Humanoid[] = [
     dof: 30,
     maxSpeed: 1.5,
     description: "Production-ready humanoid for logistics. Deployed in Amazon facilities.",
+    tags: ["USA", "Logistics", "Electric", "Amazon facilities", "Production-ready"],
   },
   {
     id: "9",
@@ -425,6 +441,7 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 3.0,
     imageUrl: "/robots/walker-x.png",
     description: "Large-scale humanoid for uneven terrain and industrial manipulation.",
+    tags: ["China", "Industrial", "Electric", "Uneven terrain", "Listed company"],
   },
   {
     id: "13",
@@ -445,6 +462,7 @@ const allHumanoids: Humanoid[] = [
       { type: 'image', url: '/robots/gr1-perspective.png', caption: 'Perspective view' },
       { type: 'image', url: '/robots/gr1-back_perspective.png', caption: 'Back perspective' },
     ],
+    tags: ["China", "Research", "Electric", "Rehab focus", "$100K"],
   },
   {
     id: "19",
@@ -462,6 +480,7 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 1.4,
     imageUrl: "/robots/eve.avif",
     description: "Wheeled humanoid for security and commercial applications.",
+    tags: ["Norway / USA", "Security", "Wheeled base", "Enterprise only"],
   },
   // 2021
   {
@@ -481,6 +500,7 @@ const allHumanoids: Humanoid[] = [
     media: [
       { type: 'image', url: '/robots/ameca-2.png' },
     ],
+    tags: ["UK", "Showcase", "Electric", "Expressive face", "Viral on social"],
   },
   // 2018
   {
@@ -499,6 +519,7 @@ const allHumanoids: Humanoid[] = [
     weight: 68,
     dof: 63,
     description: "Collaborative humanoid for industrial maintenance tasks.",
+    tags: ["Germany", "Research", "Electric", "University lab", "Industrial maintenance"],
   },
   // 2017
   {
@@ -517,6 +538,7 @@ const allHumanoids: Humanoid[] = [
     dof: 32,
     maxSpeed: 1.5,
     description: "Electric humanoid for industrial and research use with torque-controlled joints.",
+    tags: ["Spain", "Research", "Electric", "Torque-controlled", "$350K"],
   },
   // 2016
   {
@@ -531,6 +553,7 @@ const allHumanoids: Humanoid[] = [
     status: "In Production",
     height: 167,
     description: "Famous social humanoid and first robot granted citizenship. Known for lifelike expressions.",
+    tags: ["Hong Kong", "Showcase", "Lifelike skin", "First robot citizen", "Viral on social"],
   },
   // 2014
   {
@@ -547,6 +570,7 @@ const allHumanoids: Humanoid[] = [
     weight: 28,
     dof: 20,
     description: "Emotional humanoid for customer service and companionship.",
+    tags: ["Japan", "Service", "Electric", "Emotion-aware", "Widely deployed"],
   },
   // 2013
   {
@@ -566,6 +590,7 @@ const allHumanoids: Humanoid[] = [
     dof: 28,
     maxSpeed: 1.5,
     description: "DARPA Robotics Challenge pioneer famous for parkour and backflips. Retired in April 2024 in favor of the Electric Atlas.",
+    tags: ["USA", "Research", "Hydraulic", "DARPA pioneer", "Parkour", "Retired 2024"],
   },
   // Hidden: no non-creepy photos available
   // {
@@ -591,6 +616,7 @@ const allHumanoids: Humanoid[] = [
     weight: 30,
     dof: 48,
     description: "Tendon-driven humanoid mimicking the musculoskeletal system for biomechanics research.",
+    tags: ["Germany", "Research", "Tendon-driven", "Musculoskeletal", "Open-source"],
   },
   // 2000
   {
@@ -608,6 +634,7 @@ const allHumanoids: Humanoid[] = [
     dof: 57,
     maxSpeed: 2.7,
     description: "Honda's pioneering bipedal humanoid. Retired in 2022 after 20 years of development.",
+    tags: ["Japan", "Showcase", "Electric", "First to walk fluidly", "Retired 2022"],
   },
 ];
 

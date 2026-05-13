@@ -541,7 +541,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void }) {
+function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -565,7 +565,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
   const [pillsLayout, setPillsLayout] = useState<"stack" | "grouped">("stack");
-  const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill">("beside");
+  const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill" | "chip">("beside");
   const [groupedFill, setGroupedFill] = useState<string>("#F9F9F9");
   const [groupedDivider, setGroupedDivider] = useState<"full" | "inset" | "none">("full");
   const [groupedRing, setGroupedRing] = useState<boolean>(true);
@@ -628,6 +628,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [arcDiskColor, setArcDiskColor] = useState("#f5f5f5");
   const [arcMaskFade, setArcMaskFade] = useState(22);
   const [arcBoundary, setArcBoundary] = useState<"off" | "dots" | "arc" | "wedge">("off");
+  const [arcInactiveOp, setArcInactiveOp] = useState(1);
   // Arc-tag tuning
   const [tagFsMin, setTagFsMin] = useState(11);
   const [tagFsMax, setTagFsMax] = useState(14);
@@ -699,6 +700,19 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [statPillBg, setStatPillBg] = useState("transparent");
   const [newBadgeFontSize, setNewBadgeFontSize] = useState(12); // px — "New" badge label size
   const [infoMode, setInfoMode] = useState<"pill" | "open" | "bare">("pill");
+  // Sunday-style: render the stats column as visible stacked cards (Overview/Stats/Status)
+  // that fill the available height, with the action pill pinned at the bottom. Single view
+  // only — compare and split-blurb modes keep their existing layouts.
+  const [stackedInfo, setStackedInfo] = useState(true);
+  // Where the status indicator (dot + word) lives when stackedInfo is on:
+  //   "card"        — dedicated Status card pinned at the bottom of the stack (current)
+  //   "chip"        — first chip in the tags row, colored dot + status word
+  //   "label"       — colored dot beside the manufacturer line in the name pill
+  //   "consolidate" — dot prepended to the price/CTA pill at the bottom
+  //   "corner"      — small floating dot on the robot card itself
+  //   "hidden"      — no status indicator anywhere
+  type StatusPlacement = "card" | "chip" | "label" | "consolidate" | "corner" | "hidden";
+  const [statusPlacement, setStatusPlacement] = useState<StatusPlacement>("card");
   const [blurbFontSize, setBlurbFontSize] = useState(12.7);
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [splitBlurb, setSplitBlurb] = useState(false);
@@ -792,10 +806,16 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [sceneSize, setSceneSize] = useState(72);
   const [sceneSoftness, setSceneSoftness] = useState(62);
   const [scenePeakAlpha, setScenePeakAlpha] = useState(75);
-  const [sceneOpacity, setSceneOpacity] = useState(79);
+  const [sceneOpacity, setSceneOpacity] = useState(27);
   const [sceneBlur, setSceneBlur] = useState(0);
   const [sceneEnabled, setSceneEnabled] = useState(false);
   const [sceneInteracted, setSceneInteracted] = useState(false);
+  // Scene variant — "viewport" paints the bloom across the whole page;
+  // "card" contains it inside the focused robot card as a portal.
+  const [sceneVariant, setSceneVariant] = useState<"viewport" | "card">("card");
+  const [sceneCardScale, setSceneCardScale] = useState(100);
+  const [sceneCardVignette, setSceneCardVignette] = useState(80);
+  const [sceneCardSaturation, setSceneCardSaturation] = useState(100);
   // Humanoid card fill tuner
   const [cardFillColor, setCardFillColor] = useState(SURFACE);
   const [cardFillAlpha, setCardFillAlpha] = useState(63);
@@ -829,7 +849,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // When the blurb is broken out into its own column, the stats slot widens
   // to fit two side-by-side columns (blurb + pills). Used by layout math and
   // the slot wrapper so centering stays correct.
-  const effectiveStatsW = splitBlurb && blurbFloat ? statsW * 2 + cardGap : statsW;
+  // Default single-view stats column tracks the card width but with an inset,
+  // since the card's robot image is letterboxed inside its 400px frame — matching
+  // the frame exactly makes the pill column read as visually wider than the robot.
+  const baseCardPx = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
+  const singleStatsW = Math.round(baseCardPx * 0.82);
+  const effectiveStatsW = splitBlurb && blurbFloat ? statsW * 2 + cardGap : singleStatsW;
 
   const centerHalfWidth = (() => {
     const cardPx = comparing
@@ -1218,6 +1243,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     return () => clearTimeout(t);
   }, [springL.index, springR.index, comparing]);
 
+  useEffect(() => {
+    onComparingChange?.(comparing);
+  }, [comparing, onComparingChange]);
+
   // Stop auto-rotate when the active humanoid changes or compare mode toggles
   useEffect(() => {
     spinLoopRef.current = false;
@@ -1280,14 +1309,6 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const focusedH = !comparing ? humanoids[springL.index] : undefined;
   const sceneAvailable = !!focusedH?.sceneUrl;
   const sceneActive = sceneEnabled && sceneAvailable;
-  const sceneHint = useMemo(() => {
-    const idx = humanoids.findIndex((h) => !!h.sceneUrl);
-    return idx >= 0 ? { index: idx, name: humanoids[idx].name } : null;
-  }, []);
-  const sceneRobotNames = useMemo(
-    () => humanoids.filter((h) => !!h.sceneUrl).map((h) => h.name),
-    [],
-  );
   const sceneBackgroundImage = focusedH?.sceneUrl ? `url(${focusedH.sceneUrl})` : undefined;
 
   const sceneMask = useMemo(() => {
@@ -1323,44 +1344,49 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   );
 
   return (
-    <div className="h-screen overflow-hidden select-none relative" style={{ background: pageBg, ["--action-hover-tint" as string]: actionHoverColor, ["--action-hover-pct" as string]: actionHoverPct, ["--action-active-pct" as string]: actionActivePct }}>
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 0,
-          backgroundImage: sceneAvailable ? sceneBackgroundImage : undefined,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          opacity: sceneAvailable ? sceneOpacity / 100 : 0,
-          filter: sceneBlur > 0 ? `blur(${sceneBlur}px)` : undefined,
-          maskRepeat: "no-repeat",
-          WebkitMaskRepeat: "no-repeat",
-          maskPosition: "center",
-          WebkitMaskPosition: "center",
-          maskSize: sceneInteracted ? undefined : (sceneActive ? "135% 135%" : "0% 0%"),
-          WebkitMaskSize: sceneInteracted ? undefined : (sceneActive ? "135% 135%" : "0% 0%"),
-          animation: sceneInteracted
-            ? `${sceneActive ? "scene-bloom" : "scene-collapse"} ${sceneActive ? 1800 : 800}ms cubic-bezier(0.32, 0.72, 0, 1) forwards`
-            : undefined,
-          transition: "opacity 500ms ease",
-          pointerEvents: "none",
-          WebkitMaskImage: sceneMask,
-          maskImage: sceneMask,
-        }}
-      />
-      <EnvironmentToggle
-        available={sceneAvailable}
-        enabled={sceneEnabled}
-        onToggle={() => {
-          setSceneInteracted(true);
-          setSceneEnabled((v) => !v);
-        }}
-        hintRobotNames={sceneRobotNames}
-        onJumpToAvailable={sceneHint ? () => { if (comparing) exitCompare(); springL.jumpTo(sceneHint.index); } : undefined}
-        visible={introDone}
-      />
+    <div className="h-screen overflow-hidden select-none relative" data-scene={sceneActive && sceneVariant === "viewport" ? "on" : "off"} style={{ background: pageBg, ["--action-hover-tint" as string]: actionHoverColor, ["--action-hover-pct" as string]: actionHoverPct, ["--action-active-pct" as string]: actionActivePct }}>
+      {sceneVariant === "viewport" && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 0,
+            backgroundImage: sceneAvailable ? sceneBackgroundImage : undefined,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: sceneAvailable ? sceneOpacity / 100 : 0,
+            filter: sceneBlur > 0 ? `blur(${sceneBlur}px)` : undefined,
+            maskRepeat: "no-repeat",
+            WebkitMaskRepeat: "no-repeat",
+            maskPosition: "center",
+            WebkitMaskPosition: "center",
+            maskSize: sceneInteracted ? undefined : (sceneActive ? "135% 135%" : "0% 0%"),
+            WebkitMaskSize: sceneInteracted ? undefined : (sceneActive ? "135% 135%" : "0% 0%"),
+            animation: sceneInteracted
+              ? `${sceneActive ? "scene-bloom" : "scene-collapse"} ${sceneActive ? 1800 : 800}ms cubic-bezier(0.32, 0.72, 0, 1) forwards`
+              : undefined,
+            transition: "opacity 500ms ease",
+            pointerEvents: "none",
+            WebkitMaskImage: sceneMask,
+            maskImage: sceneMask,
+          }}
+        />
+      )}
+      {/* Scene is dev-only for now — hidden from production users while Roy
+          iterates on a separate launch. Flip to an env-var-driven feature
+          flag (LAUNCH_MODE) when ready to ship. */}
+      {process.env.NODE_ENV === "development" && (
+        <EnvironmentToggle
+          available={sceneAvailable}
+          enabled={sceneEnabled}
+          onToggle={() => {
+            setSceneInteracted(true);
+            setSceneEnabled((v) => !v);
+          }}
+          visible={introDone}
+        />
+      )}
 
       {/* Neighbor-image preloader — off-screen Next/Image tags matching the
           card's sizes, so the optimized variants are cached before crossings. */}
@@ -1409,6 +1435,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           arcMarkerVariant={arcMarkerVariant}
           arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
           arcBoundary={arcBoundary}
+          arcInactiveOp={arcInactiveOp}
           entered={introDone}
           tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
           tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -1450,6 +1477,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             arcMarkerVariant={arcMarkerVariant}
             arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
             arcBoundary={arcBoundary}
+            arcInactiveOp={arcInactiveOp}
             entered={introDone}
             tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
             tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -1916,7 +1944,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 );
               })();
           const labelNode = labelPosition === "stack" && (
-                <div className="flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: pillBg, backdropFilter: pillBackdrop, WebkitBackdropFilter: pillBackdrop, padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
+                <div className="ui-frost flex items-center gap-3 pointer-events-auto" style={{ borderRadius: cardRadius, background: pillBg, backdropFilter: pillBackdrop, WebkitBackdropFilter: pillBackdrop, padding: "10px 12px", flexShrink: 0, position: "relative", zIndex: 11 }}>
                   <div className="flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: labelLogoSize, height: labelLogoSize, borderRadius: cardRadius * 0.6, background: h.logoUrl ? "transparent" : "#EFEFEF" }}>
                     {h.logoUrl ? (
                       <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${labelLogoSize}px`} />
@@ -1932,8 +1960,14 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                       {h.name}
                       {yearPlacement === "after-name" && h.year ? <span style={{ marginLeft: 6, opacity: 0.42, fontWeight: 400 }}>{h.year}</span> : null}
                     </p>
-                    <p className="text-[13px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.42 }}>
-                      {h.manufacturer}{yearPlacement === "beside" && h.year ? ` · ${h.year}` : ''}
+                    <p className="text-[13px] font-medium mt-0.5 truncate flex items-center" style={{ color: "var(--c-ink)", lineHeight: 1.2, textTransform: allCaps ? "uppercase" : undefined, opacity: 0.42, gap: 6 }}>
+                      <span className="truncate">{h.manufacturer}{yearPlacement === "beside" && h.year ? ` · ${h.year}` : ''}</span>
+                      {stackedInfo && statusPlacement === "label" && h.status && (
+                        <span className="relative flex h-2 w-2 flex-shrink-0" title={h.status}>
+                          {h.status === "In Production" && <span className="absolute inline-flex h-full w-full rounded-full animate-ping" style={{ background: statusColor, opacity: 0.4 }} />}
+                          <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: statusColor }} />
+                        </span>
+                      )}
                     </p>
                     {yearPlacement === "below" && h.year ? (
                       <p className="text-[12px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.32 }}>{h.year}</p>
@@ -1968,7 +2002,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
           const grouped = pillsLayout === "grouped";
           const pillsNode = (
               <div
-                className={`flex flex-col pointer-events-auto${grouped ? " pills-grouped" : ""}`}
+                className={`ui-frost flex flex-col pointer-events-auto${grouped ? " pills-grouped" : ""}`}
                 data-divider={grouped ? groupedDivider : undefined}
                 data-ring={grouped ? String(groupedRing) : undefined}
                 style={{
@@ -2183,8 +2217,187 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               </div>
             );
           }
+
+          // Sunday-style stacked layout: visible cards filling the column, action pill anchored bottom.
+          if (stackedInfo) {
+            const cardBase: React.CSSProperties = {
+              borderRadius: cardRadius,
+              background: statPillBg,
+              padding: `${statPillPadY}px ${statPillPadX}px`,
+            };
+            const headerStyle: React.CSSProperties = {
+              fontSize: pillLabelFontSize,
+              fontFamily: pillLabelFont,
+              fontWeight: pillLabelWeight,
+              letterSpacing: `${pillLabelLetterSpacing}em`,
+              color: pillLabelColor,
+              textTransform: pillLabelUppercase ? "uppercase" : "none",
+            };
+            const rowStyle: React.CSSProperties = {
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              fontFamily: "var(--font-geist-sans)",
+              lineHeight: 1.6,
+            };
+            const dimmed: React.CSSProperties = { color: "#a3a3a3", fontFamily: "var(--font-geist-sans)", fontSize: 12 };
+            const valueStyle: React.CSSProperties = {
+              color: "var(--c-ink-body)",
+              fontFamily: "var(--font-geist-sans)",
+              fontSize: 12,
+              fontWeight: 500,
+            };
+            const purchaseSection = sections.find((s) => s.key === "purchase") as
+              | { key: "purchase"; href?: string; text?: string; price?: string; ctaText?: string }
+              | undefined;
+
+            // Reusable status dot — used by chip / label / consolidate placements.
+            const statusDot = h.status ? (
+              <span className="relative flex h-2 w-2 flex-shrink-0">
+                {h.status === "In Production" && <span className="absolute inline-flex h-full w-full rounded-full animate-ping" style={{ background: statusColor, opacity: 0.4 }} />}
+                <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: statusColor }} />
+              </span>
+            ) : null;
+
+            // Overview blurb is intentionally hidden here — robotDesc.text/.long stay
+            // available via getRobotDescription / robot-descriptions.json so we can
+            // bring it back later or expose it elsewhere.
+            const showStatusChip = h.status && statusPlacement === "chip";
+            const showYearChip = !!h.year && yearPlacement === "chip";
+            const chipStyle: React.CSSProperties = {
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 10px",
+              borderRadius: 999,
+              background: "rgba(0,0,0,0.05)",
+              color: "var(--c-ink-body)",
+              fontFamily: "var(--font-geist-sans)",
+              fontSize: 11.5,
+              fontWeight: 500,
+              letterSpacing: "-0.005em",
+              lineHeight: 1.3,
+              whiteSpace: "nowrap",
+            };
+            const tagsCard = (h.tags && h.tags.length > 0) || showStatusChip || showYearChip ? (
+              <div className="ui-frost" style={cardBase}>
+                <div className="flex flex-wrap" style={{ gap: 6 }}>
+                  {showYearChip && <span style={chipStyle}>{h.year}</span>}
+                  {showStatusChip && (
+                    <span style={chipStyle}>
+                      <span className="inline-block rounded-full flex-shrink-0" style={{ width: 4, height: 4, background: statusColor }} />
+                      {h.status}
+                    </span>
+                  )}
+                  {h.tags?.map((tag) => (
+                    <span key={tag} style={chipStyle}>{tag}</span>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+
+            // Always render the full universal stat set so cards line up across robots.
+            // Missing metrics show as a dimmed em-dash rather than collapsing the row.
+            const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "#c4c4c4" };
+            const renderStatRow = (label: string, value: string | number | null | undefined, formatter: (v: number) => string) => (
+              <div style={rowStyle}>
+                <span style={dimmed}>{label}</span>
+                <span className="tabular-nums" style={value == null ? missingValueStyle : valueStyle}>
+                  {value == null ? "—" : (typeof value === "number" ? formatter(value) : value)}
+                </span>
+              </div>
+            );
+            const statsCard = (
+              <div className="ui-frost" style={cardBase}>
+                <p style={headerStyle}>Stats</p>
+                <div className="flex flex-col" style={{ gap: 6, marginTop: 10 }}>
+                  {renderStatRow("Height", h.height, formatHeight)}
+                  {renderStatRow("Weight", h.weight, formatWeight)}
+                  {renderStatRow("DOF", h.dof, (v) => `${v}`)}
+                  {renderStatRow("Speed", h.maxSpeed, formatSpeed)}
+                </div>
+              </div>
+            );
+
+            const statusCard = h.status && statusPlacement === "card" ? (
+              <div className="ui-frost" style={{ ...cardBase, marginTop: "auto" }}>
+                <p style={headerStyle}>Status</p>
+                <div className="flex items-center" style={{ gap: 8, marginTop: 10 }}>
+                  {statusDot}
+                  <span style={valueStyle}>{h.status}</span>
+                </div>
+              </div>
+            ) : null;
+
+            // Purchase pill — reuse the existing split-variant rendering so styling stays consistent.
+            const purchasePill = purchaseSection ? (() => {
+              const href = purchaseSection.href;
+              const price = purchaseSection.price;
+              const fallbackText = purchaseSection.text ?? "";
+              const cta = purchaseSection.ctaText ?? "Buy";
+              const ctaBg = "rgba(0,0,0,0.06)";
+              const ctaColor = "rgba(95, 96, 89, 0.8)";
+              const labelText = price ?? (href ? " " : fallbackText);
+              const labelColor = href ? pillLabelColor : "#c0c0c0";
+              return (
+                <div
+                  className="ui-frost w-full pointer-events-auto"
+                  style={{
+                    background: statPillBg,
+                    borderRadius: cardRadius,
+                    padding: href ? `0 ${Math.max(0, statPillPadY - 6)}px 0 ${statPillPadX}px` : `0 ${statPillPadX}px`,
+                  }}
+                >
+                  <div className="w-full flex items-center justify-between" style={{ minHeight: pillRowHeight, gap: 8 }}>
+                    <span className="inline-flex items-center" style={{ gap: 8, fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: labelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
+                      {statusPlacement === "consolidate" && statusDot}
+                      <span>{labelText}</span>
+                    </span>
+                    {href && (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="cta-link cursor-pointer"
+                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, color: ctaColor, padding: "6px 4px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
+                      >
+                        <span>{cta}</span>
+                        <span className="cta-chip" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: ctaBg, flexShrink: 0 }}>
+                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                            <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
+                          </svg>
+                        </span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })() : null;
+
+            return (
+              <div className="flex flex-col h-full pointer-events-auto" style={{ width: "100%", gap: statPillGap, position: "relative", zIndex: 11 }}>
+                <div
+                  className="flex flex-col"
+                  style={{
+                    flex: 1,
+                    minHeight: 0,
+                    gap: statPillGap,
+                    overflowY: "auto",
+                  }}
+                >
+                  {labelNode}
+                  {statsCard}
+                  {tagsCard}
+                  {statusCard}
+                </div>
+                {purchasePill}
+              </div>
+            );
+          }
+
           return (
-            <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
+            <div className="flex flex-col h-full" style={{ width: "100%", gap: cardGap, justifyContent: alignJustify }}>
               {blurbNode}
               {labelNode}
               {pillsNode}
@@ -2939,8 +3152,17 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   {h.name}
                   {yearPlacement === "after-name" && h.year ? <span style={{ marginLeft: 6, opacity: 0.42, fontWeight: 400 }}>{h.year}</span> : null}
                 </p>
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42 }}>
-                  {h.manufacturer}{yearPlacement === "beside" && h.year ? ` · ${h.year}` : ''}
+                <p className="text-[12.7px] font-medium truncate flex items-center" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42, gap: 6 }}>
+                  <span className="truncate">{h.manufacturer}{yearPlacement === "beside" && h.year ? ` · ${h.year}` : ''}</span>
+                  {stackedInfo && statusPlacement === "label" && h.status && (() => {
+                    const labelDotColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : h.status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
+                    return (
+                      <span className="relative flex h-2 w-2 flex-shrink-0" title={h.status}>
+                        {h.status === "In Production" && <span className="absolute inline-flex h-full w-full rounded-full animate-ping" style={{ background: labelDotColor, opacity: 0.4 }} />}
+                        <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: labelDotColor }} />
+                      </span>
+                    );
+                  })()}
                 </p>
                 {yearPlacement === "below" && h.year ? (
                   <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.32 }}>{h.year}</p>
@@ -2961,15 +3183,58 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
                 maxWidth: comparing ? robotMaxW - 100 : robotMaxW,
                 borderRadius: cardRadius,
-                background: (!comparing && h.sceneUrl) ? cardBg : "#F9F9F9",
-                backdropFilter: (!comparing && h.sceneUrl) ? cardBackdropFilter : undefined,
-                WebkitBackdropFilter: (!comparing && h.sceneUrl) ? cardBackdropFilter : undefined,
+                background: "#F9F9F9",
                 pointerEvents: "auto",
                 transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
                 willChange: "transform",
                 zIndex: 2,
               }}
             >
+              {stackedInfo && statusPlacement === "corner" && h.status && !comparing && (() => {
+                const cornerColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : h.status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
+                return (
+                  <span className="absolute" style={{ top: 14, right: 14, zIndex: 5 }} title={h.status} aria-label={h.status}>
+                    <span className="relative flex h-2.5 w-2.5">
+                      {h.status === "In Production" && <span className="absolute inline-flex h-full w-full rounded-full animate-ping" style={{ background: cornerColor, opacity: 0.4 }} />}
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: cornerColor, boxShadow: "0 0 0 2px rgba(255,255,255,0.6)" }} />
+                    </span>
+                  </span>
+                );
+              })()}
+              {/* Card-local scene — fades in inside the card's rounded rectangle
+                  when scene mode is on, so the environment reads as a portal
+                  rather than a full-viewport wash. */}
+              {sceneVariant === "card" && h.sceneUrl && (() => {
+                const filterParts: string[] = [];
+                if (sceneBlur > 0) filterParts.push(`blur(${sceneBlur}px)`);
+                if (sceneCardSaturation !== 100) filterParts.push(`saturate(${sceneCardSaturation}%)`);
+                const cardVignetteMask = sceneCardVignette > 0
+                  ? `radial-gradient(ellipse at center, #000 ${Math.max(0, 100 - sceneCardVignette)}%, transparent 100%)`
+                  : undefined;
+                return (
+                  <div
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      zIndex: 0,
+                      backgroundImage: `url(${h.sceneUrl})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      opacity: sceneEnabled ? sceneOpacity / 100 : 0,
+                      filter: filterParts.length ? filterParts.join(" ") : undefined,
+                      transform: sceneCardScale !== 100 ? `scale(${sceneCardScale / 100})` : undefined,
+                      transformOrigin: "center center",
+                      transition: "opacity 700ms cubic-bezier(0.32, 0.72, 0, 1), transform 400ms cubic-bezier(0.32, 0.72, 0, 1)",
+                      pointerEvents: "none",
+                      WebkitMaskImage: cardVignetteMask,
+                      maskImage: cardVignetteMask,
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                    }}
+                  />
+                );
+              })()}
               {/* Media area */}
               <div className="relative flex-1 min-h-0 overflow-hidden">
                 {/* Static — hidden when SpinViewer takes over (either side in compare). */}
@@ -3340,34 +3605,70 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <span className="text-[10px] text-neutral-400">{sceneActive ? focusedH?.name : "—"}</span>
           </div>
           <div>
-            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Shape</p>
-            <div className="flex flex-wrap gap-1.5">
-              {(["radial", "horizontal", "vertical", "top", "bottom"] as const).map((v) => (
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Variant</p>
+            <div className="flex gap-1.5">
+              {(["card", "viewport"] as const).map((v) => (
                 <button
                   key={v}
-                  onClick={() => setSceneShape(v)}
-                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${sceneShape === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  onClick={() => setSceneVariant(v)}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${sceneVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                 >
                   {v}
                 </button>
               ))}
             </div>
           </div>
-          <div className="space-y-3">
+          {sceneVariant === "viewport" && (
             <div>
-              <label className="text-[12px] text-neutral-500 flex justify-between">Size <span className="tabular-nums text-neutral-400">{sceneSize}%</span></label>
-              <input type="range" min={10} max={150} value={sceneSize} onChange={(e) => setSceneSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
-            </div>
-            {sceneShape === "radial" && (
-              <div>
-                <label className="text-[12px] text-neutral-500 flex justify-between">Softness <span className="tabular-nums text-neutral-400">{sceneSoftness}%</span></label>
-                <input type="range" min={0} max={100} value={sceneSoftness} onChange={(e) => setSceneSoftness(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+              <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Shape</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(["radial", "horizontal", "vertical", "top", "bottom"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setSceneShape(v)}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${sceneShape === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {v}
+                  </button>
+                ))}
               </div>
-            )}
-            <div>
-              <label className="text-[12px] text-neutral-500 flex justify-between">Peak alpha <span className="tabular-nums text-neutral-400">{scenePeakAlpha}%</span></label>
-              <input type="range" min={0} max={100} value={scenePeakAlpha} onChange={(e) => setScenePeakAlpha(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
             </div>
+          )}
+          <div className="space-y-3">
+            {sceneVariant === "viewport" && (
+              <>
+                <div>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">Bloom size <span className="tabular-nums text-neutral-400">{sceneSize}%</span></label>
+                  <input type="range" min={10} max={150} value={sceneSize} onChange={(e) => setSceneSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                </div>
+                {sceneShape === "radial" && (
+                  <div>
+                    <label className="text-[12px] text-neutral-500 flex justify-between">Softness <span className="tabular-nums text-neutral-400">{sceneSoftness}%</span></label>
+                    <input type="range" min={0} max={100} value={sceneSoftness} onChange={(e) => setSceneSoftness(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                  </div>
+                )}
+                <div>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">Peak alpha <span className="tabular-nums text-neutral-400">{scenePeakAlpha}%</span></label>
+                  <input type="range" min={0} max={100} value={scenePeakAlpha} onChange={(e) => setScenePeakAlpha(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                </div>
+              </>
+            )}
+            {sceneVariant === "card" && (
+              <>
+                <div>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">Scale <span className="tabular-nums text-neutral-400">{sceneCardScale}%</span></label>
+                  <input type="range" min={100} max={220} value={sceneCardScale} onChange={(e) => setSceneCardScale(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                </div>
+                <div>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">Vignette <span className="tabular-nums text-neutral-400">{sceneCardVignette}%</span></label>
+                  <input type="range" min={0} max={80} value={sceneCardVignette} onChange={(e) => setSceneCardVignette(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                </div>
+                <div>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">Saturation <span className="tabular-nums text-neutral-400">{sceneCardSaturation}%</span></label>
+                  <input type="range" min={0} max={200} value={sceneCardSaturation} onChange={(e) => setSceneCardSaturation(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                </div>
+              </>
+            )}
             <div>
               <label className="text-[12px] text-neutral-500 flex justify-between">Layer opacity <span className="tabular-nums text-neutral-400">{sceneOpacity}%</span></label>
               <input type="range" min={0} max={100} value={sceneOpacity} onChange={(e) => setSceneOpacity(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
@@ -3552,7 +3853,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             </div>
           )}
           <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill", "chip"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
           <div className="pt-2 border-t border-neutral-100 space-y-2">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">Pills layout</p>
             <div className="flex flex-wrap gap-1.5">
@@ -3692,6 +3993,21 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                     type="button"
                     onClick={() => setActionVariant(v)}
                     className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${actionVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 mb-1.5 block">Status placement</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(["card", "chip", "label", "consolidate", "corner", "hidden"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setStatusPlacement(v)}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${statusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                   >
                     {v}
                   </button>
@@ -3924,6 +4240,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{arcFsMin}px</span></label><input type="range" min={6} max={20} value={arcFsMin} onChange={(e) => setArcFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Disk gap <span className="tabular-nums text-neutral-400">{arcDiskGap}px</span></label><input type="range" min={0} max={280} value={arcDiskGap} onChange={(e) => setArcDiskGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Edge fade <span className="tabular-nums text-neutral-400">{arcMaskFade}%</span></label><input type="range" min={0} max={45} value={arcMaskFade} onChange={(e) => setArcMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Inactive fade <span className="tabular-nums text-neutral-400">{arcInactiveOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(arcInactiveOp * 100)} onChange={(e) => setArcInactiveOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
             <div>
               <label className="text-[12px] text-neutral-500 mb-1.5 block">Boundary fill</label>
               <div className="flex flex-wrap gap-1.5">
@@ -4312,6 +4629,7 @@ export default function HomeClient() {
   const [hintNonce, setHintNonce] = useState(0);
   const [addHintNonce, setAddHintNonce] = useState(0);
   const [comparingUsed, setComparingUsed] = useState(false);
+  const [comparing, setComparing] = useState(false);
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
 
   // Share URL — Browse writes to this ref, Home's share button reads it
@@ -4541,6 +4859,7 @@ export default function HomeClient() {
                 copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
               }}
               shareViewLabel={shareViewLabel}
+              comparing={comparing}
             />
           </div>
         </div>
@@ -4548,7 +4867,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -4651,11 +4970,10 @@ export default function HomeClient() {
         };
         return (
           <div
-            className="intro-credit fixed bottom-6 left-0 right-0 z-[48] pointer-events-none flex items-center justify-between"
+            className="intro-credit fixed bottom-6 left-0 right-0 z-[48] pointer-events-none flex items-center justify-end"
             style={{ height: 36, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}
           >
-            <span style={creditStyle}>© 2026</span>
-            <span style={creditStyle}>Crafted by Roy Jad</span>
+            <span style={creditStyle}>Roy Jad © 2026</span>
           </div>
         );
       })()}

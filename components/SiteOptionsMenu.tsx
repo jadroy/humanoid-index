@@ -1,14 +1,10 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { SURFACE_HOVER_SOFT, INK_MEDIUM, INK_MUTED } from "@/lib/design/tokens";
+import { SURFACE_HOVER_SOFT, INK, INK_MEDIUM } from "@/lib/design/tokens";
+import ContactSheet from "./ContactSheet";
 
 const CONTACT_EMAIL = "jadroy77@gmail.com";
-
-const MAILTO = {
-  feedback: `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Humanoid Index — feedback")}`,
-  suggest: `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Humanoid Index — suggest a humanoid")}&body=${encodeURIComponent("Name:\nManufacturer:\nLink:\n\nWhy it belongs:")}`,
-};
 
 type Props = {
   shareLabel: string;
@@ -19,6 +15,7 @@ type Props = {
 export default function SiteOptionsMenu({ shareLabel, onShare, visible }: Props) {
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(false);
+  const [sheet, setSheet] = useState<"feedback" | "suggest" | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
   const [popoverWidth, setPopoverWidth] = useState<number | null>(null);
@@ -59,8 +56,8 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible }: Props)
   const items: MenuEntry[] = [
     { kind: "item", label: shareLabel, icon: <IconLink />, onSelect: () => onShare() },
     { kind: "divider" },
-    { kind: "item", label: "Submit feedback", icon: <IconChat />, onSelect: () => window.open(MAILTO.feedback) },
-    { kind: "item", label: "Suggest a humanoid", icon: <IconPlus />, onSelect: () => window.open(MAILTO.suggest) },
+    { kind: "item", label: "Submit feedback", icon: <IconChat />, onSelect: () => setSheet("feedback") },
+    { kind: "item", label: "Suggest a humanoid", icon: <IconPlus />, onSelect: () => setSheet("suggest") },
   ];
 
   return (
@@ -164,7 +161,7 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible }: Props)
           borderRadius: 999,
           background: open || hover ? SURFACE_HOVER_SOFT : "transparent",
           border: "none",
-          color: open ? INK_MEDIUM : "#737373",
+          color: open || hover ? INK : INK_MEDIUM,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -178,6 +175,10 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible }: Props)
           <circle cx="19" cy="12" r="1.7" />
         </svg>
       </button>
+
+      {sheet && (
+        <ContactSheet variant={sheet} email={CONTACT_EMAIL} onClose={() => setSheet(null)} />
+      )}
     </div>
   );
 }

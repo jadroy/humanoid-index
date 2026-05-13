@@ -2,6 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/LogoMark";
+import { DiceIcon } from "@/components/DiceIcon";
 import { Chip } from "@/lib/design/primitives/Chip";
 import { SURFACE_HOVER_SOFT } from "@/lib/design/tokens";
 
@@ -556,6 +557,7 @@ export function LayoutSwitcher({
   onIndexViewChange,
   onShareSite,
   shareViewLabel,
+  comparing = false,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
@@ -569,6 +571,7 @@ export function LayoutSwitcher({
   onIndexViewChange: (v: IndexView) => void;
   onShareSite?: () => void;
   shareViewLabel?: string;
+  comparing?: boolean;
 }) {
   const handleClick = () => {
     if (active !== "E") onChange("E" as Layout);
@@ -577,6 +580,11 @@ export function LayoutSwitcher({
 
   const [trioSpinHover, setTrioSpinHover] = useState(false);
   const [trioCopyHover, setTrioCopyHover] = useState(false);
+
+  const diceFaces = {
+    a: { top: 1, left: 2, right: 3 },
+    b: { top: 1, left: 3, right: 2 },
+  };
 
   const mark = <LogoMark onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} />;
   const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} ringColor="#fff" />;
@@ -976,10 +984,10 @@ export function LayoutSwitcher({
       if (v && indexView !== v) onIndexViewChange(v);
       setMenuOpen(false);
     };
-    const items: Array<{ label: string; onClick: () => void; isActive: boolean }> = [
+    const items: Array<{ label: string; onClick: () => void; isActive: boolean; comingSoon?: boolean }> = [
       { label: "Scroll", onClick: () => closeAndPick("E"), isActive: active === "E" },
-      { label: "Grid", onClick: () => closeAndPick("Z", "grid"), isActive: active === "Z" && indexView === "grid" },
-      { label: "Timeline", onClick: () => closeAndPick("Z", "timeline"), isActive: active === "Z" && indexView === "timeline" },
+      { label: "Grid", onClick: () => closeAndPick("Z", "grid"), isActive: active === "Z" && indexView === "grid", comingSoon: true },
+      { label: "Timeline", onClick: () => closeAndPick("Z", "timeline"), isActive: active === "Z" && indexView === "timeline", comingSoon: true },
     ];
     navEl = (
       <>
@@ -1004,11 +1012,13 @@ export function LayoutSwitcher({
             <div
               className="pointer-events-auto overflow-hidden"
               style={{
-                width: menuOpen ? "min(760px, calc(100vw - 48px))" : "min(280px, 100%)",
+                width: menuOpen ? "min(760px, calc(100vw - 48px))" : "min(232px, 100%)",
                 borderRadius: menuOpen ? 28 : 999,
-                background: menuOpen ? "rgba(255,255,255,1)" : "var(--c-surface)",
-                border: menuOpen ? "1px solid rgba(0,0,0,0.04)" : "none",
-                boxShadow: menuOpen ? "0 24px 60px -24px rgba(0,0,0,0.25)" : "0 0 0 rgba(0,0,0,0)",
+                background: menuOpen ? "rgba(255,255,255,1)" : "rgba(255,255,255,0.55)",
+                backdropFilter: menuOpen ? "none" : "blur(12px) saturate(140%)",
+                WebkitBackdropFilter: menuOpen ? "none" : "blur(12px) saturate(140%)",
+                border: menuOpen ? "1px solid rgba(0,0,0,0.04)" : "1px solid rgba(0,0,0,0.03)",
+                boxShadow: menuOpen ? "0 24px 60px -24px rgba(0,0,0,0.25)" : "0 1px 2px rgba(0,0,0,0.03)",
                 color: SUNDAY_INK,
                 transition: "width 420ms cubic-bezier(0.22,1,0.36,1), border-radius 360ms cubic-bezier(0.22,1,0.36,1), background 320ms ease, border-color 320ms ease, box-shadow 360ms ease",
               }}
@@ -1017,34 +1027,34 @@ export function LayoutSwitcher({
               <div
                 className="flex items-center justify-between"
                 style={{
-                  paddingLeft: menuOpen ? 24 : 14,
-                  paddingRight: menuOpen ? 16 : 4,
-                  paddingTop: menuOpen ? 14 : 4,
-                  paddingBottom: menuOpen ? 10 : 4,
+                  paddingLeft: menuOpen ? 24 : 12,
+                  paddingRight: menuOpen ? 16 : 3,
+                  paddingTop: menuOpen ? 14 : 3,
+                  paddingBottom: menuOpen ? 10 : 3,
                   transition: "padding 360ms cubic-bezier(0.22,1,0.36,1)",
                 }}
               >
                 <button
                   onClick={handleClick}
-                  className="text-[15px] select-none whitespace-nowrap cursor-pointer transition-opacity hover:opacity-80"
-                  style={{ color: "var(--c-ink-medium, #494440)", fontWeight: 500, letterSpacing: "-0.035em", background: "transparent", border: "none", padding: 0 }}
+                  className="text-[13px] select-none whitespace-nowrap cursor-pointer transition-opacity hover:opacity-80"
+                  style={{ color: "var(--c-ink-medium, #6b6560)", fontWeight: 500, letterSpacing: "-0.025em", background: "transparent", border: "none", padding: 0 }}
                 >
                   Humanoid Index
                 </button>
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
                   aria-label={menuOpen ? "Close menu" : "Open menu"}
-                  className="w-8 h-8 flex items-center justify-center cursor-pointer rounded-full hover:bg-black/5 transition-colors"
-                  style={{ color: SUNDAY_INK }}
+                  className="w-7 h-7 flex items-center justify-center cursor-pointer rounded-full hover:bg-black/5 transition-colors"
+                  style={{ color: "#6b6560" }}
                 >
                   <span
-                    className="relative w-[16px] h-[16px] flex items-center justify-center"
+                    className="relative w-[14px] h-[14px] flex items-center justify-center"
                     style={{ transition: "transform 320ms cubic-bezier(0.22,1,0.36,1)", transform: menuOpen ? "rotate(90deg)" : "rotate(0)" }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ position: "absolute", opacity: menuOpen ? 0 : 1, transition: "opacity 200ms ease" }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", opacity: menuOpen ? 0 : 1, transition: "opacity 200ms ease" }}>
                       <path d="M4 9h16M4 15h16" />
                     </svg>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ position: "absolute", opacity: menuOpen ? 1 : 0, transition: "opacity 200ms ease" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", opacity: menuOpen ? 1 : 0, transition: "opacity 200ms ease" }}>
                       <path d="M6 6l12 12M18 6L6 18" />
                     </svg>
                   </span>
@@ -1069,23 +1079,37 @@ export function LayoutSwitcher({
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-8 pt-2 pb-4">
                       <ul className="flex flex-col gap-2">
-                        {items.map((it) => (
-                          <li key={it.label}>
-                            <button
-                              onClick={it.onClick}
-                              className="text-left text-[22px] md:text-[24px] tracking-tight cursor-pointer transition-opacity"
-                              style={{
-                                color: SUNDAY_INK,
-                                fontWeight: 600,
-                                opacity: it.isActive ? 1 : 0.55,
-                              }}
-                              onMouseEnter={(e) => { if (!it.isActive) e.currentTarget.style.opacity = "0.85"; }}
-                              onMouseLeave={(e) => { if (!it.isActive) e.currentTarget.style.opacity = "0.55"; }}
-                            >
-                              {it.label}
-                            </button>
-                          </li>
-                        ))}
+                        {items.map((it) => {
+                          const baseOpacity = it.comingSoon ? 0.3 : (it.isActive ? 1 : 0.55);
+                          const hoverOpacity = it.comingSoon ? 0.3 : 0.85;
+                          return (
+                            <li key={it.label}>
+                              <button
+                                onClick={it.comingSoon ? undefined : it.onClick}
+                                disabled={it.comingSoon}
+                                className="text-left text-[22px] md:text-[24px] tracking-tight transition-opacity flex items-baseline gap-2"
+                                style={{
+                                  color: SUNDAY_INK,
+                                  fontWeight: 600,
+                                  opacity: baseOpacity,
+                                  cursor: it.comingSoon ? "default" : "pointer",
+                                }}
+                                onMouseEnter={(e) => { if (!it.isActive) e.currentTarget.style.opacity = String(hoverOpacity); }}
+                                onMouseLeave={(e) => { if (!it.isActive) e.currentTarget.style.opacity = String(baseOpacity); }}
+                              >
+                                <span>{it.label}</span>
+                                {it.comingSoon && (
+                                  <span
+                                    className="text-[11px] tracking-normal uppercase"
+                                    style={{ fontWeight: 500, opacity: 0.6, letterSpacing: "0.04em" }}
+                                  >
+                                    Coming soon
+                                  </span>
+                                )}
+                              </button>
+                            </li>
+                          );
+                        })}
                       </ul>
                       <button
                         onClick={() => { onShareSite?.(); setMenuOpen(false); }}
@@ -1283,39 +1307,28 @@ export function LayoutSwitcher({
               onMouseLeave={() => setTrioSpinHover(false)}
               className="trio-spin"
               style={{
-                color: "rgba(95, 96, 89, 0.75)",
+                color: "rgba(95, 96, 89, 0.85)",
                 background: trioSpinHover ? SURFACE_HOVER_SOFT : "transparent",
                 transition: "background 200ms ease",
                 padding: 0,
-                width: 28,
-                height: 28,
+                width: comparing ? 58 : 36,
+                height: 36,
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
+                overflow: "hidden",
+                borderRadius: 999,
               }}
             >
               <span
-                key={luckyNonce}
                 style={{
                   display: "inline-flex",
-                  animation: luckyNonce > 0 ? "trio-spin 600ms cubic-bezier(0.22, 1, 0.36, 1)" : undefined,
+                  alignItems: "center",
+                  gap: 2,
                 }}
               >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-label="Shuffle"
-                style={{ display: "block" }}
-              >
-                <path d="M21 12a9 9 0 1 1-3.5-7.1" />
-                <polyline points="21 4 21 9 16 9" />
-              </svg>
+                <DiceIcon faces={diceFaces.a} size={22} />
+                {comparing && <DiceIcon faces={diceFaces.b} size={22} />}
               </span>
             </Chip>
           </div>
