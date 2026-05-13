@@ -346,6 +346,36 @@ h1, h2, h3, h4, h5, h6 {
   animation: add-nudge-double 1400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* Dice tumble — fires when the shuffle pill is clicked. Two variants so a pair
+   of dice tumble in opposite directions, reading as physical objects rather
+   than a synced spin. Restrained lift + soft settle, no cartoon bounce. */
+@keyframes dice-roll-a {
+  0%   { transform: translateY(0) rotate(0deg); }
+  32%  { transform: translateY(-4px) rotate(-14deg); }
+  68%  { transform: translateY(0) rotate(6deg); }
+  86%  { transform: translateY(-1px) rotate(-2deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes dice-roll-b {
+  0%   { transform: translateY(0) rotate(0deg); }
+  32%  { transform: translateY(-3px) rotate(12deg); }
+  68%  { transform: translateY(0) rotate(-5deg); }
+  86%  { transform: translateY(-1px) rotate(2deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+.dice-roll-a {
+  display: inline-block;
+  transform-origin: 50% 60%;
+  animation: dice-roll-a 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.dice-roll-b {
+  display: inline-block;
+  transform-origin: 50% 60%;
+  animation: dice-roll-b 520ms cubic-bezier(0.22, 1, 0.36, 1) 40ms;
+  will-change: transform;
+}
+
 /* Stat pill tap flash — the surface is a transparent sheet with a backdrop
    brightness filter; fading its opacity crossfades the filter's strength in
    and out, so the pill reads as briefly catching light rather than being

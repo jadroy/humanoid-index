@@ -555,9 +555,11 @@ export function LayoutSwitcher({
   indexView,
   onIndexViewChange,
   onShareSite,
+  onShareView,
   shareViewLabel,
   comparing = false,
   joined = false,
+  onGoHome,
 }: {
   active: Layout;
   onChange: (l: Layout) => void;
@@ -570,9 +572,11 @@ export function LayoutSwitcher({
   indexView: IndexView;
   onIndexViewChange: (v: IndexView) => void;
   onShareSite?: () => void;
+  onShareView?: () => void;
   shareViewLabel?: string;
   comparing?: boolean;
   joined?: boolean;
+  onGoHome?: () => void;
 }) {
   const handleClick = () => {
     if (active !== "E") onChange("E" as Layout);
@@ -590,6 +594,23 @@ export function LayoutSwitcher({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
+
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!shareMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!shareMenuRef.current?.contains(e.target as Node)) setShareMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShareMenuOpen(false); };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [shareMenuOpen]);
+  const [shareHover, setShareHover] = useState<"site" | "view" | null>(null);
 
   const frost = { background: "var(--c-surface)" } as React.CSSProperties;
 
@@ -1229,54 +1250,138 @@ export function LayoutSwitcher({
   // ── Style: trio — Humanoid Index left, Shuffle center (lighter chip), Share right.
   //    No tab switcher; shuffle is the only central action. ──
   else if (navStyle === "trio") {
-    navEl = (
+    const trioLabelStyle: React.CSSProperties = {
+      fontSize: 13,
+      fontWeight: 500,
+      letterSpacing: "normal",
+      color: "rgba(95, 96, 89, 0.8)",
+      background: "transparent",
+      paddingLeft: 0,
+      paddingRight: 12,
+      marginLeft: -6,
+    };
+    navEl = joined ? <></> : (
       <nav
         className="fixed left-0 right-0 z-50 pointer-events-auto"
         style={{ top: 0, background: "transparent" }}
       >
         <div
-          className={joined ? "flex items-center justify-center" : "grid items-center"}
+          className="flex items-center justify-between"
           style={{
             height: 48,
-            paddingLeft: "var(--nav-x, 24px)",
-            paddingRight: "var(--nav-x, 24px)",
-            ...(joined ? { gap: 28 } : { gridTemplateColumns: "1fr auto 1fr" }),
+            paddingLeft: "var(--footer-x, 24px)",
+            paddingRight: "var(--footer-x, 24px)",
           }}
         >
-          {/* Humanoid Index title moved to the footer. Keep an empty cell so the
-              grid columns stay symmetrical and the dice stays centered. */}
-          {!joined && <div />}
-          <div className="flex justify-center items-center">
-            <Chip
-              onClick={() => onRandomHumanoid?.()}
-              className="trio-spin"
-              style={{
-                color: "rgba(95, 96, 89, 0.85)",
-                background: "transparent",
-                padding: 0,
-                width: comparing ? 58 : 36,
-                height: 36,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 999,
-              }}
-            >
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 2,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                <span role="img" aria-label="Shuffle">🎲</span>
-                {comparing && <span role="img" aria-label="Shuffle">🎲</span>}
-              </span>
+          <div className="flex justify-start items-center">
+            <Chip onClick={() => onGoHome?.()} style={trioLabelStyle}>
+              Humanoid Index
             </Chip>
           </div>
-          {!joined && <div className="flex justify-end items-center" />}
+          <div className="flex justify-end items-center">
+            <div ref={shareMenuRef} style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  onClick={() => setShareMenuOpen((o) => !o)}
+                  aria-expanded={shareMenuOpen}
+                  aria-haspopup="menu"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    letterSpacing: "normal",
+                    color: "rgba(95, 96, 89, 0.85)",
+                    background: shareMenuOpen ? "rgba(95, 96, 89, 0.06)" : "transparent",
+                    border: "1px solid rgba(95, 96, 89, 0.22)",
+                    borderRadius: 999,
+                    padding: "5px 10px 5px 12px",
+                    lineHeight: 1,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    transition: "background 160ms ease",
+                  }}
+                >
+                  <span>Share</span>
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 10"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{
+                      display: "block",
+                      transform: shareMenuOpen ? "rotate(180deg)" : "rotate(0deg)",
+                      transition: "transform 200ms cubic-bezier(0.22, 1, 0.36, 1)",
+                      opacity: 0.75,
+                    }}
+                    aria-hidden
+                  >
+                    <path d="M2 4 L5 7 L8 4" />
+                  </svg>
+                </button>
+                {shareMenuOpen && (() => {
+                  const viewLabel = shareViewLabel && shareViewLabel.startsWith("Share ")
+                    ? shareViewLabel.slice(6).trim()
+                    : "";
+                  const itemStyle = (hovered: boolean): React.CSSProperties => ({
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "8px 12px",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "rgba(95, 96, 89, 0.9)",
+                    background: hovered ? "rgba(95, 96, 89, 0.07)" : "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    borderRadius: 8,
+                    whiteSpace: "nowrap",
+                    transition: "background 120ms ease",
+                  });
+                  return (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "calc(100% + 6px)",
+                        right: 0,
+                        minWidth: 180,
+                        background: "#fff",
+                        border: "1px solid rgba(95, 96, 89, 0.1)",
+                        borderRadius: 12,
+                        boxShadow: "0 6px 20px rgba(0,0,0,0.07)",
+                        padding: 4,
+                        zIndex: 60,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onMouseEnter={() => setShareHover("site")}
+                        onMouseLeave={() => setShareHover(null)}
+                        onClick={() => { onShareSite?.(); setShareMenuOpen(false); }}
+                        style={itemStyle(shareHover === "site")}
+                      >
+                        Share site
+                      </button>
+                      {viewLabel && (
+                        <button
+                          type="button"
+                          onMouseEnter={() => setShareHover("view")}
+                          onMouseLeave={() => setShareHover(null)}
+                          onClick={() => { onShareView?.(); setShareMenuOpen(false); }}
+                          style={itemStyle(shareHover === "view")}
+                        >
+                          Share {viewLabel}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+            </div>
+          </div>
         </div>
       </nav>
     );

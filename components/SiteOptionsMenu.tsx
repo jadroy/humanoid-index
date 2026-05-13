@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { SURFACE_HOVER_SOFT, INK, INK_MEDIUM } from "@/lib/design/tokens";
+import { SURFACE_HOVER_SOFT } from "@/lib/design/tokens";
 import ContactSheet from "./ContactSheet";
 
 const CONTACT_EMAIL = "jadroy77@gmail.com";
@@ -112,8 +112,7 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline =
           style={{
             position: "absolute",
             bottom: 48,
-            left: "50%",
-            transform: "translateX(-50%)",
+            right: 0,
             width: popoverWidth ?? "auto",
             minWidth: 200,
             background: "rgba(38, 38, 38, 0.86)",
@@ -156,27 +155,26 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline =
         onClick={() => setOpen((v) => !v)}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
-        aria-label="Options"
+        aria-label="Contribute"
         aria-expanded={open}
         style={{
-          width: 36,
           height: 36,
+          padding: "0 14px",
           borderRadius: 999,
           background: open || hover ? SURFACE_HOVER_SOFT : "transparent",
           border: "none",
-          color: open || hover ? INK : INK_MEDIUM,
+          color: "rgba(95, 96, 89, 0.8)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
+          fontSize: 13,
+          fontWeight: 500,
+          letterSpacing: "normal",
           transition: "background 200ms ease, color 200ms ease",
         }}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-          <circle cx="5" cy="12" r="1.7" />
-          <circle cx="12" cy="12" r="1.7" />
-          <circle cx="19" cy="12" r="1.7" />
-        </svg>
+        Contribute
       </button>
 
       {sheet && (

@@ -578,7 +578,7 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange }: { goToIndex?: number | null; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void }) {
+function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -735,7 +735,9 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   const [robotW, setRobotW] = useState(30);       // vw
   const [robotH, setRobotH] = useState(60);       // vh
   const [robotMaxW, setRobotMaxW] = useState(400); // px
-  const [statsW, setStatsW] = useState(260);       // px
+  // Compare-mode middle column width. Stats need ~150-180px; the rest is
+  // breathing room (and blurb width when the AI overview is on).
+  const [statsW, setStatsW] = useState(200);       // px
   const [statsColScale, setStatsColScale] = useState(0.57); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(20);    // px — gap between robot and stats
@@ -756,6 +758,13 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   // When on, render uppercase eyebrows ("Specs"/"Notes") above each section in
   // the stacked stats column. When off, sections are split by a single hairline.
   const [showSectionEyebrows, setShowSectionEyebrows] = useState(false);
+  // When on, the AI compare blurb sits at the top of the compare middle column.
+  // When off, the column starts straight at the spec rows.
+  const [showCompareBlurb, setShowCompareBlurb] = useState(false);
+  // Vertical gap (px) between stat rows in the compare middle column. The full
+  // 5-row set always renders (Height/Weight/DOF/Speed/Price) so the column
+  // doesn't reflow while paging between robots.
+  const [compareRowGap, setCompareRowGap] = useState(2);
   // Where the status indicator (dot + word) lives when stackedInfo is on:
   //   "card"        — dedicated Status card pinned at the bottom of the stack (current)
   //   "chip"        — first chip in the tags row, colored dot + status word
@@ -764,7 +773,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
   //   "corner"      — small floating dot on the robot card itself
   //   "hidden"      — no status indicator anywhere
   type StatusPlacement = "card" | "chip" | "label" | "consolidate" | "corner" | "hidden";
-  const [statusPlacement, setStatusPlacement] = useState<StatusPlacement>("label");
+  const [statusPlacement, setStatusPlacement] = useState<StatusPlacement>("hidden");
   // Action row variants for the bottom CTA in single view (stackedInfo on).
   // The "split-X" variants share a layout: CTA text on the left, arrow chip on the right
   // (space-between). They differ only in the surrounding container treatment.
@@ -1307,6 +1316,12 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
     return () => clearTimeout(t);
   }, [addHintNonce, addCtaMode]);
   const exitCompare = () => { setComparing(false); setActiveSide("left"); setSplitHover(false); };
+
+  useEffect(() => {
+    if (homeNonce === 0) return;
+    exitCompare();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeNonce]);
 
   // ── Hydrate spring positions from share URL on mount ──
   useEffect(() => {
@@ -2408,9 +2423,10 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              padding: "4px 10px",
+              padding: "6px 12px",
               borderRadius: 999,
-              background: "rgba(0,0,0,0.035)",
+              background: "transparent",
+              border: "1px solid rgba(0,0,0,0.09)",
               color: "var(--c-ink-body)",
               fontFamily: "var(--font-geist-sans)",
               fontSize: 12.5,
@@ -2427,7 +2443,7 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
             const notesCard = hasDescriptorTags || showStatusChip || showYearChip ? (
               <div style={cardBase}>
                 {showSectionEyebrows && hasDescriptorTags && <p style={headerStyle}>Notes</p>}
-                <div className="flex flex-wrap" style={{ gap: 6, marginTop: showSectionEyebrows && hasDescriptorTags ? sectionContentMarginTop : 0 }}>
+                <div className="flex flex-wrap" style={{ gap: 7, marginTop: showSectionEyebrows && hasDescriptorTags ? sectionContentMarginTop : 0 }}>
                   {showYearChip && <span style={chipStyle}>{h.year}</span>}
                   {showStatusChip && (
                     <span style={chipStyle}>
@@ -2760,499 +2776,130 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
         };
 
         const renderMergedStats = () => {
-          const pillBg = statPillBg;
-          const pillBackdrop: string | undefined = undefined;
-          const pillRowHeight = statPillPadY * 2 + Math.round(pillLabelFontSize * 1.2);
+          // Compare middle column. Mirrors the single-view stats aesthetic:
+          // chromeless rows, ink-muted labels, ink-body values, a single hairline
+          // separating quantitative specs from the status indicator. No accordion.
           const heightL = hL.height ?? 0, heightR = hR.height ?? 0;
           const weightL = hL.weight ?? 0, weightR = hR.weight ?? 0;
           const dofL = hL.dof ?? 0, dofR = hR.dof ?? 0;
           const speedL = hL.maxSpeed ?? 0, speedR = hR.maxSpeed ?? 0;
+          const priceL = hL.cost && hL.cost !== "N/A" ? hL.cost : null;
+          const priceR = hR.cost && hR.cost !== "N/A" ? hR.cost : null;
           const statusColor = (status?: string) => status === "In Production" ? "#22c55e" : status === "Prototype" ? "#eab308" : status === "Concept" ? "#3b82f6" : status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
 
+          const fz = 13;
+          const stackGap = 18;
+          const dimmed: React.CSSProperties = {
+            fontFamily: "var(--font-geist-sans)",
+            fontSize: fz,
+            fontWeight: 400,
+            color: "var(--c-ink-muted)",
+          };
+          const valueStyle: React.CSSProperties = {
+            fontFamily: "var(--font-geist-sans)",
+            fontSize: fz,
+            fontWeight: 450,
+            color: "var(--c-ink-body)",
+          };
+          const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "var(--c-ink-subtle)" };
+          const hairlineRule = (
+            <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)" }} />
+          );
+
           const compareRow = (label: string, valL: string | null, valR: string | null) => (
-            <div className="flex items-baseline justify-between gap-2" style={{ marginTop: 6 }}>
-              <p className="text-[12px] tabular-nums flex-1 text-left" style={{ color: valL ? "var(--c-ink-body)" : "#c4c4c4", fontFamily: "var(--font-geist-pixel-square)" }}>{valL || "—"}</p>
-              <p className="text-[12px] uppercase text-center" style={{ color: "#a3a3a3", letterSpacing: "0.02em", minWidth: 44 }}>{label}</p>
-              <p className="text-[12px] tabular-nums flex-1 text-right" style={{ color: valR ? "var(--c-ink-body)" : "#c4c4c4", fontFamily: "var(--font-geist-pixel-square)" }}>{valR || "—"}</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+              <span className="tabular-nums" style={{ ...(valL ? valueStyle : missingValueStyle), textAlign: "left" as const }}>{valL || "—"}</span>
+              <span style={{ ...dimmed, textAlign: "center" as const }}>{label}</span>
+              <span className="tabular-nums" style={{ ...(valR ? valueStyle : missingValueStyle), textAlign: "right" as const }}>{valR || "—"}</span>
             </div>
           );
 
           const compareBlurb = getCompareBlurb(hL, hR);
           const compareBlurbId = `${hL.id}|${hR.id}`;
+          const hasStatus = !!(hL.status || hR.status);
+          const hasBlurb = showCompareBlurb && !!compareBlurb.text;
 
-          const sections = [
-            {
-              key: "desc",
-              show: true,
-              bubble: !!compareBlurb.long,
-              label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Info</p>
-              ),
-              detail: (() => {
-                const isExpanded = expandedBlurbs.has(compareBlurbId);
-                const canExpand = !!compareBlurb.long;
-                const fullText = canExpand ? compareBlurb.long : compareBlurb.text;
-                const collapsedH = blurbFontSize * 1.5 * 2;
-                const isHovered = canExpand && hoveredBlurbId === compareBlurbId;
-                const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
-                const wrapperProps = canExpand
-                  ? {
-                      type: "button" as const,
-                      onClick: (e: React.MouseEvent) => { e.stopPropagation(); toggleBlurbExpand(compareBlurbId); },
-                      onMouseEnter: () => setHoveredBlurbId(compareBlurbId),
-                      onMouseLeave: () => setHoveredBlurbId(null),
-                    }
-                  : {};
-                return (
-                  <Wrapper
-                    key={compareBlurbId}
-                    {...wrapperProps}
-                    style={{
-                      ...(canExpand ? {
-                        background: "transparent",
-                        boxShadow: "none",
-                        border: "none",
-                        padding: `${statPillPadY}px ${statPillPadX}px`,
-                        marginLeft: -statPillPadX,
-                        marginRight: -statPillPadX,
-                        textAlign: "left" as const,
-                        width: `calc(100% + ${statPillPadX * 2}px)`,
-                        cursor: "pointer",
-                        display: "block",
-                        position: "relative",
-                        zIndex: 12,
-                        WebkitTapHighlightColor: "transparent",
-                      } : {}),
-                      opacity: blurbReady ? 1 : 0,
-                      transform: blurbReady ? "translateY(0) scale(1)" : "translateY(-3px) scale(0.985)",
-                      filter: blurbReady ? "blur(0)" : "blur(2px)",
-                      transition: canExpand
-                        ? "box-shadow 0.2s ease, opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)"
-                        : "opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        maxHeight: isExpanded ? 320 : collapsedH,
-                        overflow: "hidden",
-                        transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
-                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
-                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
-                      }}
-                    >
-                      <p
-                        className="leading-[1.5]"
-                        style={{
-                          fontSize: blurbFontSize,
-                          color: bubble.ink || "var(--c-ink)",
-                          opacity: compareBlurb.isGenerated ? 0.6 : 0.4,
-                          fontWeight: 500,
-                          letterSpacing: "0.015em",
-                        }}
-                      >
-                        {fullText}
-                      </p>
-                    </div>
-                    {canExpand && renderExpandIndicator({ isExpanded, isHovered })}
-                  </Wrapper>
-                );
-              })(),
-            },
-            {
-              key: "stats",
-              show: !!(heightL || weightL || heightR || weightR || dofL || dofR || speedL || speedR),
-              label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Stats</p>
-              ),
-              detail: (
-                <div>
-                  {(heightL || heightR) ? compareRow("Height", heightL ? formatHeight(heightL) : null, heightR ? formatHeight(heightR) : null) : null}
-                  {(weightL || weightR) ? compareRow("Weight", weightL ? formatWeight(weightL) : null, weightR ? formatWeight(weightR) : null) : null}
-                  {(dofL || dofR) ? compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null) : null}
-                  {(speedL || speedR) ? compareRow("Speed", speedL ? formatSpeed(speedL) : null, speedR ? formatSpeed(speedR) : null) : null}
+          const blurbBlock = hasBlurb ? (() => {
+            const isExpanded = expandedBlurbs.has(compareBlurbId);
+            const canExpand = !!compareBlurb.long;
+            const fullText = canExpand ? compareBlurb.long : compareBlurb.text;
+            const collapsedH = Math.round(fz * 1.55 * 3);
+            const isHovered = canExpand && hoveredBlurbId === compareBlurbId;
+            const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
+            const wrapperProps = canExpand
+              ? {
+                  type: "button" as const,
+                  onClick: (e: React.MouseEvent) => { e.stopPropagation(); toggleBlurbExpand(compareBlurbId); },
+                  onMouseEnter: () => setHoveredBlurbId(compareBlurbId),
+                  onMouseLeave: () => setHoveredBlurbId(null),
+                }
+              : {};
+            return (
+              <Wrapper
+                key={compareBlurbId}
+                className="pointer-events-auto"
+                {...wrapperProps}
+                style={{
+                  position: "relative",
+                  ...(canExpand ? {
+                    background: "transparent",
+                    boxShadow: "none",
+                    border: "none",
+                    padding: 0,
+                    textAlign: "left" as const,
+                    width: "100%",
+                    cursor: "pointer",
+                    display: "block",
+                    WebkitTapHighlightColor: "transparent",
+                  } : {}),
+                  opacity: blurbReady ? 1 : 0,
+                  transform: blurbReady ? "translateY(0)" : "translateY(-3px)",
+                  filter: blurbReady ? "blur(0)" : "blur(2px)",
+                  transition: "opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
+                }}
+              >
+                <div
+                  style={{
+                    maxHeight: isExpanded ? 320 : collapsedH,
+                    overflow: "hidden",
+                    transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
+                    WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 75%, transparent 100%)" : "none",
+                    maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 75%, transparent 100%)" : "none",
+                  }}
+                >
+                  <p style={{ fontFamily: "var(--font-geist-sans)", fontSize: fz, lineHeight: 1.55, color: "var(--c-ink-body)", fontWeight: 400 }}>
+                    {fullText}
+                  </p>
                 </div>
-              ),
-            },
-            {
-              key: "status",
-              show: !!(hL.status || hR.status),
-              label: (
-                <p style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" as const : "none" as const }}>Status</p>
-              ),
-              preview: (
-                <span className="inline-flex items-center" style={{ gap: 6 }}>
-                  {hL.status && <span className="inline-block rounded-full h-2 w-2" style={{ background: statusColor(hL.status) }} />}
-                  {hR.status && <span className="inline-block rounded-full h-2 w-2" style={{ background: statusColor(hR.status) }} />}
-                </span>
-              ),
-              detail: (
-                <div className="flex items-center gap-3" style={{ marginTop: 6 }}>
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: statusColor(hL.status) }} />
-                    <p className="text-[12px] truncate" style={{ color: "var(--c-ink-body)" }}>{hL.status || "—"}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-                    <p className="text-[12px] truncate" style={{ color: "var(--c-ink-body)" }}>{hR.status || "—"}</p>
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: statusColor(hR.status) }} />
-                  </div>
-                </div>
-              ),
-            },
-          ];
+                {canExpand && renderExpandIndicator({ isExpanded, isHovered })}
+              </Wrapper>
+            );
+          })() : null;
 
-          const headerCell = (h: typeof humanoids[0]) => (
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="logo-placeholder flex-shrink-0 relative overflow-hidden flex items-center justify-center" style={{ width: 26, height: 26, borderRadius: cardRadius * 0.6 }}>
-                {h.logoUrl ? (
-                  <LogoImage src={h.logoUrl} alt={h.manufacturer} sizes="26px" />
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
-                    <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
-                    <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
-                  </svg>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>
-                  {h.name}
-                  {yearPlacement === "after-name" && h.year ? <span style={{ marginLeft: 6, opacity: 0.42, fontWeight: 400 }}>{h.year}</span> : null}
-                </p>
-                <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.42 }}>
-                  {h.manufacturer}{yearPlacement === "beside" && h.year ? ` · ${h.year}` : ''}
-                </p>
-                {yearPlacement === "below" && h.year ? (
-                  <p className="text-[12px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, marginTop: 1, opacity: 0.32 }}>{h.year}</p>
-                ) : null}
-              </div>
-            </div>
-          );
-
-          const isPillVisible = (s: typeof sections[number]) => {
-            if (blurbFloat && s.key === "desc") return false;
-            const empty = !s.show;
-            const hideLabel = s.key === "desc" && infoMode === "bare";
-            if (empty && hideLabel) return false;
-            return true;
-          };
-          const lastVisibleKey = [...sections].reverse().find(isPillVisible)?.key;
-          const pillRadiusFor = (_isLast: boolean, isOpen: boolean) => {
-            return isOpen ? statPillRadiusOpen : statPillRadius;
-          };
 
           return (
-            <div className="flex flex-col h-full" style={{ width: statsW, minWidth: statsW, gap: cardGap, justifyContent: alignJustify }}>
-              {blurbFloat && (() => {
-                const isExpanded = expandedBlurbs.has(compareBlurbId);
-                const canExpand = !!compareBlurb.long;
-                const fullText = canExpand ? compareBlurb.long : compareBlurb.text;
-                const collapsedH = blurbFontSize * 1.5 * 2;
-                const isHovered = canExpand && hoveredBlurbId === compareBlurbId;
-                const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
-                const wrapperProps = canExpand
-                  ? {
-                      type: "button" as const,
-                      onClick: (e: React.MouseEvent) => { e.stopPropagation(); toggleBlurbExpand(compareBlurbId); },
-                      onMouseEnter: () => setHoveredBlurbId(compareBlurbId),
-                      onMouseLeave: () => setHoveredBlurbId(null),
-                    }
-                  : {};
-                return (
-                  <Wrapper
-                    className="pointer-events-auto"
-                    {...wrapperProps}
-                    style={{
-                      position: "relative",
-                      zIndex: 11,
-                      padding: `${statPillPadY}px ${statPillPadX}px`,
-                      ...(canExpand ? {
-                        background: "transparent",
-                        boxShadow: "none",
-                        border: "none",
-                        textAlign: "left" as const,
-                        width: "100%",
-                        cursor: "pointer",
-                        display: "block",
-                        WebkitTapHighlightColor: "transparent",
-                      } : {}),
-                      opacity: blurbReady ? 1 : 0,
-                      transform: blurbReady ? "translateY(0) scale(1)" : "translateY(-3px) scale(0.985)",
-                      filter: blurbReady ? "blur(0)" : "blur(2px)",
-                      transition: canExpand
-                        ? "box-shadow 0.2s ease, opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)"
-                        : "opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        maxHeight: isExpanded ? 320 : collapsedH,
-                        overflow: "hidden",
-                        transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
-                        WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
-                        maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 78%, transparent 100%)" : "none",
-                      }}
-                    >
-                      <p
-                        key={`blurb-float-${compareBlurbId}`}
-                        className="leading-[1.5] info-fade-in"
-                        style={{
-                          fontSize: blurbFontSize,
-                          color: bubble.ink || "var(--c-ink)",
-                          opacity: compareBlurb.isGenerated ? 0.6 : 0.4,
-                          fontWeight: 500,
-                          letterSpacing: "0.015em",
-                        }}
-                      >
-                        {fullText}
-                      </p>
-                    </div>
-                    {canExpand && renderExpandIndicator({ isExpanded, isHovered })}
-                  </Wrapper>
-                );
-              })()}
-              {labelPosition === "stack" && (() => {
-                const active = splitHover;
-                const sDur = `${splitDur}ms`;
-                const unifiedL = `${cardRadius}px 0 0 ${cardRadius}px`;
-                const unifiedR = `0 ${cardRadius}px ${cardRadius}px 0`;
-                const roundedAll: string | number = cardRadius;
-                let containerGap = 0;
-                let leftRadius: string | number = active ? roundedAll : unifiedL;
-                let rightRadius: string | number = active ? roundedAll : unifiedR;
-                let leftTransform = "translateX(0)";
-                let rightTransform = "translateX(0)";
-                let leftShadow = "none";
-                let rightShadow = "none";
-                let transformOrigin = "center center";
-
-                if (splitVariant === "morph") {
-                  containerGap = active ? splitAmount : 0;
-                } else if (splitVariant === "push") {
-                  leftTransform = active ? `translateX(-${splitAmount / 2}px)` : "translateX(0)";
-                  rightTransform = active ? `translateX(${splitAmount / 2}px)` : "translateX(0)";
-                } else if (splitVariant === "lift") {
-                  containerGap = active ? splitAmount : 0;
-                  leftTransform = active ? `translateY(-${splitLiftY}px)` : "translateY(0)";
-                  rightTransform = active ? `translateY(-${splitLiftY}px)` : "translateY(0)";
-                  const blur = Math.max(6, splitLiftY * 3);
-                  leftShadow = active ? `0 ${splitLiftY + 2}px ${blur}px rgba(0,0,0,${splitShadowOp})` : "none";
-                  rightShadow = leftShadow;
-                } else if (splitVariant === "shrink") {
-                  containerGap = active ? splitAmount : 0;
-                  leftTransform = active ? `scale(${splitScale})` : "scale(1)";
-                  rightTransform = active ? `scale(${splitScale})` : "scale(1)";
-                  transformOrigin = "center center";
-                } else if (splitVariant === "swap") {
-                  containerGap = active ? splitAmount : 0;
-                  leftTransform = active ? `translateX(${splitAmount / 2}px)` : "translateX(0)";
-                  rightTransform = active ? `translateX(-${splitAmount / 2}px)` : "translateX(0)";
-                }
-
-                const pillTransition = `border-radius ${sDur} ${ease}, transform ${sDur} ${ease}, box-shadow ${sDur} ${ease}`;
-
-                return (
-                  <div className="flex items-center pointer-events-auto" style={{
-                    flexShrink: 0,
-                    position: "relative",
-                    zIndex: 11,
-                    gap: containerGap,
-                    transition: `gap ${sDur} ${ease}`,
-                  }}>
-                    <div className="flex-1 min-w-0 flex items-center" style={{
-                      background: "var(--c-surface)",
-                      padding: "10px 12px",
-                      borderRadius: leftRadius,
-                      transform: leftTransform,
-                      boxShadow: leftShadow,
-                      transformOrigin,
-                      transition: pillTransition,
-                    }}>
-                      {headerCell(hL)}
-                    </div>
-                    <div className="flex-1 min-w-0 flex items-center" style={{
-                      background: "var(--c-surface)",
-                      padding: "10px 12px",
-                      borderRadius: rightRadius,
-                      transform: rightTransform,
-                      boxShadow: rightShadow,
-                      transformOrigin,
-                      transition: pillTransition,
-                    }}>
-                      {headerCell(hR)}
-                    </div>
-                  </div>
-                );
-              })()}
-              <div className="flex flex-col pointer-events-auto" style={{ gap: statPillGap, position: "relative", zIndex: 11, marginTop: blurbFloat ? "auto" : undefined }}>
-                {sections.map((s) => {
-                  if (blurbFloat && s.key === "desc") return null;
-                  const empty = !s.show;
-                  const hideLabel = s.key === "desc" && infoMode === "bare";
-                  if (empty && hideLabel) return null;
-                  const isLast = s.key === lastVisibleKey;
-                  const forcedOpen = s.key === "desc" && infoMode !== "pill" && !empty;
-                  const isOpen = !empty && openStat.has(s.key);
-                  const isLink = !!((s as { href?: string }).href);
-                  const interactive = !forcedOpen && !empty && !isLink && s.key !== "purchase" && s.key !== "year";
-                  const isAction = s.key === "purchase" && isLink;
-                  const actionAccent = isAction && actionVariant === "accent";
-                  const actionDark = isAction && actionVariant === "dark";
-                  const actionHairline = isAction && actionVariant === "hairline";
-                  // In split mode, always render the purchase pill via the split branch — even
-                  // with no URL — so the row math matches the URL'd version (otherwise the
-                  // fall-through to the standard pillEl produces a slightly taller row).
-                  const actionSplit = s.key === "purchase" && actionVariant === "split";
-                  const actionLabelColor = actionAccent ? "var(--c-accent)" : pillLabelColor;
-                  const actionPillBg = actionDark ? "#ECECEC" : pillBg;
-                  const actionText = isAction ? ((s as { text?: string }).text ?? "") : "";
-                  // Text-link variant: render the action as plain inline text + arrow,
-                  // sitting at the bottom of the column where the pill would otherwise live.
-                  if (isAction && actionVariant === "text") {
-                    const href = (s as any).href as string;
-                    const text = (s as { text?: string }).text ?? "";
-                    return (
-                      <a
-                        key={s.key}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center"
-                        style={{ gap: 4, padding: `8px ${statPillPadX}px`, color: "#999", fontSize: 12, fontWeight: 450, textDecoration: "none", alignSelf: "flex-start" }}
-                      >
-                        {text}
-                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
-                          <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
-                        </svg>
-                      </a>
-                    );
-                  }
-                  // Split variant: Apple-style price text + accent "Buy" button inside one pill.
-                  if (actionSplit) {
-                    const href = (s as any).href as string;
-                    const price = (s as { price?: string }).price;
-                    const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
-                    const ctaBg = "rgba(0,0,0,0.06)";
-                    const ctaColor = "rgba(95, 96, 89, 0.8)";
-                    return (
-                      <div
-                        key={s.key}
-                        className="w-full"
-                        style={{
-                          background: pillBg,
-                          borderRadius: pillRadiusFor(isLast, false),
-                          padding: `0 ${Math.max(0, statPillPadY - 6)}px 0 ${statPillPadX}px`,
-                          display: "block",
-                        }}
-                      >
-                        <div className="w-full flex items-center justify-between" style={{ minHeight: pillRowHeight, gap: 8 }}>
-                          <span style={{ fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: pillLabelColor, textTransform: pillLabelUppercase ? "uppercase" : "none" }}>
-                            {price ?? " "}
-                          </span>
-                          <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="cta-link cursor-pointer"
-                            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, color: ctaColor, padding: "6px 4px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, textDecoration: "none", WebkitTapHighlightColor: "transparent" }}
-                          >
-                            <span>{cta}</span>
-                            <span className="cta-chip" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: ctaBg, flexShrink: 0 }}>
-                              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
-                                <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
-                              </svg>
-                            </span>
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  }
-                  const Tag = (isLink ? "a" : interactive ? "button" : "div") as React.ElementType;
-                  const pillEl = (
-                    <Tag
-                      key={s.key}
-                      {...(isLink
-                        ? { href: (s as any).href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
-                        : interactive ? { type: "button" as const, onClick: () => toggleStat(s.key) } : {})}
-                      className={(isLink || interactive) ? `pill-button${isAction ? " pill-action" : ""} w-full text-left` : "w-full text-left"}
-                      style={{
-                        ["--pill-bg" as string]: s.key === "desc" ? "transparent" : actionPillBg,
-                        background: s.key === "desc" ? "transparent" : ((isLink || interactive) ? undefined : pillBg),
-                        backdropFilter: s.key === "desc" ? undefined : pillBackdrop,
-                        WebkitBackdropFilter: s.key === "desc" ? undefined : pillBackdrop,
-                        border: "none",
-                        borderRadius: pillRadiusFor(isLast, isOpen),
-                        padding: `0 ${statPillPadX}px`,
-                        overflow: s.key === "desc" ? "visible" : "hidden",
-                        cursor: (isLink || interactive) ? "pointer" : "default",
-                        textDecoration: "none",
-                        position: "relative",
-                        display: "block",
-                        transition: "background 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.24s cubic-bezier(0.4, 0, 0.2, 1)",
-                        WebkitTapHighlightColor: "transparent",
-                      }}
-                    >
-                      {interactive && pillFlash.statKey === s.key && (
-                        <span
-                          key={`flash-${pillFlash.id}`}
-                          aria-hidden
-                          className="pill-flash"
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            borderRadius: pillRadiusFor(isLast, isOpen),
-                            pointerEvents: "none",
-                          }}
-                        />
-                      )}
-                      {!hideLabel && (
-                        <div className="w-full flex items-center justify-between" style={{ minHeight: pillRowHeight, position: "relative", textTransform: pillLabelUppercase ? "uppercase" : "none", fontFamily: pillLabelFont, fontWeight: pillLabelWeight, letterSpacing: `${pillLabelLetterSpacing}em`, color: actionLabelColor }}>
-                          {actionAccent ? (
-                            <span className="inline-flex items-center" style={{ gap: 6, color: actionLabelColor, fontSize: pillLabelFontSize, lineHeight: 1.2 }}>
-                              <span aria-hidden style={{ fontSize: pillLabelFontSize, opacity: 0.85 }}>↗</span>
-                              {actionText}
-                            </span>
-                          ) : s.label}
-                          {isLink ? (
-                            <svg className={isAction ? "pill-arrow" : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
-                              <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
-                            </svg>
-                          ) : s.key === "purchase" ? null : !forcedOpen && (empty ? <span className="text-[12px]" style={{ color: "#c4c4c4" }}>—</span> : ((s as { preview?: React.ReactNode }).preview && !isOpen ? (s as { preview?: React.ReactNode }).preview : plusMinus(isOpen)))}
-                        </div>
-                      )}
-                      {forcedOpen ? (
-                        <div style={{ padding: s.key === "desc" ? ((s as { bubble?: boolean }).bubble ? 0 : `${statPillPadY}px 0`) : (hideLabel ? `${statPillPadY}px 0` : "0 0 12px 0"), position: "relative" }}>{s.detail}</div>
-                      ) : (
-                        <div style={{
-                          display: "grid",
-                          gridTemplateRows: isOpen ? "1fr" : "0fr",
-                          transition: "grid-template-rows 0.32s cubic-bezier(0.32, 0.72, 0, 1)",
-                          position: "relative",
-                        }}>
-                          <div style={{ overflow: "hidden", minHeight: 0 }}>
-                            <div
-                              className="pb-3"
-                              style={{
-                                opacity: isOpen ? 1 : 0,
-                                transform: isOpen ? "translateY(0)" : "translateY(-4px)",
-                                transition: "opacity 0.22s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
-                              }}
-                            >
-                              {s.detail}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </Tag>
-                  );
-                  return actionHairline ? (
-                    <Fragment key={s.key}>
-                      <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.06)", margin: "6px 2px 2px" }} />
-                      {pillEl}
-                    </Fragment>
-                  ) : pillEl;
-                })}
+            <div className="flex flex-col h-full pointer-events-auto" style={{ width: statsW, minWidth: statsW, position: "relative", zIndex: 11, justifyContent: "center" }}>
+              {blurbBlock}
+              <div className="flex flex-col" style={{ gap: compareRowGap, marginTop: blurbBlock ? stackGap : 0 }}>
+                {compareRow("Height", heightL ? formatHeight(heightL) : null, heightR ? formatHeight(heightR) : null)}
+                {compareRow("Weight", weightL ? formatWeight(weightL) : null, weightR ? formatWeight(weightR) : null)}
+                {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
+                {compareRow("Speed", speedL ? formatSpeed(speedL) : null, speedR ? formatSpeed(speedR) : null)}
+                {compareRow("Price", priceL, priceR)}
               </div>
+              {hasStatus && <div style={{ marginTop: stackGap }}>{hairlineRule}</div>}
+              {hasStatus && (
+                <div className="flex items-center justify-between" style={{ gap: 8, marginTop: stackGap }}>
+                  <div className="flex items-center min-w-0" style={{ gap: 6 }}>
+                    {hL.status && <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: statusColor(hL.status), flexShrink: 0 }} />}
+                    <span style={hL.status ? valueStyle : missingValueStyle}>{hL.status || "—"}</span>
+                  </div>
+                  <div className="flex items-center min-w-0" style={{ gap: 6 }}>
+                    <span style={hR.status ? valueStyle : missingValueStyle}>{hR.status || "—"}</span>
+                    {hR.status && <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: statusColor(hR.status), flexShrink: 0 }} />}
+                  </div>
+                </div>
+              )}
             </div>
           );
         };
@@ -3805,42 +3452,8 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                   {renderMergedStats()}
                 </div>
 
-                {/* Exit compare — wide hover zone above the bottom-aligned pills.
-                    Minus sits pinned near the top so it reads as a top-of-column
-                    affordance even while the zone extends well below it. */}
-                {comparing && (
-                  <div
-                    className="absolute cursor-pointer pointer-events-auto flex items-start justify-center"
-                    style={{
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 120,
-                      paddingTop: 14,
-                      zIndex: 12,
-                    }}
-                    onClick={exitCompare}
-                    onMouseEnter={() => setSplitHover(true)}
-                    onMouseLeave={() => setSplitHover(false)}
-                  >
-                    <div
-                      className="flex items-center justify-center"
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 999,
-                        background: "rgba(0,0,0,0.11)",
-                        opacity: splitHover ? 1 : 0,
-                        transform: `scale(${splitHover ? 1 : 0.75})`,
-                        transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
-                      }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
-                        <line x1="4" y1="8" x2="12" y2="8" />
-                      </svg>
-                    </div>
-                  </div>
-                )}
+                {/* Middle exit-compare hover zone removed — the X on the right
+                    card is the sole way out. */}
               </div>
 
               {/* Right robot — compare only */}
@@ -4501,6 +4114,30 @@ function Browse({ goToIndex, navStyle, onNavStyleChange, switcherStyle, onSwitch
                 {showSectionEyebrows ? "On" : "Off"}
               </button>
             </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[12px] text-neutral-500 flex-1">Compare blurb (AI overview)</label>
+              <button
+                type="button"
+                className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${showCompareBlurb ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+                onClick={() => setShowCompareBlurb(!showCompareBlurb)}
+              >
+                {showCompareBlurb ? "On" : "Off"}
+              </button>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[12px] text-neutral-500">Compare row gap</label>
+                <span className="text-[12px] text-neutral-400 tabular-nums">{compareRowGap}px</span>
+              </div>
+              <input type="range" min={-4} max={12} value={compareRowGap} onChange={(e) => setCompareRowGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[12px] text-neutral-500">Compare column width</label>
+                <span className="text-[12px] text-neutral-400 tabular-nums">{statsW}px</span>
+              </div>
+              <input type="range" min={140} max={320} step={2} value={statsW} onChange={(e) => setStatsW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
             {actionVariant === "split" && (
               <div className="flex items-center gap-2">
                 <label className="text-[12px] text-neutral-500 flex-1">Consolidate Status into Buy pill</label>
@@ -5132,6 +4769,7 @@ export default function HomeClient() {
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
   const [luckyNonce, setLuckyNonce] = useState(0);
   const [luckyUsed, setLuckyUsed] = useState(false);
+  const [diceRollNonce, setDiceRollNonce] = useState(0);
   const [hintNonce, setHintNonce] = useState(0);
   const [addHintNonce, setAddHintNonce] = useState(0);
   const [comparingUsed, setComparingUsed] = useState(false);
@@ -5262,6 +4900,15 @@ export default function HomeClient() {
     setLuckyUsed(true);
   }, [layout]);
 
+  const [homeNonce, setHomeNonce] = useState(0);
+  const goHome = useCallback(() => {
+    setLayout("E");
+    setChatOpen(false);
+    setGoToIndex(0);
+    setHomeNonce((n) => n + 1);
+    setTimeout(() => setGoToIndex(null), 100);
+  }, []);
+
   const introDone = introPhase === "done";
 
   // Subtle affordance: the add-compare nudge fires first (primary action),
@@ -5364,9 +5011,11 @@ export default function HomeClient() {
                 const origin = typeof window !== "undefined" ? window.location.origin : "";
                 copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
               }}
+              onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
               shareViewLabel={shareViewLabel}
               comparing={comparing}
               joined={chromeVariant === "joined"}
+              onGoHome={goHome}
             />
           </div>
         </div>
@@ -5374,7 +5023,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -5475,64 +5124,52 @@ export default function HomeClient() {
           color: "rgba(95, 96, 89, 0.5)",
           whiteSpace: "nowrap",
         };
-        if (chromeVariant === "joined") {
-          return (
-            <div
-              className="intro-credit fixed bottom-6 left-0 right-0 z-[48] flex items-center justify-center pointer-events-none"
-              style={{ height: 36 }}
-            >
-              <div className="flex items-center pointer-events-auto" style={{ gap: 28 }}>
-                <SiteOptionsMenu
-                  inline
-                  shareLabel={shareViewLabel}
-                  onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
-                  visible={introDone}
-                />
-                <span style={creditStyle}>Roy Jad © 2026</span>
-              </div>
-            </div>
-          );
-        }
-        const handleShareSite = () => {
-          const origin = typeof window !== "undefined" ? window.location.origin : "";
-          copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
+        const handleDiceClick = () => {
+          setDiceRollNonce((n) => n + 1);
+          onRandomHumanoid();
         };
+        const diceBtn = (
+          <button
+            type="button"
+            onClick={handleDiceClick}
+            aria-label="Shuffle"
+            style={{
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 2,
+              fontSize: 18,
+              lineHeight: 1,
+              color: "rgba(95, 96, 89, 0.85)",
+            }}
+          >
+            <span key={`a-${diceRollNonce}`} role="img" aria-hidden className={diceRollNonce ? "dice-roll-a" : undefined}>🎲</span>
+            {comparing && <span key={`b-${diceRollNonce}`} role="img" aria-hidden className={diceRollNonce ? "dice-roll-b" : undefined}>🎲</span>}
+          </button>
+        );
         return (
           <div
-            className="intro-credit fixed bottom-6 left-0 right-0 z-[48] pointer-events-none flex items-center justify-between"
-            style={{ height: 36, paddingLeft: "var(--footer-x, 24px)", paddingRight: "var(--footer-x, 24px)" }}
+            className="intro-credit fixed bottom-6 left-0 right-0 z-[48] pointer-events-none grid items-center"
+            style={{ height: 36, paddingLeft: "var(--footer-x, 24px)", paddingRight: "var(--footer-x, 24px)", gridTemplateColumns: "1fr auto 1fr" }}
           >
-            <button
-              type="button"
-              onClick={handleShareSite}
-              className="pointer-events-auto cursor-pointer"
-              style={{
-                background: "transparent",
-                border: "none",
-                padding: "6px 12px 6px 4px",
-                fontSize: 13,
-                fontWeight: 500,
-                letterSpacing: "normal",
-                lineHeight: 1,
-                color: "rgba(95, 96, 89, 0.85)",
-                whiteSpace: "nowrap",
-                WebkitTapHighlightColor: "transparent",
-              }}
-            >
-              Humanoid Index
-            </button>
-            <span style={creditStyle}>Roy Jad © 2026</span>
+            <div className="flex justify-start items-center pointer-events-auto">
+              <span style={creditStyle}>Roy Jad © 2026</span>
+            </div>
+            <div className="flex justify-center items-center pointer-events-auto">{diceBtn}</div>
+            <div className="flex justify-end items-center pointer-events-auto">
+              <SiteOptionsMenu
+                inline
+                shareLabel={shareViewLabel}
+                onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
+                visible={introDone}
+              />
+            </div>
           </div>
         );
       })()}
-
-      {chromeVariant !== "joined" && (
-        <SiteOptionsMenu
-          shareLabel={shareViewLabel}
-          onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
-          visible={introDone}
-        />
-      )}
 
       <Toaster
         position="bottom-center"
