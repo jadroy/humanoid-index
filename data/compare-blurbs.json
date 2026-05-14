@@ -4,7 +4,7 @@
     "long": "Memo and Oli represent two different bets on where home and service robotics are heading in 2025. Sunday's wheeled approach keeps things simpler and cheaper for real apartments, while LimX is pushing a full bipedal platform aimed at developers and businesses who want something closer to a research-ready humanoid. One's chasing practical chores now, the other's building a base for whatever comes next."
   },
   "16|3": {
-    "short": "Memo rolls around your home on wheels, helping with chores at kid height.\nK2 stands tall like an adult and is built to work in factories.",
+    "short": "Memo rolls around your home on wheels, helping with chores using two arms.\nK2 stands tall like an adult and is built to work in factories.",
     "long": "These two represent the 2025 split in humanoid robotics: Sunday's Memo is part of the new wave of consumer-focused home helpers, where a wheeled base keeps things safe and affordable for families. Kepler's K2 is aimed at industrial buyers chasing a cheaper alternative to Figure or Tesla's Optimus, with full bipedal locomotion built for warehouse shifts. Same year, totally different customers."
   },
   "1|3": {
@@ -20,15 +20,15 @@
     "long": "The split here is really about philosophy: Sunday Robotics is betting that wheels plus capable arms get useful housework done sooner, while 1X is part of the newer wave chasing full bipedal humanoids meant to move through spaces built for people. Memo targets practical near-term deployment, whereas Neo is aimed at a longer horizon where a softer, human-shaped helper feels natural to live alongside."
   },
   "3|7": {
-    "short": "Memo rolls around on wheels to help with chores at home.\nFigure 02 stands tall at 167 cm and moves with 40 joints.",
+    "short": "Memo rolls around on wheels to help with chores at home.\nFigure 02 stands tall at 167 cm and moves with 28 joints.",
     "long": "These two represent very different bets on where robotics is headed. Memo skips legs entirely to focus on getting useful in kitchens and laundry rooms now, while Figure 02 is built for warehouse and industrial pilots where a human-shaped frame fits existing workflows. One's chasing consumer households, the other's chasing enterprise contracts."
   },
   "3|8": {
-    "short": "Memo rolls around your house on wheels, helping with chores at kid height.\nPhoenix thinks for itself using its own AI brain called Carbon.",
-    "long": "The split here is really about ambition and audience. Memo is part of the new wave of consumer-focused home helpers betting that wheels and a shorter frame are enough for laundry and dishes, while Phoenix comes from Sanctuary's longer push into general-purpose labor, aimed at warehouses and industrial clients who need a full bipedal worker. Different buyers, different timelines."
+    "short": "Memo rolls around your house on wheels, using two arms for laundry and dishes.\nPhoenix thinks for itself using its own AI brain called Carbon.",
+    "long": "The split here is really about ambition and audience. Memo is part of the new wave of consumer-focused home helpers betting that wheels and capable arms are enough for laundry and dishes, while Phoenix comes from Sanctuary's longer push into general-purpose labor, aimed at warehouses and industrial clients who need a full bipedal worker. Different buyers, different timelines."
   },
   "10|3": {
-    "short": "Memo rolls around your house on wheels, helping with chores at counter height.\nApollo swaps out its own batteries to keep working long shifts in factories.",
+    "short": "Memo rolls around your house on wheels, helping with chores using two arms.\nApollo swaps out its own batteries to keep working long shifts in factories.",
     "long": "These two represent a real fork in humanoid development right now. Memo comes out of Sunday Robotics' bet that home robots don't need legs to be useful, keeping things simpler and cheaper for everyday users, while Apollo sits in the industrial lineage Apptronik built through its NASA Valkyrie work, aimed squarely at warehouse operators who need uptime over charm."
   },
   "11|3": {
@@ -36,7 +36,7 @@
     "long": "These two represent totally different bets on what near-term robotics should look like. Memo is Sunday's pitch for actual home utility, skipping bipedal complexity to focus on manipulation where it matters, while Unitree's G1 continues their lineage of making serious humanoid hardware accessible to researchers who'd otherwise be priced out. One's chasing a consumer future, the other's building the platform that future gets developed on."
   },
   "12|3": {
-    "short": "Memo is a small home helper on wheels that tidies up your house.\nH1 sprints faster than most people and works tough jobs in factories.",
+    "short": "Memo rolls around your home on wheels, tidying up with two capable arms.\nH1 sprints faster than most people and works tough jobs in factories.",
     "long": "These two represent completely different bets on where humanoids are headed. Memo is part of the new wave of domestic prototypes betting that homes want approachable, manipulation-focused helpers rather than full bipeds, while H1 sits in Unitree's growing lineup aimed at researchers and industrial buyers who need a shipping platform today. One's chasing a future product category, the other's already a workhorse you can order."
   },
   "15|3": {
@@ -44,7 +44,7 @@
     "long": "Memo represents the practical wing of home robotics — Sunday's bet that wheels and a torso are enough for most chores, keeping things affordable and reliable. Astribot S1 sits in the research-demo tier, chasing dexterity benchmarks for labs and integrators rather than living rooms. Different buyers, different timelines."
   },
   "17|3": {
-    "short": "Memo rolls on wheels to help around the house, keeping things small and practical.\nTiangong moves like a real person and can run at a solid jogging pace.",
+    "short": "Memo rolls on wheels to help around the house, keeping things practical.\nTiangong moves like a real person and can run at a solid jogging pace.",
     "long": "Memo comes out of the recent wave of US startups betting that homes don't actually need legs — wheels are cheaper, safer around kids, and free up engineering budget for the arms that do the real work. Tiangong sits on the opposite end as a state-backed research platform, meant to push China's humanoid locomotion stack forward and license pieces of it to other developers. Different audiences entirely: one wants to fold your laundry, the other wants to set the baseline for an industry."
   },
   "18|3": {
@@ -60,12 +60,12 @@
     "long": "Memo represents the newer wave of consumer-focused home robots, where Sunday Robotics is betting that wheels and a friendly dual-arm setup are enough for kitchen tasks without the cost or complexity of legs. Walker X comes from Ubtech's longer humanoid lineage, aimed squarely at industrial buyers who need bipedal mobility on real factory floors. The split really comes down to audience: one is a domestic helper still finding its feet, the other is a working machine already on payroll."
   },
   "13|3": {
-    "short": "Memo rolls around your home on wheels, helping with chores at kid-friendly height.\nGR-1 walks on two legs and is already being used in real hospitals.",
-    "long": "These two represent very different bets on where humanoids actually belong right now. Sunday Robotics is chasing the consumer dream with Memo, betting that a shorter wheeled helper is the realistic path into actual homes, while Fourier took the research-and-clinical route first, shipping GR-1 to labs and rehab centers where bipedal locomotion is the whole point. One's aimed at families eventually, the other at engineers and therapists today."
+    "short": "Memo rolls around your home on wheels, helping with everyday chores.\nGR-1 walks on two legs and is already being used in real hospitals.",
+    "long": "These two represent very different bets on where humanoids actually belong right now. Sunday Robotics is chasing the consumer dream with Memo, betting that a wheeled base with capable arms is the realistic path into actual homes, while Fourier took the research-and-clinical route first, shipping GR-1 to labs and rehab centers where bipedal locomotion is the whole point. One's aimed at families eventually, the other at engineers and therapists today."
   },
   "19|3": {
-    "short": "Memo is a small home helper built to tidy up your house using two arms on wheels.\nEve is a tall, heavy security robot already working real jobs at 1.4 meters per second.",
-    "long": "Memo represents the newer wave of consumer-focused home robotics, where Sunday is betting on compact, manipulation-first designs you'd actually want in a kitchen. Eve comes from 1X's earlier commercial track, aimed at facilities and night patrols rather than households, which is why it's bigger and already deployed. Different customers, different eras of the same broader push toward useful humanoids."
+    "short": "Memo is a home helper built to tidy up your house using two arms on wheels.\nEve is a tall, heavy security robot already working real jobs.",
+    "long": "Memo represents the newer wave of consumer-focused home robotics, where Sunday is betting on manipulation-first designs you'd actually want in a kitchen. Eve comes from 1X's earlier commercial track, aimed at facilities and night patrols rather than households, which is why it's bigger and already deployed. Different customers, different eras of the same broader push toward useful humanoids."
   },
   "20|3": {
     "short": "Memo rolls around on wheels to help with chores like cleaning and carrying stuff.\nAmeca has 52 moving parts that make its face look creepily human and realistic.",
@@ -196,11 +196,11 @@
     "long": "The gap here is really about intent and era: ASIMO was a 2000s research showcase from Honda meant to prove bipedal locomotion was even possible, while Oli arrives in a market where that's settled and the question is deployment cost. LimX is targeting labs, integrators, and service operators who need a working platform now, not a corporate moonshot. That shift — from prestige project to commodity tool — is basically the story of humanoids over the past decade."
   },
   "1|16": {
-    "short": "Kepler's K2 packs 40 moving joints, built tough for factory work.\nTesla's Optimus Gen 2 is lighter and moves faster on its feet.",
+    "short": "Kepler's K2 packs 52 moving joints, built tough for factory work.\nTesla's Optimus Gen 2 is lighter and moves faster on its feet.",
     "long": "The split here is really about who each company is chasing. Kepler is going after industrial buyers who want a workhorse on the floor sooner rather than later, leaning on China's manufacturing supply chain to keep costs down. Tesla's playing a longer game, refining dexterity and movement quality with an eye toward eventually scaling beyond the factory."
   },
   "16|2": {
-    "short": "K2 has 40 moving joints, giving it more ways to handle objects.\nElectric Atlas runs at 2.5 meters per second, making it seriously fast.",
+    "short": "K2 has 52 moving joints, giving it more ways to handle objects.\nElectric Atlas is built for warehouses, with 56 joints for full-body control.",
     "long": "These two represent very different bets on where humanoids are headed. Kepler is chasing the cost-down path out of China, aiming K2 at warehouse operators who need many capable bots cheap, while Boston Dynamics brings decades of locomotion research to a premium industrial product built for Hyundai-scale clients. One prioritizes accessibility, the other refinement."
   },
   "16|4": {
@@ -212,11 +212,11 @@
     "long": "Kepler is going after the same warehouse and assembly floor jobs that every humanoid startup is chasing right now, but their angle is hitting a price point operations managers will actually sign off on. Figure is playing a different game, courting partners like BMW with a platform that bets manipulation skill is what unlocks real work. Different bets on what factories will pay for first."
   },
   "16|8": {
-    "short": "K2 has 40 joints, giving it twice the movement options of most rivals.\nPhoenix runs on Carbon, an AI brain built to think through tasks like humans do.",
+    "short": "K2 has 52 joints, giving it twice the movement options of most rivals.\nPhoenix runs on Carbon, an AI brain built to think through tasks like humans do.",
     "long": "That gap between the two really comes down to philosophy. Kepler is going after the factory floor with a hardware-rich platform priced to actually scale into warehouses and assembly lines, leaning on dexterity to handle messy physical work. Sanctuary is coming from the other direction — fewer joints, but a cognition stack meant to generalize across tasks the way a human worker would, aimed more at enterprise pilots than mass deployment."
   },
   "10|16": {
-    "short": "K2 has 40 moving joints, giving it more flexibility for complex tasks.\nApollo lets you swap out batteries, so it keeps working without long stops.",
+    "short": "K2 has 52 moving joints, giving it more flexibility for complex tasks.\nApollo lets you swap out batteries, so it keeps working without long stops.",
     "long": "These two represent different bets on what factories actually need from humanoids. Kepler is leaning into dexterity and a lower price point to undercut Western competitors, while Apptronik, spun out of UT Austin's Human Centered Robotics Lab, is prioritizing uptime and serviceability for partners like Mercedes-Benz. One's chasing capability per dollar, the other's chasing reliability on a shift schedule."
   },
   "11|16": {
@@ -224,7 +224,7 @@
     "long": "The K2 reflects the current race to put adult-sized humanoids on warehouse floors, competing with the likes of Figure and Agility for industrial contracts where payload and reach actually matter. The G1, on the other hand, comes from Unitree's quadruped lineage and is aimed squarely at labs, developers, and demo work — you can buy one now and start coding. Different buyers, different timelines, same broader push."
   },
   "12|16": {
-    "short": "Kepler's K2 has 40 moving joints, making it way more flexible than most robots.\nUnitree's H1 can run faster than most people and is already being sold.",
+    "short": "Kepler's K2 has 52 moving joints, making it way more flexible than most robots.\nUnitree's H1 can run faster than most people and is already being sold.",
     "long": "The split here is really about strategy. Kepler is betting on dexterity, packing in enough joints to handle the fiddly bimanual work that warehouses and factory lines actually need, while Unitree is leaning on its quadruped heritage to ship a leaner, faster platform that researchers and integrators can buy today. One's chasing capability, the other's chasing availability."
   },
   "15|16": {
@@ -240,8 +240,8 @@
     "long": "K2 fits into the wave of Chinese humanoids chasing industrial deployment at a price point that actually pencils out for warehouses, so the extra mass and joint count make sense for repetitive load-bearing work. Menteebot comes from a different lineage — Israeli AI researchers prioritizing language models and perception over payload, aimed squarely at homes and human-facing tasks. Different buyers, different decade-defining bets on where humanoids earn their keep."
   },
   "16|5": {
-    "short": "Kepler's K2 packs 40 moving joints, making it more flexible than most robots.\nDigit already works real Amazon warehouses, proving it's ready for the real world.",
-    "long": "The gap here is really about timing and ambition. Digit represents years of iteration from a Cal spinoff that bet early on bipedal logistics, and it's earned its keep moving totes for Amazon partners since 2023. K2 is the newer challenger from China's growing humanoid scene, aiming for broader task range at a lower price point — promising on paper, but still proving itself outside the lab."
+    "short": "Kepler's K2 packs 52 moving joints, making it more flexible than most robots.\nDigit already works real Amazon warehouses, proving it's ready for the real world.",
+    "long": "The gap here is really about timing and ambition. Digit represents years of iteration from an Oregon State spinout that bet early on bipedal logistics, and it's earned its keep moving totes for Amazon partners since 2023. K2 is the newer challenger from China's growing humanoid scene, aiming for broader task range at a lower price point — promising on paper, but still proving itself outside the lab."
   },
   "16|9": {
     "short": "Kepler's K2 is a big, heavy factory robot built to keep costs down.\nWalker X is smaller, faster, and already being used in real workplaces.",
@@ -264,7 +264,7 @@
     "long": "The gap here really comes down to intent and era. Kepler's K2 is part of the current wave of cost-conscious humanoids racing to fill warehouse and assembly roles, where reliability and price-per-unit matter more than finesse. Armar-6 came out of a German research lab years earlier with a totally different goal: a dexterous partner for technicians servicing industrial equipment, which is why it carries so much more articulation despite being lighter."
   },
   "16|24": {
-    "short": "K2 has 40 joints, making it way more flexible than most factory robots.\nTalos has been real and shipping to labs since 2017.",
+    "short": "K2 has 52 joints, making it way more flexible than most factory robots.\nTalos has been real and shipping to labs since 2017.",
     "long": "The gap here is really about timing and intent. Talos came out of PAL's long line of European research platforms, built for universities and industrial labs that need a torque-controlled, well-documented machine they can actually buy and study today. K2 is chasing a different goal entirely — Kepler is targeting the cost-down humanoid wave alongside Unitree and Figure, betting that high joint counts and a cheaper bill of materials will land it on real factory floors."
   },
   "16|legend-2": {
@@ -276,7 +276,7 @@
     "long": "These two really show how much the field has shifted in a decade. Pepper came out of SoftBank's push to put a social robot in retail spaces and homes, leaning on expressive interaction over physical capability, while K2 reflects the current wave of cost-conscious humanoids aimed at warehouse and assembly work. Different buyers, different problems — one wants engagement, the other wants labor."
   },
   "16|26": {
-    "short": "K2 was built to work cheaply in factories, with 40 moving joints.\nOld Atlas did backflips and parkour stunts before Boston Dynamics retired it.",
+    "short": "K2 was built to work cheaply in factories, with 52 moving joints.\nOld Atlas did backflips and parkour stunts before Boston Dynamics retired it.",
     "long": "These two really represent different chapters of humanoid development. Atlas was a research platform from the DARPA era, built to push what hydraulics could do regardless of cost, while Kepler's K2 reflects the current race to get humanoids onto warehouse floors at a price companies will actually pay. One was for engineers chasing capability ceilings; the other is for operations managers filling shifts."
   },
   "16|25": {
@@ -297,7 +297,7 @@
   },
   "1|7": {
     "short": "Optimus Gen 2 moves faster and weighs less than most adults.\nFigure 02 has more joints, giving its hands finer, more precise control.",
-    "long": "Both landed in 2024, but they're aimed at slightly different futures. Tesla's betting on scale and eventual factory deployment within its own ecosystem, leaning on its EV manufacturing playbook to drive cost down. Figure, partnered with BMW and OpenAI, is courting industrial clients now with a heavier, joint-rich build tuned for real manipulation work."
+    "long": "Both landed in 2024, but they're aimed at slightly different futures. Tesla's betting on scale and eventual factory deployment within its own ecosystem, leaning on its EV manufacturing playbook to drive cost down. Figure, with BMW as a marquee pilot partner, is courting industrial clients now with a heavier, joint-rich build tuned for real manipulation work."
   },
   "1|8": {
     "short": "Optimus moves faster and has more flexible hands for detailed tasks.\nPhoenix runs smart AI software that helps it figure out new jobs quickly.",
@@ -344,7 +344,7 @@
     "long": "The split here is really about timeline and intent. Tesla's still iterating on Optimus as a research platform aimed at general-purpose labor down the road, while 1X already has Eve deployed at client sites, leaning on a wheeled base because it's reliable and cheaper than solving bipedal locomotion. Different bets for different buyers."
   },
   "1|20": {
-    "short": "Optimus Gen 2 can walk at 2.5 meters per second with surprisingly nimble hands.\nAmeca's 52 moving parts let its face mimic human expressions almost perfectly.",
+    "short": "Optimus Gen 2 walks at human pace with surprisingly nimble hands.\nAmeca's 61 moving parts let its face mimic human expressions almost perfectly.",
     "long": "These two are chasing completely different goals, which is why they look similar but barely overlap. Tesla wants Optimus on factory floors and eventually in homes, so the engineering centers on locomotion, payload, and dexterity for real labor. Ameca came out of Engineered Arts' long background in animatronics and is built for research labs, expos, and anyone studying how people react to lifelike machines."
   },
   "1|23": {
@@ -380,7 +380,7 @@
     "long": "The split here is really about where humanoids are heading in 2024: Boston Dynamics is leveraging two decades of Atlas R&D to chase warehouse and factory contracts, while 1X is betting on the consumer side with a soft, tendon-driven build that won't hurt anyone if it bumps into your kid. Different customers, different safety priorities, and honestly different bets on which market matures first."
   },
   "2|7": {
-    "short": "Electric Atlas can sprint at 2.5 meters per second, making it seriously fast.\nFigure 02 has 40 moving joints, so its hands can handle delicate tasks better.",
+    "short": "Electric Atlas has 56 joints for full-body control, built for factory floors.\nFigure 02 has 28 moving joints, with hands tuned for delicate tasks.",
     "long": "Both landed in 2024, but they're chasing different futures. Atlas leans on Boston Dynamics' decades of locomotion research, repurposed for warehouse and factory work where speed and payload matter. Figure 02 is built around AI-driven manipulation, aimed at general-purpose tasks where finger-level precision wins over raw athleticism."
   },
   "2|8": {
@@ -400,7 +400,7 @@
     "long": "The split here is really about philosophy. Boston Dynamics is leveraging two decades of Atlas R&D to chase dexterous manipulation for factory partners like Hyundai, while Unitree is doing what they did with quadrupeds — shipping a capable, affordable platform to researchers and developers who want a humanoid they can actually buy today."
   },
   "15|2": {
-    "short": "Electric Atlas can run at 2.5 meters per second and handle tough factory work.\nAstribot S1 can pour drinks and cook, moving its arms with surprising precision.",
+    "short": "Electric Atlas is built for tough factory work, with 56 joints for full-body control.\nAstribot S1 can pour drinks and cook, moving its arms with surprising precision.",
     "long": "These two represent the 2024 split in humanoid development: Boston Dynamics is leveraging decades of locomotion research to court warehouse and manufacturing clients, while Astribot, a younger Chinese startup, is betting on fine manipulation for service and home settings. The contrast really comes down to whether the near-term payoff is heavy logistics or skilled hands, and right now nobody's nailed both."
   },
   "17|2": {
@@ -416,7 +416,7 @@
     "long": "The gap here is really about timing and intent. Boston Dynamics is showing what's technically possible with their electric platform, drawing on decades of bipedal research, while Agility took a leaner path and got Digit clocking in at warehouses first. One's a glimpse of where humanoids are headed; the other's already on the payroll."
   },
   "2|9": {
-    "short": "Electric Atlas moves at 2.5 m/s and was built to replace heavy hydraulic machines.\nWalker X has 41 joints and already works in real factories right now.",
+    "short": "Electric Atlas has 56 joints and was built to replace heavy hydraulic machines.\nWalker X has 41 joints and already works in real factories right now.",
     "long": "The gap here is really about timing and philosophy. Atlas is Boston Dynamics' clean-sheet pivot away from hydraulics, aimed squarely at Hyundai's factory floors but still in prototype phase, while Ubtech has been quietly shipping Walker units into Chinese manufacturing and service roles for a couple of years. One is the research lineage finally going commercial; the other is already iterating on customer feedback."
   },
   "13|2": {
@@ -460,7 +460,7 @@
     "long": "These two represent totally different eras and goals. ASIMO came from an era when just getting a robot to walk smoothly and wave at visitors was groundbreaking, which is why Honda packed it with joints for expressive movement in controlled demos. Electric Atlas skips all that and targets warehouses and manufacturing lines, where Boston Dynamics already has a foothold with Spot and Stretch."
   },
   "4|7": {
-    "short": "Neo weighs just 30 kg, making it light enough to work safely around people.\nFigure 02 has 40 moving joints, giving its hands serious grabbing and handling ability.",
+    "short": "Neo weighs just 30 kg, making it light enough to work safely around people.\nFigure 02 has 28 moving joints, giving its hands serious grabbing and handling ability.",
     "long": "Both landed in 2024, but they're chasing different rooms in the house — literally. 1X built Neo for domestic settings where bumping into a kid or grandparent can't end badly, leaning on its softer, lighter frame, while Figure is aimed squarely at warehouse and industrial clients who need a machine that can actually manipulate tools and parts. Same humanoid form factor, very different customers and engineering priorities behind it."
   },
   "4|8": {
@@ -540,7 +540,7 @@
     "long": "Comparing these two is really comparing eras of humanoid robotics. ASIMO came out of Honda's research push in the late '90s and early 2000s, when just getting a robot to climb stairs reliably was a milestone, and it was never meant for sale — it was a rolling demo of what was possible. Neo represents the current wave, where companies like 1X are aiming squarely at consumers, betting that softer, lighter builds and AI-driven behavior can finally put a humanoid in your living room."
   },
   "7|8": {
-    "short": "Figure 02 has 40 joints, making its hands and body move way more precisely.\nPhoenix runs on Carbon, an AI brain designed to learn almost any job fast.",
+    "short": "Figure 02 has 28 joints, making its hands and body move way more precisely.\nPhoenix runs on Carbon, an AI brain designed to learn almost any job fast.",
     "long": "Both arrived in 2024 as the humanoid race heated up, but they're chasing slightly different goals. Figure is leaning hard into physical capability and OpenAI-backed perception for warehouse and manufacturing clients, while Sanctuary's Vancouver team is betting that smarter cognition matters more than extra joints for general labor deployment. It's a classic split: refine the body, or refine the mind."
   },
   "10|7": {
@@ -548,11 +548,11 @@
     "long": "Both landed in 2024 as the humanoid race heated up, but they're chasing different corners of the same market. Figure's betting on manipulation smarts to handle varied tasks alongside people, while Apptronik leans on its NASA Valkyrie roots to build something factory floors can actually keep running through multiple shifts. One's aimed at general-purpose dexterity, the other at uptime and serviceability for logistics partners like Mercedes and GXO."
   },
   "11|7": {
-    "short": "Figure 02 has 40 moving joints, making its hands incredibly precise and human-like.\nG1 is small, cheap, and already being sold to real researchers today.",
+    "short": "Figure 02 has 28 moving joints, making its hands incredibly precise and human-like.\nG1 is small, cheap, and already being sold to real researchers today.",
     "long": "Both landed in 2024 but they're aimed at totally different buyers: Figure is chasing warehouse and factory contracts where fine manipulation pays off, while Unitree is leaning on its quadruped legacy to put a working humanoid platform in university labs at a fraction of the cost. That gap reflects two real strategies in the current humanoid wave — bet big on full-stack capability, or ship something useful now and iterate."
   },
   "12|7": {
-    "short": "Figure 02 has 40 moving joints, making its hands incredibly precise for detailed tasks.\nH1 is surprisingly light for its size and can run faster than most people.",
+    "short": "Figure 02 has 28 moving joints, making its hands incredibly precise for detailed tasks.\nH1 is surprisingly light for its size and can run faster than most people.",
     "long": "The split here really comes down to intent. Figure's betting on commercial deployment in warehouses and eventually homes, where finger-level dexterity matters for handling varied objects, while Unitree is leaning on their quadruped lineage to deliver an affordable, agile platform that researchers and developers can actually buy today. One's chasing general-purpose labor, the other's opening the humanoid space to a wider crowd."
   },
   "15|7": {
@@ -564,11 +564,11 @@
     "long": "Both landed in 2024 but they're chasing different goals: Figure 02 is built for warehouse and factory work, which is why the manipulation focus matters since clients like BMW need robots that can actually handle parts. Tiangong comes out of a state-backed Beijing lab and is positioned more as an open research platform, with the lighter frame and locomotion work feeding into a shared codebase Chinese developers can build on. So one's a commercial product hunting real customers, the other's national infrastructure for an entire ecosystem."
   },
   "18|7": {
-    "short": "Figure 02 is heavier and has 40 moving joints for detailed hand work.\nMenteebot is lighter and built to understand your voice commands at home.",
+    "short": "Figure 02 is heavier and has 28 moving joints for detailed hand work.\nMenteebot is lighter and built to understand your voice commands at home.",
     "long": "Both landed in 2024, but they're chasing pretty different futures. Figure 02 is aimed at warehouses and industrial partners like BMW, leaning on its hardware lineage to handle precise factory tasks, while Menteebot is targeting living rooms with a conversational, AI-first approach meant for everyday users who'd rather just talk to it."
   },
   "5|7": {
-    "short": "Figure 02 has 40 moving joints, giving its hands seriously precise control.\nDigit already works real shifts at Amazon warehouses, moving packages around.",
+    "short": "Figure 02 has 28 moving joints, giving its hands seriously precise control.\nDigit already works real shifts at Amazon warehouses, moving packages around.",
     "long": "The split here is really about timing and intent. Figure's betting on general-purpose dexterity down the line, leaning on its OpenAI partnership and a fresh 2024 redesign aimed at eventual home and factory work. Agility took the opposite path — narrow the scope, ship the robot, and let warehouse contracts fund the next iteration."
   },
   "7|9": {
@@ -592,7 +592,7 @@
     "long": "The gap here is really about generations and goals. Armar-6 came out of KIT's long academic research lineage, designed as a testbed for human-robot collaboration in maintenance scenarios, while Figure 02 represents the current commercial wave betting on general-purpose humanoids backed by modern AI models. One is a research platform aimed at labs and industrial partners; the other is chasing actual deployment in warehouses and factories."
   },
   "24|7": {
-    "short": "Figure 02 has 40 moving joints, giving its hands really precise control.\nTalos has been sold to real labs and factories since 2017.",
+    "short": "Figure 02 has 28 moving joints, giving its hands really precise control.\nTalos has been sold to real labs and factories since 2017.",
     "long": "The gap here is really about timing and intent. Talos came out of PAL's long European research lineage, built as a sturdy, torque-controlled platform that universities and industrial R&D teams could actually buy and tinker with. Figure 02 is the newer Silicon Valley bet, leaning hard into AI-driven manipulation for warehouse and commercial work, and it's still proving itself outside the lab."
   },
   "7|legend-2": {
@@ -604,7 +604,7 @@
     "long": "Pepper came out of a moment when companies thought social robots would handle retail greetings and elder care, and SoftBank leaned hard into approachable design over raw capability. Figure 02 belongs to the current wave chasing warehouse and factory labor, where the bet is that LLM-driven humanoids can finally do useful physical tasks. Different decades, different customers, and honestly different definitions of what a humanoid is for."
   },
   "26|7": {
-    "short": "Figure 02 has 40 moving joints, letting its hands handle objects pretty carefully.\nAtlas could do backflips and parkour, but Boston Dynamics shut it down in 2024.",
+    "short": "Figure 02 has 28 moving joints, letting its hands handle objects pretty carefully.\nAtlas could do backflips and parkour, but Boston Dynamics shut it down in 2024.",
     "long": "These two really represent different chapters of humanoid robotics. Atlas was a research platform born from DARPA-era ambitions, built to prove hydraulics could move a heavy machine through chaotic terrain, while Figure 02 is aimed squarely at commercial deployment in warehouses and factories. One was about pushing limits, the other about earning its keep."
   },
   "25|7": {
@@ -681,10 +681,10 @@
   },
   "25|8": {
     "short": "Phoenix runs on a smart AI brain that helps it understand and do everyday tasks.\nRoboy moves using tiny cables like tendons, built to study how human muscles work.",
-    "long": "These two represent completely different bets on what a humanoid should be. Phoenix is a commercial play aimed at labor automation, where Sanctuary's whole pitch is software intelligence dropped into a fairly conventional rigid body. Roboy came out of a German research lineage focused on biomimetics, intended for university labs studying how bodies actually move rather than for any workplace deployment."
+    "long": "These two represent completely different bets on what a humanoid should be. Phoenix is a commercial play aimed at labor automation, where Sanctuary's whole pitch is software intelligence dropped into a fairly conventional rigid body. Roboy came out of a Swiss research lineage focused on biomimetics, intended for university labs studying how bodies actually move rather than for any workplace deployment."
   },
   "8|legend-1": {
-    "short": "Phoenix uses AI to think through tasks the way a human worker would.\nASIMO could run, climb stairs, and even kick a soccer ball back in 2000.",
+    "short": "Phoenix uses AI to think through tasks the way a human worker would.\nASIMO could run, climb stairs, and kick a soccer ball during its Honda research run.",
     "long": "The gap here is really about what each machine was built to prove. ASIMO came out of Honda's decades-long bet on mobility research, aimed at showing a robot could move through human spaces gracefully, while Phoenix is squarely targeted at commercial labor, with Sanctuary betting that reasoning software matters more than fancy footwork for actual workplace deployment."
   },
   "10|11": {
@@ -1184,7 +1184,7 @@
     "long": "The gap here is really about intent and decade. Eve is part of the current wave of commercial humanoids built to actually deploy and earn revenue, leaning on wheels because they're cheaper and more reliable than legs for indoor patrols. Roboy came out of an older European research tradition focused on understanding biology through hardware, so it's aimed at academics, not customers."
   },
   "19|legend-1": {
-    "short": "Eve rolls around on wheels, making it steady and quiet for indoor jobs.\nASIMO walked on two legs and ran up to 2.7 meters per second.",
+    "short": "Eve rolls around on wheels, making it steady and quiet for indoor jobs.\nASIMO walked on two legs and ran up to 2.5 meters per second.",
     "long": "The gap here is really about goals and eras. ASIMO was Honda's research showcase, a two-decade project to prove a machine could walk, climb stairs, and move like us — impressive, but never meant for paying customers. Eve skips that entire problem with a wheeled base, trading mobility range for reliability and a price point that actually fits security contracts and warehouse floors today."
   },
   "20|23": {
@@ -1196,7 +1196,7 @@
     "long": "The split here is really about what each company decided humanoids were for. Engineered Arts came out of animatronics and theme park work, so Ameca is tuned for face-to-face interaction in labs, museums, and demos, while PAL's Talos sits in the same lineage as Atlas-style research platforms aimed at manipulation and locomotion studies. If you're researching social cues, you pick Ameca; if you're testing whole-body control or industrial tasks, Talos is the workhorse."
   },
   "20|legend-2": {
-    "short": "Ameca can move 52 different body parts to show realistic emotions and gestures. Sophia became world-famous in 2016 after Saudi Arabia made her an actual citizen.",
+    "short": "Ameca's face moves with 27 actuators to show realistic emotions and gestures. Sophia became world-famous in 2017 after Saudi Arabia made her an actual citizen.",
     "long": "Five years separates these two, and it shows in their priorities. Sophia came out of Hanson's push to make a recognizable face for AI in the public eye, leaning hard on conversational presence for media and events, while Ameca reflects Engineered Arts' background in animatronics, built mainly as a research and demo platform for studios and labs working on human-robot interaction."
   },
   "20|21": {
@@ -1269,7 +1269,7 @@
   },
   "25|legend-2": {
     "short": "Sophia became famous by talking to people and even got citizenship in Saudi Arabia.\nRoboy moves using cables and tendons, just like real muscles in a human body.",
-    "long": "These two come from completely different corners of the humanoid world. Sophia is built for the spotlight, designed by Hanson to test how people connect with expressive faces and conversational AI, which is why she's ended up at conferences and on talk shows. Roboy, out of a Munich research group, is more of a working lab platform — academics use it to study how tendon-driven mechanics actually compare to human anatomy."
+    "long": "These two come from completely different corners of the humanoid world. Sophia is built for the spotlight, designed by Hanson to test how people connect with expressive faces and conversational AI, which is why she's ended up at conferences and on talk shows. Roboy, out of a Zurich research group, is more of a working lab platform — academics use it to study how tendon-driven mechanics actually compare to human anatomy."
   },
   "legend-1|legend-2": {
     "short": "Sophia can hold a conversation and even became a citizen of Saudi Arabia.\nASIMO could run, climb stairs, and kick a soccer ball on its own.",
