@@ -142,7 +142,16 @@
       "Bash(ffmpeg -i \"/Users/royjad/Downloads/dice-game.gif\" -vsync 0 dice-game-frame-%03d.png)",
       "Bash(cp /tmp/dice-roll-frame-001.png /Users/royjad/CODE/humanoid-index/public/dice-still.png)",
       "Bash(cp /tmp/dice-game-frame-001.png /Users/royjad/CODE/humanoid-index/public/dice-flat-still.png)",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "Bash(git status *)",
+      "WebFetch(domain:engineeredarts.com)",
+      "WebFetch(domain:www.1x.tech)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:humanoid.guide)",
+      "Bash(dig +short humanoid-index.com NS)",
+      "Bash(dig +short humanoid-index.com A)",
+      "Bash(dig +short www.humanoid-index.com)",
+      "Bash(npm i *)"
     ],
     "deny": [],
     "ask": []

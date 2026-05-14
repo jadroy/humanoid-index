@@ -31,6 +31,7 @@ import {
   Open_Sans,
 } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 import SearchModal from "@/components/SearchModal";
 import DevAnnotate from "@/components/DevAnnotate";
 
@@ -120,6 +121,7 @@ export default function RootLayout({
         {children}
         <SearchModal />
         {process.env.NODE_ENV === "development" && <DevAnnotate />}
+        <Analytics />
       </body>
     </html>
   );
