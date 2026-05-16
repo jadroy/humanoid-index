@@ -25,13 +25,13 @@ export async function generateMetadata({
     const left = findHumanoid(ids[0]);
     const right = findHumanoid(ids[1]);
     if (left && right) {
-      const title = `${left.name} vs ${right.name} | Humanoid Index`;
+      const title = `${left.name} vs ${right.name}`;
       const description = `Compare ${left.name} (${left.manufacturer}) and ${right.name} (${right.manufacturer}) side by side.`;
       const ogImage = `${baseUrl}/api/og/${left.id}?compare=${right.id}`;
       return {
         title,
         description,
-        openGraph: { title, description, images: [ogImage] },
+        openGraph: { title, description, images: [ogImage], siteName: "Humanoid Index" },
         twitter: { card: "summary_large_image", title, description, images: [ogImage] },
       };
     }
@@ -46,7 +46,7 @@ export async function generateMetadata({
   if (params.h) {
     const bot = findHumanoid(params.h);
     if (bot) {
-      const title = `${bot.name} | Humanoid Index`;
+      const title = bot.name;
       const description = [
         bot.manufacturer,
         bot.year && `(${bot.year})`,
@@ -58,7 +58,7 @@ export async function generateMetadata({
       return {
         title,
         description,
-        openGraph: { title, description, images: [ogImage] },
+        openGraph: { title, description, images: [ogImage], siteName: "Humanoid Index" },
         twitter: { card: "summary_large_image", title, description, images: [ogImage] },
       };
     }
@@ -71,7 +71,7 @@ export async function generateMetadata({
   return {
     title,
     description,
-    openGraph: { title, description, images: [ogImage] },
+    openGraph: { title, description, images: [ogImage], siteName: "Humanoid Index" },
     twitter: { card: "summary_large_image", title, description, images: [ogImage] },
   };
 }

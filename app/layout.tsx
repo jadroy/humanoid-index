@@ -32,6 +32,7 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
+import Script from "next/script";
 import SearchModal from "@/components/SearchModal";
 import DevAnnotate from "@/components/DevAnnotate";
 
@@ -122,6 +123,14 @@ export default function RootLayout({
         <SearchModal />
         {process.env.NODE_ENV === "development" && <DevAnnotate />}
         <Analytics />
+        <Script
+          async
+          src="https://plausible.io/js/pa-wycquRzVZTgskvpkEoQAV.js"
+          strategy="afterInteractive"
+        />
+        <Script id="plausible-init" strategy="afterInteractive">
+          {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init();`}
+        </Script>
       </body>
     </html>
   );

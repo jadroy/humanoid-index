@@ -1,9 +1,11 @@
 "use client";
 
 import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from "react";
+import * as React from "react";
 import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
-import { Pause, Play, Ruler } from "lucide-react";
+import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles } from "lucide-react";
+import * as FlagComponents from "country-flag-icons/react/1x1";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -32,6 +34,7 @@ import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { getRobotDescription } from "@/lib/robotDescription";
 import { SURFACE } from "@/lib/surface";
+import { withUtm } from "@/lib/outbound";
 import {
   LayoutSwitcher,
   NAV_STYLES,
@@ -458,7 +461,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
               )}
               {h.purchaseUrl && (
                 <a
-                  href={h.purchaseUrl}
+                  href={withUtm(h.purchaseUrl, h.id)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center mt-4 px-5 py-2 text-[12px] font-medium tracking-wide transition-colors hover:bg-neutral-800"
@@ -660,43 +663,144 @@ function ScaleToggle({ active, onToggle }: { active: boolean; onToggle: () => vo
   );
 }
 
-function UnitsToggle({ imperial, onToggle }: { imperial: boolean; onToggle: () => void }) {
-  const baseFont: React.CSSProperties = {
-    fontFamily: "var(--font-geist-sans)",
-    fontSize: 10.5,
-    fontWeight: 500,
-    letterSpacing: "0.02em",
-    lineHeight: 1,
-    textTransform: "uppercase" as const,
-  };
-  const click = (e: React.MouseEvent) => { e.stopPropagation(); onToggle(); };
-  const labelStyle = (active: boolean): React.CSSProperties => ({
-    ...baseFont,
-    border: "none", background: "transparent", padding: 0, margin: 0,
-    color: active ? "var(--c-ink-body)" : "var(--c-ink-subtle)",
-    opacity: active ? 1 : 0.55,
-    cursor: "pointer",
-    transition: "color 160ms ease, opacity 160ms ease",
-    WebkitTapHighlightColor: "transparent",
-  });
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-      {(["cm", "in"] as const).map((u, i) => {
-        const active = (u === "in") === imperial;
-        return (
-          <Fragment key={u}>
-            {i === 1 && <span aria-hidden style={{ ...baseFont, color: "var(--c-ink-subtle)", opacity: 0.35 }}>/</span>}
-            <button type="button" onClick={click} aria-label={`Switch to ${u}`} style={labelStyle(active)}>{u}</button>
-          </Fragment>
-        );
-      })}
-    </span>
-  );
-}
-
 // Plain colored dot used inside the status pill.
 function StatusDot({ color, size = 10 }: { color: string; size?: number }) {
   return <span aria-hidden style={{ width: size, height: size, borderRadius: 999, background: color, flexShrink: 0 }} />;
+}
+
+// ISO 3166-1 alpha-2 codes for the country names used in data/humanoids.ts.
+// Compound origins like "Norway / USA" split on slash and yield two flags.
+const COUNTRY_ISO: Record<string, string> = {
+  USA: "US",
+  China: "CN",
+  Japan: "JP",
+  Germany: "DE",
+  UK: "GB",
+  Canada: "CA",
+  Israel: "IL",
+  Norway: "NO",
+  "Hong Kong": "HK",
+  Spain: "ES",
+  Switzerland: "CH",
+};
+function countryToIsoCodes(country: string): string[] {
+  return country.split(/\s*\/\s*/).map((part) => COUNTRY_ISO[part]).filter(Boolean);
+}
+function CircleFlag({ iso, size = 13 }: { iso: string; size?: number }) {
+  const Flag = (FlagComponents as Record<string, React.ComponentType<React.SVGAttributes<SVGElement>>>)[iso];
+  if (!Flag) return null;
+  return (
+    <span
+      aria-hidden
+      style={{
+        display: "inline-block", verticalAlign: "-2px",
+        width: size, height: size, borderRadius: "50%", overflow: "hidden",
+        boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.15)",
+      }}
+    >
+      <Flag style={{ width: size, height: size, display: "block" }} />
+    </span>
+  );
+}
+const USE_CASE_ICONS: Record<string, React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>> = {
+  Home: House,
+  Industrial: Factory,
+  Research: FlaskConical,
+  Logistics: Package,
+  Security: Shield,
+  Service: MessageCircle,
+  Showcase: Sparkles,
+};
+function UseValue({ useCase, valueStyle }: { useCase: string; valueStyle: React.CSSProperties }) {
+  const Icon = USE_CASE_ICONS[useCase];
+  return (
+    <span style={{ ...valueStyle, display: "inline-flex", alignItems: "center", gap: 7 }}>
+      {Icon && (
+        <Icon
+          size={13}
+          strokeWidth={1.6}
+          style={{ display: "inline-block", verticalAlign: "-2px", color: "var(--c-ink-muted)", flexShrink: 0 }}
+        />
+      )}
+      <span>{useCase}</span>
+    </span>
+  );
+}
+// Truncated value with an Apple-style edge fade + hover marquee. The
+// content reveals over ~1.4s on hover (after a small wait), then
+// settles back when the cursor leaves. No-op when content already fits.
+function MarqueeValue({ children, align, style }: { children: React.ReactNode; align: "left" | "right"; style?: React.CSSProperties }) {
+  const outerRef = useRef<HTMLSpanElement>(null);
+  const innerRef = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(0);
+  const [hover, setHover] = useState(false);
+  useEffect(() => {
+    const measure = () => {
+      const o = outerRef.current, i = innerRef.current;
+      if (!o || !i) return;
+      setOverflow(Math.max(0, i.scrollWidth - o.clientWidth));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (outerRef.current) ro.observe(outerRef.current);
+    return () => ro.disconnect();
+  }, [children]);
+  const isOverflow = overflow > 0;
+  // Right-anchored text would truncate the START of a word, which reads
+  // confusingly ("Research" → "search"). When the value overflows, fall
+  // back to left-anchored regardless of the requested align — start of
+  // the word stays visible, the end truncates and the marquee reveals it.
+  const effectiveAlign = isOverflow ? "left" : align;
+  const shiftPx = hover && isOverflow ? -overflow : 0;
+  const maskDir = effectiveAlign === "left" ? "right" : "left";
+  return (
+    <span
+      ref={outerRef}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        ...style,
+        display: "flex",
+        justifyContent: effectiveAlign === "left" ? "flex-start" : "flex-end",
+        overflow: "hidden",
+        maxWidth: "100%",
+        WebkitMaskImage: isOverflow && !hover ? `linear-gradient(to ${maskDir}, #000 88%, transparent 100%)` : undefined,
+        maskImage: isOverflow && !hover ? `linear-gradient(to ${maskDir}, #000 88%, transparent 100%)` : undefined,
+        transition: "mask-image 300ms ease, -webkit-mask-image 300ms ease",
+      }}
+    >
+      <span
+        ref={innerRef}
+        style={{
+          display: "inline-block",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+          transform: `translateX(${shiftPx}px)`,
+          transition: "transform 1.4s cubic-bezier(0.32, 0.72, 0, 1) 0.3s",
+        }}
+      >
+        {children}
+      </span>
+    </span>
+  );
+}
+function CountryValue({ country, valueStyle }: { country: string; valueStyle: React.CSSProperties }) {
+  const isos = countryToIsoCodes(country);
+  if (isos.length === 0) return <span style={valueStyle}>{country}</span>;
+  return (
+    <span
+      title={country}
+      aria-label={country}
+      style={{ ...valueStyle, cursor: "default" }}
+    >
+      {isos.map((iso, i) => (
+        <Fragment key={iso}>
+          {i > 0 && <span aria-hidden style={{ display: "inline-block", width: 3 }} />}
+          <CircleFlag iso={iso} />
+        </Fragment>
+      ))}
+    </span>
+  );
 }
 
 const STATUS_LEGEND: Array<{ label: string; color: string }> = [
@@ -816,116 +920,6 @@ function StatusLegendModal({ children, style }: { children: React.ReactNode; sty
         document.body,
       )}
     </>
-  );
-}
-
-// Tiny ⋯ trigger that opens a frosted-dark popover with stats-area
-// settings. Currently houses just the cm/in toggle; structured as a
-// menu so we can add density / sort / etc. without redoing the chrome.
-function StatsOptions({ imperial, onToggleUnits }: { imperial: boolean; onToggleUnits: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [hover, setHover] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-  const baseFont: React.CSSProperties = {
-    fontFamily: "var(--font-geist-sans)",
-    fontSize: 10.5, fontWeight: 500, letterSpacing: "0.02em",
-    lineHeight: 1, textTransform: "uppercase" as const,
-  };
-  return (
-    <div ref={wrapRef} style={{ position: "relative", display: "inline-flex" }}>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}
-        aria-label="Stats options"
-        aria-expanded={open}
-        className="cursor-pointer pointer-events-auto"
-        style={{
-          display: "inline-flex", alignItems: "center", justifyContent: "center",
-          width: 24, height: 24, borderRadius: 999,
-          background: "transparent",
-          border: `1px solid ${open ? "rgba(0,0,0,0.28)" : hover ? "rgba(0,0,0,0.22)" : "rgba(0,0,0,0.14)"}`,
-          color: open || hover ? "var(--c-ink-body)" : "var(--c-ink-muted)",
-          transition: "border-color 160ms ease, color 160ms ease",
-          WebkitTapHighlightColor: "transparent",
-        }}
-      >
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
-          <circle cx="3.4" cy="8" r="1.1" />
-          <circle cx="8" cy="8" r="1.1" />
-          <circle cx="12.6" cy="8" r="1.1" />
-        </svg>
-      </button>
-      {open && (
-        <div
-          role="menu"
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            right: 0,
-            minWidth: 180,
-            background: "rgba(38, 38, 38, 0.86)",
-            backdropFilter: "blur(28px) saturate(180%)",
-            WebkitBackdropFilter: "blur(28px) saturate(180%)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            borderRadius: 12,
-            boxShadow: "0 14px 32px rgba(0,0,0,0.24), 0 2px 6px rgba(0,0,0,0.10)",
-            padding: 6,
-            zIndex: 50,
-          }}
-        >
-          <div
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "7px 10px", gap: 16,
-              fontFamily: "var(--font-geist-sans)", fontSize: 12.5, fontWeight: 500,
-              color: "rgba(255,255,255,0.95)", letterSpacing: "-0.005em",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <span>Units</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              {(["cm", "in"] as const).map((u, i) => {
-                const active = (u === "in") === imperial;
-                return (
-                  <Fragment key={u}>
-                    {i === 1 && <span aria-hidden style={{ ...baseFont, color: "rgba(255,255,255,0.35)" }}>/</span>}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); onToggleUnits(); }}
-                      aria-label={`Switch to ${u}`}
-                      style={{
-                        ...baseFont,
-                        background: "transparent", border: "none", padding: 0,
-                        color: active ? "#fff" : "rgba(255,255,255,0.5)",
-                        cursor: "pointer",
-                        transition: "color 160ms ease",
-                        WebkitTapHighlightColor: "transparent",
-                      }}
-                    >{u}</button>
-                  </Fragment>
-                );
-              })}
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -2331,8 +2325,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // Sunday Memo isn't for sale — the founding-family beta is the only way in,
             // so the cost pill becomes a link to their beta program instead of a price.
             const isSundayBeta = h.manufacturer === "Sunday Robotics";
-            const buyHref = isSundayBeta ? "https://www.sunday.ai/beta-program" : (h.purchaseUrl || undefined);
-            const visitHref = !buyHref ? (h.infoUrl || h.manufacturerUrl) : undefined;
+            const buyHref = withUtm(isSundayBeta ? "https://www.sunday.ai/beta-program" : (h.purchaseUrl || undefined), h.id);
+            const visitHref = !buyHref ? withUtm(h.infoUrl || h.manufacturerUrl, h.id) : undefined;
             const href = buyHref || visitHref;
             const hasCost = h.cost && h.cost !== "N/A";
             const hasUrl = !!href;
@@ -2839,20 +2833,59 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               </div>
             );
             const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
-            const statsHeader = (
-              <div className="flex items-center" style={{ marginBottom: 10 }}>
-                <UnitsToggle imperial={useImperial} onToggle={() => onUseImperialChange?.(!useImperial)} />
+            const unitsPillFont: React.CSSProperties = {
+              fontFamily: "var(--font-geist-sans)",
+              fontSize: 10.5, fontWeight: 500, letterSpacing: "0.02em",
+              lineHeight: 1, textTransform: "uppercase" as const,
+            };
+            const unitsDivider = (
+              <div className="flex items-center" style={{ gap: 10, margin: "6px 0" }}>
+                <div aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.05)" }} />
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  {(["cm", "in"] as const).map((u, i) => {
+                    const active = (u === "in") === useImperial;
+                    return (
+                      <Fragment key={u}>
+                        {i === 1 && <span aria-hidden style={{ ...unitsPillFont, color: "var(--c-ink-subtle)", opacity: 0.35 }}>/</span>}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onUseImperialChange?.(u === "in"); }}
+                          aria-label={`Switch to ${u}`}
+                          className="cursor-pointer pointer-events-auto"
+                          style={{
+                            ...unitsPillFont,
+                            border: "none", background: "transparent", padding: 0, margin: 0,
+                            color: active ? "var(--c-ink-body)" : "var(--c-ink-subtle)",
+                            opacity: active ? 1 : 0.55,
+                            transition: "color 160ms ease, opacity 160ms ease",
+                            WebkitTapHighlightColor: "transparent",
+                          }}
+                        >{u}</button>
+                      </Fragment>
+                    );
+                  })}
+                </span>
+                <div aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.05)" }} />
               </div>
             );
             const statsCard = (
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px" }}>
                 <div className="flex flex-col" style={{ gap: sectionContentGap }}>
                   {renderStatRow("Year", h.year ?? null, (v) => `${v}`)}
-                  {renderStatRow("Country", h.country ?? null, (v) => `${v}`)}
+                  <div style={rowStyle}>
+                    <span style={dimmed}>Country</span>
+                    {h.country
+                      ? <CountryValue country={h.country} valueStyle={valueStyle} />
+                      : <span style={missingValueStyle}>—</span>}
+                  </div>
+                  {unitsDivider}
                   {renderStatRow("Height", h.height, fmt.height)}
                   {renderStatRow("Weight", h.weight, fmt.weight)}
                   {renderStatRow("DOF", h.dof, (v) => `${v}`)}
                   {renderStatRow("Speed", h.maxSpeed, fmt.speed)}
+                  <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
+                  {renderStatRow("Use", h.useCase ?? null, (v) => `${v}`)}
+                  {renderStatRow("Drive", h.drive ?? null, (v) => `${v}`)}
                   {renderStatRow("Price", priceChipText ?? null, (v) => `${v}`)}
                   <div style={{ ...rowStyle, alignItems: "center" }}>
                     <span style={dimmed}>Status</span>
@@ -3099,7 +3132,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           if (hideUnbuyable && !h.purchaseUrl) return null;
           const priceLabel = h.cost && h.cost !== "N/A" ? h.cost : null;
           const leadIn = h.status === "In Production" ? "From" : "Est.";
-          const href = h.purchaseUrl;
+          const href = withUtm(h.purchaseUrl, h.id);
           const pillBg = statPillBg;
           const pillBackdrop: string | undefined = undefined;
 
@@ -3241,13 +3274,52 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           );
 
           const compareRow = (label: string, valL: string | null, valR: string | null) => (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
-              <span className="tabular-nums" style={{ ...(valL ? valueStyle : missingValueStyle), textAlign: "left" as const }}>{valL || "—"}</span>
-              <span style={{ ...dimmed, textAlign: "center" as const }}>{label}</span>
-              <span className="tabular-nums" style={{ ...(valR ? valueStyle : missingValueStyle), textAlign: "right" as const }}>{valR || "—"}</span>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+              <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle) }}>
+                <span className="tabular-nums">{valL || "—"}</span>
+              </MarqueeValue>
+              <span style={{ ...dimmed, textAlign: "center" as const, whiteSpace: "nowrap" }}>{label}</span>
+              <MarqueeValue align="right" style={{ ...(valR ? valueStyle : missingValueStyle) }}>
+                <span className="tabular-nums">{valR || "—"}</span>
+              </MarqueeValue>
             </div>
           );
           const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
+          const unitsPillFont: React.CSSProperties = {
+            fontFamily: "var(--font-geist-sans)",
+            fontSize: 10.5, fontWeight: 500, letterSpacing: "0.02em",
+            lineHeight: 1, textTransform: "uppercase" as const,
+          };
+          const unitsDivider = (
+            <div className="flex items-center" style={{ gap: 10, margin: "6px 0" }}>
+              <div aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.05)" }} />
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                {(["cm", "in"] as const).map((u, i) => {
+                  const active = (u === "in") === useImperial;
+                  return (
+                    <Fragment key={u}>
+                      {i === 1 && <span aria-hidden style={{ ...unitsPillFont, color: "var(--c-ink-subtle)", opacity: 0.35 }}>/</span>}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onUseImperialChange?.(u === "in"); }}
+                        aria-label={`Switch to ${u}`}
+                        className="cursor-pointer pointer-events-auto"
+                        style={{
+                          ...unitsPillFont,
+                          border: "none", background: "transparent", padding: 0, margin: 0,
+                          color: active ? "var(--c-ink-body)" : "var(--c-ink-subtle)",
+                          opacity: active ? 1 : 0.55,
+                          transition: "color 160ms ease, opacity 160ms ease",
+                          WebkitTapHighlightColor: "transparent",
+                        }}
+                      >{u}</button>
+                    </Fragment>
+                  );
+                })}
+              </span>
+              <div aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.05)" }} />
+            </div>
+          );
 
           const compareBlurb = getCompareBlurb(hL, hR);
           const compareBlurbId = `${hL.id}|${hR.id}`;
@@ -3319,11 +3391,23 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px" }}>
                   <div className="flex flex-col" style={{ gap: compareRowGap }}>
                     {compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null)}
-                    {compareRow("Country", hL.country ?? null, hR.country ?? null)}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+                      <span style={{ ...(hL.country ? valueStyle : missingValueStyle), textAlign: "left" as const, justifySelf: "start" }}>
+                        {hL.country ? <CountryValue country={hL.country} valueStyle={valueStyle} /> : "—"}
+                      </span>
+                      <span style={{ ...dimmed, textAlign: "center" as const }}>Country</span>
+                      <span style={{ ...(hR.country ? valueStyle : missingValueStyle), textAlign: "right" as const, justifySelf: "end" }}>
+                        {hR.country ? <CountryValue country={hR.country} valueStyle={valueStyle} /> : "—"}
+                      </span>
+                    </div>
+                    {unitsDivider}
                     {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
                     {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
                     {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
                     {compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)}
+                    <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
+                    {compareRow("Use", hL.useCase ?? null, hR.useCase ?? null)}
+                    {compareRow("Drive", hL.drive ?? null, hR.drive ?? null)}
                     {compareRow("Price", priceL, priceR)}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
                       <span style={{ display: "inline-flex", justifyContent: "flex-start" }}>
@@ -3473,7 +3557,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           return (
             <div className="absolute z-[6]" style={{ top: 14, right: 14 }}>
               <a
-                href={h.purchaseUrl}
+                href={withUtm(h.purchaseUrl, h.id)}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Buy ${h.name}`}
@@ -3743,8 +3827,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
             {buyLayout === "below" && !comparing && (() => {
               const isSundayBeta = h.manufacturer === "Sunday Robotics";
-              const buyHref = isSundayBeta ? "https://www.sunday.ai/beta-program" : (h.purchaseUrl || undefined);
-              const visitHref = !buyHref ? (h.infoUrl || h.manufacturerUrl) : undefined;
+              const buyHref = withUtm(isSundayBeta ? "https://www.sunday.ai/beta-program" : (h.purchaseUrl || undefined), h.id);
+              const visitHref = !buyHref ? withUtm(h.infoUrl || h.manufacturerUrl, h.id) : undefined;
               const href = buyHref || visitHref;
               const hasCost = h.cost && h.cost !== "N/A";
               const isRotaku = h.manufacturer === "Rotaku";
