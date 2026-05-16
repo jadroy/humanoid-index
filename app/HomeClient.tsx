@@ -2721,8 +2721,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
             const statsHeader = (
               <div className="flex items-center" style={{ gap: 10, marginBottom: 10 }}>
-                <span aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.07)" }} />
                 <UnitsToggle imperial={useImperial} onToggle={() => onUseImperialChange?.(!useImperial)} />
+                <span aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.07)" }} />
               </div>
             );
             const statsCard = (
@@ -3191,6 +3191,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   <div className="flex items-center" style={{ gap: 10, marginBottom: 10 }}>
                     <span aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.07)" }} />
                     <UnitsToggle imperial={useImperial} onToggle={() => onUseImperialChange?.(!useImperial)} />
+                    <span aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.07)" }} />
                   </div>
                   <div className="flex flex-col" style={{ gap: compareRowGap }}>
                     {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
