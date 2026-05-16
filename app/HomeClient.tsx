@@ -670,31 +670,137 @@ function UnitsToggle({ imperial, onToggle }: { imperial: boolean; onToggle: () =
     textTransform: "uppercase" as const,
   };
   const click = (e: React.MouseEvent) => { e.stopPropagation(); onToggle(); };
+  const labelStyle = (active: boolean): React.CSSProperties => ({
+    ...baseFont,
+    border: "none", background: "transparent", padding: 0, margin: 0,
+    color: active ? "var(--c-ink-body)" : "var(--c-ink-subtle)",
+    opacity: active ? 1 : 0.55,
+    cursor: "pointer",
+    transition: "color 160ms ease, opacity 160ms ease",
+    WebkitTapHighlightColor: "transparent",
+  });
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", height: 20, padding: 2, borderRadius: 999, background: "rgba(0,0,0,0.05)" }}>
-      {(["cm", "in"] as const).map((u) => {
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+      {(["cm", "in"] as const).map((u, i) => {
         const active = (u === "in") === imperial;
         return (
-          <button
-            key={u}
-            type="button"
-            onClick={click}
-            aria-label={`Switch to ${u}`}
-            className="cursor-pointer pointer-events-auto"
-            style={{
-              ...baseFont,
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              height: 16, padding: "0 7px", borderRadius: 999, border: "none",
-              background: active ? "#fff" : "transparent",
-              color: active ? "var(--c-ink-body)" : "var(--c-ink-subtle)",
-              boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-              transition: "background 160ms ease, color 160ms ease",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >{u}</button>
+          <Fragment key={u}>
+            {i === 1 && <span aria-hidden style={{ ...baseFont, color: "var(--c-ink-subtle)", opacity: 0.35 }}>/</span>}
+            <button type="button" onClick={click} aria-label={`Switch to ${u}`} style={labelStyle(active)}>{u}</button>
+          </Fragment>
         );
       })}
     </span>
+  );
+}
+
+// Tiny ⋯ trigger that opens a frosted-dark popover with stats-area
+// settings. Currently houses just the cm/in toggle; structured as a
+// menu so we can add density / sort / etc. without redoing the chrome.
+function StatsOptions({ imperial, onToggleUnits }: { imperial: boolean; onToggleUnits: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [hover, setHover] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  const baseFont: React.CSSProperties = {
+    fontFamily: "var(--font-geist-sans)",
+    fontSize: 10.5, fontWeight: 500, letterSpacing: "0.02em",
+    lineHeight: 1, textTransform: "uppercase" as const,
+  };
+  return (
+    <div ref={wrapRef} style={{ position: "relative", display: "inline-flex" }}>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        aria-label="Stats options"
+        aria-expanded={open}
+        className="cursor-pointer pointer-events-auto"
+        style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          width: 24, height: 24, borderRadius: 999,
+          background: "transparent",
+          border: `1px solid ${open ? "rgba(0,0,0,0.28)" : hover ? "rgba(0,0,0,0.22)" : "rgba(0,0,0,0.14)"}`,
+          color: open || hover ? "var(--c-ink-body)" : "var(--c-ink-muted)",
+          transition: "border-color 160ms ease, color 160ms ease",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+          <circle cx="3.4" cy="8" r="1.1" />
+          <circle cx="8" cy="8" r="1.1" />
+          <circle cx="12.6" cy="8" r="1.1" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            right: 0,
+            minWidth: 180,
+            background: "rgba(38, 38, 38, 0.86)",
+            backdropFilter: "blur(28px) saturate(180%)",
+            WebkitBackdropFilter: "blur(28px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 12,
+            boxShadow: "0 14px 32px rgba(0,0,0,0.24), 0 2px 6px rgba(0,0,0,0.10)",
+            padding: 6,
+            zIndex: 50,
+          }}
+        >
+          <div
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "7px 10px", gap: 16,
+              fontFamily: "var(--font-geist-sans)", fontSize: 12.5, fontWeight: 500,
+              color: "rgba(255,255,255,0.95)", letterSpacing: "-0.005em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span>Units</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {(["cm", "in"] as const).map((u, i) => {
+                const active = (u === "in") === imperial;
+                return (
+                  <Fragment key={u}>
+                    {i === 1 && <span aria-hidden style={{ ...baseFont, color: "rgba(255,255,255,0.35)" }}>/</span>}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onToggleUnits(); }}
+                      aria-label={`Switch to ${u}`}
+                      style={{
+                        ...baseFont,
+                        background: "transparent", border: "none", padding: 0,
+                        color: active ? "#fff" : "rgba(255,255,255,0.5)",
+                        cursor: "pointer",
+                        transition: "color 160ms ease",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >{u}</button>
+                  </Fragment>
+                );
+              })}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -2614,8 +2720,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             );
             const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
             const statsHeader = (
-              <div className="flex items-center" style={{ justifyContent: "flex-start", gap: 10, minHeight: 18, marginBottom: 4 }}>
-                {showSectionEyebrows && <p style={headerStyle}>Specs</p>}
+              <div className="flex items-center" style={{ gap: 10, marginBottom: 10 }}>
+                <span aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.07)" }} />
                 <UnitsToggle imperial={useImperial} onToggle={() => onUseImperialChange?.(!useImperial)} />
               </div>
             );
@@ -3013,11 +3119,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             </div>
           );
           const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
-          const compareStatsHeader = (
-            <div className="flex items-center" style={{ justifyContent: "center", minHeight: 18, marginBottom: 4 }}>
-              <UnitsToggle imperial={useImperial} onToggle={() => onUseImperialChange?.(!useImperial)} />
-            </div>
-          );
 
           const compareBlurb = getCompareBlurb(hL, hR);
           const compareBlurbId = `${hL.id}|${hR.id}`;
@@ -3087,7 +3188,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <div className="flex flex-col" style={{ flex: 1, justifyContent: "center" }}>
                 {blurbBlock}
                 <div style={{ marginTop: blurbBlock ? stackGap : 0 }}>
-                  {compareStatsHeader}
+                  <div className="flex items-center" style={{ gap: 10, marginBottom: 10 }}>
+                    <span aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.07)" }} />
+                    <UnitsToggle imperial={useImperial} onToggle={() => onUseImperialChange?.(!useImperial)} />
+                  </div>
                   <div className="flex flex-col" style={{ gap: compareRowGap }}>
                     {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
                     {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
