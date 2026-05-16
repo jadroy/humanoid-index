@@ -151,7 +151,14 @@
       "Bash(dig +short humanoid-index.com NS)",
       "Bash(dig +short humanoid-index.com A)",
       "Bash(dig +short www.humanoid-index.com)",
-      "Bash(npm i *)"
+      "Bash(npm i *)",
+      "Bash(lsof -nP -iTCP:3001 -sTCP:LISTEN)",
+      "WebFetch(domain:www.rotaku.ai)",
+      "Bash(perl -i -pe 's/const labelText = price \\\\?\\\\? \\\\\\(href \\\\? \"\\\\xc2\\\\xa0\" : fallbackText\\\\\\);/const labelText = href ? \\(price ?? \"\\\\xc2\\\\xa0\"\\) : \\(cost ?? \"\\\\xc2\\\\xa0\"\\);\\\\n                    const staticChipText = !href ? \\(state ?? fallbackText\\) : undefined;/' app/HomeClient.tsx)",
+      "Bash(cp /tmp/HomeClient.tsx.full /Users/royjad/CODE/humanoid-index/app/HomeClient.tsx)",
+      "Bash(cp /tmp/humanoids.ts.full /Users/royjad/CODE/humanoid-index/data/humanoids.ts)",
+      "Bash(git reset *)",
+      "Bash(git diff *)"
     ],
     "deny": [],
     "ask": []

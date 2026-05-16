@@ -24,6 +24,7 @@ export interface Humanoid {
   imageUrl?: string; // Primary/cover image
   imagePosition?: string; // CSS object-position override (default: "center")
   imageFit?: "contain" | "cover"; // CSS object-fit override (default: "contain")
+  imageScale?: number; // Multiplier applied to the rendered image (default: 1). Used for relative-size honesty between same-family variants.
   logoUrl?: string; // Company logo
   manufacturerUrl?: string; // Company website (generic homepage)
   infoUrl?: string; // Specific product/info page — preferred Visit target when not for sale
@@ -218,6 +219,42 @@ const allHumanoids: Humanoid[] = [
     imageUrl: "/robots/k2.png",
     description: "Affordable general-purpose humanoid for manufacturing and logistics.",
     tags: ["China", "Industrial", "Electric", "$30K affordable"],
+  },
+  {
+    id: "28",
+    name: "Domo Developer",
+    manufacturer: "Rotaku",
+    logoUrl: "/robots/Rotaku.png",
+    manufacturerUrl: "https://www.rotaku.ai",
+    infoUrl: "https://www.rotaku.ai",
+    imageUrl: "/robots/domo.png",
+    year: 2025,
+    cost: "$3,998",
+    status: "In Production",
+    height: 90,
+    weight: 20,
+    dof: 23,
+    description: "A compact research humanoid for developers. 23 joints, a real SDK, and a price individuals can afford.",
+    purchaseUrl: "https://www.rotaku.ai",
+    tags: ["Research", "Electric", "Developer SDK", "$3,998 affordable", "Modular"],
+  },
+  {
+    id: "29",
+    name: "Domo Plus Developer",
+    manufacturer: "Rotaku",
+    logoUrl: "/robots/Rotaku.png",
+    manufacturerUrl: "https://www.rotaku.ai",
+    infoUrl: "https://www.rotaku.ai",
+    imageUrl: "/robots/domo-plus.png",
+    year: 2025,
+    cost: "$9,899",
+    status: "In Production",
+    height: 130,
+    weight: 35,
+    dof: 25,
+    description: "Domo, scaled up. A taller frame and stronger joints for serious motion research.",
+    purchaseUrl: "https://www.rotaku.ai",
+    tags: ["Research", "Electric", "Developer SDK", "Higher torque", "Modular"],
   },
   // 2024
   {

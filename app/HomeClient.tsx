@@ -1,8 +1,9 @@
 "use client";
 
 import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
-import { Pause, Play } from "lucide-react";
+import { Pause, Play, Ruler } from "lucide-react";
 import { humanoids } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -49,6 +50,10 @@ import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSetti
 
 const MOBILE_BREAKPOINT = 768;
 
+// Tallest documented robot height in the index — used as the reference for
+// the "to scale" toggle so every other robot renders at height/MAX_HEIGHT.
+const MAX_HEIGHT = humanoids.reduce((m, h) => (h.height && h.height > m ? h.height : m), 0);
+
 const formatHeight = (cm: number) => {
   const totalInches = cm / 2.54;
   const ft = Math.floor(totalInches / 12);
@@ -58,6 +63,12 @@ const formatHeight = (cm: number) => {
 };
 const formatWeight = (kg: number) => `${Math.round(kg * 2.20462)} lb`;
 const formatSpeed = (ms: number) => `${(ms * 2.23694).toFixed(1)} mph`;
+const formatHeightCm = (cm: number) => `${Math.round(cm)} cm`;
+const formatWeightKg = (kg: number) => `${Math.round(kg)} kg`;
+const formatSpeedMs = (ms: number) => `${ms.toFixed(1)} m/s`;
+
+const IMPERIAL_FMT = { height: formatHeight, weight: formatWeight, speed: formatSpeed } as const;
+const METRIC_FMT = { height: formatHeightCm, weight: formatWeightKg, speed: formatSpeedMs } as const;
 
 // Press 'e' (or use the Epetri toggle) to remap every font CSS variable on
 // <main> to Epetri. Inline styles like `fontFamily: "var(--font-jetbrains-mono)"`
@@ -574,10 +585,123 @@ function findHumanoidIndex(id: string | null | undefined): number | null {
   return i >= 0 ? i : null;
 }
 
+// Shelved — pending relative-size revisit. ScaleToggle is not currently
+// rendered; the `toScale` Browse prop is plumbed so the consumer at
+// `effectiveScale` below stays live when this is re-enabled.
+function ScaleToggle({ active, onToggle }: { active: boolean; onToggle: () => void }) {
+  const [hover, setHover] = useState(false);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => { setMounted(true); }, []);
+  const updatePos = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ x: r.left + r.width / 2, y: r.top });
+  };
+  return (
+    <span className="inline-flex">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        onMouseEnter={() => { updatePos(); setHover(true); }}
+        onMouseMove={updatePos}
+        onMouseLeave={() => setHover(false)}
+        aria-pressed={active}
+        aria-label={active ? "Show robots at card scale" : "Show robots to scale"}
+        className="cursor-pointer pointer-events-auto"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 18,
+          height: 18,
+          borderRadius: 5,
+          border: "none",
+          padding: 0,
+          background: active ? "rgba(0,0,0,0.07)" : "transparent",
+          color: active ? "var(--c-ink-body)" : "var(--c-ink-subtle)",
+          transition: "background 180ms ease, color 180ms ease",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <Ruler size={12} strokeWidth={1.6} aria-hidden />
+      </button>
+      {mounted && pos && createPortal(
+        <span
+          role="tooltip"
+          style={{
+            position: "fixed",
+            left: pos.x,
+            top: pos.y,
+            transform: "translate(-50%, calc(-100% - 8px))",
+            background: "rgba(38, 38, 38, 0.92)",
+            backdropFilter: "blur(20px) saturate(140%)",
+            WebkitBackdropFilter: "blur(20px) saturate(140%)",
+            color: "#fff",
+            padding: "4px 8px",
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 500,
+            letterSpacing: "-0.005em",
+            lineHeight: 1.3,
+            whiteSpace: "nowrap",
+            opacity: hover ? 1 : 0,
+            pointerEvents: "none",
+            transition: "opacity 140ms ease",
+            zIndex: 9999,
+          }}
+        >
+          {active ? "Showing to scale" : "Show robots to scale"}
+        </span>,
+        document.body,
+      )}
+    </span>
+  );
+}
+
+function UnitsToggle({ imperial, onToggle }: { imperial: boolean; onToggle: () => void }) {
+  const baseFont: React.CSSProperties = {
+    fontFamily: "var(--font-geist-sans)",
+    fontSize: 10.5,
+    fontWeight: 500,
+    letterSpacing: "0.02em",
+    lineHeight: 1,
+    textTransform: "uppercase" as const,
+  };
+  const click = (e: React.MouseEvent) => { e.stopPropagation(); onToggle(); };
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", height: 20, padding: 2, borderRadius: 999, background: "rgba(0,0,0,0.05)" }}>
+      {(["cm", "in"] as const).map((u) => {
+        const active = (u === "in") === imperial;
+        return (
+          <button
+            key={u}
+            type="button"
+            onClick={click}
+            aria-label={`Switch to ${u}`}
+            className="cursor-pointer pointer-events-auto"
+            style={{
+              ...baseFont,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              height: 16, padding: "0 7px", borderRadius: 999, border: "none",
+              background: active ? "#fff" : "transparent",
+              color: active ? "var(--c-ink-body)" : "var(--c-ink-subtle)",
+              boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+              transition: "background 160ms ease, color 160ms ease",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >{u}</button>
+        );
+      })}
+    </span>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void }) {
+function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -1982,7 +2106,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const hasCost = h.cost && h.cost !== "N/A";
             const hasUrl = !!href;
             const ctaKind: "buy" | "visit" = buyHref ? "buy" : "visit";
-            const ctaText = isSundayBeta ? "Apply for Beta" : (ctaKind === "buy" ? "Buy" : "Visit");
+            const isRotaku = h.manufacturer === "Rotaku";
+            const ctaText =
+              isSundayBeta ? "Apply for Beta" :
+              ctaKind === "visit" ? "Visit" :
+              isRotaku ? "Reserve" : "Buy";
             const availabilityLabel: string | undefined = (
               h.availability === "enterprise" ? "Enterprise only" :
               h.availability === "research" ? "Research only" :
@@ -2484,14 +2612,21 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 </span>
               </div>
             );
+            const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
+            const statsHeader = (
+              <div className="flex items-center" style={{ justifyContent: "flex-start", gap: 10, minHeight: 18, marginBottom: 4 }}>
+                {showSectionEyebrows && <p style={headerStyle}>Specs</p>}
+                <UnitsToggle imperial={useImperial} onToggle={() => onUseImperialChange?.(!useImperial)} />
+              </div>
+            );
             const statsCard = (
               <div style={cardBase}>
-                {showSectionEyebrows && <p style={headerStyle}>Specs</p>}
-                <div className="flex flex-col" style={{ gap: sectionContentGap, marginTop: showSectionEyebrows ? sectionContentMarginTop : 0 }}>
-                  {renderStatRow("Height", h.height, formatHeight)}
-                  {renderStatRow("Weight", h.weight, formatWeight)}
+                {statsHeader}
+                <div className="flex flex-col" style={{ gap: sectionContentGap }}>
+                  {renderStatRow("Height", h.height, fmt.height)}
+                  {renderStatRow("Weight", h.weight, fmt.weight)}
                   {renderStatRow("DOF", h.dof, (v) => `${v}`)}
-                  {renderStatRow("Speed", h.maxSpeed, formatSpeed)}
+                  {renderStatRow("Speed", h.maxSpeed, fmt.speed)}
                   {priceChipText && renderStatRow("Price", priceChipText, (v) => `${v}`)}
                 </div>
               </div>
@@ -2877,6 +3012,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <span className="tabular-nums" style={{ ...(valR ? valueStyle : missingValueStyle), textAlign: "right" as const }}>{valR || "—"}</span>
             </div>
           );
+          const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
+          const compareStatsHeader = (
+            <div className="flex items-center" style={{ justifyContent: "center", minHeight: 18, marginBottom: 4 }}>
+              <UnitsToggle imperial={useImperial} onToggle={() => onUseImperialChange?.(!useImperial)} />
+            </div>
+          );
 
           const compareBlurb = getCompareBlurb(hL, hR);
           const compareBlurbId = `${hL.id}|${hR.id}`;
@@ -2945,12 +3086,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: statsW, minWidth: statsW, position: "relative", zIndex: 11 }}>
               <div className="flex flex-col" style={{ flex: 1, justifyContent: "center" }}>
                 {blurbBlock}
-                <div className="flex flex-col" style={{ gap: compareRowGap, marginTop: blurbBlock ? stackGap : 0 }}>
-                  {compareRow("Height", heightL ? formatHeight(heightL) : null, heightR ? formatHeight(heightR) : null)}
-                  {compareRow("Weight", weightL ? formatWeight(weightL) : null, weightR ? formatWeight(weightR) : null)}
-                  {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
-                  {compareRow("Speed", speedL ? formatSpeed(speedL) : null, speedR ? formatSpeed(speedR) : null)}
-                  {compareRow("Price", priceL, priceR)}
+                <div style={{ marginTop: blurbBlock ? stackGap : 0 }}>
+                  {compareStatsHeader}
+                  <div className="flex flex-col" style={{ gap: compareRowGap }}>
+                    {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
+                    {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
+                    {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
+                    {compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)}
+                    {compareRow("Price", priceL, priceR)}
+                  </div>
                 </div>
                 {hasStatus && <div style={{ marginTop: stackGap }}>{hairlineRule}</div>}
                 {hasStatus && (
@@ -3039,6 +3183,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   const isCover = item.fit === "cover";
                   const isBottom = !!item.position?.includes("bottom");
                   const isVideo = item.kind === "video";
+                  const effectiveScale = toScale && mh.height && MAX_HEIGHT > 0
+                    ? mh.height / MAX_HEIGHT
+                    : (mh.imageScale ?? 1);
+                  const imageStyle: React.CSSProperties = {
+                    ...(item.position ? { objectPosition: item.position } : null),
+                    ...(effectiveScale !== 1 ? {
+                      transform: `scale(${effectiveScale})`,
+                      transformOrigin: "center bottom",
+                      transition: "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+                    } : null),
+                  };
                   return (
                     <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: isVideo || isCover ? 0 : isBottom ? "24px 24px 0 24px" : 24, background: isVideo ? "#000000" : undefined }}>
                       <div className="relative w-full h-full">
@@ -3046,7 +3201,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                           <GalleryVideoSlide mIdx={mIdx} slideIdx={i} videoPaused={videoPaused} subscribe={subscribeGalleryIdx} read={readGalleryIdx} src={item.src} fit={isCover ? "cover" : "contain"} position={item.position} credit={item.credit} />
                         ) : (
                           /* No `key={item.src}` here — re-keying on src forces a fresh mount + image decode on every humanoid swap (~40% of decode + paint work in profiling). The previous workaround for a one-frame flash at natural size was `key={item.src}`; in current Next.js the flash appears gone or at most extremely rare, so the perf trade is worth it. If a flash returns, prefer a non-key fix (inline `objectFit` style, aspect-ratio on parent, or `Image.decode()` pre-swap). */
-                          <Image src={item.src} alt={`${mh.name} ${i + 1}`} fill className={isCover ? "object-cover" : "object-contain"} style={item.position ? { objectPosition: item.position } : undefined} sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`} priority={markPriority && i === 0} />
+                          <Image
+                            src={item.src}
+                            alt={`${mh.name} ${i + 1}`}
+                            fill
+                            className={isCover ? "object-cover" : "object-contain"}
+                            style={imageStyle}
+                            sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`}
+                            priority={markPriority && i === 0}
+                          />
                         )}
                         {isBottom && !isVideo && (
                           <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]" style={{ height: bottomFadeH, background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))` }} />
@@ -3353,7 +3516,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               const visitHref = !buyHref ? (h.infoUrl || h.manufacturerUrl) : undefined;
               const href = buyHref || visitHref;
               const hasCost = h.cost && h.cost !== "N/A";
-              const ctaText = isSundayBeta ? "Apply for Beta" : (buyHref ? "Buy" : "Visit");
+              const isRotaku = h.manufacturer === "Rotaku";
+              const ctaText =
+                isSundayBeta ? "Apply for Beta" :
+                !buyHref ? "Visit" :
+                isRotaku ? "Reserve" : "Buy";
               const availabilityLabel: string | undefined = (
                 h.availability === "enterprise" ? "Enterprise only" :
                 h.availability === "research" ? "Research only" :
@@ -4898,6 +5065,8 @@ export default function HomeClient() {
   const [comparingUsed, setComparingUsed] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
+  const [toScale, setToScale] = useState(false);
+  const [useImperial, setUseImperial] = useState(true);
 
   // Share URL — Browse writes to this ref, Home's share button reads it
   const shareUrlRef = useRef("");
@@ -5128,7 +5297,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>

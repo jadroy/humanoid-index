@@ -3,7 +3,18 @@ import { humanoids, type Humanoid } from "@/data/humanoids";
 import { readFile } from "fs/promises";
 import { join } from "path";
 
+import {
+  SINGLE_DEFAULTS,
+  COMPARE_DEFAULTS,
+  type SingleKnobs,
+  type CompareKnobs,
+  type TextMode,
+} from "./knobs";
+
 export const runtime = "nodejs";
+
+const W = 1200;
+const H = 630;
 
 const isSvg = (p: string) => p.toLowerCase().endsWith(".svg");
 
@@ -23,23 +34,7 @@ async function loadBotImage(bot: Humanoid) {
   return bot.imageUrl && !isSvg(bot.imageUrl) ? loadImageAsDataUri(bot.imageUrl) : null;
 }
 
-function getStats(bot: Humanoid) {
-  return [
-    bot.height && { label: "Height", value: `${bot.height} cm` },
-    bot.weight && { label: "Weight", value: `${bot.weight} kg` },
-    bot.dof && { label: "DOF", value: `${bot.dof}` },
-    bot.maxSpeed && { label: "Speed", value: `${bot.maxSpeed} m/s` },
-  ].filter(Boolean) as { label: string; value: string }[];
-}
-
-// ── Knobs (dev-only overrides) ───────────────────────────────
-
-import {
-  SINGLE_DEFAULTS,
-  COMPARE_DEFAULTS,
-  type SingleKnobs,
-  type CompareKnobs,
-} from "./knobs";
+// ── Knob parsing (dev-only overrides) ────────────────────────
 
 function parseBool(v: string | null, fallback: boolean): boolean {
   if (v == null) return fallback;
@@ -50,123 +45,153 @@ function parseNum(v: string | null, fallback: number): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
 }
+function parseTextMode(v: string | null, fallback: TextMode): TextMode {
+  if (v === "none" || v === "url" || v === "name") return v;
+  return fallback;
+}
 
 function readSingleKnobs(sp: URLSearchParams): SingleKnobs {
   if (process.env.NODE_ENV !== "development") return SINGLE_DEFAULTS;
   return {
-    showName: parseBool(sp.get("showName"), SINGLE_DEFAULTS.showName),
-    showManufacturer: parseBool(sp.get("showManufacturer"), SINGLE_DEFAULTS.showManufacturer),
-    showStats: parseBool(sp.get("showStats"), SINGLE_DEFAULTS.showStats),
-    showBadge: parseBool(sp.get("showBadge"), SINGLE_DEFAULTS.showBadge),
-    showLogo: parseBool(sp.get("showLogo"), SINGLE_DEFAULTS.showLogo),
-    showWatermark: parseBool(sp.get("showWatermark"), SINGLE_DEFAULTS.showWatermark),
-    imagePanelBg: sp.get("imagePanelBg") ?? SINGLE_DEFAULTS.imagePanelBg,
-    imagePanelW: parseNum(sp.get("imagePanelW"), SINGLE_DEFAULTS.imagePanelW),
-    imagePadX: parseNum(sp.get("imagePadX"), SINGLE_DEFAULTS.imagePadX),
-    imagePadY: parseNum(sp.get("imagePadY"), SINGLE_DEFAULTS.imagePadY),
-    imageOffsetY: parseNum(sp.get("imageOffsetY"), SINGLE_DEFAULTS.imageOffsetY),
-    imageW: parseNum(sp.get("imageW"), SINGLE_DEFAULTS.imageW),
-    imageH: parseNum(sp.get("imageH"), SINGLE_DEFAULTS.imageH),
-    nameSize: parseNum(sp.get("nameSize"), SINGLE_DEFAULTS.nameSize),
-    manufacturerSize: parseNum(sp.get("manufacturerSize"), SINGLE_DEFAULTS.manufacturerSize),
-    statLabelSize: parseNum(sp.get("statLabelSize"), SINGLE_DEFAULTS.statLabelSize),
-    statValueSize: parseNum(sp.get("statValueSize"), SINGLE_DEFAULTS.statValueSize),
+    textMode: parseTextMode(sp.get("textMode"), SINGLE_DEFAULTS.textMode),
+    basePadX: parseNum(sp.get("basePadX"), SINGLE_DEFAULTS.basePadX),
+    basePadBottom: parseNum(sp.get("basePadBottom"), SINGLE_DEFAULTS.basePadBottom),
   };
 }
 
 function readCompareKnobs(sp: URLSearchParams): CompareKnobs {
   if (process.env.NODE_ENV !== "development") return COMPARE_DEFAULTS;
   return {
-    showStats: parseBool(sp.get("showStats"), COMPARE_DEFAULTS.showStats),
-    imageW: parseNum(sp.get("imageW"), COMPARE_DEFAULTS.imageW),
-    imageH: parseNum(sp.get("imageH"), COMPARE_DEFAULTS.imageH),
-    nameSize: parseNum(sp.get("nameSize"), COMPARE_DEFAULTS.nameSize),
-    manufacturerSize: parseNum(sp.get("manufacturerSize"), COMPARE_DEFAULTS.manufacturerSize),
-    statLabelSize: parseNum(sp.get("statLabelSize"), COMPARE_DEFAULTS.statLabelSize),
-    statValueSize: parseNum(sp.get("statValueSize"), COMPARE_DEFAULTS.statValueSize),
-    showVsBubble: parseBool(sp.get("showVsBubble"), COMPARE_DEFAULTS.showVsBubble),
+    textMode: parseTextMode(sp.get("textMode"), COMPARE_DEFAULTS.textMode),
+    basePadX: parseNum(sp.get("basePadX"), COMPARE_DEFAULTS.basePadX),
+    basePadBottom: parseNum(sp.get("basePadBottom"), COMPARE_DEFAULTS.basePadBottom),
     showDivider: parseBool(sp.get("showDivider"), COMPARE_DEFAULTS.showDivider),
   };
+}
+
+// ── Shared bits ──────────────────────────────────────────────
+
+function BottomAnchoredImage({
+  src,
+  boxW,
+  boxH,
+}: {
+  src: string | null;
+  boxW: number;
+  boxH: number;
+}) {
+  if (!src) {
+    return (
+      <div
+        style={{
+          width: 160,
+          height: 160,
+          borderRadius: 80,
+          background: "#f5f5f5",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 48,
+          color: "#ccc",
+        }}
+      >
+        ?
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      width={boxW}
+      height={boxH}
+      style={{
+        objectFit: "contain",
+        objectPosition: "center bottom",
+      }}
+    />
+  );
+}
+
+function Watermark() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 24,
+        right: 32,
+        display: "flex",
+        fontSize: 16,
+        color: "#cccccc",
+        letterSpacing: 0.5,
+      }}
+    >
+      humanoid-index.com
+    </div>
+  );
+}
+
+function NameLabel({ name, size = 22 }: { name: string; size?: number }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        fontSize: size,
+        fontWeight: 600,
+        color: "#111",
+        letterSpacing: -0.2,
+      }}
+    >
+      {name}
+    </div>
+  );
 }
 
 // ── Single bot card ──────────────────────────────────────────
 
 function SingleCard({
+  bot,
   imgSrc,
   k,
 }: {
+  bot: Humanoid;
   imgSrc: string | null;
   k: SingleKnobs;
 }) {
+  const boxW = W - k.basePadX * 2;
+  const boxH = H - k.basePadBottom;
+
   return (
     <div
       style={{
-        width: 1200,
-        height: 630,
+        width: W,
+        height: H,
         display: "flex",
         background: "#ffffff",
-        color: "#111",
         fontFamily: "sans-serif",
+        position: "relative",
       }}
     >
       <div
         style={{
-          width: 600,
-          height: 630,
+          width: W,
+          height: H,
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-end",
           justifyContent: "center",
-          padding: 80,
+          paddingLeft: k.basePadX,
+          paddingRight: k.basePadX,
+          paddingBottom: k.basePadBottom,
         }}
       >
-        {imgSrc ? (
-          <img
-            src={imgSrc}
-            width={k.imageW}
-            height={k.imageH}
-            style={{ objectFit: "contain" }}
-          />
-        ) : (
-          <div
-            style={{
-              width: 180,
-              height: 180,
-              borderRadius: 90,
-              background: "#f5f5f5",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 48,
-              color: "#ccc",
-            }}
-          >
-            ?
-          </div>
-        )}
+        <BottomAnchoredImage src={imgSrc} boxW={boxW} boxH={boxH} />
       </div>
 
-      <div
-        style={{
-          width: 600,
-          height: 630,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 80,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 56,
-            fontWeight: 600,
-            letterSpacing: -1.5,
-            color: "#111",
-            lineHeight: 1.1,
-          }}
-        >
-          Humanoid Index
+      {k.textMode === "name" && (
+        <div style={{ position: "absolute", bottom: 28, left: 40, display: "flex" }}>
+          <NameLabel name={bot.name} size={24} />
         </div>
-      </div>
+      )}
+      {k.textMode === "url" && <Watermark />}
     </div>
   );
 }
@@ -177,62 +202,35 @@ function CompareSide({
   bot,
   imgSrc,
   k,
+  showName,
 }: {
   bot: Humanoid;
   imgSrc: string | null;
   k: CompareKnobs;
+  showName: boolean;
 }) {
-  const stats = getStats(bot);
+  const sideW = W / 2;
+  const boxW = sideW - k.basePadX * 2;
+  const boxH = H - k.basePadBottom;
+
   return (
     <div
       style={{
-        flex: 1,
+        width: sideW,
+        height: H,
         display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
+        alignItems: "flex-end",
         justifyContent: "center",
-        padding: "36px 24px",
-        gap: 16,
+        paddingLeft: k.basePadX,
+        paddingRight: k.basePadX,
+        paddingBottom: k.basePadBottom,
+        position: "relative",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
-        {imgSrc ? (
-          <img src={imgSrc} width={k.imageW} height={k.imageH} style={{ objectFit: "contain" }} />
-        ) : (
-          <div
-            style={{
-              width: 120,
-              height: 120,
-              borderRadius: 60,
-              background: "#f0f0f0",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 36,
-              color: "#ccc",
-            }}
-          >
-            ?
-          </div>
-        )}
-      </div>
-
-      <span style={{ fontSize: k.manufacturerSize, color: "#999", letterSpacing: 0.5 }}>
-        {bot.manufacturer}{bot.year ? ` · ${bot.year}` : ""}
-      </span>
-
-      <div style={{ fontSize: k.nameSize, fontWeight: 700, lineHeight: 1.1, letterSpacing: -0.5, color: "#111", textAlign: "center" }}>
-        {bot.name}
-      </div>
-
-      {k.showStats && stats.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 28px", marginTop: 4 }}>
-          {stats.map((s) => (
-            <div key={s.label} style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-              <span style={{ fontSize: k.statLabelSize, color: "#bbb", letterSpacing: 1, textTransform: "uppercase" }}>{s.label}</span>
-              <span style={{ fontSize: k.statValueSize, fontWeight: 600, color: "#333" }}>{s.value}</span>
-            </div>
-          ))}
+      <BottomAnchoredImage src={imgSrc} boxW={boxW} boxH={boxH} />
+      {showName && (
+        <div style={{ position: "absolute", bottom: 28, left: 32, display: "flex" }}>
+          <NameLabel name={bot.name} size={22} />
         </div>
       )}
     </div>
@@ -255,56 +253,32 @@ function CompareCard({
   return (
     <div
       style={{
-        width: 1200,
-        height: 630,
+        width: W,
+        height: H,
         display: "flex",
         background: "#ffffff",
-        color: "#111",
         fontFamily: "sans-serif",
         position: "relative",
       }}
     >
-      <CompareSide bot={left} imgSrc={leftImg} k={k} />
+      <CompareSide bot={left} imgSrc={leftImg} k={k} showName={k.textMode === "name"} />
 
-      <div
-        style={{
-          width: k.showDivider ? 1 : 0,
-          height: 630,
-          background: k.showDivider ? "#e8e8e8" : "transparent",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-        }}
-      >
-        {k.showVsBubble && (
-          <div
-            style={{
-              position: "absolute",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              background: "#fff",
-              border: "1px solid #e8e8e8",
-              fontSize: 16,
-              fontWeight: 600,
-              color: "#bbb",
-              letterSpacing: 1,
-            }}
-          >
-            vs
-          </div>
-        )}
-      </div>
+      {k.showDivider && (
+        <div
+          style={{
+            position: "absolute",
+            left: W / 2,
+            top: 80,
+            bottom: 80,
+            width: 1,
+            background: "#eeeeee",
+          }}
+        />
+      )}
 
-      <CompareSide bot={right} imgSrc={rightImg} k={k} />
+      <CompareSide bot={right} imgSrc={rightImg} k={k} showName={k.textMode === "name"} />
 
-      <div style={{ position: "absolute", bottom: 28, right: 40, display: "flex", fontSize: 16, color: "#ccc", letterSpacing: 0.5 }}>
-        humanoid-index.com
-      </div>
+      {k.textMode === "url" && <Watermark />}
     </div>
   );
 }
@@ -328,14 +302,14 @@ export async function GET(
     const [leftImg, rightImg] = await Promise.all([loadBotImage(bot), loadBotImage(rightBot)]);
     return new ImageResponse(
       <CompareCard left={bot} right={rightBot} leftImg={leftImg} rightImg={rightImg} k={k} />,
-      { width: 1200, height: 630 }
+      { width: W, height: H }
     );
   }
 
   const k = readSingleKnobs(url.searchParams);
   const imgSrc = await loadBotImage(bot);
-  return new ImageResponse(<SingleCard imgSrc={imgSrc} k={k} />, {
-    width: 1200,
-    height: 630,
+  return new ImageResponse(<SingleCard bot={bot} imgSrc={imgSrc} k={k} />, {
+    width: W,
+    height: H,
   });
 }

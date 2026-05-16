@@ -7,7 +7,10 @@ import {
   COMPARE_DEFAULTS,
   type SingleKnobs,
   type CompareKnobs,
+  type TextMode,
 } from "@/app/api/og/[id]/knobs";
+
+const TEXT_MODES: TextMode[] = ["none", "url", "name"];
 
 type Mode = "single" | "compare";
 
@@ -204,17 +207,9 @@ function SingleKnobsPanel({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Toggle label="Show stats" value={k.showStats} onChange={(v) => upd("showStats", v)} />
-      <Toggle label="Show status badge" value={k.showBadge} onChange={(v) => upd("showBadge", v)} />
-      <Toggle label="Show manufacturer logo" value={k.showLogo} onChange={(v) => upd("showLogo", v)} />
-      <Slider label="Name size" value={k.nameSize} onChange={(v) => upd("nameSize", v)} min={32} max={96} />
-      <Slider label="Manufacturer size" value={k.manufacturerSize} onChange={(v) => upd("manufacturerSize", v)} min={12} max={32} />
-      <Slider label="Image panel width" value={k.imagePanelW} onChange={(v) => upd("imagePanelW", v)} min={320} max={700} />
-      <Slider label="Image width" value={k.imageW} onChange={(v) => upd("imageW", v)} min={200} max={700} />
-      <Slider label="Image height" value={k.imageH} onChange={(v) => upd("imageH", v)} min={200} max={620} />
-      <Slider label="Stat label size" value={k.statLabelSize} onChange={(v) => upd("statLabelSize", v)} min={8} max={22} />
-      <Slider label="Stat value size" value={k.statValueSize} onChange={(v) => upd("statValueSize", v)} min={14} max={40} />
-      <ColorPicker label="Image panel bg" value={k.imagePanelBg} onChange={(v) => upd("imagePanelBg", v)} />
+      <TextModeSelector value={k.textMode} onChange={(v) => upd("textMode", v)} />
+      <Slider label="Padding X" value={k.basePadX} onChange={(v) => upd("basePadX", v)} min={0} max={200} />
+      <Slider label="Bottom padding" value={k.basePadBottom} onChange={(v) => upd("basePadBottom", v)} min={0} max={100} />
     </div>
   );
 }
@@ -231,15 +226,31 @@ function CompareKnobsPanel({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Toggle label="Show stats" value={k.showStats} onChange={(v) => upd("showStats", v)} />
+      <TextModeSelector value={k.textMode} onChange={(v) => upd("textMode", v)} />
       <Toggle label="Show divider" value={k.showDivider} onChange={(v) => upd("showDivider", v)} />
-      <Toggle label="Show 'vs' bubble" value={k.showVsBubble} onChange={(v) => upd("showVsBubble", v)} />
-      <Slider label="Name size" value={k.nameSize} onChange={(v) => upd("nameSize", v)} min={20} max={60} />
-      <Slider label="Manufacturer size" value={k.manufacturerSize} onChange={(v) => upd("manufacturerSize", v)} min={10} max={24} />
-      <Slider label="Image width" value={k.imageW} onChange={(v) => upd("imageW", v)} min={140} max={420} />
-      <Slider label="Image height" value={k.imageH} onChange={(v) => upd("imageH", v)} min={180} max={520} />
-      <Slider label="Stat label size" value={k.statLabelSize} onChange={(v) => upd("statLabelSize", v)} min={8} max={18} />
-      <Slider label="Stat value size" value={k.statValueSize} onChange={(v) => upd("statValueSize", v)} min={12} max={30} />
+      <Slider label="Padding X" value={k.basePadX} onChange={(v) => upd("basePadX", v)} min={0} max={150} />
+      <Slider label="Bottom padding" value={k.basePadBottom} onChange={(v) => upd("basePadBottom", v)} min={0} max={100} />
+    </div>
+  );
+}
+
+function TextModeSelector({
+  value,
+  onChange,
+}: {
+  value: TextMode;
+  onChange: (v: TextMode) => void;
+}) {
+  return (
+    <div>
+      <Label>Text mode</Label>
+      <div style={{ display: "flex", gap: 6 }}>
+        {TEXT_MODES.map((mode) => (
+          <SegButton key={mode} active={value === mode} onClick={() => onChange(mode)}>
+            {mode}
+          </SegButton>
+        ))}
+      </div>
     </div>
   );
 }
@@ -377,48 +388,6 @@ function Slider({
         onChange={(e) => onChange(Number(e.target.value))}
         style={{ width: "100%", accentColor: "#2563eb" }}
       />
-    </div>
-  );
-}
-
-function ColorPicker({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", color: "#ccc", marginBottom: 4 }}>
-        <span>{label}</span>
-        <span style={{ color: "#888", fontFamily: "ui-monospace, monospace" }}>{value}</span>
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{ width: 36, height: 28, background: "transparent", border: "1px solid #2a2a2a", borderRadius: 4, cursor: "pointer" }}
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            flex: 1,
-            padding: "4px 8px",
-            background: "#1a1a1a",
-            color: "#e5e5e5",
-            border: "1px solid #2a2a2a",
-            borderRadius: 4,
-            fontSize: 12,
-            fontFamily: "ui-monospace, monospace",
-          }}
-        />
-      </div>
     </div>
   );
 }
