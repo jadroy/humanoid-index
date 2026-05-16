@@ -5382,6 +5382,18 @@ export default function HomeClient() {
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
   const [toScale, setToScale] = useState(false);
   const [useImperial, setUseImperial] = useState(true);
+  // Default to metric for non-US locales. Runs post-hydration so SSR + first
+  // client render agree on `true` and avoid a hydration mismatch.
+  useEffect(() => {
+    try {
+      const region = new Intl.Locale(navigator.language).maximize().region;
+      if (region && region !== "US" && region !== "LR" && region !== "MM") {
+        setUseImperial(false);
+      }
+    } catch {
+      // Older browser without Intl.Locale.maximize — leave default.
+    }
+  }, []);
 
   // Share URL — Browse writes to this ref, Home's share button reads it
   const shareUrlRef = useRef("");
