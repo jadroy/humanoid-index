@@ -1993,12 +1993,18 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // Left-side text in split mode: price first, then availability label, then nothing.
             const leftLabel = hasCost ? h.cost! : availabilityLabel;
             const text = isSundayBeta ? "Apply to the 2026 Beta" : (hasCost ? h.cost! : (availabilityLabel ?? (hasUrl ? ctaText : "Not for sale")));
+            // Separate cost vs state so the renderer can keep cost on the left
+            // and put the availability label inside a non-link chip on the right
+            // for URL-less entries — keeps the row rhythm consistent while scrolling.
+            const stateLabel = availabilityLabel ?? (hasUrl ? undefined : "Not for sale");
             return {
               key: "purchase",
               show: true,
               href,
               text,
               price: leftLabel,
+              cost: hasCost ? h.cost! : undefined,
+              state: stateLabel,
               ctaText,
               ctaKind,
               label: (
@@ -2203,6 +2209,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   if (actionSplit) {
                     const href = (s as any).href as string | undefined;
                     const price = (s as { price?: string }).price;
+                    const cost = (s as { cost?: string }).cost;
+                    const state = (s as { state?: string }).state;
                     const fallbackText = (s as { text?: string }).text ?? "";
                     const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
                     const ctaBg = "rgba(0,0,0,0.06)";
@@ -2211,8 +2219,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     const outerProps = href
                       ? { href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
                       : {};
-                    const labelText = price ?? (href ? " " : fallbackText);
-                    const labelColor = href ? pillLabelColor : "#c0c0c0";
+                    const labelText = href ? (price ?? " ") : (cost ?? " ");
+                    const staticChipText = !href ? (state ?? fallbackText) : undefined;
+                    const labelColor = (href || cost) ? pillLabelColor : "#c0c0c0";
                     return (
                       <Outer
                         key={s.key}
@@ -2220,7 +2229,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         style={{
                           background: pillBg,
                           borderRadius: pillRadiusFor(s.key, false),
-                          padding: href
+                          padding: (href || staticChipText)
                             ? `0 ${Math.max(0, statPillPadY - 6)}px 0 ${statPillPadX}px`
                             : `0 ${statPillPadX}px`,
                           display: "block",
@@ -2236,7 +2245,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                             )}
                             <span>{labelText}</span>
                           </span>
-                          {href && (
+                          {href ? (
                             <a
                               href={href}
                               target="_blank"
@@ -2252,7 +2261,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                                 </svg>
                               </span>
                             </a>
-                          )}
+                          ) : staticChipText ? (
+                            <span
+                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: ctaColor, padding: "6px 10px", fontSize: pillLabelFontSize, fontFamily: pillLabelFont, fontWeight: 500, letterSpacing: `${pillLabelLetterSpacing}em`, lineHeight: 1.2, borderRadius: 999, background: ctaBg }}
+                            >
+                              {staticChipText}
+                            </span>
+                          ) : null}
                         </div>
                       </Outer>
                     );
@@ -2403,7 +2418,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               color: "var(--c-ink-body)",
             };
             const purchaseSection = sections.find((s) => s.key === "purchase") as
-              | { key: "purchase"; href?: string; text?: string; price?: string; ctaText?: string }
+              | { key: "purchase"; href?: string; text?: string; price?: string; cost?: string; state?: string; ctaText?: string }
               | undefined;
 
             // Reusable status dot — used by chip / label / consolidate placements.
@@ -2609,7 +2624,56 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   </a>
                 </div>
               );
-            })() : null;
+            })() : (purchaseSection ? (() => {
+              // No URL — render the same pill shape with a static state label
+              // (no arrow, not a link) so the row rhythm stays consistent while
+              // scrolling instead of flashing in/out.
+              const label = purchaseSection.state ?? purchaseSection.text ?? "Not for sale";
+              const staticContainerByVariant: Record<"split-hairline" | "split-rule" | "split-soft" | "split-bare", React.CSSProperties> = {
+                "split-hairline": {
+                  borderRadius: cardRadius,
+                  boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)",
+                  background: "transparent",
+                },
+                "split-rule": {
+                  borderTop: "1px solid rgba(0,0,0,0.07)",
+                  borderRadius: 0,
+                  background: "transparent",
+                },
+                "split-soft": {
+                  borderRadius: cardRadius,
+                  background: "rgba(0,0,0,0.022)",
+                },
+                "split-bare": {
+                  background: "transparent",
+                },
+              };
+              const isSplitVariant = actionRowVariant === "split-hairline" || actionRowVariant === "split-rule" || actionRowVariant === "split-soft" || actionRowVariant === "split-bare";
+              const containerStyle: React.CSSProperties = isSplitVariant
+                ? staticContainerByVariant[actionRowVariant as keyof typeof staticContainerByVariant]
+                : actionRowVariant === "full"
+                  ? { background: "rgba(0,0,0,0.022)", borderRadius: cardRadius }
+                  : { background: "transparent" };
+              return (
+                <div
+                  className="pointer-events-auto w-full flex items-center justify-between"
+                  style={{
+                    ...containerStyle,
+                    padding: `0 ${statPillPadX}px`,
+                    minHeight: pillRowHeight,
+                    gap: 8,
+                    color: "var(--c-ink-muted)",
+                    fontSize: pillLabelFontSize,
+                    fontFamily: pillLabelFont,
+                    fontWeight: pillLabelWeight,
+                    letterSpacing: `${pillLabelLetterSpacing}em`,
+                    textTransform: pillLabelUppercase ? "uppercase" : "none",
+                  }}
+                >
+                  <span>{label}</span>
+                </div>
+              );
+            })() : null);
 
             // Cards float as distinct frosted cards in the column with visible gaps
             // between them. Inner column holds its expanded width during collapse so
