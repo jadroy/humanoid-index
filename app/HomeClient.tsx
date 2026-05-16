@@ -694,6 +694,11 @@ function UnitsToggle({ imperial, onToggle }: { imperial: boolean; onToggle: () =
   );
 }
 
+// Plain colored dot used inside the status pill.
+function StatusDot({ color, size = 10 }: { color: string; size?: number }) {
+  return <span aria-hidden style={{ width: size, height: size, borderRadius: 999, background: color, flexShrink: 0 }} />;
+}
+
 // Tiny ⋯ trigger that opens a frosted-dark popover with stats-area
 // settings. Currently houses just the cm/in toggle; structured as a
 // menu so we can add density / sort / etc. without redoing the chrome.
@@ -1002,7 +1007,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   //   "corner"      — small floating dot on the robot card itself
   //   "hidden"      — no status indicator anywhere
   type StatusPlacement = "card" | "chip" | "label" | "consolidate" | "corner" | "hidden";
-  const [statusPlacement, setStatusPlacement] = useState<StatusPlacement>("hidden");
+  const [statusPlacement, setStatusPlacement] = useState<StatusPlacement>("chip");
   // Action row variants for the bottom CTA in single view (stackedInfo on).
   // The "split-X" variants share a layout: CTA text on the left, arrow chip on the right
   // (space-between). They differ only in the surrounding container treatment.
@@ -2633,6 +2638,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const rowStyle: React.CSSProperties = {
               display: "flex",
               alignItems: "baseline",
+              justifyContent: "space-between",
               gap: 14,
               fontFamily: "var(--font-geist-sans)",
               lineHeight: 1.7,
@@ -2693,15 +2699,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <div style={cardBase}>
                 {showSectionEyebrows && hasDescriptorTags && <p style={headerStyle}>Notes</p>}
                 <div className="flex flex-wrap" style={{ gap: 7, marginTop: showSectionEyebrows && hasDescriptorTags ? sectionContentMarginTop : 0 }}>
-                  {showYearChip && <span style={chipStyle}>{h.year}</span>}
-                  {showStatusChip && (
-                    <span style={chipStyle}>
-                      <span className="inline-block rounded-full flex-shrink-0" style={{ width: 4, height: 4, background: statusColor }} />
-                      {h.status}
+                  {showYearChip && <span className="ui-frost" style={chipStyle}>{h.year}</span>}
+                  {showStatusChip && h.status && (
+                    <span
+                      className="ui-frost inline-flex items-center justify-center"
+                      style={{ ...chipStyle, gap: 0, padding: "8px 12px" }}
+                    >
+                      <StatusDot color={statusColor} />
                     </span>
                   )}
                   {h.tags?.map((tag) => (
-                    <span key={tag} style={chipStyle}>{tag}</span>
+                    <span key={tag} className="ui-frost" style={chipStyle}>{tag}</span>
                   ))}
                 </div>
               </div>
@@ -2720,20 +2728,18 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             );
             const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
             const statsHeader = (
-              <div className="flex items-center" style={{ gap: 10, marginBottom: 10 }}>
+              <div className="flex items-center" style={{ marginBottom: 10 }}>
                 <UnitsToggle imperial={useImperial} onToggle={() => onUseImperialChange?.(!useImperial)} />
-                <span aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.07)" }} />
               </div>
             );
             const statsCard = (
-              <div style={cardBase}>
-                {statsHeader}
+              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px" }}>
                 <div className="flex flex-col" style={{ gap: sectionContentGap }}>
                   {renderStatRow("Height", h.height, fmt.height)}
                   {renderStatRow("Weight", h.weight, fmt.weight)}
                   {renderStatRow("DOF", h.dof, (v) => `${v}`)}
                   {renderStatRow("Speed", h.maxSpeed, fmt.speed)}
-                  {priceChipText && renderStatRow("Price", priceChipText, (v) => `${v}`)}
+                  {renderStatRow("Price", priceChipText ?? null, (v) => `${v}`)}
                 </div>
               </div>
             );
@@ -2937,18 +2943,20 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                   }}
                 >
-                  {labelNode}
-                  {statsCard}
-                  {notesCard && !showSectionEyebrows ? hairlineRule : null}
-                  {notesCard}
-                  {statusCard}
+                  <div className="flex flex-col" style={{ gap: stackGap }}>
+                    {labelNode}
+                    {statsCard}
+                    {notesCard}
+                    {statusCard}
+                  </div>
                 </div>
                 <div
                   style={{
                     width: expandedStatsW,
                     opacity: collapseVariant === "hover-fade" ? (statsHover ? 1 : 0.22) : (statsCollapsed ? 0 : 1),
+                    transform: statsCollapsed ? "translateX(8px)" : "translateX(0)",
                     pointerEvents: statsCollapsed ? "none" : "auto",
-                    transition: `opacity ${dur} ${ease}`,
+                    transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                   }}
                 >
                   {purchasePill}
@@ -3187,12 +3195,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: statsW, minWidth: statsW, position: "relative", zIndex: 11 }}>
               <div className="flex flex-col" style={{ flex: 1, justifyContent: "center" }}>
                 {blurbBlock}
-                <div style={{ marginTop: blurbBlock ? stackGap : 0 }}>
-                  <div className="flex items-center" style={{ gap: 10, marginBottom: 10 }}>
-                    <span aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.07)" }} />
-                    <UnitsToggle imperial={useImperial} onToggle={() => onUseImperialChange?.(!useImperial)} />
-                    <span aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.07)" }} />
-                  </div>
+                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px" }}>
                   <div className="flex flex-col" style={{ gap: compareRowGap }}>
                     {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
                     {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
@@ -3201,16 +3204,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     {compareRow("Price", priceL, priceR)}
                   </div>
                 </div>
-                {hasStatus && <div style={{ marginTop: stackGap }}>{hairlineRule}</div>}
                 {hasStatus && (
-                  <div className="flex items-center justify-between" style={{ gap: 8, marginTop: stackGap }}>
-                    <div className="flex items-center min-w-0" style={{ gap: 6 }}>
-                      {hL.status && <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: statusColor(hL.status), flexShrink: 0 }} />}
-                      <span style={hL.status ? valueStyle : missingValueStyle}>{hL.status || "—"}</span>
-                    </div>
-                    <div className="flex items-center min-w-0" style={{ gap: 6 }}>
-                      <span style={hR.status ? valueStyle : missingValueStyle}>{hR.status || "—"}</span>
-                      {hR.status && <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: statusColor(hR.status), flexShrink: 0 }} />}
+                  <div className="flex justify-end" style={{ marginTop: stackGap }}>
+                    <div
+                      className="ui-frost inline-flex items-center"
+                      style={{
+                        gap: 12,
+                        borderRadius: 999,
+                        boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)",
+                        padding: "8px 12px",
+                      }}
+                    >
+                      <StatusDot color={hL.status ? statusColor(hL.status) : "rgba(0,0,0,0.10)"} />
+                      <StatusDot color={hR.status ? statusColor(hR.status) : "rgba(0,0,0,0.10)"} />
                     </div>
                   </div>
                 )}

@@ -208,8 +208,11 @@ function SingleKnobsPanel({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <TextModeSelector value={k.textMode} onChange={(v) => upd("textMode", v)} />
+      <Slider label="Padding top" value={k.basePadTop} onChange={(v) => upd("basePadTop", v)} min={0} max={160} />
       <Slider label="Padding X" value={k.basePadX} onChange={(v) => upd("basePadX", v)} min={0} max={200} />
-      <Slider label="Bottom padding" value={k.basePadBottom} onChange={(v) => upd("basePadBottom", v)} min={0} max={100} />
+      <Slider label="Padding bottom (non-cutoff)" value={k.basePadBottom} onChange={(v) => upd("basePadBottom", v)} min={0} max={160} />
+      <Slider label="Bottom fade height (cutoff)" value={k.bottomFadeH} onChange={(v) => upd("bottomFadeH", v)} min={0} max={180} />
+      <SliderFloat label="Bottom fade opacity" value={k.bottomFadeOpacity} onChange={(v) => upd("bottomFadeOpacity", v)} min={0} max={1} step={0.05} />
     </div>
   );
 }
@@ -228,8 +231,11 @@ function CompareKnobsPanel({
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <TextModeSelector value={k.textMode} onChange={(v) => upd("textMode", v)} />
       <Toggle label="Show divider" value={k.showDivider} onChange={(v) => upd("showDivider", v)} />
+      <Slider label="Padding top" value={k.basePadTop} onChange={(v) => upd("basePadTop", v)} min={0} max={160} />
       <Slider label="Padding X" value={k.basePadX} onChange={(v) => upd("basePadX", v)} min={0} max={150} />
-      <Slider label="Bottom padding" value={k.basePadBottom} onChange={(v) => upd("basePadBottom", v)} min={0} max={100} />
+      <Slider label="Padding bottom (non-cutoff)" value={k.basePadBottom} onChange={(v) => upd("basePadBottom", v)} min={0} max={160} />
+      <Slider label="Bottom fade height (cutoff)" value={k.bottomFadeH} onChange={(v) => upd("bottomFadeH", v)} min={0} max={180} />
+      <SliderFloat label="Bottom fade opacity" value={k.bottomFadeOpacity} onChange={(v) => upd("bottomFadeOpacity", v)} min={0} max={1} step={0.05} />
     </div>
   );
 }
@@ -384,6 +390,40 @@ function Slider({
         type="range"
         min={min}
         max={max}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ width: "100%", accentColor: "#2563eb" }}
+      />
+    </div>
+  );
+}
+
+function SliderFloat({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min: number;
+  max: number;
+  step: number;
+}) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", color: "#ccc", marginBottom: 4 }}>
+        <span>{label}</span>
+        <span style={{ color: "#888", fontFamily: "ui-monospace, monospace" }}>{value.toFixed(2)}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         style={{ width: "100%", accentColor: "#2563eb" }}

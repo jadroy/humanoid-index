@@ -77,6 +77,21 @@ export default function EditorPage() {
 
           <div>
             <label className="flex justify-between text-[10px] text-neutral-500">
+              <span>Padding top</span>
+              <span className="tabular-nums text-neutral-400">{k.basePadTop}</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={160}
+              value={k.basePadTop}
+              onChange={(e) => setKnob("basePadTop", Number(e.target.value))}
+              className="w-full accent-neutral-900 h-1"
+            />
+          </div>
+
+          <div>
+            <label className="flex justify-between text-[10px] text-neutral-500">
               <span>Padding X</span>
               <span className="tabular-nums text-neutral-400">{k.basePadX}</span>
             </label>
@@ -92,15 +107,46 @@ export default function EditorPage() {
 
           <div>
             <label className="flex justify-between text-[10px] text-neutral-500">
-              <span>Bottom padding</span>
+              <span>Padding bottom (non-cutoff)</span>
               <span className="tabular-nums text-neutral-400">{k.basePadBottom}</span>
             </label>
             <input
               type="range"
               min={0}
-              max={100}
+              max={160}
               value={k.basePadBottom}
               onChange={(e) => setKnob("basePadBottom", Number(e.target.value))}
+              className="w-full accent-neutral-900 h-1"
+            />
+          </div>
+
+          <div>
+            <label className="flex justify-between text-[10px] text-neutral-500">
+              <span>Bottom fade height (cutoff)</span>
+              <span className="tabular-nums text-neutral-400">{k.bottomFadeH}</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={180}
+              value={k.bottomFadeH}
+              onChange={(e) => setKnob("bottomFadeH", Number(e.target.value))}
+              className="w-full accent-neutral-900 h-1"
+            />
+          </div>
+
+          <div>
+            <label className="flex justify-between text-[10px] text-neutral-500">
+              <span>Bottom fade opacity</span>
+              <span className="tabular-nums text-neutral-400">{k.bottomFadeOpacity.toFixed(2)}</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={k.bottomFadeOpacity}
+              onChange={(e) => setKnob("bottomFadeOpacity", Number(e.target.value))}
               className="w-full accent-neutral-900 h-1"
             />
           </div>

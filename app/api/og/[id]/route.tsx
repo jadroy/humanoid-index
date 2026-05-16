@@ -34,6 +34,10 @@ async function loadBotImage(bot: Humanoid) {
   return bot.imageUrl && !isSvg(bot.imageUrl) ? loadImageAsDataUri(bot.imageUrl) : null;
 }
 
+function isCutoff(bot: Humanoid): boolean {
+  return bot.imagePosition?.includes("bottom") ?? false;
+}
+
 // ── Knob parsing (dev-only overrides) ────────────────────────
 
 function parseBool(v: string | null, fallback: boolean): boolean {
@@ -54,8 +58,11 @@ function readSingleKnobs(sp: URLSearchParams): SingleKnobs {
   if (process.env.NODE_ENV !== "development") return SINGLE_DEFAULTS;
   return {
     textMode: parseTextMode(sp.get("textMode"), SINGLE_DEFAULTS.textMode),
+    basePadTop: parseNum(sp.get("basePadTop"), SINGLE_DEFAULTS.basePadTop),
     basePadX: parseNum(sp.get("basePadX"), SINGLE_DEFAULTS.basePadX),
     basePadBottom: parseNum(sp.get("basePadBottom"), SINGLE_DEFAULTS.basePadBottom),
+    bottomFadeH: parseNum(sp.get("bottomFadeH"), SINGLE_DEFAULTS.bottomFadeH),
+    bottomFadeOpacity: parseNum(sp.get("bottomFadeOpacity"), SINGLE_DEFAULTS.bottomFadeOpacity),
   };
 }
 
@@ -63,22 +70,27 @@ function readCompareKnobs(sp: URLSearchParams): CompareKnobs {
   if (process.env.NODE_ENV !== "development") return COMPARE_DEFAULTS;
   return {
     textMode: parseTextMode(sp.get("textMode"), COMPARE_DEFAULTS.textMode),
+    basePadTop: parseNum(sp.get("basePadTop"), COMPARE_DEFAULTS.basePadTop),
     basePadX: parseNum(sp.get("basePadX"), COMPARE_DEFAULTS.basePadX),
     basePadBottom: parseNum(sp.get("basePadBottom"), COMPARE_DEFAULTS.basePadBottom),
+    bottomFadeH: parseNum(sp.get("bottomFadeH"), COMPARE_DEFAULTS.bottomFadeH),
+    bottomFadeOpacity: parseNum(sp.get("bottomFadeOpacity"), COMPARE_DEFAULTS.bottomFadeOpacity),
     showDivider: parseBool(sp.get("showDivider"), COMPARE_DEFAULTS.showDivider),
   };
 }
 
 // ── Shared bits ──────────────────────────────────────────────
 
-function BottomAnchoredImage({
+function RobotImage({
   src,
   boxW,
   boxH,
+  cutoff,
 }: {
   src: string | null;
   boxW: number;
   boxH: number;
+  cutoff: boolean;
 }) {
   if (!src) {
     return (
@@ -106,7 +118,23 @@ function BottomAnchoredImage({
       height={boxH}
       style={{
         objectFit: "contain",
-        objectPosition: "center bottom",
+        objectPosition: cutoff ? "center bottom" : "center",
+      }}
+    />
+  );
+}
+
+function BottomFade({ height, opacity, left, right }: { height: number; opacity: number; left: number; right: number }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left,
+        right,
+        bottom: 0,
+        height,
+        display: "flex",
+        background: `linear-gradient(to bottom, rgba(250,250,250,0), rgba(250,250,250,${opacity}))`,
       }}
     />
   );
@@ -157,8 +185,10 @@ function SingleCard({
   imgSrc: string | null;
   k: SingleKnobs;
 }) {
+  const cutoff = isCutoff(bot);
+  const padBottom = cutoff ? 0 : k.basePadBottom;
   const boxW = W - k.basePadX * 2;
-  const boxH = H - k.basePadBottom;
+  const boxH = H - k.basePadTop - padBottom;
 
   return (
     <div
@@ -176,15 +206,18 @@ function SingleCard({
           width: W,
           height: H,
           display: "flex",
-          alignItems: "flex-end",
+          alignItems: cutoff ? "flex-end" : "center",
           justifyContent: "center",
+          paddingTop: k.basePadTop,
+          paddingBottom: padBottom,
           paddingLeft: k.basePadX,
           paddingRight: k.basePadX,
-          paddingBottom: k.basePadBottom,
         }}
       >
-        <BottomAnchoredImage src={imgSrc} boxW={boxW} boxH={boxH} />
+        <RobotImage src={imgSrc} boxW={boxW} boxH={boxH} cutoff={cutoff} />
       </div>
+
+      {cutoff && <BottomFade height={k.bottomFadeH} opacity={k.bottomFadeOpacity} left={0} right={0} />}
 
       {k.textMode === "name" && (
         <div style={{ position: "absolute", bottom: 28, left: 40, display: "flex" }}>
@@ -202,16 +235,20 @@ function CompareSide({
   bot,
   imgSrc,
   k,
+  side,
   showName,
 }: {
   bot: Humanoid;
   imgSrc: string | null;
   k: CompareKnobs;
+  side: "left" | "right";
   showName: boolean;
 }) {
   const sideW = W / 2;
+  const cutoff = isCutoff(bot);
+  const padBottom = cutoff ? 0 : k.basePadBottom;
   const boxW = sideW - k.basePadX * 2;
-  const boxH = H - k.basePadBottom;
+  const boxH = H - k.basePadTop - padBottom;
 
   return (
     <div
@@ -219,17 +256,19 @@ function CompareSide({
         width: sideW,
         height: H,
         display: "flex",
-        alignItems: "flex-end",
+        alignItems: cutoff ? "flex-end" : "center",
         justifyContent: "center",
+        paddingTop: k.basePadTop,
+        paddingBottom: padBottom,
         paddingLeft: k.basePadX,
         paddingRight: k.basePadX,
-        paddingBottom: k.basePadBottom,
         position: "relative",
       }}
     >
-      <BottomAnchoredImage src={imgSrc} boxW={boxW} boxH={boxH} />
+      <RobotImage src={imgSrc} boxW={boxW} boxH={boxH} cutoff={cutoff} />
+      {cutoff && <BottomFade height={k.bottomFadeH} opacity={k.bottomFadeOpacity} left={0} right={0} />}
       {showName && (
-        <div style={{ position: "absolute", bottom: 28, left: 32, display: "flex" }}>
+        <div style={{ position: "absolute", bottom: 28, left: side === "left" ? 32 : undefined, right: side === "right" ? 32 : undefined, display: "flex" }}>
           <NameLabel name={bot.name} size={22} />
         </div>
       )}
@@ -261,7 +300,7 @@ function CompareCard({
         position: "relative",
       }}
     >
-      <CompareSide bot={left} imgSrc={leftImg} k={k} showName={k.textMode === "name"} />
+      <CompareSide bot={left} imgSrc={leftImg} k={k} side="left" showName={k.textMode === "name"} />
 
       {k.showDivider && (
         <div
@@ -272,11 +311,12 @@ function CompareCard({
             bottom: 80,
             width: 1,
             background: "#eeeeee",
+            display: "flex",
           }}
         />
       )}
 
-      <CompareSide bot={right} imgSrc={rightImg} k={k} showName={k.textMode === "name"} />
+      <CompareSide bot={right} imgSrc={rightImg} k={k} side="right" showName={k.textMode === "name"} />
 
       {k.textMode === "url" && <Watermark />}
     </div>
@@ -284,6 +324,10 @@ function CompareCard({
 }
 
 // ── Route handler ────────────────────────────────────────────
+
+const OG_HEADERS = {
+  "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
+};
 
 export async function GET(
   req: Request,
@@ -302,7 +346,7 @@ export async function GET(
     const [leftImg, rightImg] = await Promise.all([loadBotImage(bot), loadBotImage(rightBot)]);
     return new ImageResponse(
       <CompareCard left={bot} right={rightBot} leftImg={leftImg} rightImg={rightImg} k={k} />,
-      { width: W, height: H }
+      { width: W, height: H, headers: OG_HEADERS }
     );
   }
 
@@ -311,5 +355,6 @@ export async function GET(
   return new ImageResponse(<SingleCard bot={bot} imgSrc={imgSrc} k={k} />, {
     width: W,
     height: H,
+    headers: OG_HEADERS,
   });
 }
