@@ -699,6 +699,126 @@ function StatusDot({ color, size = 10 }: { color: string; size?: number }) {
   return <span aria-hidden style={{ width: size, height: size, borderRadius: 999, background: color, flexShrink: 0 }} />;
 }
 
+const STATUS_LEGEND: Array<{ label: string; color: string }> = [
+  { label: "In Production", color: "#22c55e" },
+  { label: "Prototype", color: "#eab308" },
+  { label: "Concept", color: "#3b82f6" },
+  { label: "Anticipated", color: "#8b5cf6" },
+  { label: "Discontinued", color: "#a3a3a3" },
+];
+
+// Clickable wrapper used in compare view: renders the dot pill as a
+// button; on click, opens a centered legend modal with a soft white
+// overlay behind it.
+function StatusLegendModal({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        aria-label="Status legend"
+        aria-haspopup="dialog"
+        className="ui-frost cursor-pointer pointer-events-auto"
+        style={{
+          ...style,
+          border: "none",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        {children}
+      </button>
+      {open && mounted && createPortal(
+        (<>
+          <div
+            aria-hidden
+            onClick={() => setOpen(false)}
+            style={{
+              position: "fixed", inset: 0,
+              background: "rgba(255,255,255,0.45)",
+              backdropFilter: "blur(2px)",
+              WebkitBackdropFilter: "blur(2px)",
+              zIndex: 9998,
+              animation: "legend-fade-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both",
+            }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Status legend"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "fixed",
+              top: "50%", left: "50%",
+              transform: "translate(-50%, -50%)",
+              minWidth: 320,
+              background: "#fff",
+              borderRadius: 28,
+              boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.06), 0 24px 64px rgba(0,0,0,0.10)",
+              padding: "28px 32px",
+              zIndex: 9999,
+              animation: "legend-fade-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+              className="cursor-pointer"
+              style={{
+                position: "absolute", top: 14, right: 14,
+                width: 28, height: 28, borderRadius: 999,
+                border: "none", background: "transparent",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                color: "var(--c-ink-muted)",
+                transition: "background 160ms ease, color 160ms ease",
+                WebkitTapHighlightColor: "transparent",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.05)"; e.currentTarget.style.color = "var(--c-ink-body)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--c-ink-muted)"; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 4 L12 12 M12 4 L4 12" />
+              </svg>
+            </button>
+            <p style={{
+              fontFamily: "var(--font-geist-sans)", fontSize: 11, fontWeight: 500,
+              color: "var(--c-ink-muted)", letterSpacing: "0.08em", textTransform: "uppercase",
+              margin: 0, marginBottom: 16,
+            }}>Status</p>
+            <div className="flex flex-col" style={{ gap: 14 }}>
+              {STATUS_LEGEND.map((entry) => (
+                <div
+                  key={entry.label}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 14,
+                    fontFamily: "var(--font-geist-sans)", fontSize: 15, fontWeight: 450,
+                    color: "var(--c-ink-body)",
+                    letterSpacing: "-0.005em",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, background: entry.color, flexShrink: 0 }} />
+                  <span>{entry.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>),
+        document.body,
+      )}
+    </>
+  );
+}
+
 // Tiny ⋯ trigger that opens a frosted-dark popover with stats-area
 // settings. Currently houses just the cm/in toggle; structured as a
 // menu so we can add density / sort / etc. without redoing the chrome.
@@ -845,7 +965,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
   const [pillsLayout, setPillsLayout] = useState<"stack" | "grouped">("stack");
-  const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill" | "chip">("after-name");
+  const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill" | "chip">("off");
   const [groupedFill, setGroupedFill] = useState<string>("#F9F9F9");
   const [groupedDivider, setGroupedDivider] = useState<"full" | "inset" | "none">("full");
   const [groupedRing, setGroupedRing] = useState<boolean>(true);
@@ -2700,14 +2820,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {showSectionEyebrows && hasDescriptorTags && <p style={headerStyle}>Notes</p>}
                 <div className="flex flex-wrap" style={{ gap: 7, marginTop: showSectionEyebrows && hasDescriptorTags ? sectionContentMarginTop : 0 }}>
                   {showYearChip && <span className="ui-frost" style={chipStyle}>{h.year}</span>}
-                  {showStatusChip && h.status && (
-                    <span
-                      className="ui-frost inline-flex items-center justify-center"
-                      style={{ ...chipStyle, gap: 0, padding: "8px 12px" }}
-                    >
-                      <StatusDot color={statusColor} />
-                    </span>
-                  )}
                   {h.tags?.map((tag) => (
                     <span key={tag} className="ui-frost" style={chipStyle}>{tag}</span>
                   ))}
@@ -2735,11 +2847,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const statsCard = (
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px" }}>
                 <div className="flex flex-col" style={{ gap: sectionContentGap }}>
+                  {renderStatRow("Year", h.year ?? null, (v) => `${v}`)}
                   {renderStatRow("Height", h.height, fmt.height)}
                   {renderStatRow("Weight", h.weight, fmt.weight)}
                   {renderStatRow("DOF", h.dof, (v) => `${v}`)}
                   {renderStatRow("Speed", h.maxSpeed, fmt.speed)}
                   {renderStatRow("Price", priceChipText ?? null, (v) => `${v}`)}
+                  <div style={{ ...rowStyle, alignItems: "center" }}>
+                    <span style={dimmed}>Status</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, ...(h.status ? valueStyle : missingValueStyle) }}>
+                      {h.status && <StatusDot color={statusColor} size={9} />}
+                      <span>{h.status ?? "—"}</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             );
@@ -3197,29 +3317,27 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {blurbBlock}
                 <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px" }}>
                   <div className="flex flex-col" style={{ gap: compareRowGap }}>
+                    {compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null)}
                     {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
                     {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
                     {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
                     {compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)}
                     {compareRow("Price", priceL, priceR)}
-                  </div>
-                </div>
-                {hasStatus && (
-                  <div className="flex justify-end" style={{ marginTop: stackGap }}>
-                    <div
-                      className="ui-frost inline-flex items-center"
-                      style={{
-                        gap: 12,
-                        borderRadius: 999,
-                        boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)",
-                        padding: "8px 12px",
-                      }}
-                    >
-                      <StatusDot color={hL.status ? statusColor(hL.status) : "rgba(0,0,0,0.10)"} />
-                      <StatusDot color={hR.status ? statusColor(hR.status) : "rgba(0,0,0,0.10)"} />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
+                      <span style={{ display: "inline-flex", justifyContent: "flex-start" }}>
+                        {hL.status
+                          ? <StatusDot color={statusColor(hL.status)} size={9} />
+                          : <span style={missingValueStyle}>—</span>}
+                      </span>
+                      <span style={{ ...dimmed, textAlign: "center" as const }}>Status</span>
+                      <span style={{ display: "inline-flex", justifyContent: "flex-end" }}>
+                        {hR.status
+                          ? <StatusDot color={statusColor(hR.status)} size={9} />
+                          : <span style={missingValueStyle}>—</span>}
+                      </span>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
               <button
                 type="button"

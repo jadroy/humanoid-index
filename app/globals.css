@@ -1183,3 +1183,10 @@ main {
   opacity: 1;
   transform: translateY(-1px) scale(1.015);
 }
+
+/* Drives both the backdrop overlay and the centered modal fade-in for
+   the status legend opened from the compare-view dot pill. */
+@keyframes legend-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
