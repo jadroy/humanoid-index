@@ -12,6 +12,7 @@ export interface Humanoid {
   id: string;
   name: string;
   manufacturer: string;
+  country?: string; // Origin country/region (e.g., "USA", "China", "Norway / USA"). Drives the Country stat row.
   year?: number;
   cost?: string; // Cost in a displayable format (e.g., "$50K", "$150K", "N/A")
   status?: "In Production" | "Prototype" | "Concept" | "Discontinued" | "Anticipated";
@@ -31,7 +32,7 @@ export interface Humanoid {
   media?: MediaItem[]; // Additional images and videos
   purchaseUrl?: string; // Link to buy/learn more about the robot
   sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
-  tags?: string[]; // Short descriptor chips — facets like origin country, use case, drive, vibe, reception
+  tags?: string[]; // Short descriptor chips — facets like use case, drive, vibe, reception (country lives on its own `country` field now)
 }
 
 // Flip to false to hide the 2026-05-08 density-experiment stubs (ids 30–135).
@@ -167,6 +168,7 @@ const allHumanoids: Humanoid[] = [
     id: "3",
     name: "Memo",
     manufacturer: "Sunday Robotics",
+    country: "USA",
     logoUrl: "/robots/Sunday.svg",
     manufacturerUrl: "https://www.sunday.ai",
     imageUrl: "/robots/memo.png",
@@ -178,13 +180,14 @@ const allHumanoids: Humanoid[] = [
     dof: 27,
     maxSpeed: 1.0,
     description: "Domestic robot for household chores with a wheeled base and dual-arm system.",
-    tags: ["USA", "Home", "Wheeled base", "Dual-arm", "Beta program"],
+    tags: ["Home", "Wheeled base", "Dual-arm", "Beta program"],
   },
   {
     id: "14",
     name: "Oli",
     infoUrl: "https://www.limxdynamics.com/en/products/oli",
     manufacturer: "LimX Dynamics",
+    country: "China",
     imageUrl: "/robots/oli.png",
     logoUrl: "/robots/Limx.svg",
     year: 2025,
@@ -201,12 +204,13 @@ const allHumanoids: Humanoid[] = [
       // launch: hidden until ship — restore for Oli video slide
       // { type: 'video', url: '/robots/oli-guanjie.mp4', caption: 'Joints', fit: 'cover', position: 'bottom', credit: { prefix: 'via', name: 'LimX Dynamics', href: 'https://www.limxdynamics.com/en/products/oli' } },
     ],
-    tags: ["China", "Research", "Electric", "$22K affordable", "Agentic OS"],
+    tags: ["Research", "Electric", "$22K affordable", "Agentic OS"],
   },
   {
     id: "16",
     name: "K2",
     manufacturer: "Kepler Robotics",
+    country: "China",
     logoUrl: "/robots/Kepler-robotics.svg",
     manufacturerUrl: "https://www.gotokepler.com",
     year: 2025,
@@ -218,11 +222,11 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 1.0,
     imageUrl: "/robots/k2.png",
     description: "Affordable general-purpose humanoid for manufacturing and logistics.",
-    tags: ["China", "Industrial", "Electric", "$30K affordable"],
+    tags: ["Industrial", "Electric", "$30K affordable"],
   },
   {
     id: "28",
-    name: "Domo Developer",
+    name: "Domo",
     manufacturer: "Rotaku",
     logoUrl: "/robots/Rotaku.png",
     manufacturerUrl: "https://www.rotaku.ai",
@@ -240,7 +244,7 @@ const allHumanoids: Humanoid[] = [
   },
   {
     id: "29",
-    name: "Domo Plus Developer",
+    name: "Domo Plus",
     manufacturer: "Rotaku",
     logoUrl: "/robots/Rotaku.png",
     manufacturerUrl: "https://www.rotaku.ai",
@@ -262,6 +266,7 @@ const allHumanoids: Humanoid[] = [
     name: "Optimus Gen 2",
     availability: "prototype",
     manufacturer: "Tesla",
+    country: "USA",
     imageUrl: "/robots/optimus-HD.png",
     logoUrl: "/robots/Tesla-logo.png",
     manufacturerUrl: "https://www.tesla.com",
@@ -272,12 +277,13 @@ const allHumanoids: Humanoid[] = [
     weight: 57,
     dof: 28,
     description: "Tesla's second-gen humanoid with improved hands and enhanced balance capabilities.",
-    tags: ["USA", "Showcase", "Electric", "Highly hyped"],
+    tags: ["Showcase", "Electric", "Highly hyped"],
   },
   {
     id: "2",
     name: "Electric Atlas",
     manufacturer: "Boston Dynamics",
+    country: "USA",
     logoUrl: "/robots/Boston_Dynamics-logo.svg",
     manufacturerUrl: "https://www.bostondynamics.com",
     infoUrl: "https://bostondynamics.com/products/atlas/",
@@ -290,12 +296,13 @@ const allHumanoids: Humanoid[] = [
     dof: 56,
     description: "Fully electric successor to hydraulic Atlas for industrial applications.",
     sceneUrl: "/scenes/electric-atlas-scene.jpg",
-    tags: ["USA", "Industrial", "Electric", "Iconic mobility"],
+    tags: ["Industrial", "Electric", "Iconic mobility"],
   },
   {
     id: "4",
     name: "Neo",
     manufacturer: "1X Technologies",
+    country: "Norway / USA",
     logoUrl: "/robots/1x-nofill.svg",
     manufacturerUrl: "https://www.1x.tech",
     infoUrl: "https://www.1x.tech/discover/neo-home-robot",
@@ -309,13 +316,14 @@ const allHumanoids: Humanoid[] = [
     description: "Lightweight bipedal humanoid for safe human interaction and home assistance.",
     purchaseUrl: "https://www.1x.tech/order",
     sceneUrl: "/scenes/neo-scene.png",
-    tags: ["Norway / USA", "Home", "Tendon-driven", "Soft & lightweight"],
+    tags: ["Home", "Tendon-driven", "Soft & lightweight"],
   },
   {
     id: "7",
     name: "Figure 02",
     availability: "enterprise",
     manufacturer: "Figure AI",
+    country: "USA",
     logoUrl: "/robots/Figure-ai.svg",
     imageUrl: "/robots/figure.png",
     year: 2024,
@@ -326,7 +334,7 @@ const allHumanoids: Humanoid[] = [
     dof: 28,
     maxSpeed: 1.2,
     description: "Second-gen humanoid from Figure AI with advanced AI and dexterous manipulation.",
-    tags: ["USA", "Industrial", "Electric", "BMW pilot", "Enterprise only"],
+    tags: ["Industrial", "Electric", "BMW pilot", "Enterprise only"],
   },
   {
     id: "8",
@@ -334,6 +342,7 @@ const allHumanoids: Humanoid[] = [
     availability: "enterprise",
     infoUrl: "https://www.sanctuary.ai/blog/sanctuary-ai-unveils-phoenix-a-humanoid-general-purpose-robot-designed-for-work",
     manufacturer: "Sanctuary AI",
+    country: "Canada",
     logoUrl: "/robots/Sanctuary.png",
     year: 2024,
     cost: "N/A",
@@ -343,7 +352,7 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 1.3,
     imageUrl: "/robots/phoenix.png",
     description: "General-purpose humanoid powered by Sanctuary AI's Carbon cognition system.",
-    tags: ["Canada", "Industrial", "Electric", "Carbon AI", "Enterprise only"],
+    tags: ["Industrial", "Electric", "Carbon AI", "Enterprise only"],
   },
   {
     id: "10",
@@ -351,6 +360,7 @@ const allHumanoids: Humanoid[] = [
     availability: "enterprise",
     infoUrl: "https://apptronik.com/apollo",
     manufacturer: "Apptronik",
+    country: "USA",
     logoUrl: "/robots/Apptronik.png",
     imageUrl: "/robots/apollo.png",
     year: 2024,
@@ -359,12 +369,13 @@ const allHumanoids: Humanoid[] = [
     height: 173,
     weight: 73,
     description: "Modular humanoid for manufacturing and logistics with swappable battery packs.",
-    tags: ["USA", "Industrial", "Electric", "Modular battery", "Mercedes pilot"],
+    tags: ["Industrial", "Electric", "Modular battery", "Mercedes pilot"],
   },
   {
     id: "11",
     name: "G1",
     manufacturer: "Unitree",
+    country: "China",
     logoUrl: "/robots/Unitree-logo.svg",
     manufacturerUrl: "https://www.unitree.com",
     imageUrl: "/robots/g1.png",
@@ -377,13 +388,14 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 2.0,
     description: "Compact, affordable humanoid with advanced mobility for research and commercial use.",
     purchaseUrl: "https://shop.unitree.com/products/unitree-g1",
-    tags: ["China", "Research", "Electric", "$13.5K affordable", "Best-selling"],
+    tags: ["Research", "Electric", "$13.5K affordable", "Best-selling"],
   },
   {
     id: "12",
     name: "H1",
     infoUrl: "https://www.unitree.com/h1/",
     manufacturer: "Unitree",
+    country: "China",
     logoUrl: "/robots/Unitree-logo.svg",
     manufacturerUrl: "https://www.unitree.com",
     imageUrl: "/robots/h1.png",
@@ -395,13 +407,14 @@ const allHumanoids: Humanoid[] = [
     dof: 19,
     maxSpeed: 3.3,
     description: "Full-size humanoid for industrial applications with high-speed locomotion.",
-    tags: ["China", "Research", "Electric", "Backflips", "Fast (3.3 m/s)"],
+    tags: ["Research", "Electric", "Backflips", "Fast (3.3 m/s)"],
   },
   {
     id: "15",
     name: "Astribot S1",
     availability: "enterprise",
     manufacturer: "Astribot",
+    country: "China",
     imageUrl: "/robots/s1.png",
     logoUrl: "/robots/Astribot.png",
     year: 2024,
@@ -411,7 +424,7 @@ const allHumanoids: Humanoid[] = [
     weight: 60,
     dof: 32,
     description: "Highly dexterous humanoid capable of complex tasks like cooking and pouring drinks.",
-    tags: ["China", "Showcase", "Electric", "Dexterous", "Enterprise only"],
+    tags: ["Showcase", "Electric", "Dexterous", "Enterprise only"],
   },
   {
     id: "17",
@@ -419,6 +432,7 @@ const allHumanoids: Humanoid[] = [
     availability: "research",
     infoUrl: "https://x-humanoid.com/bt.html",
     manufacturer: "Beijing Humanoid Robot Center",
+    country: "China",
     logoUrl: "/robots/Beijing-humanoid-robot-center.png",
     year: 2024,
     cost: "N/A",
@@ -429,13 +443,14 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 2.0,
     imageUrl: "/robots/tiangong.png",
     description: "China's national humanoid project with advanced whole-body motion control.",
-    tags: ["China", "Research", "Electric", "State-backed", "Whole-body control"],
+    tags: ["Research", "Electric", "State-backed", "Whole-body control"],
   },
   {
     id: "18",
     name: "Menteebot",
     availability: "prototype",
     manufacturer: "Mentee Robotics",
+    country: "Israel",
     logoUrl: "/robots/Mentee-robotics.png",
     manufacturerUrl: "https://www.menteebot.com",
     year: 2025,
@@ -447,7 +462,7 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 1.5,
     imageUrl: "/robots/menteebot-2.png",
     description: "AI-native humanoid built around a single language model for warehouse and household tasks.",
-    tags: ["Israel", "Industrial", "Electric", "AI-native", "Natural-language"],
+    tags: ["Industrial", "Electric", "AI-native", "Natural-language"],
   },
   // 2023
   {
@@ -455,6 +470,7 @@ const allHumanoids: Humanoid[] = [
     name: "Digit",
     infoUrl: "https://agilityrobotics.com/products/digit",
     manufacturer: "Agility Robotics",
+    country: "USA",
     logoUrl: "/robots/Agility2.svg",
     manufacturerUrl: "https://www.agilityrobotics.com",
     imageUrl: "/robots/digit.png",
@@ -465,13 +481,14 @@ const allHumanoids: Humanoid[] = [
     weight: 65,
     maxSpeed: 1.5,
     description: "Production-ready humanoid for logistics. Deployed in GXO and Amazon facilities.",
-    tags: ["USA", "Logistics", "Electric", "Amazon facilities", "Production-ready"],
+    tags: ["Logistics", "Electric", "Amazon facilities", "Production-ready"],
   },
   {
     id: "9",
     name: "Walker X",
     infoUrl: "https://www.ubtrobot.com/en/humanoid/products/walker-x",
     manufacturer: "Ubtech",
+    country: "China",
     logoUrl: "/robots/Ubtech.png",
     year: 2021,
     cost: "N/A",
@@ -482,13 +499,14 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 0.8,
     imageUrl: "/robots/walker-x.png",
     description: "Large-scale humanoid for uneven terrain and industrial manipulation.",
-    tags: ["China", "Industrial", "Electric", "Uneven terrain", "Listed company"],
+    tags: ["Industrial", "Electric", "Uneven terrain", "Listed company"],
   },
   {
     id: "13",
     name: "GR-1",
     infoUrl: "https://www.fftai.com/products-gr1",
     manufacturer: "Fourier Intelligence",
+    country: "China",
     logoUrl: "/robots/Fourier.png",
     imageUrl: "/robots/gr1-front.png",
     year: 2023,
@@ -503,7 +521,7 @@ const allHumanoids: Humanoid[] = [
       { type: 'image', url: '/robots/gr1-perspective.png', caption: 'Perspective view' },
       { type: 'image', url: '/robots/gr1-back_perspective.png', caption: 'Back perspective' },
     ],
-    tags: ["China", "Research", "Electric", "Rehab focus", "$100K"],
+    tags: ["Research", "Electric", "Rehab focus", "$100K"],
   },
   {
     id: "19",
@@ -511,6 +529,7 @@ const allHumanoids: Humanoid[] = [
     availability: "enterprise",
     infoUrl: "https://www.1x.tech/eve",
     manufacturer: "1X Technologies",
+    country: "Norway / USA",
     logoUrl: "/robots/1x-nofill.svg",
     manufacturerUrl: "https://www.1x.tech",
     year: 2023,
@@ -522,7 +541,7 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 1.4,
     imageUrl: "/robots/eve.avif",
     description: "Wheeled humanoid for security and commercial applications.",
-    tags: ["Norway / USA", "Security", "Wheeled base", "Enterprise only"],
+    tags: ["Security", "Wheeled base", "Enterprise only"],
   },
   // 2021
   {
@@ -530,6 +549,7 @@ const allHumanoids: Humanoid[] = [
     name: "Ameca",
     infoUrl: "https://engineeredarts.com/robot/ameca/",
     manufacturer: "Engineered Arts",
+    country: "UK",
     logoUrl: "/robots/Engineered-arts.svg",
     year: 2021,
     cost: "$250K",
@@ -543,7 +563,7 @@ const allHumanoids: Humanoid[] = [
     media: [
       { type: 'image', url: '/robots/ameca-2.png' },
     ],
-    tags: ["UK", "Showcase", "Electric", "Expressive face", "Viral on social"],
+    tags: ["Showcase", "Electric", "Expressive face", "Viral on social"],
   },
   // 2018
   {
@@ -552,6 +572,7 @@ const allHumanoids: Humanoid[] = [
     availability: "research",
     infoUrl: "https://h2t.iar.kit.edu/english/397.php",
     manufacturer: "KIT",
+    country: "Germany",
     logoUrl: "/robots/KIT.png",
     imageUrl: "/robots/armar-6.png",
     imagePosition: "bottom",
@@ -563,7 +584,7 @@ const allHumanoids: Humanoid[] = [
     dof: 28,
     maxSpeed: 1.0,
     description: "Collaborative humanoid for industrial maintenance tasks.",
-    tags: ["Germany", "Research", "Electric", "University lab", "Industrial maintenance"],
+    tags: ["Research", "Electric", "University lab", "Industrial maintenance"],
   },
   // 2017
   {
@@ -571,6 +592,7 @@ const allHumanoids: Humanoid[] = [
     name: "Talos",
     infoUrl: "https://pal-robotics.com/robot/talos/",
     manufacturer: "PAL Robotics",
+    country: "Spain",
     logoUrl: "/robots/PAL.svg",
     manufacturerUrl: "https://pal-robotics.com",
     imageUrl: "/robots/TALOS.png",
@@ -582,7 +604,7 @@ const allHumanoids: Humanoid[] = [
     dof: 32,
     maxSpeed: 1.5,
     description: "Electric humanoid for industrial and research use with torque-controlled joints.",
-    tags: ["Spain", "Research", "Electric", "Torque-controlled"],
+    tags: ["Research", "Electric", "Torque-controlled"],
   },
   // 2016
   {
@@ -591,13 +613,14 @@ const allHumanoids: Humanoid[] = [
     availability: "research",
     infoUrl: "https://www.hansonrobotics.com/sophia/",
     manufacturer: "Hanson Robotics",
+    country: "Hong Kong",
     logoUrl: "/robots/Hanson-robotics.png",
     imageUrl: "/robots/sophia.png",
     year: 2016,
     status: "In Production",
     height: 167,
     description: "Famous social humanoid and first robot granted citizenship. Known for lifelike expressions.",
-    tags: ["Hong Kong", "Showcase", "Lifelike skin", "First robot citizen", "Viral on social"],
+    tags: ["Showcase", "Lifelike skin", "First robot citizen", "Viral on social"],
   },
   // 2014
   {
@@ -606,6 +629,7 @@ const allHumanoids: Humanoid[] = [
     availability: "discontinued",
     infoUrl: "https://us.softbankrobotics.com/pepper",
     manufacturer: "SoftBank Robotics",
+    country: "Japan",
     logoUrl: "/robots/Softbank-robotics.svg",
     imageUrl: "/robots/pepper.png",
     year: 2014,
@@ -616,7 +640,7 @@ const allHumanoids: Humanoid[] = [
     dof: 20,
     maxSpeed: 0.8,
     description: "Emotional humanoid for customer service and companionship.",
-    tags: ["Japan", "Service", "Electric", "Emotion-aware", "Widely deployed"],
+    tags: ["Service", "Electric", "Emotion-aware", "Widely deployed"],
   },
   // 2013
   {
@@ -625,6 +649,7 @@ const allHumanoids: Humanoid[] = [
     availability: "discontinued",
     infoUrl: "https://bostondynamics.com/blog/electric-new-era-for-atlas/",
     manufacturer: "Boston Dynamics",
+    country: "USA",
     logoUrl: "/robots/Boston_Dynamics-logo.svg",
     manufacturerUrl: "https://www.bostondynamics.com",
     imageUrl: "/robots/hydraulic-atlas.png",
@@ -636,7 +661,7 @@ const allHumanoids: Humanoid[] = [
     dof: 28,
     maxSpeed: 1.5,
     description: "DARPA Robotics Challenge pioneer famous for parkour and backflips. Retired in April 2024 in favor of the Electric Atlas.",
-    tags: ["USA", "Research", "Hydraulic", "DARPA pioneer", "Parkour", "Retired 2024"],
+    tags: ["Research", "Hydraulic", "DARPA pioneer", "Parkour", "Retired 2024"],
   },
   // Hidden: no non-creepy photos available
   // {
@@ -653,6 +678,7 @@ const allHumanoids: Humanoid[] = [
     name: "Roboy",
     availability: "research",
     manufacturer: "Devanthro",
+    country: "Switzerland",
     logoUrl: "/robots/Devanthro.png",
     imageUrl: "/robots/roboy.png",
     imagePosition: "bottom",
@@ -662,7 +688,7 @@ const allHumanoids: Humanoid[] = [
     weight: 30,
     dof: 28,
     description: "Tendon-driven humanoid mimicking the musculoskeletal system for biomechanics research.",
-    tags: ["Switzerland", "Research", "Tendon-driven", "Musculoskeletal", "Open-source"],
+    tags: ["Research", "Tendon-driven", "Musculoskeletal", "Open-source"],
   },
   // 2000
   {
@@ -671,6 +697,7 @@ const allHumanoids: Humanoid[] = [
     availability: "discontinued",
     infoUrl: "https://global.honda/en/robotics/asimo/",
     manufacturer: "Honda",
+    country: "Japan",
     logoUrl: "/robots/Honda.svg",
     imageUrl: "/robots/asimo.png",
     year: 2000,
@@ -680,7 +707,7 @@ const allHumanoids: Humanoid[] = [
     dof: 57,
     maxSpeed: 2.5,
     description: "Honda's pioneering bipedal humanoid. Retired in 2022 after 22 years of development.",
-    tags: ["Japan", "Showcase", "Electric", "First to walk fluidly", "Retired 2022"],
+    tags: ["Showcase", "Electric", "First to walk fluidly", "Retired 2022"],
   },
 ];
 

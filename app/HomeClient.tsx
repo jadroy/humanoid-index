@@ -2848,6 +2848,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px" }}>
                 <div className="flex flex-col" style={{ gap: sectionContentGap }}>
                   {renderStatRow("Year", h.year ?? null, (v) => `${v}`)}
+                  {renderStatRow("Country", h.country ?? null, (v) => `${v}`)}
                   {renderStatRow("Height", h.height, fmt.height)}
                   {renderStatRow("Weight", h.weight, fmt.weight)}
                   {renderStatRow("DOF", h.dof, (v) => `${v}`)}
@@ -3318,6 +3319,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px" }}>
                   <div className="flex flex-col" style={{ gap: compareRowGap }}>
                     {compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null)}
+                    {compareRow("Country", hL.country ?? null, hR.country ?? null)}
                     {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
                     {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
                     {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
