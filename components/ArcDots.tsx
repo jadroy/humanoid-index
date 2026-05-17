@@ -268,11 +268,22 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
   const hitRefs = useRef<Array<SVGRectElement | null>>([]);
   const ghostRefs = useRef<Array<SVGCircleElement | null>>([]);
   const boundaryRef = useRef<SVGPathElement | null>(null);
+  const logoGroupRef = useRef<SVGGElement | null>(null);
+  const logoImgRef = useRef<SVGImageElement | null>(null);
+  const lastLogoUrlRef = useRef<string>("");
+  const LOGO_SIZE = 20;
+  const LOGO_GAP = 12;
+  const arcLogoClipId = `arc-logo-clip${mirrored ? "-r" : "-l"}`;
   // Tangent distance to the adjacent item — used to size click rects so they tile.
   const stepH = r * Math.sin((aStepDeg * Math.PI) / 180);
 
   useLayoutEffect(() => {
     const update = (pos: number) => {
+      let activeIdx = -1;
+      let activeCx = 0;
+      let activeCy = 0;
+      let activeTangentDeg = 0;
+      let activeDist = Infinity;
       for (let idx = 0; idx < items.length; idx++) {
         const item = items[idx];
         const i = item.i;
@@ -287,6 +298,13 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         const cy = wheelR + Math.sin(theta) * rName;
         const tangentDeg = (theta * 180) / Math.PI + (mirrored ? 180 : 0);
         const dist = Math.abs(o);
+        if (!item.ghost && dist < activeDist) {
+          activeDist = dist;
+          activeIdx = idx;
+          activeCx = cx;
+          activeCy = cy;
+          activeTangentDeg = tangentDeg;
+        }
         const t = Math.min(dist / 10, 1);
 
         if (item.ghost) {
@@ -326,9 +344,50 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
           rectEl.setAttribute("transform", `rotate(${tangentDeg}, ${cx}, ${cy})`);
         }
       }
+
+      // Logo on the active item only — anchored just left of the first letter of
+      // the name (in reading order), rotated with the text's tangent. Hidden when
+      // the active humanoid has no logoUrl or no item is in range.
+      const groupEl = logoGroupRef.current;
+      const imgEl = logoImgRef.current;
+      if (groupEl && imgEl) {
+        const activeItem = activeIdx >= 0 ? items[activeIdx] : null;
+        const activeH = activeItem ? humanoids[activeItem.i] : null;
+        const logoUrl = activeH?.logoUrl;
+        if (activeItem && logoUrl && activeDist < 0.5) {
+          const textEl = textRefs.current[activeIdx];
+          const textWidth = textEl ? textEl.getComputedTextLength() : 0;
+          // Place the disc on the outer edge of the arc — opposite the card.
+          // For the left (non-mirrored) wheel that's negative-x past the first
+          // character; for the right (mirrored) wheel it's positive-x past the
+          // last character, so the layout mirrors symmetrically.
+          const anchorIsEnd =
+            (rightAlign && !mirrored) || (!rightAlign && mirrored);
+          const outerDir = mirrored ? 1 : -1;
+          const textOuterEdgeLocalX =
+            outerDir < 0 ? (anchorIsEnd ? -textWidth : 0) : (anchorIsEnd ? 0 : textWidth);
+          const centerX =
+            activeCx + textOuterEdgeLocalX + outerDir * (LOGO_GAP + LOGO_SIZE / 2);
+          // `dominantBaseline="middle"` puts the em-box midline at cy, but the
+          // visual middle of the cap-height sits a touch higher. Nudge the disc
+          // up by a fraction of the font size so it reads as centered.
+          const centerY = activeCy - aFsMax * 0.06;
+          groupEl.setAttribute(
+            "transform",
+            `translate(${centerX} ${centerY}) rotate(${activeTangentDeg})`,
+          );
+          if (lastLogoUrlRef.current !== logoUrl) {
+            imgEl.setAttribute("href", logoUrl);
+            lastLogoUrlRef.current = logoUrl;
+          }
+          groupEl.style.opacity = "1";
+        } else {
+          groupEl.style.opacity = "0";
+        }
+      }
     };
     return subscribe(update);
-  }, [items, subscribe, mirrored, wheelR, r, rName, rightAlign, aStepDeg, aFsMax, aFsMin, stepH, markerAccentColor, aInactiveOp]);
+  }, [items, subscribe, mirrored, wheelR, r, rName, rightAlign, aStepDeg, aFsMax, aFsMin, stepH, markerAccentColor, aInactiveOp, LOGO_SIZE, LOGO_GAP]);
 
   // Boundary fill (arc / wedge): render a path that covers the angular range
   // where ghost items would be — keeps the wheel visually "complete" at list ends.
@@ -461,6 +520,28 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
             </g>
           );
         })}
+        <defs>
+          <clipPath id={arcLogoClipId} clipPathUnits="objectBoundingBox">
+            <circle cx="0.5" cy="0.5" r="0.5" />
+          </clipPath>
+        </defs>
+        <g
+          ref={logoGroupRef}
+          style={{
+            pointerEvents: "none",
+            opacity: 0,
+          }}
+        >
+          <image
+            ref={logoImgRef}
+            x={-LOGO_SIZE / 2}
+            y={-LOGO_SIZE / 2}
+            width={LOGO_SIZE}
+            height={LOGO_SIZE}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#${arcLogoClipId})`}
+          />
+        </g>
       </svg>
     </div>
   );

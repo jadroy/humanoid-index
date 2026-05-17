@@ -1164,6 +1164,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Compare-mode middle column width. Stats need ~150-180px; the rest is
   // breathing room (and blurb width when the AI overview is on).
   const [statsW, setStatsW] = useState(200);       // px
+  // Compare mode needs more room to render long manufacturer names like
+  // "Sunday Robotics" / "LimX Dynamics" without truncating.
+  const compareStatsW = statsW + 90;
   const [statsColScale, setStatsColScale] = useState(0.57); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(20);    // px — gap between robot and stats
@@ -1394,7 +1397,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
   const centerHalfWidth = (() => {
     const cardPx = comparing
-      ? Math.min((robotW - 8) * windowWidth / 100, robotMaxW - 100)
+      ? Math.min((robotW - 8) * windowWidth / 100, robotMaxW)
       : Math.min(robotW * windowWidth / 100, robotMaxW);
     const gap = statsGap;
     if (comparing) {
@@ -1402,7 +1405,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       // unaffected by the single-view collapsed/expanded toggle. Using
       // effectiveStatsW here would shrink the half-width when stats are
       // collapsed and leave the arcs sitting behind the cards.
-      return cardPx + gap + statsW / 2;
+      return cardPx + gap + compareStatsW / 2;
     }
     return (cardPx + gap + effectiveStatsW) / 2;
   })();
@@ -2995,6 +2998,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               )
             ) : null;
             const denseRows: React.ReactNode[] = [
+              renderStatRow("Company", h.manufacturer ?? null, (v) => `${v}`),
               renderStatRow("Year", h.year ?? null, (v) => `${v}`),
               renderStatRow("Country", h.country ?? null, (v) => `${v}`),
               renderStatRow("Height", h.height, fmt.height),
@@ -3019,6 +3023,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     ))
                   ) : (
                     <>
+                      {renderStatRow("Company", h.manufacturer ?? null, (v) => `${v}`)}
                       {renderStatRow("Year", h.year ?? null, (v) => `${v}`)}
                       {renderStatRow("Country", h.country ?? null, (v) => `${v}`)}
                       {unitsDivider}
@@ -3570,6 +3575,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             </button>
           );
           const denseRows: React.ReactNode[] = [
+            compareRow("Company", hL.manufacturer ?? null, hR.manufacturer ?? null),
             compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null),
             compareRow("Country", hL.country ?? null, hR.country ?? null),
             compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null),
@@ -3584,7 +3590,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           ];
 
           return (
-            <div className="flex flex-col h-full pointer-events-auto" style={{ width: statsW, minWidth: statsW, position: "relative", zIndex: 11 }}>
+            <div className="flex flex-col h-full pointer-events-auto" style={{ width: compareStatsW, minWidth: compareStatsW, position: "relative", zIndex: 11 }}>
               <div className="flex flex-col" style={{ flex: 1, justifyContent: denseDividers ? "stretch" : "center", minHeight: 0 }}>
                 {blurbBlock}
                 <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column" }}>
@@ -3598,6 +3604,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       ))
                     ) : (
                       <>
+                        {compareRow("Company", hL.manufacturer ?? null, hR.manufacturer ?? null)}
                         {compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null)}
                         {compareRow("Country", hL.country ?? null, hR.country ?? null)}
                         {unitsDivider}
@@ -3851,15 +3858,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
-            {labelPosition === "above" && <div className="mb-2">{cardLabel}</div>}
             {/* Inner card */}
             <div
               ref={isFirst ? leftCardRef : rightCardRef}
               className="relative flex flex-col overflow-hidden"
               style={{
                 width: comparing ? `${robotW - 8}vw` : `${robotW}vw`,
-                height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
-                maxWidth: comparing ? robotMaxW - 100 : robotMaxW,
+                height: comparing ? `${robotH - 4}vh` : `${robotH}vh`,
+                maxWidth: robotMaxW,
                 borderRadius: cardRadius,
                 background: "#F9F9F9",
                 pointerEvents: "auto",
@@ -4169,8 +4175,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 style={{
                   marginLeft: effectiveGap,
                   overflowX: "visible", overflowY: "visible",
-                  width: comparing ? statsW : effectiveStatsW,
-                  height: comparing ? `${robotH - 10}vh` : `${robotH}vh`,
+                  width: comparing ? compareStatsW : effectiveStatsW,
+                  height: comparing ? `${robotH - 4}vh` : `${robotH}vh`,
                   transform: addHintVisible
                     ? undefined
                     : !comparing && addHover && addCtaMode !== "always" ? "translateX(-16px)" : "translateX(0)",
