@@ -2,16 +2,20 @@
 
 import { Fragment, useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from "react";
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
-import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles } from "lucide-react";
+import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box } from "lucide-react";
 import * as FlagComponents from "country-flag-icons/react/1x1";
-import { humanoids } from "@/data/humanoids";
+import { humanoids, type Humanoid } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
 import MobileView from "@/components/MobileView";
 import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
+
+// Lazy-loaded so three.js + URDFLoader stay out of the main bundle.
+const Robot3D = dynamic(() => import("@/components/Robot3D"), { ssr: false });
 
 const SPIN_ROBOTS: Record<
   string,
@@ -25,6 +29,19 @@ const SPIN_ROBOTS: Record<
     frameCount: 30,
     path: "/spin/memo",
     credit: { prefix: "Via", name: "sunday.ai" },
+  },
+};
+
+// Robots with a Draco-compressed URDF mesh set. Toggling the 3D pill swaps the
+// static media for an articulated three.js viewer; assets only download on first activation.
+const THREEDEE_ROBOTS: Record<
+  string,
+  { urdfUrl: string; meshBase: string; credit?: { prefix?: string; name: string; href?: string } }
+> = {
+  "11": {
+    urdfUrl: "/3d/g1/g1_23dof.urdf",
+    meshBase: "/3d/g1",
+    credit: { prefix: "Model", name: "unitree_ros", href: "https://github.com/unitreerobotics/unitree_ros" },
   },
 };
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
@@ -52,6 +69,12 @@ import { FONTS, FAVORITE_FONTS } from "@/lib/fonts";
 import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSettings } from "@/lib/cardPhysics";
 
 const MOBILE_BREAKPOINT = 768;
+
+// "What's new" toast surfaces any humanoid whose `addedAt` (ISO date in
+// data/humanoids.ts) falls within this rolling window. Set `addedAt` when you
+// add a new entry; once the window expires the entry stops surfacing — no
+// manual cleanup needed.
+const NEW_WINDOW_DAYS = 14;
 
 // Tallest documented robot height in the index — used as the reference for
 // the "to scale" toggle so every other robot renders at height/MAX_HEIGHT.
@@ -668,6 +691,59 @@ function StatusDot({ color, size = 10 }: { color: string; size?: number }) {
   return <span aria-hidden style={{ width: size, height: size, borderRadius: 999, background: color, flexShrink: 0 }} />;
 }
 
+// "What's new" toast card — minimal: hairline frame, tiny shared image, single line.
+function AnnouncementToast({
+  humanoids: items,
+  onView,
+}: {
+  humanoids: Humanoid[];
+  onView: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      onClick={onView}
+      role="button"
+      tabIndex={0}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 10,
+        background: "#ffffff",
+        border: "1px solid rgba(0,0,0,0.07)",
+        borderRadius: 10,
+        padding: "6px 14px 6px 6px",
+        cursor: "pointer",
+        fontFamily: "var(--font-geist-sans)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
+          width: 48, height: 32,
+          overflow: "hidden",
+          flexShrink: 0,
+        }}
+      >
+        {items.map((h) => (
+          h.imageUrl ? (
+            <Image
+              key={h.id}
+              src={h.imageUrl}
+              alt={h.name}
+              width={22}
+              height={28}
+              style={{ objectFit: "contain", objectPosition: "center bottom", height: "100%", width: "auto" }}
+            />
+          ) : null
+        ))}
+      </div>
+      <span style={{ fontSize: 12.5, color: "var(--c-ink-body)", letterSpacing: "-0.005em" }}>
+        <span style={{ color: "var(--c-ink-subtle)" }}>New&nbsp;—&nbsp;</span>
+        <span style={{ fontWeight: 600 }}>{items.map((h) => h.name).join(" + ")}</span>
+      </span>
+    </div>
+  );
+}
+
 // ISO 3166-1 alpha-2 codes for the country names used in data/humanoids.ts.
 // Compound origins like "Norway / USA" split on slash and yield two flags.
 const COUNTRY_ISO: Record<string, string> = {
@@ -954,6 +1030,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const spinViewerRightRef = useRef<SpinViewerHandle>(null);
   const spinLoopRef = useRef(false);
   const [spinPlaying, setSpinPlaying] = useState(false);
+  const [show3D, setShow3D] = useState(false);
+  const [material3D, setMaterial3D] = useState<"clay" | "brushed" | "chrome">("clay");
   const [videoPaused, setVideoPaused] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
@@ -1103,6 +1181,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // that fill the available height, with the action pill pinned at the bottom. Single view
   // only — compare and split-blurb modes keep their existing layouts.
   const [stackedInfo, setStackedInfo] = useState(true);
+  // Apple-style stats card variant: hairline between every row, no group break,
+  // no inline cm/in toggle (it would break the rhythm).
+  const [denseDividers, setDenseDividers] = useState(true);
+  const [denseFullWidth, setDenseFullWidth] = useState(false);
+  const [denseRowGap, setDenseRowGap] = useState(2); // px gap between rows
+  const [denseOpacity, setDenseOpacity] = useState(6); // percent (0-20)
   // When on, render uppercase eyebrows ("Specs"/"Notes") above each section in
   // the stacked stats column. When off, sections are split by a single hairline.
   const [showSectionEyebrows, setShowSectionEyebrows] = useState(false);
@@ -1112,7 +1196,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Vertical gap (px) between stat rows in the compare middle column. The full
   // 5-row set always renders (Height/Weight/DOF/Speed/Price) so the column
   // doesn't reflow while paging between robots.
-  const [compareRowGap, setCompareRowGap] = useState(2);
+  const [compareRowGap, setCompareRowGap] = useState(4);
   // Where the status indicator (dot + word) lives when stackedInfo is on:
   //   "card"        — dedicated Status card pinned at the bottom of the stack (current)
   //   "chip"        — first chip in the tags row, colored dot + status word
@@ -2868,32 +2952,87 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 <div aria-hidden style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.05)" }} />
               </div>
             );
+            const rowHairline = (
+              <div aria-hidden style={{ height: 1, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? 0 : 64 }} />
+            );
+            const statusRow = (
+              <div style={{ ...rowStyle, alignItems: "center" }}>
+                <span style={dimmed}>Status</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 7, ...(h.status ? valueStyle : missingValueStyle) }}>
+                  {h.status && <StatusDot color={statusColor} size={9} />}
+                  <span>{h.status ?? "—"}</span>
+                </span>
+              </div>
+            );
+            const purchaseRow = purchaseSection ? (
+              purchaseSection.href ? (
+                <a
+                  href={purchaseSection.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="cursor-pointer"
+                  style={{
+                    ...rowStyle,
+                    alignItems: "center",
+                    textDecoration: "none",
+                    color: "var(--c-ink-body)",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  <span style={{ ...valueStyle, fontWeight: 500 }}>{purchaseSection.ctaText ?? "Buy"}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", color: "var(--c-ink-muted)" }}>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                      <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
+                    </svg>
+                  </span>
+                </a>
+              ) : (
+                <div style={{ ...rowStyle, alignItems: "center" }}>
+                  <span style={dimmed}>Buy</span>
+                  <span style={missingValueStyle}>{purchaseSection.state ?? purchaseSection.text ?? "Not for sale"}</span>
+                </div>
+              )
+            ) : null;
+            const denseRows: React.ReactNode[] = [
+              renderStatRow("Year", h.year ?? null, (v) => `${v}`),
+              renderStatRow("Country", h.country ?? null, (v) => `${v}`),
+              renderStatRow("Height", h.height, fmt.height),
+              renderStatRow("Weight", h.weight, fmt.weight),
+              renderStatRow("DOF", h.dof, (v) => `${v}`),
+              renderStatRow("Speed", h.maxSpeed, fmt.speed),
+              renderStatRow("Use", h.useCase ?? null, (v) => `${v}`),
+              renderStatRow("Drive", h.drive ?? null, (v) => `${v}`),
+              renderStatRow("Price", priceChipText ?? null, (v) => `${v}`),
+              statusRow,
+              ...(purchaseRow ? [purchaseRow] : []),
+            ];
             const statsCard = (
-              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px" }}>
-                <div className="flex flex-col" style={{ gap: sectionContentGap }}>
-                  {renderStatRow("Year", h.year ?? null, (v) => `${v}`)}
-                  <div style={rowStyle}>
-                    <span style={dimmed}>Country</span>
-                    {h.country
-                      ? <CountryValue country={h.country} valueStyle={valueStyle} />
-                      : <span style={missingValueStyle}>—</span>}
-                  </div>
-                  {unitsDivider}
-                  {renderStatRow("Height", h.height, fmt.height)}
-                  {renderStatRow("Weight", h.weight, fmt.weight)}
-                  {renderStatRow("DOF", h.dof, (v) => `${v}`)}
-                  {renderStatRow("Speed", h.maxSpeed, fmt.speed)}
-                  <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
-                  {renderStatRow("Use", h.useCase ?? null, (v) => `${v}`)}
-                  {renderStatRow("Drive", h.drive ?? null, (v) => `${v}`)}
-                  {renderStatRow("Price", priceChipText ?? null, (v) => `${v}`)}
-                  <div style={{ ...rowStyle, alignItems: "center" }}>
-                    <span style={dimmed}>Status</span>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, ...(h.status ? valueStyle : missingValueStyle) }}>
-                      {h.status && <StatusDot color={statusColor} size={9} />}
-                      <span>{h.status ?? "—"}</span>
-                    </span>
-                  </div>
+              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column" }}>
+                <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
+                  {denseDividers ? (
+                    denseRows.map((row, i) => (
+                      <Fragment key={i}>
+                        {i > 0 ? rowHairline : null}
+                        {row}
+                      </Fragment>
+                    ))
+                  ) : (
+                    <>
+                      {renderStatRow("Year", h.year ?? null, (v) => `${v}`)}
+                      {renderStatRow("Country", h.country ?? null, (v) => `${v}`)}
+                      {unitsDivider}
+                      {renderStatRow("Height", h.height, fmt.height)}
+                      {renderStatRow("Weight", h.weight, fmt.weight)}
+                      {renderStatRow("DOF", h.dof, (v) => `${v}`)}
+                      {renderStatRow("Speed", h.maxSpeed, fmt.speed)}
+                      <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
+                      {renderStatRow("Use", h.useCase ?? null, (v) => `${v}`)}
+                      {renderStatRow("Drive", h.drive ?? null, (v) => `${v}`)}
+                      {renderStatRow("Price", priceChipText ?? null, (v) => `${v}`)}
+                      {statusRow}
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -3097,24 +3236,26 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                   }}
                 >
-                  <div className="flex flex-col" style={{ gap: stackGap }}>
+                  <div className="flex flex-col" style={{ gap: stackGap, flex: denseDividers ? 1 : undefined, minHeight: 0 }}>
                     {labelNode}
                     {statsCard}
-                    {notesCard}
-                    {statusCard}
+                    {denseDividers ? null : notesCard}
+                    {denseDividers ? null : statusCard}
                   </div>
                 </div>
-                <div
-                  style={{
-                    width: expandedStatsW,
-                    opacity: collapseVariant === "hover-fade" ? (statsHover ? 1 : 0.22) : (statsCollapsed ? 0 : 1),
-                    transform: statsCollapsed ? "translateX(8px)" : "translateX(0)",
-                    pointerEvents: statsCollapsed ? "none" : "auto",
-                    transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
-                  }}
-                >
-                  {purchasePill}
-                </div>
+                {!denseDividers && (
+                  <div
+                    style={{
+                      width: expandedStatsW,
+                      opacity: collapseVariant === "hover-fade" ? (statsHover ? 1 : 0.22) : (statsCollapsed ? 0 : 1),
+                      transform: statsCollapsed ? "translateX(8px)" : "translateX(0)",
+                      pointerEvents: statsCollapsed ? "none" : "auto",
+                      transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
+                    }}
+                  >
+                    {purchasePill}
+                  </div>
+                )}
               </div>
             );
           }
@@ -3384,76 +3525,127 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           })() : null;
 
 
+          const rowHairline = (
+            <div aria-hidden style={{ height: 1, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? 0 : 64, marginRight: denseFullWidth ? 0 : 64 }} />
+          );
+          const statusRow = (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
+              <span style={{ display: "inline-flex", justifyContent: "flex-start" }}>
+                {hL.status
+                  ? <StatusDot color={statusColor(hL.status)} size={9} />
+                  : <span style={missingValueStyle}>—</span>}
+              </span>
+              <span style={{ ...dimmed, textAlign: "center" as const }}>Status</span>
+              <span style={{ display: "inline-flex", justifyContent: "flex-end" }}>
+                {hR.status
+                  ? <StatusDot color={statusColor(hR.status)} size={9} />
+                  : <span style={missingValueStyle}>—</span>}
+              </span>
+            </div>
+          );
+          const copyRow = (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
+              className="pointer-events-auto w-full flex items-center justify-between cursor-pointer"
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                lineHeight: 1.7,
+                color: "var(--c-ink-body)",
+                fontFamily: "var(--font-geist-sans)",
+                fontSize: fz,
+                fontWeight: 500,
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <span>Copy comparison</span>
+              <span style={{ display: "inline-flex", alignItems: "center", color: "var(--c-ink-muted)" }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                  <path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10 6" />
+                  <path d="M14 11a5 5 0 0 0-7.07 0L5.52 12.41a5 5 0 0 0 7.07 7.07L14 18" />
+                </svg>
+              </span>
+            </button>
+          );
+          const denseRows: React.ReactNode[] = [
+            compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null),
+            compareRow("Country", hL.country ?? null, hR.country ?? null),
+            compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null),
+            compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null),
+            compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null),
+            compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null),
+            compareRow("Use", hL.useCase ?? null, hR.useCase ?? null),
+            compareRow("Drive", hL.drive ?? null, hR.drive ?? null),
+            compareRow("Price", priceL, priceR),
+            statusRow,
+            copyRow,
+          ];
+
           return (
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: statsW, minWidth: statsW, position: "relative", zIndex: 11 }}>
-              <div className="flex flex-col" style={{ flex: 1, justifyContent: "center" }}>
+              <div className="flex flex-col" style={{ flex: 1, justifyContent: denseDividers ? "stretch" : "center", minHeight: 0 }}>
                 {blurbBlock}
-                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px" }}>
-                  <div className="flex flex-col" style={{ gap: compareRowGap }}>
-                    {compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null)}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
-                      <span style={{ ...(hL.country ? valueStyle : missingValueStyle), textAlign: "left" as const, justifySelf: "start" }}>
-                        {hL.country ? <CountryValue country={hL.country} valueStyle={valueStyle} /> : "—"}
-                      </span>
-                      <span style={{ ...dimmed, textAlign: "center" as const }}>Country</span>
-                      <span style={{ ...(hR.country ? valueStyle : missingValueStyle), textAlign: "right" as const, justifySelf: "end" }}>
-                        {hR.country ? <CountryValue country={hR.country} valueStyle={valueStyle} /> : "—"}
-                      </span>
-                    </div>
-                    {unitsDivider}
-                    {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
-                    {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
-                    {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
-                    {compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)}
-                    <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
-                    {compareRow("Use", hL.useCase ?? null, hR.useCase ?? null)}
-                    {compareRow("Drive", hL.drive ?? null, hR.drive ?? null)}
-                    {compareRow("Price", priceL, priceR)}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
-                      <span style={{ display: "inline-flex", justifyContent: "flex-start" }}>
-                        {hL.status
-                          ? <StatusDot color={statusColor(hL.status)} size={9} />
-                          : <span style={missingValueStyle}>—</span>}
-                      </span>
-                      <span style={{ ...dimmed, textAlign: "center" as const }}>Status</span>
-                      <span style={{ display: "inline-flex", justifyContent: "flex-end" }}>
-                        {hR.status
-                          ? <StatusDot color={statusColor(hR.status)} size={9} />
-                          : <span style={missingValueStyle}>—</span>}
-                      </span>
-                    </div>
+                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column" }}>
+                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
+                    {denseDividers ? (
+                      denseRows.map((row, i) => (
+                        <Fragment key={i}>
+                          {i > 0 ? rowHairline : null}
+                          {row}
+                        </Fragment>
+                      ))
+                    ) : (
+                      <>
+                        {compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null)}
+                        {compareRow("Country", hL.country ?? null, hR.country ?? null)}
+                        {unitsDivider}
+                        {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
+                        {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
+                        {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
+                        {compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)}
+                        <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
+                        {compareRow("Use", hL.useCase ?? null, hR.useCase ?? null)}
+                        {compareRow("Drive", hL.drive ?? null, hR.drive ?? null)}
+                        {compareRow("Price", priceL, priceR)}
+                        {statusRow}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
-                className="pointer-events-auto w-full flex items-center justify-between cursor-pointer"
-                style={{
-                  borderRadius: cardRadius,
-                  boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)",
-                  background: "transparent",
-                  padding: `0 ${statPillPadX}px`,
-                  minHeight: statPillPadY * 2 + Math.round(pillLabelFontSize * 1.2),
-                  gap: 8,
-                  color: pillLabelColor,
-                  fontSize: pillLabelFontSize,
-                  fontFamily: pillLabelFont,
-                  fontWeight: pillLabelWeight,
-                  letterSpacing: `${pillLabelLetterSpacing}em`,
-                  textTransform: pillLabelUppercase ? "uppercase" : "none",
-                  border: "none",
-                  WebkitTapHighlightColor: "transparent",
-                }}
-              >
-                <span>Copy comparison</span>
-                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: "rgba(0,0,0,0.06)", flexShrink: 0 }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
-                    <path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10 6" />
-                    <path d="M14 11a5 5 0 0 0-7.07 0L5.52 12.41a5 5 0 0 0 7.07 7.07L14 18" />
-                  </svg>
-                </span>
-              </button>
+              {!denseDividers && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
+                  className="pointer-events-auto w-full flex items-center justify-between cursor-pointer"
+                  style={{
+                    borderRadius: cardRadius,
+                    boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)",
+                    background: "transparent",
+                    padding: `0 ${statPillPadX}px`,
+                    minHeight: statPillPadY * 2 + Math.round(pillLabelFontSize * 1.2),
+                    gap: 8,
+                    color: pillLabelColor,
+                    fontSize: pillLabelFontSize,
+                    fontFamily: pillLabelFont,
+                    fontWeight: pillLabelWeight,
+                    letterSpacing: `${pillLabelLetterSpacing}em`,
+                    textTransform: pillLabelUppercase ? "uppercase" : "none",
+                    border: "none",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  <span>Copy comparison</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: "rgba(0,0,0,0.06)", flexShrink: 0 }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                      <path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10 6" />
+                      <path d="M14 11a5 5 0 0 0-7.07 0L5.52 12.41a5 5 0 0 0 7.07 7.07L14 18" />
+                    </svg>
+                  </span>
+                </button>
+              )}
             </div>
           );
         };
@@ -3723,10 +3915,40 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               })()}
               {/* Media area */}
               <div className="relative flex-1 min-h-0 overflow-hidden">
-                {/* Static — hidden when SpinViewer takes over (either side in compare). */}
-                {!SPIN_ROBOTS[h.id] && (
+                {/* Static — hidden when SpinViewer or Robot3D takes over. */}
+                {!SPIN_ROBOTS[h.id] && !(isFirst && show3D && THREEDEE_ROBOTS[h.id]) && (
                   <div className="absolute inset-0">
                     {renderMedia(h, hIdx, isFirst)}
+                  </div>
+                )}
+                {/* Articulated 3D viewer — opt-in via the Box pill, single-view only. */}
+                {isFirst && show3D && THREEDEE_ROBOTS[h.id] && (
+                  <div className="absolute inset-0">
+                    <Robot3D
+                      urdfUrl={THREEDEE_ROBOTS[h.id]!.urdfUrl}
+                      meshBase={THREEDEE_ROBOTS[h.id]!.meshBase}
+                      material={material3D}
+                      className="w-full h-full"
+                    />
+                    {/* Material chips — bottom-center, low-key */}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 rounded-full px-1 py-1 bg-white/75 backdrop-blur-md border border-neutral-200/70 shadow-sm">
+                      {(["clay", "brushed", "chrome"] as const).map((m) => (
+                        <button
+                          key={m}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMaterial3D(m);
+                          }}
+                          className={`text-[11px] tracking-tight px-2.5 py-1 rounded-full transition-colors capitalize ${
+                            material3D === m
+                              ? "bg-neutral-900 text-white"
+                              : "text-neutral-600 hover:bg-neutral-900/5"
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {/* Spin viewer — auto-mounted for spin-enabled robots on either side.
@@ -3759,6 +3981,24 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     read={readGalleryIdx}
                     onClick={() => onShareView?.()}
                   />
+                )}
+                {/* 3D toggle — bottom-right, only for robots with a URDF mesh set */}
+                {isFirst && !comparing && THREEDEE_ROBOTS[h.id] && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShow3D((v) => !v);
+                    }}
+                    aria-label={show3D ? "Show photo" : "View in 3D"}
+                    className={`absolute bottom-2 right-2 z-30 h-8 px-2.5 flex items-center gap-1 rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ease-out ${
+                      show3D
+                        ? "bg-white/75 backdrop-blur-md text-neutral-800 opacity-100"
+                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0"
+                    }`}
+                  >
+                    <Box width={15} height={15} strokeWidth={1.75} />
+                    <span className="text-[12px] tracking-tight font-medium">3D</span>
+                  </button>
                 )}
                 {/* Auto-rotate (play/pause) — bottom-right, only for spin-enabled robots */}
                 {isFirst && !comparing && SPIN_ROBOTS[h.id] && (
@@ -4478,6 +4718,65 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {epetriMode ? "On" : "Off"}
               </button>
             </div>
+          </div>
+          <div className="pt-2 border-t border-neutral-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] tracking-widest uppercase text-neutral-400">Dense dividers</p>
+              <button
+                type="button"
+                onClick={() => setDenseDividers((v) => !v)}
+                aria-pressed={denseDividers}
+                className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${denseDividers ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+              >
+                {denseDividers ? "On" : "Off"}
+              </button>
+            </div>
+            {denseDividers && (
+              <>
+                <div className="flex items-center justify-between">
+                  <label className="text-[12px] text-neutral-500">Full width</label>
+                  <button
+                    type="button"
+                    onClick={() => setDenseFullWidth((v) => !v)}
+                    aria-pressed={denseFullWidth}
+                    className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${denseFullWidth ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+                  >
+                    {denseFullWidth ? "On" : "Off"}
+                  </button>
+                </div>
+                <div>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">
+                    Row spacing <span className="tabular-nums text-neutral-400">{denseRowGap}px</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={16}
+                    step={1}
+                    value={denseRowGap}
+                    onChange={(e) => setDenseRowGap(Number(e.target.value))}
+                    className="w-full mt-1.5 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">
+                    Hairline opacity <span className="tabular-nums text-neutral-400">{denseOpacity}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={2}
+                    max={20}
+                    step={1}
+                    value={denseOpacity}
+                    onChange={(e) => setDenseOpacity(Number(e.target.value))}
+                    className="w-full mt-1.5 cursor-pointer"
+                  />
+                </div>
+              </>
+            )}
+            <p className="text-[10px] text-neutral-400 leading-relaxed">
+              Apple-style hairline between every stat row. Hides the inline cm/in toggle.
+            </p>
           </div>
           <div className="pt-2 border-t border-neutral-100">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Buy</p>
@@ -5492,6 +5791,31 @@ export default function HomeClient() {
     setTimeout(() => setGoToIndex(null), 100);
   }, []);
 
+  // "What's new" toast — fires once on mount, after the intro overlay clears.
+  const newHumanoids = useMemo(() => {
+    const cutoff = Date.now() - NEW_WINDOW_DAYS * 86_400_000;
+    return humanoids.filter(
+      (h) => h.addedAt && new Date(h.addedAt).getTime() >= cutoff,
+    );
+  }, []);
+  const firstNewIdx = useMemo(
+    () => (newHumanoids.length === 0 ? -1 : humanoids.findIndex((h) => h.id === newHumanoids[0].id)),
+    [newHumanoids],
+  );
+  useEffect(() => {
+    if (introPhase !== "done" || newHumanoids.length === 0 || firstNewIdx < 0) return;
+    const t = setTimeout(() => {
+      toast.custom((id) => (
+        <AnnouncementToast
+          humanoids={newHumanoids}
+          onView={() => { handleSelectHumanoid(firstNewIdx); toast.dismiss(id); }}
+          onDismiss={() => toast.dismiss(id)}
+        />
+      ), { duration: 12000 });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [introPhase, newHumanoids, firstNewIdx, handleSelectHumanoid]);
+
   const onRandomHumanoid = useCallback(() => {
     if (layout !== "E") setLayout("E");
     setChatOpen(false);
@@ -5753,7 +6077,6 @@ export default function HomeClient() {
       />
 
       {chatOpen && <GuideChat onSelect={handleSelectHumanoid} config={chatConfig} />}
-
 
       {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
     </main>
