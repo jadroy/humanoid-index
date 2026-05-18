@@ -1208,7 +1208,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [statsW, setStatsW] = useState(200);       // px
   // Compare mode needs more room to render long manufacturer names like
   // "Sunday Robotics" / "LimX Dynamics" without truncating.
-  const compareStatsW = statsW + 160;
+  const compareStatsW = statsW + 200;
   const [statsColScale, setStatsColScale] = useState(0.62); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(12);    // px — gap between robot and stats
@@ -2169,7 +2169,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         return (
           <div
             className="absolute top-0 bottom-0 flex items-center justify-center cursor-pointer"
-            style={{ width: 140, right: "calc(19% - 82px)", zIndex: 10 }}
+            style={{ width: 140, right: "calc(19% - 82px)", zIndex: 12 }}
             onClick={() => { setAddHover(false); enterCompare(); }}
             onMouseEnter={() => setAddHover(true)}
             onMouseLeave={() => setAddHover(false)}
