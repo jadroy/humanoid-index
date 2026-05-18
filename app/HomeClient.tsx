@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
 import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box } from "lucide-react";
-import * as FlagComponents from "country-flag-icons/react/1x1";
+import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, type Humanoid } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -762,19 +762,21 @@ const COUNTRY_ISO: Record<string, string> = {
 function countryToIsoCodes(country: string): string[] {
   return country.split(/\s*\/\s*/).map((part) => COUNTRY_ISO[part]).filter(Boolean);
 }
-function CircleFlag({ iso, size = 13 }: { iso: string; size?: number }) {
-  const Flag = (FlagComponents as Record<string, React.ComponentType<React.SVGAttributes<SVGElement>>>)[iso];
-  if (!Flag) return null;
+function CircleFlag({ iso, size = 11 }: { iso: string; size?: number }) {
+  if (!iso) return null;
+  // react-circle-flags uses lowercase ISO codes and renders SVGs designed for
+  // circular display (no awkward edge cropping). Sized to ~cap-height of the
+  // surrounding text so the row keeps its label-height rhythm.
   return (
     <span
       aria-hidden
       style={{
-        display: "inline-block", verticalAlign: "-2px",
+        display: "inline-block", verticalAlign: "-1px",
         width: size, height: size, borderRadius: "50%", overflow: "hidden",
-        boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.15)",
+        boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.12)",
       }}
     >
-      <Flag style={{ width: size, height: size, display: "block" }} />
+      <CircleFlagSvg countryCode={iso.toLowerCase()} height={size} width={size} style={{ display: "block" }} />
     </span>
   );
 }
@@ -907,14 +909,14 @@ function CountryValue({ country, valueStyle }: { country: string; valueStyle: Re
     <span
       title={country}
       aria-label={country}
-      style={{ ...valueStyle, cursor: "default" }}
+      style={{ ...valueStyle, display: "inline-flex", alignItems: "baseline", gap: 6 }}
     >
-      {isos.map((iso, i) => (
-        <Fragment key={iso}>
-          {i > 0 && <span aria-hidden style={{ display: "inline-block", width: 3 }} />}
-          <CircleFlag iso={iso} />
-        </Fragment>
-      ))}
+      <span style={{ display: "inline-flex", alignItems: "baseline", gap: 3 }}>
+        {isos.map((iso) => (
+          <CircleFlag key={iso} iso={iso} />
+        ))}
+      </span>
+      <span>{country}</span>
     </span>
   );
 }
@@ -1532,13 +1534,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       return;
     }
     const cardPxStable = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
-    const statsColStable = statsCollapsed
-      ? collapsedRailW
-      : (stackedInfo ? Math.round(cardPxStable * statsColScale) : statsW);
+    // Use the expanded stats width regardless of `statsCollapsed` so the nav
+    // and footer (driven off `--nav-x`) stay anchored when the i toggle fires.
+    const statsColStable = stackedInfo ? Math.round(cardPxStable * statsColScale) : statsW;
     const contentW = cardPxStable + statsGap + statsColStable;
     const x = Math.max(16, Math.round((windowWidth - contentW) / 2));
     document.documentElement.style.setProperty("--nav-x", `${x}px`);
-  }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, stackedInfo, statsColScale, statsCollapsed, collapsedRailW]);
+  }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, stackedInfo, statsColScale]);
 
   // Publish nav top offset as a CSS variable
   useEffect(() => {
@@ -1916,6 +1918,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     setVideoPaused(false);
     resetGalleryIdx();
   }, [springL.index, springR.index, comparing, resetGalleryIdx]);
+
+  // 3D viewer is per-robot — scrolling away should drop you back to the
+  // photo rather than carrying the 3D mode into the next humanoid.
+  useEffect(() => {
+    setShow3D(false);
+  }, [springL.index]);
 
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
@@ -3153,10 +3161,16 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const speedRow = unitToggleVariant === "tap"
               ? renderUnitTapRow("Speed", h.maxSpeed, fmt.speed)
               : renderStatRow("Speed", h.maxSpeed, fmt.speed);
+            const countryRow = h.country ? (
+              <div style={rowStyle}>
+                <span style={dimmed}>Country</span>
+                <CountryValue country={h.country} valueStyle={valueStyle} />
+              </div>
+            ) : renderStatRow("Country", null, (v) => `${v}`);
             const denseRows: React.ReactNode[] = [
               renderStatRow("Company", h.manufacturer ?? null, (v) => `${v}`),
               renderStatRow("Year", h.year ?? null, (v) => `${v}`),
-              renderStatRow("Country", h.country ?? null, (v) => `${v}`),
+              countryRow,
               ...(unitToggleVariant === "row" ? [unitsRow] : []),
               heightRow,
               weightRow,
@@ -3170,15 +3184,16 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             ];
             const denseScrollRows = denseDividers ? denseRows.slice(0, -1) : [];
             const denseActionRow = denseDividers ? denseRows[denseRows.length - 1] : null;
-            const renderRowsAsCard = (rows: React.ReactNode[], opts?: { fill?: boolean; pinnedLast?: boolean }) => {
-              const { fill = false, pinnedLast = false } = opts ?? {};
+            const renderRowsAsCard = (rows: React.ReactNode[], opts?: { fill?: boolean; pinnedLast?: boolean; gap?: number; padding?: string }) => {
+              const { fill = false, pinnedLast = false, gap, padding = "14px 18px" } = opts ?? {};
+              const innerGap = gap ?? denseRowGap;
               const visible = rows.filter(Boolean);
               if (visible.length === 0) return null;
               const scrolling = pinnedLast ? visible.slice(0, -1) : visible;
               const pinned = pinnedLast ? visible[visible.length - 1] : null;
               return (
-                <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: fill ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseRowGap, minHeight: 0 }}>
-                  <div className="flex flex-col" style={{ gap: denseRowGap, flex: fill ? 1 : undefined, justifyContent: fill ? "space-between" : undefined }}>
+                <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding, flex: fill ? 1 : undefined, display: "flex", flexDirection: "column", gap: innerGap, minHeight: 0 }}>
+                  <div className="flex flex-col" style={{ gap: innerGap, flex: fill ? 1 : undefined, justifyContent: fill ? "space-between" : undefined }}>
                     {scrolling.map((row, i) => (
                       <Fragment key={i}>
                         {i > 0 ? rowHairline : null}
@@ -3195,9 +3210,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 </div>
               );
             };
-            const specsCard = renderRowsAsCard(denseRows.slice(0, 7), { fill: true }); // Company..Speed
-            const contextCard = renderRowsAsCard(denseRows.slice(7, 9));               // Use, Drive
-            const actionCard = renderRowsAsCard(denseRows.slice(9));                   // Price, Status, CTA
+            const specsCard = renderRowsAsCard(denseRows.slice(0, 9), { fill: true }); // Company..Drive
+            // Action card breathes a bit more so the 3 rows don't read as cramped after the tall specs card.
+            const actionCard = renderRowsAsCard(denseRows.slice(9), { gap: 8, padding: "10px 18px" }); // Price, Status, CTA
             const statsCard = (
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined}>
@@ -3441,7 +3456,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     {denseDividers && splitCards ? (
                       <>
                         {specsCard}
-                        {contextCard}
                         {actionCard}
                       </>
                     ) : (
@@ -3853,10 +3867,21 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const speedCompareRow = unitToggleVariant === "tap"
             ? compareUnitTapRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)
             : compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null);
+          const compareCountryRow = (
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+              <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center" }}>
+                {hL.country ? <CountryValue country={hL.country} valueStyle={valueStyle} /> : <span style={missingValueStyle}>—</span>}
+              </span>
+              <span style={{ ...dimmed, textAlign: "center" as const, whiteSpace: "nowrap" }}>Country</span>
+              <span style={{ display: "inline-flex", justifyContent: "flex-end", alignItems: "center" }}>
+                {hR.country ? <CountryValue country={hR.country} valueStyle={valueStyle} /> : <span style={missingValueStyle}>—</span>}
+              </span>
+            </div>
+          );
           const denseRows: React.ReactNode[] = [
             compareRow("Company", hL.manufacturer ?? null, hR.manufacturer ?? null),
             compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null),
-            compareRow("Country", hL.country ?? null, hR.country ?? null),
+            compareCountryRow,
             ...(unitToggleVariant === "row" ? [compareUnitsRow] : []),
             heightCompareRow,
             weightCompareRow,
@@ -4146,6 +4171,33 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
+            {/* Info-icon collapse affordance — sits above the card on the
+                right edge, where it lived inside the old above-card label row. */}
+            {collapseVariant === "info-icon" && !comparing && isFirst && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
+                aria-label={statsCollapsed ? "Show details" : "Hide details"}
+                className="absolute z-30 cursor-pointer flex items-center justify-center pointer-events-auto"
+                style={{
+                  top: -34,
+                  right: 0,
+                  width: labelLogoSize,
+                  height: labelLogoSize,
+                  borderRadius: 999,
+                  background: "transparent",
+                  color: "rgba(0,0,0,0.45)",
+                  border: "1px solid rgba(0,0,0,0.18)",
+                  padding: 0,
+                  fontFamily: "var(--font-geist-sans)",
+                  fontSize: Math.round(labelLogoSize * 0.55),
+                  fontWeight: 500,
+                  lineHeight: 1,
+                  transition: `border-color ${dur} ${ease}, color ${dur} ${ease}`,
+                }}
+              >
+                i
+              </button>
+            )}
             {/* Inner card */}
             <div
               ref={isFirst ? leftCardRef : rightCardRef}
