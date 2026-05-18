@@ -1179,21 +1179,21 @@ main {
               0 8px 28px rgba(0, 0, 0, 0.06);
 }
 
-/* Right-side arc settles in AFTER the 2nd card has tacked on to the stats
-   column — a small fade-up so the arc reads as following the card's entry
-   rather than competing with it for attention. */
+/* Right-side arc slides in from off-screen-right as a unit with the 2nd
+   card. Same direction + duration + ease so the eye reads card-and-arc as
+   one piece tacking onto the existing layout from the screen edge. */
 @keyframes compare-r-slide-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateX(32px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
 }
 .compare-r-enter {
-  animation: compare-r-slide-in 280ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
+  animation: compare-r-slide-in var(--collapse-dur, 360ms) cubic-bezier(0.34, 1.45, 0.55, 1) both;
 }
 
 /* Compare minus (−) — slides up from behind the right card on enter, then a

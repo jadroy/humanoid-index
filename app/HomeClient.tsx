@@ -3640,7 +3640,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           );
 
           const compareRow = (label: string, valL: string | null, valR: string | null) => (
-            <div style={{ display: "grid", gridTemplateColumns: "72px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
               <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
                 <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valL || "—"}</span>
@@ -3754,7 +3754,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div aria-hidden style={{ height: 1, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? 0 : 64, marginRight: denseFullWidth ? 0 : 64 }} />
           );
           const statusRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "72px 1fr 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "91px 1fr 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Status</span>
               <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
                 {hL.status ? (
@@ -3809,7 +3809,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               className="cursor-pointer pointer-events-auto"
               style={{
                 display: "grid",
-                gridTemplateColumns: "72px minmax(0, 1fr) minmax(0, 1fr)",
+                gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)",
                 alignItems: "baseline",
                 columnGap: 14,
                 lineHeight: 1.7,
@@ -3838,7 +3838,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             </button>
           );
           const compareUnitsRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "72px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Units</span>
               <span />
               <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
@@ -3877,7 +3877,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             ? compareUnitTapRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)
             : compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null);
           const compareCountryRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "72px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Country</span>
               <MarqueeValue align="left" style={{ ...(hL.country ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
                 {hL.country ? <CountryValue country={hL.country} valueStyle={valueStyle} /> : <span style={missingValueStyle}>—</span>}
@@ -4638,17 +4638,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   shared collapse clock so the right side enters as one piece. */}
               <div className="flex-shrink-0 relative compare-rcard" style={{
                 opacity: comparing ? 1 : 0,
-                // Card emerges from the stats column's right edge — starts
-                // pulled inward (overlapping the stats col) and scales out
-                // from its left edge. Reads as the 2nd robot "tacking on"
-                // to the existing content instead of sliding in from off-screen.
-                transform: `translateX(${(comparing ? 0 : -24) + (splitHover ? 8 : 0)}px) scale(${comparing ? 1 : 0.82})`,
+                // Slides in from off-screen-right, then overshoots slightly
+                // (toward the stats col) before settling — so the eye reads
+                // it as tacking on/snapping against the existing content
+                // rather than just gliding into a slot.
+                transform: `translateX(${(comparing ? 0 : 32) + (splitHover ? 8 : 0)}px) scale(${comparing ? 1 : 0.96})`,
                 transformOrigin: "left center",
                 width: comparing ? `${robotW - 8}vw` : 0,
                 maxWidth: robotMaxW,
                 marginLeft: comparing ? effectiveGap : 0,
                 overflow: comparing ? "visible" : "hidden",
-                transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease), width var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease)",
+                transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) cubic-bezier(0.34, 1.45, 0.55, 1), width var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease)",
               }}>
                 {/* Minus appears AFTER the card has landed so it rises out of
                     the card vertically — no horizontal drift from the card's
