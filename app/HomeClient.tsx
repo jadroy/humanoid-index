@@ -64,7 +64,6 @@ import {
 import { useSpring, SCROLL_PRESETS, type PresetKey } from "@/hooks/useSpring";
 import { useIsDev } from "@/hooks/useIsDev";
 import { ArcDots, ARC_STYLES, ARC_PRESETS, arcStyleLabels, MARKER_VARIANTS, type ArcStyle } from "@/components/ArcDots";
-import { PositionIndicator, POSITION_INDICATOR_VARIANTS, positionIndicatorLabels, type PositionIndicatorVariant } from "@/components/PositionIndicator";
 import OptionsMenu, { BUTTON_VARIANTS, BUTTON_LABELS, type ButtonVariant } from "@/components/OptionsMenu";
 import { FONTS, FAVORITE_FONTS } from "@/lib/fonts";
 import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSettings } from "@/lib/cardPhysics";
@@ -360,9 +359,9 @@ function StatCompare({ left, right }: { left: typeof humanoids[0]; right: typeof
         const w = lv > rv ? "left" : rv > lv ? "right" : "tie";
         return (
           <div key={k.key} className="flex items-baseline justify-between gap-6" style={{ minWidth: 200 }}>
-            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "left" ? "var(--c-ink)" : "#c4c4c4" }}>{lv ? `${lv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
-            <span className="text-[12px] tracking-widest uppercase" style={{ color: "#b4b4b4" }}>{k.label}</span>
-            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "right" ? "var(--c-ink)" : "#c4c4c4" }}>{rv ? `${rv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
+            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "left" ? "var(--c-ink)" : "var(--c-ink-subtle)" }}>{lv ? `${lv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
+            <span className="text-[12px] tracking-widest uppercase" style={{ color: "var(--c-ink-muted)" }}>{k.label}</span>
+            <span className="text-[13px] font-medium tabular-nums" style={{ color: w === "right" ? "var(--c-ink)" : "var(--c-ink-subtle)" }}>{rv ? `${rv}${k.unit ? ` ${k.unit}` : ""}` : "—"}</span>
           </div>
         );
       })}
@@ -441,8 +440,8 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
                   <polyline points="7.5,2 3.5,6 7.5,10" />
                 </svg>
               </button>
-              <span className="text-[12px] tabular-nums mx-1" style={{ color: "#a3a3a3" }}>
-                {String(idx + 1).padStart(2, "0")}<span style={{ color: "#d4d4d4" }}>/</span>{String(humanoids.length).padStart(2, "0")}
+              <span className="text-[12px] tabular-nums mx-1" style={{ color: "var(--c-ink-muted)" }}>
+                {String(idx + 1).padStart(2, "0")}<span style={{ color: "var(--c-ink-subtle)" }}>/</span>{String(humanoids.length).padStart(2, "0")}
               </span>
               <button
                 onClick={(e) => { e.stopPropagation(); onNext(); }}
@@ -458,14 +457,14 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
 
           <div className="flex-1 flex flex-col justify-center">
             <div className="animate-expand-content" style={{ animationDelay: "0.1s" }}>
-              <p className="text-[12px] tracking-widest uppercase font-medium mb-3" style={{ color: "#a3a3a3", letterSpacing: "0.02em" }}>
+              <p className="text-[12px] tracking-widest uppercase font-medium mb-3" style={{ color: "var(--c-ink-muted)", letterSpacing: "0.02em" }}>
                 {h.manufacturer}
               </p>
-              <h2 className="text-[32px] font-medium leading-none" style={{ color: "#171717", letterSpacing: "-0.04em" }}>
+              <h2 className="text-[32px] font-medium leading-none" style={{ color: "var(--c-ink)", letterSpacing: "-0.04em" }}>
                 {h.name}
               </h2>
               {h.year && (
-                <p className="text-[13px] mt-2.5" style={{ color: "#a3a3a3" }}>{h.year}</p>
+                <p className="text-[13px] mt-2.5" style={{ color: "var(--c-ink-muted)" }}>{h.year}</p>
               )}
             </div>
 
@@ -501,10 +500,10 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
             <div className="flex items-start gap-8 pt-6" style={{ borderTop: "1px solid #e5e5e5" }}>
               {specs.map((s) => (
                 <div key={s.label}>
-                  <p className="text-[12px] tracking-widest uppercase" style={{ color: "#a3a3a3", letterSpacing: "0.1em" }}>
+                  <p className="text-[12px] tracking-widest uppercase" style={{ color: "var(--c-ink-muted)", letterSpacing: "0.1em" }}>
                     {s.label}
                   </p>
-                  <p className="text-[13px] font-medium mt-1" style={{ color: "#262626" }}>
+                  <p className="text-[13px] font-medium mt-1" style={{ color: "var(--c-ink)" }}>
                     {s.value}
                   </p>
                 </div>
@@ -1043,7 +1042,7 @@ function StatusLegendModal({ children, style }: { children: React.ReactNode; sty
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void }) {
+function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -1084,7 +1083,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [groupedRing, setGroupedRing] = useState<boolean>(true);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("arc-names");
-  const [positionIndicator, setPositionIndicator] = useState<PositionIndicatorVariant>("ruler");
   const [arcMarkerVariant, setArcMarkerVariant] = useState(0);
   const [arcMarkerColor, setArcMarkerColor] = useState("#FF6B35");
   // Apply the variant's canonical arc-tuner values when picking a style.
@@ -1209,10 +1207,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Compare mode needs more room to render long manufacturer names like
   // "Sunday Robotics" / "LimX Dynamics" without truncating.
   const compareStatsW = statsW + 120;
-  const [statsColScale, setStatsColScale] = useState(0.57); // single-view stats column width = baseCardPx * this
+  const [statsColScale, setStatsColScale] = useState(0.62); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
-  const [statsGap, setStatsGap] = useState(6);    // px — gap between robot and stats
-  const [cardRadius, setCardRadius] = useState(6);  // px
+  const [statsGap, setStatsGap] = useState(12);    // px — gap between robot and stats
+  const [cardRadius, setCardRadius] = useState(20);  // px
   // Stat-pill tuners
   const [statPillRadius, setStatPillRadius] = useState(9999);  // px — fully rounded (capsule)
   const [statPillRadiusOpen, setStatPillRadiusOpen] = useState(20);  // px — tighter radius when expanded so content isn't clipped at corners
@@ -1232,6 +1230,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [denseFullWidth, setDenseFullWidth] = useState(true);
   const [denseRowGap, setDenseRowGap] = useState(2); // px gap between rows
   const [denseOpacity, setDenseOpacity] = useState(6); // percent (0-20)
+  // Split the dense stats card into 3 stacked containers (Specs / Context / Action)
+  // so visual grouping comes from card gaps instead of internal dividers.
+  const [splitCards, setSplitCards] = useState(false);
+  // How to expose the cm/in switcher inside the dense card.
+  // "tap": Height/Weight values are tap targets that cycle units (no chrome).
+  // "row": A dedicated "Units" row at the top with an inline cm/in pill.
+  const [unitToggleVariant, setUnitToggleVariant] = useState<"tap" | "row">("tap");
   // When on, render uppercase eyebrows ("Specs"/"Notes") above each section in
   // the stacked stats column. When off, sections are split by a single hairline.
   const [showSectionEyebrows, setShowSectionEyebrows] = useState(false);
@@ -1370,15 +1375,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     document.documentElement.style.setProperty("--collapse-ease", collapseEase);
   }, [collapseDurMs, collapseEase]);
 
-  // Corner-margin tuner — drives top/bottom (`--corner-y`) and side (`--corner-x`)
-  // insets for the trio nav + footer credit row.
+  // Top/bottom inset (`--corner-y`) for the trio nav + footer credit row.
+  // Side inset is driven by `--nav-x` (the content-edge inset), set elsewhere.
   const [showMarginTuner, setShowMarginTuner] = useState(false);
-  const [cornerY, setCornerY] = useState(5);
-  const [cornerX, setCornerX] = useState(30);
+  const [cornerY, setCornerY] = useState(8);
   useEffect(() => {
     document.documentElement.style.setProperty("--corner-y", `${cornerY}px`);
-    document.documentElement.style.setProperty("--corner-x", `${cornerX}px`);
-  }, [cornerY, cornerX]);
+  }, [cornerY]);
 
   const [showSceneTuner, setShowSceneTuner] = useState(false);
   const [sceneShape, setSceneShape] = useState<"radial" | "horizontal" | "vertical" | "top" | "bottom">("radial");
@@ -1787,6 +1790,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
         if (e.key === "b") { setShowSceneTuner((v) => !v); return; }
         if (e.key === "i") { setShowCollapseTuner((v) => !v); return; }
+        if (e.key === "m") { setShowMarginTuner((v) => !v); return; }
       }
       const mod = e.metaKey || e.ctrlKey;
       const isJumpStart =
@@ -2142,42 +2146,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
             tagPadX={tagPadX} tagPadY={tagPadY} tagRadius={tagRadius} tagMarkerSize={tagMarkerSize} tagMarkerOp={tagMarkerOp}
           />
-          {/* Exit-compare minus — sits inline with the right arc, below the
-              active arc row so it doesn't fight the names. */}
-          <button
-            onClick={exitCompare}
-            aria-label="Remove from compare"
-            className="compare-x-bounce absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
-            style={{
-              right: 18,
-              top: "calc(50% + 110px)",
-              width: 26,
-              height: 26,
-              borderRadius: 999,
-              background: "rgba(0,0,0,0.11)",
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
-              <line x1="4" y1="8" x2="12" y2="8" />
-            </svg>
-          </button>
         </div>
-      )}
-
-      {/* Position indicator — edge-of-screen progress through the wheel */}
-      <PositionIndicator
-        variant={positionIndicator}
-        subscribe={springL.subscribe}
-        total={humanoids.length}
-        side="left"
-      />
-      {comparing && (
-        <PositionIndicator
-          variant={positionIndicator}
-          subscribe={springR.subscribe}
-          total={humanoids.length}
-          side="right"
-        />
       )}
 
       {/* ── Add compare button — hover zone right of center ── */}
@@ -2234,7 +2203,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
       {/* ── Humanoid groups: [stats | robot] per side ── */}
       {(() => {
-        const bodyStyle = { color: "#999", lineHeight: 1.4 } as const;
+        const bodyStyle = { color: "var(--c-ink-muted)", lineHeight: 1.4 } as const;
         const ico = (d: string) => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.45 }}><path d={d} /></svg>;
         const icoInfo = ico("M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 5v2m0 4h.01");
         const icoRuler = ico("M6 3v18 M6 9h4 M6 15h4 M18 3v18 M18 9h-4 M18 15h-4");
@@ -2268,7 +2237,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   alignItems: "center",
                   gap: 4,
                   fontSize: Math.max(11, blurbFontSize - 1),
-                  color: "#999",
+                  color: "var(--c-ink-muted)",
                   fontWeight: 450,
                   background: "rgba(255,255,255,0.92)",
                   padding: "2px 7px",
@@ -2313,7 +2282,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#888",
+                  color: "var(--c-ink-body)",
                   opacity: isHovered ? hoverOp : (isExpanded ? hoverOp : baseOp),
                   transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
                   transition: "opacity 0.2s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
@@ -2409,7 +2378,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               transition: `opacity 0.4s ease ${delay}s, transform 0.4s ease ${delay}s`,
             }}
           >
-            <span className="text-[12px]" style={{ color: "#a3a3a3", width: 52, flexShrink: 0 }}>{label}</span>
+            <span className="text-[12px]" style={{ color: "var(--c-ink-muted)", width: 52, flexShrink: 0 }}>{label}</span>
             <span className="text-[12px] tabular-nums" style={{ color: "var(--c-ink-body)" }}>{value}</span>
           </div>
         );
@@ -2521,7 +2490,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 </span>
                 <p className="text-[12px] font-medium" style={{ color: "var(--c-ink-body)" }}>{h.status}</p>
               </div>
-              <p key={h.id} className="text-[12px] mt-2 info-fade-in" style={{ color: "#999", fontWeight: 450 }}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : h.status === "Anticipated" ? "Teased for future release — details not yet revealed." : "No longer in active production."}</p>
+              <p key={h.id} className="text-[12px] mt-2 info-fade-in" style={{ color: "var(--c-ink-muted)", fontWeight: 450 }}>{h.status === "In Production" ? "Commercially available and actively deployed." : h.status === "Prototype" ? "In active development — not yet commercially available." : h.status === "Concept" ? "Early-stage design, not yet built." : h.status === "Anticipated" ? "Teased for future release — details not yet revealed." : "No longer in active production."}</p>
             </div>
           ) },
           // Purchase — collapsed by default so price/buy info opts in like every
@@ -2755,7 +2724,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center"
-                        style={{ gap: 4, padding: `8px ${statPillPadX}px`, color: "#999", fontSize: 12, fontWeight: 450, textDecoration: "none", alignSelf: "flex-start" }}
+                        style={{ gap: 4, padding: `8px ${statPillPadX}px`, color: "var(--c-ink-muted)", fontSize: 12, fontWeight: 450, textDecoration: "none", alignSelf: "flex-start" }}
                       >
                         {text}
                         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
@@ -2881,7 +2850,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                             <svg className={isAction ? "pill-arrow" : undefined} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.55 }}>
                               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" />
                             </svg>
-                          ) : s.key === "purchase" ? null : !forcedOpen && (empty ? <span className="text-[12px]" style={{ color: "#c4c4c4" }}>—</span> : ((s as { preview?: React.ReactNode }).preview && !isOpen ? (s as { preview?: React.ReactNode }).preview : plusMinus(isOpen)))}
+                          ) : s.key === "purchase" ? null : !forcedOpen && (empty ? <span className="text-[12px]" style={{ color: "var(--c-ink-subtle)" }}>—</span> : ((s as { preview?: React.ReactNode }).preview && !isOpen ? (s as { preview?: React.ReactNode }).preview : plusMinus(isOpen)))}
                         </div>
                       )}
                       {forcedOpen ? (
@@ -2943,7 +2912,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const stackGap = 16;
             const sectionContentGap = 2;
             const sectionContentMarginTop = 10;
-            const cardFontSize = 13;
+            const cardFontSize = 14;
             const headerStyle: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: 10.5,
@@ -2966,16 +2935,16 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const dimmed: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: cardFontSize,
-              fontWeight: 500,
-              color: "var(--c-ink-body)",
+              fontWeight: 400,
+              color: "var(--c-ink-muted)",
               minWidth: 64,
               flexShrink: 0,
             };
             const valueStyle: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: cardFontSize,
-              fontWeight: 400,
-              color: "var(--c-ink-muted)",
+              fontWeight: 450,
+              color: "var(--c-ink-body)",
             };
             const purchaseSection = sections.find((s) => s.key === "purchase") as
               | { key: "purchase"; href?: string; text?: string; price?: string; cost?: string; state?: string; ctaText?: string }
@@ -3031,11 +3000,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // Missing metrics show as a dimmed em-dash rather than collapsing the row.
             const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "var(--c-ink-subtle)" };
             const renderStatRow = (label: string, value: string | number | null | undefined, formatter: (v: number) => string) => (
-              <div style={rowStyle}>
+              <div style={{ ...rowStyle, minWidth: 0 }}>
                 <span style={dimmed}>{label}</span>
-                <span className="tabular-nums" style={value == null ? missingValueStyle : valueStyle}>
-                  {value == null ? "—" : (typeof value === "number" ? formatter(value) : value)}
-                </span>
+                <MarqueeValue align="right" style={value == null ? missingValueStyle : valueStyle}>
+                  <span className="tabular-nums">
+                    {value == null ? "—" : (typeof value === "number" ? formatter(value) : value)}
+                  </span>
+                </MarqueeValue>
               </div>
             );
             const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
@@ -3116,14 +3087,81 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 </div>
               )
             ) : null;
+            const cycleUnits = (e: React.MouseEvent) => { e.stopPropagation(); onUseImperialChange?.(!useImperial); };
+            const renderUnitTapRow = (label: string, value: number | null | undefined, formatter: (v: number) => string) => (
+              <div style={rowStyle}>
+                <span style={dimmed}>{label}</span>
+                {value == null ? (
+                  <span className="tabular-nums" style={missingValueStyle}>—</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={cycleUnits}
+                    aria-label={`Switch to ${useImperial ? "metric" : "imperial"}`}
+                    className="cursor-pointer pointer-events-auto"
+                    style={{
+                      background: "transparent", border: "none", padding: 0, margin: 0,
+                      ...valueStyle,
+                      display: "inline-flex", alignItems: "baseline", gap: 5,
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <svg width="8" height="9" viewBox="0 0 8 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35, transform: "translateY(-1px)" }} aria-hidden>
+                      <path d="M2 3 4 1 6 3" />
+                      <path d="M2 6 4 8 6 6" />
+                    </svg>
+                    <span className="tabular-nums">{formatter(value)}</span>
+                  </button>
+                )}
+              </div>
+            );
+            const unitsRow = (
+              <div style={rowStyle}>
+                <span style={dimmed}>Units</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  {(["cm", "in"] as const).map((u, i) => {
+                    const active = (u === "in") === useImperial;
+                    return (
+                      <Fragment key={u}>
+                        {i === 1 && <span aria-hidden style={{ ...unitsPillFont, color: "var(--c-ink-subtle)", opacity: 0.35 }}>/</span>}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onUseImperialChange?.(u === "in"); }}
+                          aria-label={`Switch to ${u}`}
+                          className="cursor-pointer pointer-events-auto"
+                          style={{
+                            ...unitsPillFont,
+                            border: "none", background: "transparent", padding: 0, margin: 0,
+                            color: active ? "var(--c-ink-body)" : "var(--c-ink-subtle)",
+                            opacity: active ? 1 : 0.55,
+                            transition: "color 160ms ease, opacity 160ms ease",
+                            WebkitTapHighlightColor: "transparent",
+                          }}
+                        >{u}</button>
+                      </Fragment>
+                    );
+                  })}
+                </span>
+              </div>
+            );
+            const heightRow = unitToggleVariant === "tap"
+              ? renderUnitTapRow("Height", h.height, fmt.height)
+              : renderStatRow("Height", h.height, fmt.height);
+            const weightRow = unitToggleVariant === "tap"
+              ? renderUnitTapRow("Weight", h.weight, fmt.weight)
+              : renderStatRow("Weight", h.weight, fmt.weight);
+            const speedRow = unitToggleVariant === "tap"
+              ? renderUnitTapRow("Speed", h.maxSpeed, fmt.speed)
+              : renderStatRow("Speed", h.maxSpeed, fmt.speed);
             const denseRows: React.ReactNode[] = [
               renderStatRow("Company", h.manufacturer ?? null, (v) => `${v}`),
               renderStatRow("Year", h.year ?? null, (v) => `${v}`),
               renderStatRow("Country", h.country ?? null, (v) => `${v}`),
-              renderStatRow("Height", h.height, fmt.height),
-              renderStatRow("Weight", h.weight, fmt.weight),
+              ...(unitToggleVariant === "row" ? [unitsRow] : []),
+              heightRow,
+              weightRow,
               renderStatRow("DOF", h.dof, (v) => `${v}`),
-              renderStatRow("Speed", h.maxSpeed, fmt.speed),
+              speedRow,
               renderStatRow("Use", h.useCase ?? null, (v) => `${v}`),
               renderStatRow("Drive", h.drive ?? null, (v) => `${v}`),
               renderStatRow("Price", priceChipText ?? null, (v) => `${v}`),
@@ -3132,6 +3170,34 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             ];
             const denseScrollRows = denseDividers ? denseRows.slice(0, -1) : [];
             const denseActionRow = denseDividers ? denseRows[denseRows.length - 1] : null;
+            const renderRowsAsCard = (rows: React.ReactNode[], opts?: { fill?: boolean; pinnedLast?: boolean }) => {
+              const { fill = false, pinnedLast = false } = opts ?? {};
+              const visible = rows.filter(Boolean);
+              if (visible.length === 0) return null;
+              const scrolling = pinnedLast ? visible.slice(0, -1) : visible;
+              const pinned = pinnedLast ? visible[visible.length - 1] : null;
+              return (
+                <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: fill ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseRowGap, minHeight: 0 }}>
+                  <div className="flex flex-col" style={{ gap: denseRowGap, flex: fill ? 1 : undefined, justifyContent: fill ? "space-between" : undefined }}>
+                    {scrolling.map((row, i) => (
+                      <Fragment key={i}>
+                        {i > 0 ? rowHairline : null}
+                        {row}
+                      </Fragment>
+                    ))}
+                  </div>
+                  {pinned && (
+                    <>
+                      {scrolling.length > 0 ? rowHairline : null}
+                      {pinned}
+                    </>
+                  )}
+                </div>
+              );
+            };
+            const specsCard = renderRowsAsCard(denseRows.slice(0, 7), { fill: true }); // Company..Speed
+            const contextCard = renderRowsAsCard(denseRows.slice(7, 9));               // Use, Drive
+            const actionCard = renderRowsAsCard(denseRows.slice(9));                   // Price, Status, CTA
             const statsCard = (
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined}>
@@ -3370,9 +3436,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                   }}
                 >
-                  <div className="flex flex-col" style={{ gap: stackGap, flex: denseDividers ? 1 : undefined, minHeight: 0 }}>
+                  <div className="flex flex-col" style={{ gap: denseDividers && splitCards ? statsGap : stackGap, flex: denseDividers ? 1 : undefined, minHeight: 0 }}>
                     {labelNode}
-                    {statsCard}
+                    {denseDividers && splitCards ? (
+                      <>
+                        {specsCard}
+                        {contextCard}
+                        {actionCard}
+                      </>
+                    ) : (
+                      statsCard
+                    )}
                     {denseDividers ? null : notesCard}
                     {denseDividers ? null : statusCard}
                   </div>
@@ -3432,7 +3506,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     : (priceLabel || "Inquire");
                   return (
                     <div className="min-w-0">
-                      <p className="text-[12px] tracking-widest uppercase font-medium" style={{ color: "#a3a3a3", letterSpacing: "0.02em" }}>
+                      <p className="text-[12px] tracking-widest uppercase font-medium" style={{ color: "var(--c-ink-muted)", letterSpacing: "0.02em" }}>
                         {label}
                       </p>
                       <p className="text-[15px] font-medium tabular-nums mt-0.5 truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
@@ -3534,14 +3608,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const dimmed: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
             fontSize: fz,
-            fontWeight: 500,
-            color: "var(--c-ink-body)",
+            fontWeight: 400,
+            color: "var(--c-ink-muted)",
           };
           const valueStyle: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
             fontSize: fz,
-            fontWeight: 400,
-            color: "var(--c-ink-muted)",
+            fontWeight: 450,
+            color: "var(--c-ink-body)",
           };
           const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "var(--c-ink-subtle)" };
           const hairlineRule = (
@@ -3549,11 +3623,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           );
 
           const compareRow = (label: string, valL: string | null, valR: string | null) => (
-            <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
-              <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
-              <MarqueeValue align="right" style={{ ...(valL ? valueStyle : missingValueStyle) }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+              <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle) }}>
                 <span className="tabular-nums">{valL || "—"}</span>
               </MarqueeValue>
+              <span style={{ ...dimmed, textAlign: "center" as const, whiteSpace: "nowrap" }}>{label}</span>
               <MarqueeValue align="right" style={{ ...(valR ? valueStyle : missingValueStyle) }}>
                 <span className="tabular-nums">{valR || "—"}</span>
               </MarqueeValue>
@@ -3663,13 +3737,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div aria-hidden style={{ height: 1, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? 0 : 64, marginRight: denseFullWidth ? 0 : 64 }} />
           );
           const statusRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) minmax(0, 1fr)", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
-              <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Status</span>
-              <span style={{ display: "inline-flex", justifyContent: "flex-end" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
+              <span style={{ display: "inline-flex", justifyContent: "flex-start" }}>
                 {hL.status
                   ? <StatusDot color={statusColor(hL.status)} size={9} />
                   : <span style={missingValueStyle}>—</span>}
               </span>
+              <span style={{ ...dimmed, textAlign: "center" as const }}>Status</span>
               <span style={{ display: "inline-flex", justifyContent: "flex-end" }}>
                 {hR.status
                   ? <StatusDot color={statusColor(hR.status)} size={9} />
@@ -3703,14 +3777,91 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               </span>
             </button>
           );
+          const cycleUnits = (e: React.MouseEvent) => { e.stopPropagation(); onUseImperialChange?.(!useImperial); };
+          const compareUnitTapRow = (label: string, valL: string | null, valR: string | null) => (
+            <button
+              type="button"
+              onClick={cycleUnits}
+              aria-label={`Switch to ${useImperial ? "metric" : "imperial"}`}
+              className="cursor-pointer pointer-events-auto"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
+                alignItems: "baseline",
+                columnGap: 14,
+                lineHeight: 1.7,
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                margin: 0,
+                width: "100%",
+                textAlign: "left" as const,
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle) }}>
+                <span className="tabular-nums">{valL || "—"}</span>
+              </MarqueeValue>
+              <span style={{ ...dimmed, textAlign: "center" as const, whiteSpace: "nowrap", display: "inline-flex", alignItems: "baseline", gap: 5 }}>
+                <span>{label}</span>
+                <svg width="8" height="9" viewBox="0 0 8 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35, transform: "translateY(-1px)" }} aria-hidden>
+                  <path d="M2 3 4 1 6 3" />
+                  <path d="M2 6 4 8 6 6" />
+                </svg>
+              </span>
+              <MarqueeValue align="right" style={{ ...(valR ? valueStyle : missingValueStyle) }}>
+                <span className="tabular-nums">{valR || "—"}</span>
+              </MarqueeValue>
+            </button>
+          );
+          const compareUnitsRow = (
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+              <span />
+              <span style={{ ...dimmed, textAlign: "center" as const, whiteSpace: "nowrap" }}>Units</span>
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
+                {(["cm", "in"] as const).map((u, i) => {
+                  const active = (u === "in") === useImperial;
+                  return (
+                    <Fragment key={u}>
+                      {i === 1 && <span aria-hidden style={{ ...unitsPillFont, color: "var(--c-ink-subtle)", opacity: 0.35 }}>/</span>}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onUseImperialChange?.(u === "in"); }}
+                        aria-label={`Switch to ${u}`}
+                        className="cursor-pointer pointer-events-auto"
+                        style={{
+                          ...unitsPillFont,
+                          border: "none", background: "transparent", padding: 0, margin: 0,
+                          color: active ? "var(--c-ink-body)" : "var(--c-ink-subtle)",
+                          opacity: active ? 1 : 0.55,
+                          transition: "color 160ms ease, opacity 160ms ease",
+                          WebkitTapHighlightColor: "transparent",
+                        }}
+                      >{u}</button>
+                    </Fragment>
+                  );
+                })}
+              </span>
+            </div>
+          );
+          const heightCompareRow = unitToggleVariant === "tap"
+            ? compareUnitTapRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)
+            : compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null);
+          const weightCompareRow = unitToggleVariant === "tap"
+            ? compareUnitTapRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)
+            : compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null);
+          const speedCompareRow = unitToggleVariant === "tap"
+            ? compareUnitTapRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)
+            : compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null);
           const denseRows: React.ReactNode[] = [
             compareRow("Company", hL.manufacturer ?? null, hR.manufacturer ?? null),
             compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null),
             compareRow("Country", hL.country ?? null, hR.country ?? null),
-            compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null),
-            compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null),
+            ...(unitToggleVariant === "row" ? [compareUnitsRow] : []),
+            heightCompareRow,
+            weightCompareRow,
             compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null),
-            compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null),
+            speedCompareRow,
             compareRow("Use", hL.useCase ?? null, hR.useCase ?? null),
             compareRow("Drive", hL.drive ?? null, hR.drive ?? null),
             compareRow("Price", priceL, priceR),
@@ -3828,7 +3979,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               >
                 {mh.status === "Anticipated" ? (
                   <div className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
-                    <span className="text-[12px] tracking-[0.22em] uppercase" style={{ color: "#a3a3a3" }}>Coming Soon</span>
+                    <span className="text-[12px] tracking-[0.22em] uppercase" style={{ color: "var(--c-ink-muted)" }}>Coming Soon</span>
                   </div>
                 ) : mItems.length > 0 ? mItems.map((item, i) => {
                   const isCover = item.fit === "cover";
@@ -4425,6 +4576,25 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 overflow: comparing ? "visible" : "hidden",
                 transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}, margin-left ${dur} ${ease}`,
               }}>
+                {comparing && (
+                  <button
+                    onClick={exitCompare}
+                    aria-label="Remove from compare"
+                    className="compare-x-bounce absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
+                    style={{
+                      top: -34,
+                      right: 0,
+                      width: 24,
+                      height: 24,
+                      borderRadius: 999,
+                      background: "rgba(0,0,0,0.08)",
+                    }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
+                      <line x1="4" y1="10" x2="16" y2="10" />
+                    </svg>
+                  </button>
+                )}
                 {renderRobot(hR, distR, springR.index, false)}
               </div>
             </div>
@@ -4489,15 +4659,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           <p className="text-[11px] tracking-widest uppercase text-neutral-500">Corner Margins</p>
           <div>
             <label className="text-[12px] text-neutral-500 flex justify-between">Top / Bottom <span className="tabular-nums text-neutral-400">{cornerY}px</span></label>
-            <input type="range" min={0} max={240} value={cornerY} onChange={(e) => setCornerY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
-          </div>
-          <div>
-            <label className="text-[12px] text-neutral-500 flex justify-between">Sides <span className="tabular-nums text-neutral-400">{cornerX}px</span></label>
-            <input type="range" min={0} max={480} value={cornerX} onChange={(e) => setCornerX(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            <input type="range" min={0} max={600} value={cornerY} onChange={(e) => setCornerY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
           </div>
           <div className="pt-2 border-t border-neutral-100">
             <button
-              onClick={() => { setCornerY(5); setCornerX(30); }}
+              onClick={() => setCornerY(8)}
               className="text-[12px] text-neutral-400 hover:text-neutral-600 cursor-pointer"
             >
               Reset
@@ -4604,7 +4770,64 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       )}
       {showSceneTuner && (
         <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[260px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
-          <div className="flex items-center justify-between">
+          <div className="space-y-3">
+            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Surface</p>
+            <div>
+              <label className="text-[12px] text-neutral-500 mb-1.5 block">Palette</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(["cool", "neutral"] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => onPaletteChange?.(p)}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${palette === p ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Base <span className="tabular-nums text-neutral-400">{surfaceColor}</span></label>
+              <div className="flex gap-1.5 mt-1.5 items-center">
+                {["#ffffff", "#f7f7f7", "#f2f2f2", "#ececec", "#e5e5e5"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => onSurfaceColorChange(c)}
+                    className="w-6 h-6 rounded cursor-pointer"
+                    style={{ background: c, border: surfaceColor.toLowerCase() === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={surfaceColor}
+                  onChange={(e) => onSurfaceColorChange(e.target.value)}
+                  className="w-6 h-6 rounded cursor-pointer border border-neutral-200"
+                  style={{ padding: 0 }}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Hover <span className="tabular-nums text-neutral-400">{surfaceHover}</span></label>
+              <div className="flex gap-1.5 mt-1.5 items-center">
+                {["#f2f2f2", "#ebebeb", "#e5e5e5", "#dcdcdc", "#d4d4d4"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => onSurfaceHoverChange(c)}
+                    className="w-6 h-6 rounded cursor-pointer"
+                    style={{ background: c, border: surfaceHover.toLowerCase() === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={surfaceHover}
+                  onChange={(e) => onSurfaceHoverChange(e.target.value)}
+                  className="w-6 h-6 rounded cursor-pointer border border-neutral-200"
+                  style={{ padding: 0 }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
             <p className="text-[11px] tracking-widest uppercase text-neutral-500">Scene</p>
             <span className="text-[10px] text-neutral-400">{sceneActive ? focusedH?.name : "—"}</span>
           </div>
@@ -4687,49 +4910,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div>
               <label className="text-[12px] text-neutral-500 flex justify-between">Tint <span className="tabular-nums text-neutral-400">{pageBgHex}</span></label>
               <input type="range" min={0} max={30} value={pageBgLevel} onChange={(e) => setPageBgLevel(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
-            </div>
-          </div>
-          <div className="space-y-3 pt-3 border-t border-neutral-100">
-            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Surface</p>
-            <div>
-              <label className="text-[12px] text-neutral-500 flex justify-between">Base <span className="tabular-nums text-neutral-400">{surfaceColor}</span></label>
-              <div className="flex gap-1.5 mt-1.5 items-center">
-                {["#ffffff", "#f7f7f7", "#f2f2f2", "#ececec", "#e5e5e5"].map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => onSurfaceColorChange(c)}
-                    className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: surfaceColor.toLowerCase() === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
-                  />
-                ))}
-                <input
-                  type="color"
-                  value={surfaceColor}
-                  onChange={(e) => onSurfaceColorChange(e.target.value)}
-                  className="w-6 h-6 rounded cursor-pointer border border-neutral-200"
-                  style={{ padding: 0 }}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-[12px] text-neutral-500 flex justify-between">Hover <span className="tabular-nums text-neutral-400">{surfaceHover}</span></label>
-              <div className="flex gap-1.5 mt-1.5 items-center">
-                {["#f2f2f2", "#ebebeb", "#e5e5e5", "#dcdcdc", "#d4d4d4"].map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => onSurfaceHoverChange(c)}
-                    className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: surfaceHover.toLowerCase() === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
-                  />
-                ))}
-                <input
-                  type="color"
-                  value={surfaceHover}
-                  onChange={(e) => onSurfaceHoverChange(e.target.value)}
-                  className="w-6 h-6 rounded cursor-pointer border border-neutral-200"
-                  style={{ padding: 0 }}
-                />
-              </div>
             </div>
           </div>
           <div className="space-y-3 pt-3 border-t border-neutral-100">
@@ -4830,20 +5010,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       )}
       {showTuner && (
         <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide" style={{ overscrollBehavior: "contain" }}>
-          <div>
-            <div className="flex items-center justify-between">
-              <p className="text-[12px] tracking-widest uppercase text-neutral-400" style={{ fontFamily: "var(--font-epetri)", letterSpacing: "0.18em" }}>Epetri Font</p>
-              <button
-                type="button"
-                onClick={() => onEpetriModeChange?.(!epetriMode)}
-                aria-pressed={epetriMode}
-                className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${epetriMode ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
-              >
-                {epetriMode ? "On" : "Off"}
-              </button>
-            </div>
-          </div>
-          <div className="pt-2 border-t border-neutral-100 space-y-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400">Dense dividers</p>
               <button
@@ -4896,6 +5063,31 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     className="w-full mt-1.5 cursor-pointer"
                   />
                 </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-[12px] text-neutral-500">Split into 3 cards</label>
+                  <button
+                    type="button"
+                    onClick={() => setSplitCards((v) => !v)}
+                    aria-pressed={splitCards}
+                    className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${splitCards ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+                  >
+                    {splitCards ? "On" : "Off"}
+                  </button>
+                </div>
+                <div>
+                  <p className="text-[12px] text-neutral-500 mb-1.5">Units toggle</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(["tap", "row"] as const).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => setUnitToggleVariant(v)}
+                        className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${unitToggleVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                      >
+                        {v === "tap" ? "Tap value" : "Units row"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </>
             )}
             <p className="text-[10px] text-neutral-400 leading-relaxed">
@@ -4941,7 +5133,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             )}
           </div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => pickArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Position Indicator</p><div className="flex flex-wrap gap-1.5">{POSITION_INDICATOR_VARIANTS.map((v) => (<button key={v} onClick={() => setPositionIndicator(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${positionIndicator === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{positionIndicatorLabels[v]}</button>))}</div></div>
           {arcStyle === "arc-names" && (
             <div className="pt-2 border-t border-neutral-100">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Arc Marker</p>
@@ -5479,6 +5670,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Marker opacity <span className="tabular-nums text-neutral-400">{tagMarkerOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagMarkerOp * 100)} onChange={(e) => setTagMarkerOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           )}
+          <div className="pt-2 border-t border-neutral-100">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] tracking-widest uppercase text-neutral-400" style={{ fontFamily: "var(--font-epetri)", letterSpacing: "0.18em" }}>Epetri Font</p>
+              <button
+                type="button"
+                onClick={() => onEpetriModeChange?.(!epetriMode)}
+                aria-pressed={epetriMode}
+                className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${epetriMode ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+              >
+                {epetriMode ? "On" : "Off"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -5658,7 +5862,7 @@ function GuideChat({ onSelect, config }: { onSelect: (idx: number) => void; conf
                         </div>
                         <div className="text-left">
                           <p style={{ fontSize: config.fontSize - 2, fontWeight: 500, color: "#1d1d1f" }}>{h.name}</p>
-                          <p style={{ fontSize: config.fontSize - 3, color: "#a0a0a0" }}>{h.manufacturer}</p>
+                          <p style={{ fontSize: config.fontSize - 3, color: "var(--c-ink-muted)" }}>{h.manufacturer}</p>
                         </div>
                       </button>
                     );
@@ -5788,7 +5992,17 @@ export default function HomeClient() {
   const [navStyle, setNavStyle] = useState<NavStyle>("trio");
   const [chromeVariant, setChromeVariant] = useState<"split" | "joined">("split");
   const [surfaceColor, setSurfaceColor] = useState(SURFACE);
-  const [surfaceHover, setSurfaceHover] = useState("#EBEBEB");
+  const [surfaceHover, setSurfaceHover] = useState("#E8E8EE");
+  const [palette, setPalette] = useState<"cool" | "neutral">("cool");
+  useEffect(() => {
+    if (palette === "neutral") {
+      setSurfaceColor("#F4F4F4");
+      setSurfaceHover("#EBEBEB");
+    } else {
+      setSurfaceColor("#F1F1F6");
+      setSurfaceHover("#E8E8EE");
+    }
+  }, [palette]);
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
   const [chatOpen, setChatOpen] = useState(false);
   const [showChatTuner, setShowChatTuner] = useState(false);
@@ -5936,14 +6150,26 @@ export default function HomeClient() {
   );
   useEffect(() => {
     if (introPhase !== "done" || newHumanoids.length === 0 || firstNewIdx < 0) return;
+    const seenKey = `hi:new-toast-seen:${newHumanoids.map((h) => h.id).sort().join(",")}`;
+    try {
+      if (localStorage.getItem(seenKey)) return;
+    } catch {}
     const t = setTimeout(() => {
       toast.custom((id) => (
         <AnnouncementToast
           humanoids={newHumanoids}
-          onView={() => { handleSelectHumanoid(firstNewIdx); toast.dismiss(id); }}
-          onDismiss={() => toast.dismiss(id)}
+          onView={() => {
+            try { localStorage.setItem(seenKey, "1"); } catch {}
+            handleSelectHumanoid(firstNewIdx);
+            toast.dismiss(id);
+          }}
+          onDismiss={() => {
+            try { localStorage.setItem(seenKey, "1"); } catch {}
+            toast.dismiss(id);
+          }}
         />
       ), { duration: 12000 });
+      try { localStorage.setItem(seenKey, "1"); } catch {}
     }, 400);
     return () => clearTimeout(t);
   }, [introPhase, newHumanoids, firstNewIdx, handleSelectHumanoid]);
@@ -6000,6 +6226,7 @@ export default function HomeClient() {
 
   return (
     <main
+      data-palette={palette}
       className="min-h-screen bg-white"
       style={{
         fontFamily: epetriMode
@@ -6007,6 +6234,12 @@ export default function HomeClient() {
           : (fontMode === "fav" ? FAVORITE_FONTS[favIdx].family : FONTS[fontIdx].family),
         ["--c-surface" as string]: surfaceColor,
         ["--c-surface-hover" as string]: surfaceHover,
+        ...(palette === "neutral" ? {
+          ["--c-ink" as string]: "#343433",
+          ["--c-ink-body" as string]: "#6b6b6b",
+          ["--c-ink-muted" as string]: "#a3a3a3",
+          ["--c-ink-subtle" as string]: "#c4c4c4",
+        } : {}),
         ...(epetriMode ? EPETRI_FONT_OVERRIDES : {}),
       } as React.CSSProperties}
     >
@@ -6080,7 +6313,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -6091,11 +6324,11 @@ export default function HomeClient() {
           className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg animate-blur-fade"
           style={{ background: "rgba(0,0,0,0.06)", backdropFilter: "blur(12px)" }}
         >
-          <p className="text-[12px] tracking-wide" style={{ color: "#999" }}>
-            <span style={{ color: "#737373", fontWeight: 500 }}>
+          <p className="text-[12px] tracking-wide" style={{ color: "var(--c-ink-muted)" }}>
+            <span style={{ color: "var(--c-ink-body)", fontWeight: 500 }}>
               {fontMode === "fav" ? FAVORITE_FONTS[favIdx].name : FONTS[fontIdx].name}
             </span>
-            <span className="ml-2 tabular-nums" style={{ color: "#c4c4c4" }}>
+            <span className="ml-2 tabular-nums" style={{ color: "var(--c-ink-subtle)" }}>
               {fontMode === "fav"
                 ? `${favIdx + 1}/${FAVORITE_FONTS.length}`
                 : `${fontIdx + 1}/${FONTS.length}`}
@@ -6175,16 +6408,15 @@ export default function HomeClient() {
       {introDone && (() => {
         const creditStyle: React.CSSProperties = {
           fontSize: 13,
-          fontWeight: 500,
+          fontWeight: 400,
           letterSpacing: "normal",
-          lineHeight: 1,
-          color: "rgba(95, 96, 89, 0.5)",
+          color: "oklch(65% 0.011 222.2)",
           whiteSpace: "nowrap",
         };
         return (
           <div
             className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none flex items-center justify-between"
-            style={{ bottom: "var(--corner-y, 5px)", height: 36, paddingLeft: "var(--corner-x, 30px)", paddingRight: "var(--corner-x, 30px)" }}
+            style={{ bottom: "var(--corner-y, 8px)", minHeight: 26, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}
           >
             <div className="flex items-center pointer-events-auto">
               <span style={creditStyle}>Roy Jad © 2026</span>

@@ -68,7 +68,7 @@ export default function GridView({ humanoids }: GridViewProps) {
           border: "1px solid rgba(0,0,0,0.06)",
         }}
       >
-        <span className="text-[12px] tracking-[0.14em] uppercase" style={{ color: "#a3a3a3" }}>Cols</span>
+        <span className="text-[12px] tracking-[0.14em] uppercase" style={{ color: "var(--c-ink-muted)" }}>Cols</span>
         <input
           type="range"
           min={MIN_COLS}
@@ -136,7 +136,7 @@ export default function GridView({ humanoids }: GridViewProps) {
                 </p>
                 <p
                   className="text-[12px] uppercase font-medium truncate"
-                  style={{ color: "#a3a3a3", letterSpacing: "0.06em" }}
+                  style={{ color: "var(--c-ink-muted)", letterSpacing: "0.06em" }}
                 >
                   {h.manufacturer}
                 </p>

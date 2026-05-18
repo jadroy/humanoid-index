@@ -20,7 +20,7 @@ function ModRow({ row, isMac }: { row: Row; isMac: boolean }) {
       <span className="flex items-center gap-1.5 flex-wrap justify-end">
         {row.keys.map((group, gi) => (
           <span key={gi} className="flex items-center gap-1">
-            {gi > 0 && <span className="text-[10px]" style={{ color: "#c4c4c4" }}>·</span>}
+            {gi > 0 && <span className="text-[10px]" style={{ color: "var(--c-ink-subtle)" }}>·</span>}
             {group.map((k, ki) => (
               <kbd key={ki} className="shortcuts-kbd">
                 {k === "⌘" && !isMac ? "Ctrl" : k}
@@ -61,7 +61,7 @@ export function ShortcutsSheet({ onClose }: { onClose: () => void }) {
           <h2 className="text-[13px] font-medium" style={{ color: "#1a1a1a", letterSpacing: "-0.005em" }}>
             Shortcuts
           </h2>
-          <span className="text-[10.5px]" style={{ color: "#b4b4b4" }}>press / to toggle</span>
+          <span className="text-[10.5px]" style={{ color: "var(--c-ink-muted)" }}>press / to toggle</span>
         </div>
         <ul className="divide-y" style={{ borderColor: "#f1f1f1" }}>
           {ROWS.map((row) => (

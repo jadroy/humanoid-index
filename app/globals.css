@@ -494,13 +494,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 main {
-  --c-ink: #343433;
-  --c-ink-bold: #171717;
-  --c-ink-medium: #494440;
-  --c-ink-body: #747484;
-  --c-ink-spec: #262626;
-  --c-ink-muted: #a3a3a3;
-  --c-ink-subtle: #c4c4c4;
+  /* 4-level cool-gray ramp — slight blue tint for the humanoid/futuristic feel.
+     Use in order primary → quaternary; skip levels rather than introduce new shades. */
+  --c-ink: #2e2e36;        /* primary — titles, headings, value text */
+  --c-ink-body: #747484;   /* secondary — body copy, stat values, links */
+  --c-ink-muted: #a0a0ad;  /* tertiary — labels, captions */
+  --c-ink-subtle: #c4c4d0; /* quaternary — placeholders, em-dashes, disabled */
   --c-accent: #ff7a45;
 }
 

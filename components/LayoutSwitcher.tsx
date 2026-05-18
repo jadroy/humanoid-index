@@ -164,7 +164,7 @@ function SingleSwitcher({ active, onChange }: { active: Layout; onChange: (l: La
     <button
       onClick={handleClick}
       className="relative inline-flex items-center justify-center text-[12px] tracking-wide cursor-pointer"
-      style={{ color: "#9a9a9a", fontWeight: 500, padding: "4px 16px", minWidth: 76 }}
+      style={{ color: "var(--c-ink-muted)", fontWeight: 500, padding: "4px 16px", minWidth: 76 }}
     >
       <span
         className="absolute rounded-full pointer-events-none"
@@ -592,7 +592,6 @@ export function LayoutSwitcher({
   const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} ringColor="#fff" />;
 
   const [diceRollNonce, setDiceRollNonce] = useState(0);
-  const [wordmarkHover, setWordmarkHover] = useState(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
@@ -822,7 +821,7 @@ export function LayoutSwitcher({
       switcherEl = (
         <div className="flex items-center gap-1.5">
           <button onClick={() => onChange(L0)} className={labelBase} style={labelStyle(L0)}>{layoutLabels[L0]}</button>
-          <span className="text-[12px]" style={{ color: "#d4d4d4" }}>/</span>
+          <span className="text-[12px]" style={{ color: "var(--c-ink-subtle)" }}>/</span>
           <button onClick={() => onChange(L1)} className={labelBase} style={labelStyle(L1)}>{layoutLabels[L1]}</button>
         </div>
       );
@@ -1042,7 +1041,7 @@ export function LayoutSwitcher({
                 <button
                   onClick={handleClick}
                   className="text-[13px] select-none whitespace-nowrap cursor-pointer transition-opacity hover:opacity-80"
-                  style={{ color: "var(--c-ink-medium, #6b6560)", fontWeight: 500, letterSpacing: "-0.025em", background: "transparent", border: "none", padding: 0 }}
+                  style={{ color: "var(--c-ink)", fontWeight: 500, letterSpacing: "-0.025em", background: "transparent", border: "none", padding: 0 }}
                 >
                   Humanoid Index
                 </button>
@@ -1147,7 +1146,7 @@ export function LayoutSwitcher({
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 px-8 pb-4 text-[12px]" style={{ color: "#999" }}>
+                    <div className="grid grid-cols-2 gap-4 px-8 pb-4 text-[12px]" style={{ color: "var(--c-ink-muted)" }}>
                       <span>A visual index of humanoid robots</span>
                       <a href="https://royjad.com/" target="_blank" rel="noopener noreferrer" className="text-right transition-opacity hover:opacity-70" style={{ color: "inherit" }}>Made by Roy Jad</a>
                     </div>
@@ -1244,32 +1243,28 @@ export function LayoutSwitcher({
       fontSize: 13,
       fontWeight: 500,
       letterSpacing: "normal",
-      color: wordmarkHover ? "rgba(95, 96, 89, 0.8)" : "rgba(95, 96, 89, 0.5)",
+      color: "oklch(65% 0.011 222.2)",
       background: "transparent",
       paddingLeft: 12,
       paddingRight: 12,
       marginLeft: -12,
-      transition: "color 140ms ease",
     };
     navEl = joined ? <></> : (
       <nav
         className="fixed left-0 right-0 z-50 pointer-events-auto"
-        style={{ top: "var(--corner-y, 5px)", background: "transparent" }}
+        style={{ top: "var(--corner-y, 8px)", background: "transparent" }}
       >
         <div
           className="flex items-center justify-between"
           style={{
-            height: 36,
-            paddingLeft: "var(--corner-x, 30px)",
-            paddingRight: "var(--corner-x, 30px)",
+            paddingLeft: "var(--nav-x, 24px)",
+            paddingRight: "var(--nav-x, 24px)",
           }}
         >
           <div className="flex justify-start items-center">
             <Chip
               onClick={() => onGoHome?.()}
-              onMouseEnter={() => setWordmarkHover(true)}
-              onMouseLeave={() => setWordmarkHover(false)}
-              style={trioLabelStyle}
+              style={{ ...trioLabelStyle, padding: "0 12px" }}
             >
               Humanoid Index
             </Chip>
@@ -1288,7 +1283,7 @@ export function LayoutSwitcher({
                 padding: 4,
                 marginRight: -4,
                 cursor: "pointer",
-                fontSize: 22,
+                fontSize: 18,
                 lineHeight: 1,
                 display: "inline-flex",
                 alignItems: "center",

@@ -15,7 +15,6 @@ type Props = {
 export default function SiteOptionsMenu({ visible, inline = false }: Props) {
   const [open, setOpen] = useState(false);
   const [sheet, setSheet] = useState<"feedback" | "suggest" | null>(null);
-  const [hover, setHover] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,7 +51,7 @@ export default function SiteOptionsMenu({ visible, inline = false }: Props) {
         style={{
           position: "absolute",
           bottom: "100%",
-          right: 0,
+          right: -14,
           paddingBottom: 6,
           display: "flex",
           flexDirection: "column",
@@ -79,26 +78,22 @@ export default function SiteOptionsMenu({ visible, inline = false }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}
         aria-label="Contribute"
         aria-expanded={open}
         style={{
-          height: 36,
-          padding: "0 14px",
+          padding: "6px 14px",
           marginRight: -14,
           borderRadius: 999,
           background: "transparent",
           border: "none",
-          color: open || hover ? "rgba(95, 96, 89, 0.8)" : "rgba(95, 96, 89, 0.5)",
+          color: "oklch(65% 0.011 222.2)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
           fontSize: 13,
-          fontWeight: 500,
+          fontWeight: 400,
           letterSpacing: "normal",
-          transition: "color 140ms ease",
         }}
       >
         Contribute
@@ -123,10 +118,10 @@ function PopItem({ label, onClick }: { label: string; onClick: () => void }) {
         padding: "2px 14px",
         border: "none",
         background: "transparent",
-        color: hover ? "rgba(95, 96, 89, 0.82)" : "rgba(95, 96, 89, 0.7)",
+        color: hover ? "oklch(40% 0.011 222.2)" : "oklch(65% 0.011 222.2)",
         cursor: "pointer",
         fontSize: 13,
-        fontWeight: 500,
+        fontWeight: 400,
         letterSpacing: "normal",
         whiteSpace: "nowrap",
         transition: "color 140ms ease",

@@ -357,7 +357,7 @@ export default function CharacterSelect({ humanoids }: CharacterSelectProps) {
                         return (
                           <div key={stat.label} className="animate-stat-cascade" style={{ animationDelay: `${120 + i * 80 + si * 50}ms` }}>
                             <div className="flex justify-between items-baseline text-[12px] leading-none mb-[2px]">
-                              <span style={{ color: "#999" }}>{stat.label}</span>
+                              <span style={{ color: "var(--c-ink-muted)" }}>{stat.label}</span>
                               <span className="text-[12px]" style={{ color: "#444" }}>{stat.value}</span>
                             </div>
                             <div className="relative h-[3px] w-full rounded-full" style={{ backgroundColor: "rgba(0,0,0,0.08)" }}>
