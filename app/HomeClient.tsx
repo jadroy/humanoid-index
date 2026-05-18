@@ -1377,8 +1377,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     document.documentElement.style.setProperty("--collapse-ease", collapseEase);
   }, [collapseDurMs, collapseEase]);
 
-  // Top/bottom inset (`--corner-y`) for the trio nav + footer credit row.
-  // Side inset is driven by `--nav-x` (the content-edge inset), set elsewhere.
+  // Top/bottom inset (`--corner-y`) for chrome anchored to the viewport edges
+  // (nav + footer credit row). The side inset shares state with `navX`/`--nav-x`
+  // so the same slider can live in either the Corner Margins or Nav tuner.
   const [showMarginTuner, setShowMarginTuner] = useState(false);
   const [cornerY, setCornerY] = useState(8);
   useEffect(() => {
@@ -4209,7 +4210,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 borderRadius: cardRadius,
                 background: "#F9F9F9",
                 pointerEvents: "auto",
-                transition: `width ${dur} ${ease}, height ${dur} ${ease}, max-width ${dur} ${ease}`,
+                transition: "width var(--collapse-dur) var(--collapse-ease), height var(--collapse-dur) var(--collapse-ease), max-width var(--collapse-dur) var(--collapse-ease)",
                 willChange: "transform",
                 zIndex: 2,
               }}
@@ -4521,8 +4522,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     ? undefined
                     : !comparing && addHover && addCtaMode !== "always" ? "translateX(-16px)" : "translateX(0)",
                   transition: addHintVisible
-                    ? `width var(--collapse-dur) var(--collapse-ease), height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left var(--collapse-dur) var(--collapse-ease)`
-                    : `width var(--collapse-dur) var(--collapse-ease), height ${dur} ${ease}, opacity ${dur} ${ease}, margin-left var(--collapse-dur) var(--collapse-ease), transform ${dur} ${ease}`,
+                    ? "width var(--collapse-dur) var(--collapse-ease), height var(--collapse-dur) var(--collapse-ease), opacity var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease)"
+                    : "width var(--collapse-dur) var(--collapse-ease), height var(--collapse-dur) var(--collapse-ease), opacity var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease)",
                 }}
               >
                 {/* Collapse affordance — variants swap the chrome but all toggle
@@ -4600,17 +4601,26 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   // hover-fade / none — no button; behavior handled in renderStats.
                   return null;
                 })()}
+                {/* Crossfade with a subtle vertical morph and blur so the row
+                    layout swap reads as the content "settling in" rather than
+                    two distinct layers swapping. Both layers ride the shared
+                    collapse clock so the content motion matches the wrapper
+                    resize beat-for-beat. */}
                 <div className="absolute inset-0" style={{
                   opacity: comparing ? 0 : 1,
+                  transform: comparing ? "translateY(-3px) scale(0.985)" : "translateY(0) scale(1)",
+                  filter: comparing ? "blur(2px)" : "blur(0)",
                   pointerEvents: comparing ? "none" : "auto",
-                  transition: `opacity 0.2s ${ease}`,
+                  transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease), filter var(--collapse-dur) var(--collapse-ease)",
                 }}>
                   {renderStats(hL)}
                 </div>
                 <div className="absolute inset-0" style={{
                   opacity: comparing ? 1 : 0,
+                  transform: comparing ? "translateY(0) scale(1)" : "translateY(3px) scale(0.985)",
+                  filter: comparing ? "blur(0)" : "blur(2px)",
                   pointerEvents: comparing ? "auto" : "none",
-                  transition: `opacity 0.2s ${ease} ${comparing ? "0.06s" : "0s"}`,
+                  transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease), filter var(--collapse-dur) var(--collapse-ease)",
                 }}>
                   {renderMergedStats()}
                 </div>
@@ -4623,10 +4633,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <div className="flex-shrink-0 relative compare-rcard" style={{
                 opacity: comparing ? 1 : 0,
                 transform: `translateX(${splitHover ? 12 : 0}px) scale(${comparing ? 1 : 0.95})`,
-                width: comparing ? "auto" : 0,
+                width: comparing ? `${robotW - 8}vw` : 0,
+                maxWidth: robotMaxW,
                 marginLeft: comparing ? effectiveGap : 0,
                 overflow: comparing ? "visible" : "hidden",
-                transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}, margin-left ${dur} ${ease}`,
+                transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease), width var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease)",
               }}>
                 {comparing && (
                   <button
@@ -4713,9 +4724,25 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <label className="text-[12px] text-neutral-500 flex justify-between">Top / Bottom <span className="tabular-nums text-neutral-400">{cornerY}px</span></label>
             <input type="range" min={0} max={600} value={cornerY} onChange={(e) => setCornerY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
           </div>
+          <div style={{ opacity: autoNavX ? 0.55 : 1 }}>
+            <label className="text-[12px] text-neutral-500 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                Left / Right
+                <button
+                  type="button"
+                  onClick={() => setAutoNavX((v) => !v)}
+                  className={`text-[10px] px-1.5 py-0.5 rounded cursor-pointer ${autoNavX ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}
+                >
+                  {autoNavX ? "Auto" : "Manual"}
+                </button>
+              </span>
+              <span className="tabular-nums text-neutral-400">{navX}px</span>
+            </label>
+            <input type="range" min={0} max={600} value={navX} onChange={(e) => { setNavX(Number(e.target.value)); setAutoNavX(false); }} className="w-full accent-neutral-900 h-1 mt-1.5" />
+          </div>
           <div className="pt-2 border-t border-neutral-100">
             <button
-              onClick={() => setCornerY(8)}
+              onClick={() => { setCornerY(8); setNavX(24); setAutoNavX(true); }}
               className="text-[12px] text-neutral-400 hover:text-neutral-600 cursor-pointer"
             >
               Reset
