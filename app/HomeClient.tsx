@@ -4638,32 +4638,45 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   shared collapse clock so the right side enters as one piece. */}
               <div className="flex-shrink-0 relative compare-rcard" style={{
                 opacity: comparing ? 1 : 0,
-                transform: `translateX(${(comparing ? 0 : 56) + (splitHover ? 12 : 0)}px) scale(${comparing ? 1 : 0.94})`,
+                // Card emerges from the stats column's right edge — starts
+                // pulled inward (overlapping the stats col) and scales out
+                // from its left edge. Reads as the 2nd robot "tacking on"
+                // to the existing content instead of sliding in from off-screen.
+                transform: `translateX(${(comparing ? 0 : -24) + (splitHover ? 8 : 0)}px) scale(${comparing ? 1 : 0.82})`,
+                transformOrigin: "left center",
                 width: comparing ? `${robotW - 8}vw` : 0,
                 maxWidth: robotMaxW,
                 marginLeft: comparing ? effectiveGap : 0,
                 overflow: comparing ? "visible" : "hidden",
                 transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease), width var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease)",
               }}>
-                {comparing && (
-                  <button
-                    onClick={exitCompare}
-                    aria-label="Remove from compare"
-                    className="compare-x-bounce absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
-                    style={{
-                      top: -34,
-                      right: 0,
-                      width: 24,
-                      height: 24,
-                      borderRadius: 999,
-                      background: "rgba(0,0,0,0.08)",
-                    }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
-                      <line x1="4" y1="10" x2="16" y2="10" />
-                    </svg>
-                  </button>
-                )}
+                {/* Minus appears AFTER the card has landed so it rises out of
+                    the card vertically — no horizontal drift from the card's
+                    translateX(56) slide-in. On exit it fades quickly before
+                    the card starts sliding out. */}
+                <button
+                  onClick={exitCompare}
+                  aria-label="Remove from compare"
+                  className="absolute z-30 flex items-center justify-center cursor-pointer"
+                  style={{
+                    top: -34,
+                    right: 0,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 999,
+                    background: "rgba(0,0,0,0.08)",
+                    opacity: comparing ? 1 : 0,
+                    transform: comparing ? "translateY(0)" : "translateY(10px)",
+                    pointerEvents: comparing ? "auto" : "none",
+                    transition: comparing
+                      ? "opacity 220ms ease 280ms, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 280ms"
+                      : "opacity 140ms ease 0ms, transform 140ms ease 0ms",
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
+                    <line x1="4" y1="10" x2="16" y2="10" />
+                  </svg>
+                </button>
                 {renderRobot(hR, distR, springR.index, false)}
               </div>
             </div>

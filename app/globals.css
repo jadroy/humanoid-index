@@ -1179,22 +1179,21 @@ main {
               0 8px 28px rgba(0, 0, 0, 0.06);
 }
 
-/* Right side of the compare transition — wheel + card + stats values slide
-   in together from the screen-right edge so the eye can read it as the 2nd
-   humanoid "entering" the layout (instead of just popping into place). All
-   three pieces ride the same collapse clock as the layout shift. */
+/* Right-side arc settles in AFTER the 2nd card has tacked on to the stats
+   column — a small fade-up so the arc reads as following the card's entry
+   rather than competing with it for attention. */
 @keyframes compare-r-slide-in {
   from {
     opacity: 0;
-    transform: translateX(48px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 .compare-r-enter {
-  animation: compare-r-slide-in var(--collapse-dur, 360ms) cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: compare-r-slide-in 280ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
 }
 
 /* Compare minus (−) — slides up from behind the right card on enter, then a
