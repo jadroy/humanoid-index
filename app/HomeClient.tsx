@@ -902,21 +902,25 @@ function MarqueeValue({ children, align, style }: { children: React.ReactNode; a
     </span>
   );
 }
-function CountryValue({ country, valueStyle }: { country: string; valueStyle: React.CSSProperties }) {
+function CountryValue({ country, valueStyle, visualSide = "left" }: { country: string; valueStyle: React.CSSProperties; visualSide?: "left" | "right" }) {
   const isos = countryToIsoCodes(country);
   if (isos.length === 0) return <span style={valueStyle}>{country}</span>;
+  const flags = (
+    <span style={{ display: "inline-flex", alignItems: "baseline", gap: 3 }}>
+      {isos.map((iso) => (
+        <CircleFlag key={iso} iso={iso} />
+      ))}
+    </span>
+  );
   return (
     <span
       title={country}
       aria-label={country}
       style={{ ...valueStyle, display: "inline-flex", alignItems: "baseline", gap: 6 }}
     >
-      <span style={{ display: "inline-flex", alignItems: "baseline", gap: 3 }}>
-        {isos.map((iso) => (
-          <CircleFlag key={iso} iso={iso} />
-        ))}
-      </span>
+      {visualSide === "left" ? flags : null}
       <span>{country}</span>
+      {visualSide === "right" ? flags : null}
     </span>
   );
 }
@@ -1209,6 +1213,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Compare mode needs more room to render long manufacturer names like
   // "Sunday Robotics" / "LimX Dynamics" without truncating.
   const compareStatsW = statsW + 200;
+  // Side of the visual element (flag, status dot) relative to its text label
+  // inside a value cell. "left" = visual-then-text (default), "right" = text-then-visual.
+  const [valueVisualSide, setValueVisualSide] = useState<"left" | "right">("left");
   const [statsColScale, setStatsColScale] = useState(0.62); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(12);    // px — gap between robot and stats
@@ -3063,8 +3070,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <div style={{ ...rowStyle, alignItems: "center" }}>
                 <span style={dimmed}>Status</span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 7, ...(h.status ? valueStyle : missingValueStyle) }}>
-                  {h.status && <StatusDot color={statusColor} size={9} />}
+                  {h.status && valueVisualSide === "left" && <StatusDot color={statusColor} size={9} />}
                   <span>{h.status ?? "—"}</span>
+                  {h.status && valueVisualSide === "right" && <StatusDot color={statusColor} size={9} />}
                 </span>
               </div>
             );
@@ -3167,7 +3175,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const countryRow = h.country ? (
               <div style={rowStyle}>
                 <span style={dimmed}>Country</span>
-                <CountryValue country={h.country} valueStyle={valueStyle} />
+                <CountryValue country={h.country} valueStyle={valueStyle} visualSide={valueVisualSide} />
               </div>
             ) : renderStatRow("Country", null, (v) => `${v}`);
             const denseRows: React.ReactNode[] = [
@@ -3758,18 +3766,32 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Status</span>
               <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
                 {hL.status ? (
-                  <>
-                    <StatusDot color={statusColor(hL.status)} size={9} />
-                    <span style={valueStyle}>{hL.status}</span>
-                  </>
+                  valueVisualSide === "left" ? (
+                    <>
+                      <StatusDot color={statusColor(hL.status)} size={9} />
+                      <span style={valueStyle}>{hL.status}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={valueStyle}>{hL.status}</span>
+                      <StatusDot color={statusColor(hL.status)} size={9} />
+                    </>
+                  )
                 ) : <span style={missingValueStyle}>—</span>}
               </span>
               <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
                 {hR.status ? (
-                  <>
-                    <StatusDot color={statusColor(hR.status)} size={9} />
-                    <span style={valueStyle}>{hR.status}</span>
-                  </>
+                  valueVisualSide === "left" ? (
+                    <>
+                      <StatusDot color={statusColor(hR.status)} size={9} />
+                      <span style={valueStyle}>{hR.status}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={valueStyle}>{hR.status}</span>
+                      <StatusDot color={statusColor(hR.status)} size={9} />
+                    </>
+                  )
                 ) : <span style={missingValueStyle}>—</span>}
               </span>
             </div>
@@ -3778,26 +3800,28 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
-              className="pointer-events-auto w-full flex items-center justify-between cursor-pointer"
+              className="pointer-events-auto cursor-pointer"
               style={{
                 background: "transparent",
                 border: "none",
                 padding: 0,
                 lineHeight: 1.7,
-                color: "var(--c-ink-body)",
                 fontFamily: "var(--font-geist-sans)",
                 fontSize: fz,
-                fontWeight: 500,
+                fontWeight: 400,
+                color: "var(--c-ink-muted)",
                 WebkitTapHighlightColor: "transparent",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                whiteSpace: "nowrap",
               }}
             >
               <span>Copy comparison</span>
-              <span style={{ display: "inline-flex", alignItems: "center", color: "var(--c-ink-muted)" }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
-                  <path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10 6" />
-                  <path d="M14 11a5 5 0 0 0-7.07 0L5.52 12.41a5 5 0 0 0 7.07 7.07L14 18" />
-                </svg>
-              </span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                <path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10 6" />
+                <path d="M14 11a5 5 0 0 0-7.07 0L5.52 12.41a5 5 0 0 0 7.07 7.07L14 18" />
+              </svg>
             </button>
           );
           const cycleUnits = (e: React.MouseEvent) => { e.stopPropagation(); onUseImperialChange?.(!useImperial); };
@@ -3880,10 +3904,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Country</span>
               <MarqueeValue align="left" style={{ ...(hL.country ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
-                {hL.country ? <CountryValue country={hL.country} valueStyle={valueStyle} /> : <span style={missingValueStyle}>—</span>}
+                {hL.country ? <CountryValue country={hL.country} valueStyle={valueStyle} visualSide={valueVisualSide} /> : <span style={missingValueStyle}>—</span>}
               </MarqueeValue>
               <MarqueeValue align="left" style={{ ...(hR.country ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
-                {hR.country ? <CountryValue country={hR.country} valueStyle={valueStyle} /> : <span style={missingValueStyle}>—</span>}
+                {hR.country ? <CountryValue country={hR.country} valueStyle={valueStyle} visualSide={valueVisualSide} /> : <span style={missingValueStyle}>—</span>}
               </MarqueeValue>
             </div>
           );
@@ -5463,6 +5487,21 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 <span className="text-[12px] text-neutral-400 tabular-nums">{cardRadius}px</span>
               </div>
               <input type="range" min={0} max={40} step={1} value={cardRadius} onChange={(e) => setCardRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[12px] text-neutral-500 flex-1">Flag/dot side</label>
+              <div className="flex items-center gap-1">
+                {(["left", "right"] as const).map((side) => (
+                  <button
+                    key={side}
+                    type="button"
+                    onClick={() => setValueVisualSide(side)}
+                    className={`px-2 py-0.5 rounded text-[12px] cursor-pointer transition-all capitalize ${valueVisualSide === side ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {side}
+                  </button>
+                ))}
+              </div>
             </div>
             {actionVariant === "split" && (
               <div className="flex items-center gap-2">
