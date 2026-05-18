@@ -1926,6 +1926,20 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     setShow3D(false);
   }, [springL.index]);
 
+  // Trigger a brief white-flash overlay each time compare toggles so the
+  // structural handoff between single ↔ merged stats reads as a clean
+  // transition rather than a layout snap. Starts at 0 and skips the
+  // initial-mount effect so the page-load doesn't fire a stray flash.
+  const [statsSwapFlashKey, setStatsSwapFlashKey] = useState(0);
+  const statsFlashInit = useRef(true);
+  useEffect(() => {
+    if (statsFlashInit.current) {
+      statsFlashInit.current = false;
+      return;
+    }
+    setStatsSwapFlashKey((k) => k + 1);
+  }, [comparing]);
+
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
   const distL = Math.abs(springL.getPos() - springL.targetRef.current);
@@ -3194,7 +3208,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               const pinned = pinnedLast ? visible[visible.length - 1] : null;
               return (
                 <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding, flex: fill ? 1 : undefined, display: "flex", flexDirection: "column", gap: innerGap, minHeight: 0 }}>
-                  <div className="flex flex-col" style={{ gap: innerGap, flex: fill ? 1 : undefined, justifyContent: fill ? "space-between" : undefined }}>
+                  <div className="flex flex-col stats-flow-rows" style={{ gap: innerGap, flex: fill ? 1 : undefined, justifyContent: fill ? "space-between" : undefined }}>
                     {scrolling.map((row, i) => (
                       <Fragment key={i}>
                         {i > 0 ? rowHairline : null}
@@ -3217,7 +3231,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const statsCard = (
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined}>
-                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
+                  <div className="flex flex-col stats-flow-rows" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
                     {denseDividers ? (
                       denseScrollRows.map((row, i) => (
                         <Fragment key={i}>
@@ -3901,7 +3915,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {blurbBlock}
                 <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                   <StatsScrollArea flex={denseDividers ? 1 : undefined}>
-                    <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
+                    <div className="flex flex-col stats-flow-rows" style={{ gap: denseDividers ? denseRowGap : compareRowGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
                       {denseDividers ? (
                         denseRows.slice(0, -1).map((row, i) => (
                           <Fragment key={i}>
@@ -4601,12 +4615,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   // hover-fade / none — no button; behavior handled in renderStats.
                   return null;
                 })()}
-                {/* Crossfade with a subtle vertical morph and blur so the row
-                    layout swap reads as the content "settling in" rather than
-                    two distinct layers swapping. Both layers ride the shared
-                    collapse clock so the content motion matches the wrapper
-                    resize beat-for-beat. */}
-                <div className="absolute inset-0" style={{
+                {/* Each layer carries a `comparing`-bound key so toggling
+                    compare remounts the layer tree. That re-fires the CSS
+                    keyframes in `.stats-flow-rows`, so each row + hairline
+                    flows in with a staggered fade rather than the layer
+                    swapping as one block. The layer-level opacity transition
+                    still handles the outgoing layer's exit. */}
+                <div key={`single-${comparing}`} className="absolute inset-0" style={{
                   opacity: comparing ? 0 : 1,
                   transform: comparing ? "translateY(-3px) scale(0.985)" : "translateY(0) scale(1)",
                   filter: comparing ? "blur(2px)" : "blur(0)",
@@ -4615,7 +4630,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 }}>
                   {renderStats(hL)}
                 </div>
-                <div className="absolute inset-0" style={{
+                <div key={`compare-${comparing}`} className="absolute inset-0" style={{
                   opacity: comparing ? 1 : 0,
                   transform: comparing ? "translateY(0) scale(1)" : "translateY(3px) scale(0.985)",
                   filter: comparing ? "blur(0)" : "blur(2px)",
@@ -4624,6 +4639,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 }}>
                   {renderMergedStats()}
                 </div>
+                {statsSwapFlashKey > 0 && (
+                  <div
+                    key={statsSwapFlashKey}
+                    aria-hidden
+                    className="stats-swap-flash absolute inset-0 pointer-events-none"
+                    style={{ background: "#ffffff", borderRadius: cardRadius, zIndex: 4 }}
+                  />
+                )}
 
                 {/* Middle exit-compare hover zone removed — the X on the right
                     card is the sole way out. */}
