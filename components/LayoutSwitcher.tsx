@@ -592,6 +592,7 @@ export function LayoutSwitcher({
   const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} ringColor="#fff" />;
 
   const [diceRollNonce, setDiceRollNonce] = useState(0);
+  const [wordmarkHover, setWordmarkHover] = useState(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
@@ -1243,11 +1244,12 @@ export function LayoutSwitcher({
       fontSize: 13,
       fontWeight: 500,
       letterSpacing: "normal",
-      color: "rgba(95, 96, 89, 0.8)",
+      color: wordmarkHover ? "rgba(95, 96, 89, 0.8)" : "rgba(95, 96, 89, 0.5)",
       background: "transparent",
-      paddingLeft: 0,
+      paddingLeft: 12,
       paddingRight: 12,
-      marginLeft: -6,
+      marginLeft: -12,
+      transition: "color 140ms ease",
     };
     navEl = joined ? <></> : (
       <nav
@@ -1263,7 +1265,12 @@ export function LayoutSwitcher({
           }}
         >
           <div className="flex justify-start items-center">
-            <Chip onClick={() => onGoHome?.()} style={trioLabelStyle}>
+            <Chip
+              onClick={() => onGoHome?.()}
+              onMouseEnter={() => setWordmarkHover(true)}
+              onMouseLeave={() => setWordmarkHover(false)}
+              style={trioLabelStyle}
+            >
               Humanoid Index
             </Chip>
           </div>
@@ -1279,6 +1286,7 @@ export function LayoutSwitcher({
                 background: "transparent",
                 border: "none",
                 padding: 4,
+                marginRight: -4,
                 cursor: "pointer",
                 fontSize: 22,
                 lineHeight: 1,

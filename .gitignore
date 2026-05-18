@@ -37,3 +37,6 @@ next-env.d.ts
 
 # font source archives — ship the extracted .otf/.woff2, not the zip
 public/fonts/*.zip
+
+# 3D source meshes — STLs are large and recoverable from upstream via the compress script
+assets/g1-source/meshes/

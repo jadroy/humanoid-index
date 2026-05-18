@@ -45,6 +45,9 @@ Convention:
 ### Blurb scripts
 `scripts/generate-compare-blurbs.ts` and `scripts/generate-robot-descriptions.ts` use `claude-opus-4-7` (not Sonnet — Roy prefers Opus). Preview mode must write results into the live JSON (`data/compare-blurbs.json` or `data/robot-descriptions.json`), not only print to the terminal — Roy iterates by viewing rendered output, not terminal char counts. Both JSON files use `{ short, long }` entries.
 
+### `addedAt` on new humanoids
+When adding a new humanoid to `data/humanoids.ts`, set `addedAt: "<today's ISO date>"` (e.g. `"2026-05-15"`). The home-page "what's new" toast (`AnnouncementToast` in `HomeClient.tsx`) automatically surfaces any entry whose `addedAt` is within `NEW_WINDOW_DAYS` (currently 14) of today, then stops on its own — no cleanup, no flag flip. Missing `addedAt` means "not new, never toast." Always remind Roy if he adds an entry without it.
+
 ## Principles
 
 - Cool web experience first, casually informative second.

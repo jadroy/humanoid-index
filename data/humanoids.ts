@@ -16,6 +16,7 @@ export interface Humanoid {
   useCase?: string; // Primary use case (e.g., "Home", "Industrial", "Research"). Drives the Use stat row.
   drive?: string; // Drive/actuation/form-factor (e.g., "Electric", "Hydraulic", "Tendon-driven", "Wheeled base"). Drives the Drive stat row.
   year?: number;
+  addedAt?: string; // ISO date the robot was added to the index (e.g. "2026-05-15"). Drives the "what's new" toast on the home page — entries within NEW_WINDOW_DAYS surface there. Set this on every new entry; omit for established robots (they won't toast).
   cost?: string; // Cost in a displayable format (e.g., "$50K", "$150K", "N/A")
   status?: "In Production" | "Prototype" | "Concept" | "Discontinued" | "Anticipated";
   availability?: "consumer" | "enterprise" | "research" | "prototype" | "discontinued"; // Drives the left-side label when there's no price (Enterprise only / Research only / etc.)
@@ -243,6 +244,7 @@ const allHumanoids: Humanoid[] = [
     infoUrl: "https://www.rotaku.ai",
     imageUrl: "/robots/domo.png",
     year: 2025,
+    addedAt: "2026-05-15",
     cost: "$3,998",
     status: "In Production",
     height: 90,
@@ -263,6 +265,7 @@ const allHumanoids: Humanoid[] = [
     infoUrl: "https://www.rotaku.ai",
     imageUrl: "/robots/domo-plus.png",
     year: 2025,
+    addedAt: "2026-05-15",
     cost: "$9,899",
     status: "In Production",
     height: 130,

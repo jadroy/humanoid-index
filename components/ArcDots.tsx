@@ -271,8 +271,11 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
   const logoGroupRef = useRef<SVGGElement | null>(null);
   const logoImgRef = useRef<SVGImageElement | null>(null);
   const lastLogoUrlRef = useRef<string>("");
-  const LOGO_SIZE = 20;
-  const LOGO_GAP = 12;
+  // Tie the logo + gap to the active text size so they shrink in lockstep
+  // when the wheel auto-scales to fit a narrow side budget. At the default
+  // aFsMax of 22 these resolve to ~20px / ~12px (the prior fixed values).
+  const LOGO_SIZE = Math.round(aFsMax * 0.91);
+  const LOGO_GAP = Math.round(aFsMax * 0.55);
   const arcLogoClipId = `arc-logo-clip${mirrored ? "-r" : "-l"}`;
   // Tangent distance to the adjacent item — used to size click rects so they tile.
   const stepH = r * Math.sin((aStepDeg * Math.PI) / 180);

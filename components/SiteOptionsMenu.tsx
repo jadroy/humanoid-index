@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { SURFACE_HOVER_SOFT } from "@/lib/design/tokens";
+import { useEffect, useRef, useState } from "react";
 import ContactSheet from "./ContactSheet";
 
 const CONTACT_EMAIL = "jadroy77@gmail.com";
@@ -13,27 +12,11 @@ type Props = {
   inline?: boolean;
 };
 
-export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline = false }: Props) {
+export default function SiteOptionsMenu({ visible, inline = false }: Props) {
   const [open, setOpen] = useState(false);
-  const [hover, setHover] = useState(false);
   const [sheet, setSheet] = useState<"feedback" | "suggest" | null>(null);
+  const [hover, setHover] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const ghostRef = useRef<HTMLDivElement>(null);
-  const [popoverWidth, setPopoverWidth] = useState<number | null>(null);
-
-  // Measure the natural width of the menu content via a hidden ghost,
-  // then drive the visible popover's width with a CSS transition so
-  // dynamic share labels (e.g. "Share Atlas vs Optimus") slide in/out
-  // smoothly instead of snapping.
-  useLayoutEffect(() => {
-    const el = ghostRef.current;
-    if (!el) return;
-    const measure = () => setPopoverWidth(Math.ceil(el.scrollWidth));
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [shareLabel]);
 
   useEffect(() => {
     if (!open) return;
@@ -51,12 +34,9 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline =
     };
   }, [open]);
 
-  type MenuEntry =
-    | { kind: "item"; label: string; icon: ReactNode; onSelect: () => void }
-    | { kind: "divider" };
-  const items: MenuEntry[] = [
-    { kind: "item", label: "Submit feedback", icon: <IconChat />, onSelect: () => setSheet("feedback") },
-    { kind: "item", label: "Suggest a humanoid", icon: <IconPlus />, onSelect: () => setSheet("suggest") },
+  const items: { label: string; onSelect: () => void }[] = [
+    { label: "Submit feedback", onSelect: () => setSheet("feedback") },
+    { label: "Suggest a humanoid", onSelect: () => setSheet("suggest") },
   ];
 
   return (
@@ -67,89 +47,37 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline =
         : `fixed bottom-6 left-1/2 z-[49] ${visible ? "intro-nav" : "opacity-0 pointer-events-none"}`}
       style={inline ? undefined : { transform: "translateX(-50%)" }}
     >
-      {/* Hidden ghost: measures the natural content width as shareLabel changes. */}
       <div
-        ref={ghostRef}
-        aria-hidden
+        aria-hidden={!open}
         style={{
-          position: "fixed",
-          visibility: "hidden",
-          pointerEvents: "none",
-          top: 0,
-          left: -9999,
-          padding: 6,
-          display: "inline-flex",
+          position: "absolute",
+          bottom: "100%",
+          right: 0,
+          paddingBottom: 6,
+          display: "flex",
           flexDirection: "column",
-          whiteSpace: "nowrap",
+          alignItems: "flex-end",
+          gap: 2,
+          opacity: open ? 1 : 0,
+          transform: open ? "translateY(0)" : "translateY(4px)",
+          pointerEvents: open ? "auto" : "none",
+          transition: "opacity 160ms ease, transform 160ms ease",
         }}
       >
-        {items.map((it, i) =>
-          it.kind === "item" ? (
-            <div
-              key={`g-${i}`}
-              style={{
-                padding: "7px 11px",
-                fontSize: 12.5,
-                fontWeight: 500,
-                letterSpacing: "-0.005em",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <span style={{ width: 15, height: 15, display: "inline-block", flexShrink: 0 }} />
-              <span>{it.label}</span>
-            </div>
-          ) : null,
-        )}
+        {items.map((it) => (
+          <PopItem
+            key={it.label}
+            label={it.label}
+            onClick={() => {
+              it.onSelect();
+              setOpen(false);
+            }}
+          />
+        ))}
       </div>
 
-      {open && (
-        <div
-          role="menu"
-          style={{
-            position: "absolute",
-            bottom: 48,
-            right: 0,
-            width: popoverWidth ?? "auto",
-            minWidth: 200,
-            background: "rgba(38, 38, 38, 0.86)",
-            backdropFilter: "blur(28px) saturate(180%)",
-            WebkitBackdropFilter: "blur(28px) saturate(180%)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            borderRadius: 14,
-            boxShadow: "0 14px 32px rgba(0,0,0,0.24), 0 2px 6px rgba(0,0,0,0.10)",
-            padding: 6,
-            display: "flex",
-            flexDirection: "column",
-            gap: 1,
-            transition: "width 320ms cubic-bezier(0.22, 1, 0.36, 1)",
-            overflow: "hidden",
-          }}
-        >
-          {items.map((it, i) =>
-            it.kind === "divider" ? (
-              <div
-                key={`d-${i}`}
-                aria-hidden
-                style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "4px 10px" }}
-              />
-            ) : (
-              <MenuItem
-                key={it.label}
-                label={it.label}
-                icon={it.icon}
-                onClick={() => {
-                  it.onSelect();
-                  setOpen(false);
-                }}
-              />
-            ),
-          )}
-        </div>
-      )}
-
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
@@ -158,10 +86,11 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline =
         style={{
           height: 36,
           padding: "0 14px",
+          marginRight: -14,
           borderRadius: 999,
-          background: open || hover ? SURFACE_HOVER_SOFT : "transparent",
+          background: "transparent",
           border: "none",
-          color: "rgba(95, 96, 89, 0.5)",
+          color: open || hover ? "rgba(95, 96, 89, 0.8)" : "rgba(95, 96, 89, 0.5)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -169,7 +98,7 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline =
           fontSize: 13,
           fontWeight: 500,
           letterSpacing: "normal",
-          transition: "background 200ms ease, color 200ms ease",
+          transition: "color 140ms ease",
         }}
       >
         Contribute
@@ -182,60 +111,28 @@ export default function SiteOptionsMenu({ shareLabel, onShare, visible, inline =
   );
 }
 
-function MenuItem({ label, icon, onClick }: { label: string; icon: ReactNode; onClick: () => void }) {
+function PopItem({ label, onClick }: { label: string; onClick: () => void }) {
   const [hover, setHover] = useState(false);
   return (
     <button
-      role="menuitem"
+      type="button"
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        textAlign: "left",
-        padding: "7px 11px",
+        padding: "2px 14px",
         border: "none",
-        background: hover ? "rgba(255,255,255,0.08)" : "transparent",
-        borderRadius: 8,
-        fontSize: 12.5,
-        fontWeight: 500,
-        letterSpacing: "-0.005em",
-        color: "rgba(255,255,255,0.95)",
+        background: "transparent",
+        color: hover ? "rgba(95, 96, 89, 0.82)" : "rgba(95, 96, 89, 0.7)",
         cursor: "pointer",
+        fontSize: 13,
+        fontWeight: 500,
+        letterSpacing: "normal",
         whiteSpace: "nowrap",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        transition: "background 140ms ease",
+        transition: "color 140ms ease",
       }}
     >
-      <span style={{ display: "inline-flex", color: "rgba(255,255,255,0.7)", flexShrink: 0 }}>{icon}</span>
-      <span>{label}</span>
+      {label}
     </button>
-  );
-}
-
-function IconLink() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
-      <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
-    </svg>
-  );
-}
-
-function IconChat() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M21 12a8 8 0 0 1-11.3 7.3L4 21l1.7-5.7A8 8 0 1 1 21 12z" />
-    </svg>
-  );
-}
-
-function IconPlus() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
   );
 }

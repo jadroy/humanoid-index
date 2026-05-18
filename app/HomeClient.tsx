@@ -64,6 +64,7 @@ import {
 import { useSpring, SCROLL_PRESETS, type PresetKey } from "@/hooks/useSpring";
 import { useIsDev } from "@/hooks/useIsDev";
 import { ArcDots, ARC_STYLES, ARC_PRESETS, arcStyleLabels, MARKER_VARIANTS, type ArcStyle } from "@/components/ArcDots";
+import { PositionIndicator, POSITION_INDICATOR_VARIANTS, positionIndicatorLabels, type PositionIndicatorVariant } from "@/components/PositionIndicator";
 import OptionsMenu, { BUTTON_VARIANTS, BUTTON_LABELS, type ButtonVariant } from "@/components/OptionsMenu";
 import { FONTS, FAVORITE_FONTS } from "@/lib/fonts";
 import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSettings } from "@/lib/cardPhysics";
@@ -802,6 +803,46 @@ function UseValue({ useCase, valueStyle }: { useCase: string; valueStyle: React.
     </span>
   );
 }
+// Scrollable stats area that auto-fades its bottom edge when content
+// overflows — signals "more rows above the pinned action row". No-op when
+// content fits.
+function StatsScrollArea({ children, style, flex }: { children: React.ReactNode; style?: React.CSSProperties; flex?: number | string }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOverflowing(el.scrollHeight - el.clientHeight > 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, [children]);
+  const mask = overflowing
+    ? "linear-gradient(to bottom, black 0%, black 82%, transparent 100%)"
+    : undefined;
+  return (
+    <div
+      ref={ref}
+      data-stats-scroll
+      className="scrollbar-hide"
+      style={{
+        flex,
+        minHeight: 0,
+        overflowY: "auto",
+        overflowX: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        WebkitMaskImage: mask,
+        maskImage: mask,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 // Truncated value with an Apple-style edge fade + hover marquee. The
 // content reveals over ~1.4s on hover (after a small wait), then
 // settles back when the cursor leaves. No-op when content already fits.
@@ -1043,6 +1084,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [groupedRing, setGroupedRing] = useState<boolean>(true);
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
   const [arcStyle, setArcStyle] = useState<ArcStyle>("arc-names");
+  const [positionIndicator, setPositionIndicator] = useState<PositionIndicatorVariant>("ruler");
   const [arcMarkerVariant, setArcMarkerVariant] = useState(0);
   const [arcMarkerColor, setArcMarkerColor] = useState("#FF6B35");
   // Apply the variant's canonical arc-tuner values when picking a style.
@@ -1072,7 +1114,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [miniCrownRadius, setMiniCrownRadius] = useState(70);
   const [arcInset, setArcInset] = useState(150);
   const [arcRightAlign, setArcRightAlign] = useState(true);
-  const [arcHugBuffer, setArcHugBuffer] = useState(50);
+  const [arcHugBuffer, setArcHugBuffer] = useState(28);
   const [navTop, setNavTop] = useState(12);
   const [autoNavX, setAutoNavX] = useState(true);
   const [navX, setNavX] = useState(24);
@@ -1166,11 +1208,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [statsW, setStatsW] = useState(200);       // px
   // Compare mode needs more room to render long manufacturer names like
   // "Sunday Robotics" / "LimX Dynamics" without truncating.
-  const compareStatsW = statsW + 90;
+  const compareStatsW = statsW + 120;
   const [statsColScale, setStatsColScale] = useState(0.57); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
-  const [statsGap, setStatsGap] = useState(20);    // px — gap between robot and stats
-  const [cardRadius, setCardRadius] = useState(28);  // px
+  const [statsGap, setStatsGap] = useState(6);    // px — gap between robot and stats
+  const [cardRadius, setCardRadius] = useState(6);  // px
   // Stat-pill tuners
   const [statPillRadius, setStatPillRadius] = useState(9999);  // px — fully rounded (capsule)
   const [statPillRadiusOpen, setStatPillRadiusOpen] = useState(20);  // px — tighter radius when expanded so content isn't clipped at corners
@@ -1187,7 +1229,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Apple-style stats card variant: hairline between every row, no group break,
   // no inline cm/in toggle (it would break the rhythm).
   const [denseDividers, setDenseDividers] = useState(true);
-  const [denseFullWidth, setDenseFullWidth] = useState(false);
+  const [denseFullWidth, setDenseFullWidth] = useState(true);
   const [denseRowGap, setDenseRowGap] = useState(2); // px gap between rows
   const [denseOpacity, setDenseOpacity] = useState(6); // percent (0-20)
   // When on, render uppercase eyebrows ("Specs"/"Notes") above each section in
@@ -1375,12 +1417,26 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   useEffect(() => {
     setWindowWidth(window.innerWidth);
     let raf: number;
+    let resizeIdleTimer: ReturnType<typeof setTimeout> | null = null;
     const onResize = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => setWindowWidth(window.innerWidth));
+      // Suppress the SVG container's collapse-transition while the user is
+      // actively resizing — otherwise wheelR / inset updates chain a stack of
+      // 0.5s slides and the wheel feels like it has momentum.
+      document.documentElement.classList.add("window-resizing");
+      if (resizeIdleTimer) clearTimeout(resizeIdleTimer);
+      resizeIdleTimer = setTimeout(() => {
+        document.documentElement.classList.remove("window-resizing");
+      }, 160);
     };
     window.addEventListener("resize", onResize);
-    return () => { window.removeEventListener("resize", onResize); cancelAnimationFrame(raf); };
+    return () => {
+      window.removeEventListener("resize", onResize);
+      cancelAnimationFrame(raf);
+      if (resizeIdleTimer) clearTimeout(resizeIdleTimer);
+      document.documentElement.classList.remove("window-resizing");
+    };
   }, []);
 
   // When the blurb is broken out into its own column, the stats slot widens
@@ -1434,7 +1490,26 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     return max;
   }, [arcFsMax, arcFontFamily, arcFontWeight, arcLetterSpacing, arcItalic, allCaps]);
 
-  const adaptiveArcInset = Math.max(48, Math.round(availableSpace - longestNamePx - arcHugBuffer + arcTextGap));
+  // If the longest name wouldn't fit beside the card at full size, scale the
+  // active font down just enough to make it fit (clamped to arcFsMin). In
+  // single view there's enough room so this is a no-op; in compare view the
+  // shorter side budget makes longer names like "Domo Developer" shrink.
+  const usableNameWidth = Math.max(20, availableSpace - 48 - arcHugBuffer + arcTextGap);
+  const effectiveArcFsMax = longestNamePx > usableNameWidth
+    ? Math.max(arcFsMin, Math.min(arcFsMax, Math.round(arcFsMax * usableNameWidth / longestNamePx)))
+    : arcFsMax;
+  const arcShrinkRatio = effectiveArcFsMax / arcFsMax;
+  const effectiveLongestNamePx = longestNamePx * arcShrinkRatio;
+  // Compound the step shrink with the radius growth so the resulting vertical
+  // rhythm (r·sin(step)) ends up scaled by `ratio` once — keeps the item
+  // spacing tied to the font while the radius grows can flatten the arc.
+  const effectiveArcStepDeg = arcStepDeg * arcShrinkRatio * arcShrinkRatio;
+  // When the wheel auto-shrinks, also tighten the breathing room between the
+  // arc text and the card edge — and expand the wheel radius so the arc
+  // straightens out and the names use more of the available vertical space.
+  const effectiveArcHugBuffer = arcHugBuffer * arcShrinkRatio;
+  const effectiveArcWheelR = Math.round(arcWheelR / arcShrinkRatio);
+  const adaptiveArcInset = Math.max(48, Math.round(availableSpace - effectiveLongestNamePx - effectiveArcHugBuffer + arcTextGap));
   const effectiveArcInset = autoArcInset ? adaptiveArcInset : arcInset;
   const effectiveDrumXOffset = autoArcInset ? adaptiveDrumXOffset : drumXOffset;
 
@@ -1646,6 +1721,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       if (isDev && (e.target as HTMLElement)?.closest?.("[data-tuner]")) return;
       // Hover ref replaces a closest() walk on every wheel tick.
       if (hoveringGalleryRef.current && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      // If the wheel happens inside a scrollable stats column with room to
+      // scroll in the current direction, let the native scroll take it rather
+      // than driving the humanoid wheel.
+      const statsEl = (e.target as HTMLElement)?.closest?.("[data-stats-scroll]") as HTMLElement | null;
+      if (statsEl) {
+        const canScrollUp = statsEl.scrollTop > 0;
+        const canScrollDown = statsEl.scrollTop + statsEl.clientHeight < statsEl.scrollHeight - 0.5;
+        if ((e.deltaY < 0 && canScrollUp) || (e.deltaY > 0 && canScrollDown)) return;
+      }
       e.preventDefault();
       const now = performance.now();
       const dt = now - lastTime;
@@ -1994,11 +2078,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           drumRange={drumRange}
           drumMaskFade={drumMaskFade}
           arcInset={effectiveArcInset}
-          arcWheelR={arcWheelR}
-          arcStepDeg={arcStepDeg}
+          arcWheelR={effectiveArcWheelR}
+          arcStepDeg={effectiveArcStepDeg}
           arcTextGap={arcTextGap}
           arcLineOp={arcLineOp}
-          arcFsMax={arcFsMax}
+          arcFsMax={effectiveArcFsMax}
           arcFsMin={arcFsMin}
           arcDiskGap={arcDiskGap}
           arcDiskColor={arcDiskColor}
@@ -2009,7 +2093,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
           arcBoundary={arcBoundary}
           arcInactiveOp={arcInactiveOp}
-          arcNameOuterOffset={arcRightAlign ? longestNamePx : 0}
+          arcNameOuterOffset={arcRightAlign ? effectiveLongestNamePx : 0}
           entered={introDone}
           tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
           tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
@@ -2037,11 +2121,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             drumRange={drumRange}
             drumMaskFade={drumMaskFade}
             arcInset={effectiveArcInset}
-            arcWheelR={arcWheelR}
-            arcStepDeg={arcStepDeg}
+            arcWheelR={effectiveArcWheelR}
+            arcStepDeg={effectiveArcStepDeg}
             arcTextGap={arcTextGap}
             arcLineOp={arcLineOp}
-            arcFsMax={arcFsMax}
+            arcFsMax={effectiveArcFsMax}
             arcFsMin={arcFsMin}
             arcDiskGap={arcDiskGap}
             arcDiskColor={arcDiskColor}
@@ -2052,13 +2136,48 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
             arcBoundary={arcBoundary}
             arcInactiveOp={arcInactiveOp}
-            arcNameOuterOffset={arcRightAlign ? longestNamePx : 0}
+            arcNameOuterOffset={arcRightAlign ? effectiveLongestNamePx : 0}
             entered={introDone}
             tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
             tagGreyMin={tagGreyMin} tagGreyMax={tagGreyMax} tagPillOp={tagPillOp} tagFalloff={tagFalloff}
             tagPadX={tagPadX} tagPadY={tagPadY} tagRadius={tagRadius} tagMarkerSize={tagMarkerSize} tagMarkerOp={tagMarkerOp}
           />
+          {/* Exit-compare minus — sits inline with the right arc, below the
+              active arc row so it doesn't fight the names. */}
+          <button
+            onClick={exitCompare}
+            aria-label="Remove from compare"
+            className="compare-x-bounce absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
+            style={{
+              right: 18,
+              top: "calc(50% + 110px)",
+              width: 26,
+              height: 26,
+              borderRadius: 999,
+              background: "rgba(0,0,0,0.11)",
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
+              <line x1="4" y1="8" x2="12" y2="8" />
+            </svg>
+          </button>
         </div>
+      )}
+
+      {/* Position indicator — edge-of-screen progress through the wheel */}
+      <PositionIndicator
+        variant={positionIndicator}
+        subscribe={springL.subscribe}
+        total={humanoids.length}
+        side="left"
+      />
+      {comparing && (
+        <PositionIndicator
+          variant={positionIndicator}
+          subscribe={springR.subscribe}
+          total={humanoids.length}
+          side="right"
+        />
       )}
 
       {/* ── Add compare button — hover zone right of center ── */}
@@ -2847,16 +2966,16 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const dimmed: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: cardFontSize,
-              fontWeight: 400,
-              color: "var(--c-ink-muted)",
+              fontWeight: 500,
+              color: "var(--c-ink-body)",
               minWidth: 64,
               flexShrink: 0,
             };
             const valueStyle: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: cardFontSize,
-              fontWeight: 450,
-              color: "var(--c-ink-body)",
+              fontWeight: 400,
+              color: "var(--c-ink-muted)",
             };
             const purchaseSection = sections.find((s) => s.key === "purchase") as
               | { key: "purchase"; href?: string; text?: string; price?: string; cost?: string; state?: string; ctaText?: string }
@@ -3011,34 +3130,44 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               statusRow,
               ...(purchaseRow ? [purchaseRow] : []),
             ];
+            const denseScrollRows = denseDividers ? denseRows.slice(0, -1) : [];
+            const denseActionRow = denseDividers ? denseRows[denseRows.length - 1] : null;
             const statsCard = (
-              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column" }}>
-                <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
-                  {denseDividers ? (
-                    denseRows.map((row, i) => (
-                      <Fragment key={i}>
-                        {i > 0 ? rowHairline : null}
-                        {row}
-                      </Fragment>
-                    ))
-                  ) : (
-                    <>
-                      {renderStatRow("Company", h.manufacturer ?? null, (v) => `${v}`)}
-                      {renderStatRow("Year", h.year ?? null, (v) => `${v}`)}
-                      {renderStatRow("Country", h.country ?? null, (v) => `${v}`)}
-                      {unitsDivider}
-                      {renderStatRow("Height", h.height, fmt.height)}
-                      {renderStatRow("Weight", h.weight, fmt.weight)}
-                      {renderStatRow("DOF", h.dof, (v) => `${v}`)}
-                      {renderStatRow("Speed", h.maxSpeed, fmt.speed)}
-                      <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
-                      {renderStatRow("Use", h.useCase ?? null, (v) => `${v}`)}
-                      {renderStatRow("Drive", h.drive ?? null, (v) => `${v}`)}
-                      {renderStatRow("Price", priceChipText ?? null, (v) => `${v}`)}
-                      {statusRow}
-                    </>
-                  )}
-                </div>
+              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+                <StatsScrollArea flex={denseDividers ? 1 : undefined}>
+                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
+                    {denseDividers ? (
+                      denseScrollRows.map((row, i) => (
+                        <Fragment key={i}>
+                          {i > 0 ? rowHairline : null}
+                          {row}
+                        </Fragment>
+                      ))
+                    ) : (
+                      <>
+                        {renderStatRow("Company", h.manufacturer ?? null, (v) => `${v}`)}
+                        {renderStatRow("Year", h.year ?? null, (v) => `${v}`)}
+                        {renderStatRow("Country", h.country ?? null, (v) => `${v}`)}
+                        {unitsDivider}
+                        {renderStatRow("Height", h.height, fmt.height)}
+                        {renderStatRow("Weight", h.weight, fmt.weight)}
+                        {renderStatRow("DOF", h.dof, (v) => `${v}`)}
+                        {renderStatRow("Speed", h.maxSpeed, fmt.speed)}
+                        <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
+                        {renderStatRow("Use", h.useCase ?? null, (v) => `${v}`)}
+                        {renderStatRow("Drive", h.drive ?? null, (v) => `${v}`)}
+                        {renderStatRow("Price", priceChipText ?? null, (v) => `${v}`)}
+                        {statusRow}
+                      </>
+                    )}
+                  </div>
+                </StatsScrollArea>
+                {denseDividers && denseActionRow && (
+                  <>
+                    {rowHairline}
+                    <div style={{ paddingTop: 12 }}>{denseActionRow}</div>
+                  </>
+                )}
               </div>
             );
 
@@ -3405,14 +3534,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const dimmed: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
             fontSize: fz,
-            fontWeight: 400,
-            color: "var(--c-ink-muted)",
+            fontWeight: 500,
+            color: "var(--c-ink-body)",
           };
           const valueStyle: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
             fontSize: fz,
-            fontWeight: 450,
-            color: "var(--c-ink-body)",
+            fontWeight: 400,
+            color: "var(--c-ink-muted)",
           };
           const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "var(--c-ink-subtle)" };
           const hairlineRule = (
@@ -3420,11 +3549,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           );
 
           const compareRow = (label: string, valL: string | null, valR: string | null) => (
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
-              <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle) }}>
+            <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+              <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
+              <MarqueeValue align="right" style={{ ...(valL ? valueStyle : missingValueStyle) }}>
                 <span className="tabular-nums">{valL || "—"}</span>
               </MarqueeValue>
-              <span style={{ ...dimmed, textAlign: "center" as const, whiteSpace: "nowrap" }}>{label}</span>
               <MarqueeValue align="right" style={{ ...(valR ? valueStyle : missingValueStyle) }}>
                 <span className="tabular-nums">{valR || "—"}</span>
               </MarqueeValue>
@@ -3534,13 +3663,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div aria-hidden style={{ height: 1, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? 0 : 64, marginRight: denseFullWidth ? 0 : 64 }} />
           );
           const statusRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
-              <span style={{ display: "inline-flex", justifyContent: "flex-start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) minmax(0, 1fr)", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
+              <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Status</span>
+              <span style={{ display: "inline-flex", justifyContent: "flex-end" }}>
                 {hL.status
                   ? <StatusDot color={statusColor(hL.status)} size={9} />
                   : <span style={missingValueStyle}>—</span>}
               </span>
-              <span style={{ ...dimmed, textAlign: "center" as const }}>Status</span>
               <span style={{ display: "inline-flex", justifyContent: "flex-end" }}>
                 {hR.status
                   ? <StatusDot color={statusColor(hR.status)} size={9} />
@@ -3593,33 +3722,41 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: compareStatsW, minWidth: compareStatsW, position: "relative", zIndex: 11 }}>
               <div className="flex flex-col" style={{ flex: 1, justifyContent: denseDividers ? "stretch" : "center", minHeight: 0 }}>
                 {blurbBlock}
-                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column" }}>
-                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
-                    {denseDividers ? (
-                      denseRows.map((row, i) => (
-                        <Fragment key={i}>
-                          {i > 0 ? rowHairline : null}
-                          {row}
-                        </Fragment>
-                      ))
-                    ) : (
-                      <>
-                        {compareRow("Company", hL.manufacturer ?? null, hR.manufacturer ?? null)}
-                        {compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null)}
-                        {compareRow("Country", hL.country ?? null, hR.country ?? null)}
-                        {unitsDivider}
-                        {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
-                        {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
-                        {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
-                        {compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)}
-                        <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
-                        {compareRow("Use", hL.useCase ?? null, hR.useCase ?? null)}
-                        {compareRow("Drive", hL.drive ?? null, hR.drive ?? null)}
-                        {compareRow("Price", priceL, priceR)}
-                        {statusRow}
-                      </>
-                    )}
-                  </div>
+                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+                  <StatsScrollArea flex={denseDividers ? 1 : undefined}>
+                    <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
+                      {denseDividers ? (
+                        denseRows.slice(0, -1).map((row, i) => (
+                          <Fragment key={i}>
+                            {i > 0 ? rowHairline : null}
+                            {row}
+                          </Fragment>
+                        ))
+                      ) : (
+                        <>
+                          {compareRow("Company", hL.manufacturer ?? null, hR.manufacturer ?? null)}
+                          {compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null)}
+                          {compareRow("Country", hL.country ?? null, hR.country ?? null)}
+                          {unitsDivider}
+                          {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
+                          {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
+                          {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
+                          {compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)}
+                          <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
+                          {compareRow("Use", hL.useCase ?? null, hR.useCase ?? null)}
+                          {compareRow("Drive", hL.drive ?? null, hR.drive ?? null)}
+                          {compareRow("Price", priceL, priceR)}
+                          {statusRow}
+                        </>
+                      )}
+                    </div>
+                  </StatsScrollArea>
+                  {denseDividers && denseRows.length > 0 && (
+                    <>
+                      {rowHairline}
+                      <div style={{ paddingTop: 12 }}>{denseRows[denseRows.length - 1]}</div>
+                    </>
+                  )}
                 </div>
               </div>
               {!denseDividers && (
@@ -4288,25 +4425,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 overflow: comparing ? "visible" : "hidden",
                 transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}, width ${dur} ${ease}, margin-left ${dur} ${ease}`,
               }}>
-                {comparing && (
-                  <button
-                    onClick={exitCompare}
-                    aria-label="Remove from compare"
-                    className="compare-x-bounce absolute z-30 flex items-center justify-center cursor-pointer pointer-events-auto"
-                    style={{
-                      top: 4,
-                      right: 4,
-                      width: 26,
-                      height: 26,
-                      borderRadius: 999,
-                      background: "rgba(0,0,0,0.11)",
-                    }}
-                  >
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
-                      <line x1="4" y1="8" x2="12" y2="8" />
-                    </svg>
-                  </button>
-                )}
                 {renderRobot(hR, distR, springR.index, false)}
               </div>
             </div>
@@ -4823,6 +4941,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             )}
           </div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => pickArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Position Indicator</p><div className="flex flex-wrap gap-1.5">{POSITION_INDICATOR_VARIANTS.map((v) => (<button key={v} onClick={() => setPositionIndicator(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${positionIndicator === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{positionIndicatorLabels[v]}</button>))}</div></div>
           {arcStyle === "arc-names" && (
             <div className="pt-2 border-t border-neutral-100">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Arc Marker</p>
@@ -5048,6 +5167,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 <span className="text-[12px] text-neutral-400 tabular-nums">{statsW}px</span>
               </div>
               <input type="range" min={140} max={320} step={2} value={statsW} onChange={(e) => setStatsW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[12px] text-neutral-500">Card radius</label>
+                <span className="text-[12px] text-neutral-400 tabular-nums">{cardRadius}px</span>
+              </div>
+              <input type="range" min={0} max={40} step={1} value={cardRadius} onChange={(e) => setCardRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
             </div>
             {actionVariant === "split" && (
               <div className="flex items-center gap-2">
@@ -6048,7 +6174,7 @@ export default function HomeClient() {
           To bring chat back, swap this for the <OptionsMenu .../> block. */}
       {introDone && (() => {
         const creditStyle: React.CSSProperties = {
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: 500,
           letterSpacing: "normal",
           lineHeight: 1,
