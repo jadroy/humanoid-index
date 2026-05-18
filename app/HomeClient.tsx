@@ -1208,7 +1208,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [statsW, setStatsW] = useState(200);       // px
   // Compare mode needs more room to render long manufacturer names like
   // "Sunday Robotics" / "LimX Dynamics" without truncating.
-  const compareStatsW = statsW + 120;
+  const compareStatsW = statsW + 160;
   const [statsColScale, setStatsColScale] = useState(0.62); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(12);    // px — gap between robot and stats
@@ -1926,19 +1926,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     setShow3D(false);
   }, [springL.index]);
 
-  // Trigger a brief white-flash overlay each time compare toggles so the
-  // structural handoff between single ↔ merged stats reads as a clean
-  // transition rather than a layout snap. Starts at 0 and skips the
-  // initial-mount effect so the page-load doesn't fire a stray flash.
-  const [statsSwapFlashKey, setStatsSwapFlashKey] = useState(0);
-  const statsFlashInit = useRef(true);
-  useEffect(() => {
-    if (statsFlashInit.current) {
-      statsFlashInit.current = false;
-      return;
-    }
-    setStatsSwapFlashKey((k) => k + 1);
-  }, [comparing]);
 
   const hL = humanoids[springL.index];
   const hR = humanoids[springR.index];
@@ -2129,7 +2116,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       </div>
       {/* Right arc nav */}
       {comparing && (
-        <div className="fixed top-0 bottom-0 right-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
+        <div className="compare-r-enter fixed top-0 bottom-0 right-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
           <ArcDots
             index={springR.index}
             subscribe={springR.subscribe}
@@ -2954,6 +2941,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               gap: 14,
               fontFamily: "var(--font-geist-sans)",
               lineHeight: 1.7,
+              whiteSpace: "nowrap",
             };
             const dimmed: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
@@ -3208,7 +3196,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               const pinned = pinnedLast ? visible[visible.length - 1] : null;
               return (
                 <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding, flex: fill ? 1 : undefined, display: "flex", flexDirection: "column", gap: innerGap, minHeight: 0 }}>
-                  <div className="flex flex-col stats-flow-rows" style={{ gap: innerGap, flex: fill ? 1 : undefined, justifyContent: fill ? "space-between" : undefined }}>
+                  <div className="flex flex-col" style={{ gap: innerGap, flex: fill ? 1 : undefined, justifyContent: fill ? "space-between" : undefined }}>
                     {scrolling.map((row, i) => (
                       <Fragment key={i}>
                         {i > 0 ? rowHairline : null}
@@ -3231,7 +3219,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const statsCard = (
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined}>
-                  <div className="flex flex-col stats-flow-rows" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
+                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
                     {denseDividers ? (
                       denseScrollRows.map((row, i) => (
                         <Fragment key={i}>
@@ -3632,7 +3620,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const priceR = hR.cost && hR.cost !== "N/A" ? hR.cost : null;
           const statusColor = (status?: string) => status === "In Production" ? "#22c55e" : status === "Prototype" ? "#eab308" : status === "Concept" ? "#3b82f6" : status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
 
-          const fz = 13;
+          const fz = 14;
           const stackGap = 18;
           const dimmed: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
@@ -3652,13 +3640,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           );
 
           const compareRow = (label: string, valL: string | null, valR: string | null) => (
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
-              <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle) }}>
-                <span className="tabular-nums">{valL || "—"}</span>
+            <div style={{ display: "grid", gridTemplateColumns: "72px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+              <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
+              <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+                <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valL || "—"}</span>
               </MarqueeValue>
-              <span style={{ ...dimmed, textAlign: "center" as const, whiteSpace: "nowrap" }}>{label}</span>
-              <MarqueeValue align="right" style={{ ...(valR ? valueStyle : missingValueStyle) }}>
-                <span className="tabular-nums">{valR || "—"}</span>
+              <MarqueeValue align="left" style={{ ...(valR ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+                <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valR || "—"}</span>
               </MarqueeValue>
             </div>
           );
@@ -3766,17 +3754,23 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div aria-hidden style={{ height: 1, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? 0 : 64, marginRight: denseFullWidth ? 0 : 64 }} />
           );
           const statusRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
-              <span style={{ display: "inline-flex", justifyContent: "flex-start" }}>
-                {hL.status
-                  ? <StatusDot color={statusColor(hL.status)} size={9} />
-                  : <span style={missingValueStyle}>—</span>}
+            <div style={{ display: "grid", gridTemplateColumns: "72px 1fr 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
+              <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Status</span>
+              <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
+                {hL.status ? (
+                  <>
+                    <StatusDot color={statusColor(hL.status)} size={9} />
+                    <span style={valueStyle}>{hL.status}</span>
+                  </>
+                ) : <span style={missingValueStyle}>—</span>}
               </span>
-              <span style={{ ...dimmed, textAlign: "center" as const }}>Status</span>
-              <span style={{ display: "inline-flex", justifyContent: "flex-end" }}>
-                {hR.status
-                  ? <StatusDot color={statusColor(hR.status)} size={9} />
-                  : <span style={missingValueStyle}>—</span>}
+              <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
+                {hR.status ? (
+                  <>
+                    <StatusDot color={statusColor(hR.status)} size={9} />
+                    <span style={valueStyle}>{hR.status}</span>
+                  </>
+                ) : <span style={missingValueStyle}>—</span>}
               </span>
             </div>
           );
@@ -3815,7 +3809,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               className="cursor-pointer pointer-events-auto"
               style={{
                 display: "grid",
-                gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
+                gridTemplateColumns: "72px minmax(0, 1fr) minmax(0, 1fr)",
                 alignItems: "baseline",
                 columnGap: 14,
                 lineHeight: 1.7,
@@ -3828,25 +3822,25 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle) }}>
-                <span className="tabular-nums">{valL || "—"}</span>
-              </MarqueeValue>
-              <span style={{ ...dimmed, textAlign: "center" as const, whiteSpace: "nowrap", display: "inline-flex", alignItems: "baseline", gap: 5 }}>
+              <span style={{ ...dimmed, whiteSpace: "nowrap", display: "inline-flex", alignItems: "baseline", gap: 5 }}>
                 <span>{label}</span>
                 <svg width="8" height="9" viewBox="0 0 8 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35, transform: "translateY(-1px)" }} aria-hidden>
                   <path d="M2 3 4 1 6 3" />
                   <path d="M2 6 4 8 6 6" />
                 </svg>
               </span>
-              <MarqueeValue align="right" style={{ ...(valR ? valueStyle : missingValueStyle) }}>
-                <span className="tabular-nums">{valR || "—"}</span>
+              <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+                <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valL || "—"}</span>
+              </MarqueeValue>
+              <MarqueeValue align="left" style={{ ...(valR ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+                <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valR || "—"}</span>
               </MarqueeValue>
             </button>
           );
           const compareUnitsRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "72px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+              <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Units</span>
               <span />
-              <span style={{ ...dimmed, textAlign: "center" as const, whiteSpace: "nowrap" }}>Units</span>
               <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
                 {(["cm", "in"] as const).map((u, i) => {
                   const active = (u === "in") === useImperial;
@@ -3883,14 +3877,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             ? compareUnitTapRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)
             : compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null);
           const compareCountryRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
-              <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "72px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+              <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Country</span>
+              <MarqueeValue align="left" style={{ ...(hL.country ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
                 {hL.country ? <CountryValue country={hL.country} valueStyle={valueStyle} /> : <span style={missingValueStyle}>—</span>}
-              </span>
-              <span style={{ ...dimmed, textAlign: "center" as const, whiteSpace: "nowrap" }}>Country</span>
-              <span style={{ display: "inline-flex", justifyContent: "flex-end", alignItems: "center" }}>
+              </MarqueeValue>
+              <MarqueeValue align="left" style={{ ...(hR.country ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
                 {hR.country ? <CountryValue country={hR.country} valueStyle={valueStyle} /> : <span style={missingValueStyle}>—</span>}
-              </span>
+              </MarqueeValue>
             </div>
           );
           const denseRows: React.ReactNode[] = [
@@ -3915,7 +3909,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {blurbBlock}
                 <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                   <StatsScrollArea flex={denseDividers ? 1 : undefined}>
-                    <div className="flex flex-col stats-flow-rows" style={{ gap: denseDividers ? denseRowGap : compareRowGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
+                    <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
                       {denseDividers ? (
                         denseRows.slice(0, -1).map((row, i) => (
                           <Fragment key={i}>
@@ -4615,47 +4609,36 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   // hover-fade / none — no button; behavior handled in renderStats.
                   return null;
                 })()}
-                {/* Each layer carries a `comparing`-bound key so toggling
-                    compare remounts the layer tree. That re-fires the CSS
-                    keyframes in `.stats-flow-rows`, so each row + hairline
-                    flows in with a staggered fade rather than the layer
-                    swapping as one block. The layer-level opacity transition
-                    still handles the outgoing layer's exit. */}
-                <div key={`single-${comparing}`} className="absolute inset-0" style={{
+                <div className="absolute inset-0" style={{
                   opacity: comparing ? 0 : 1,
-                  transform: comparing ? "translateY(-3px) scale(0.985)" : "translateY(0) scale(1)",
-                  filter: comparing ? "blur(2px)" : "blur(0)",
                   pointerEvents: comparing ? "none" : "auto",
-                  transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease), filter var(--collapse-dur) var(--collapse-ease)",
+                  transition: `opacity 0.2s ${ease}`,
                 }}>
                   {renderStats(hL)}
                 </div>
-                <div key={`compare-${comparing}`} className="absolute inset-0" style={{
+                {/* Compare stats layer rides the same right-side entrance as the
+                    2nd card and wheel — translateX from a small positive offset
+                    so the 2nd humanoid's values read as flowing in alongside the
+                    rest of the right side. */}
+                <div className="absolute inset-0" style={{
                   opacity: comparing ? 1 : 0,
-                  transform: comparing ? "translateY(0) scale(1)" : "translateY(3px) scale(0.985)",
-                  filter: comparing ? "blur(0)" : "blur(2px)",
+                  transform: comparing ? "translateX(0)" : "translateX(40px)",
                   pointerEvents: comparing ? "auto" : "none",
-                  transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease), filter var(--collapse-dur) var(--collapse-ease)",
+                  transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease)",
                 }}>
                   {renderMergedStats()}
                 </div>
-                {statsSwapFlashKey > 0 && (
-                  <div
-                    key={statsSwapFlashKey}
-                    aria-hidden
-                    className="stats-swap-flash absolute inset-0 pointer-events-none"
-                    style={{ background: "#ffffff", borderRadius: cardRadius, zIndex: 4 }}
-                  />
-                )}
 
                 {/* Middle exit-compare hover zone removed — the X on the right
                     card is the sole way out. */}
               </div>
 
-              {/* Right robot — compare only */}
+              {/* Right robot — compare only. Slides in from screen-right (translateX)
+                  alongside the wheel and the 2nd-humanoid stat column, all riding the
+                  shared collapse clock so the right side enters as one piece. */}
               <div className="flex-shrink-0 relative compare-rcard" style={{
                 opacity: comparing ? 1 : 0,
-                transform: `translateX(${splitHover ? 12 : 0}px) scale(${comparing ? 1 : 0.95})`,
+                transform: `translateX(${(comparing ? 0 : 56) + (splitHover ? 12 : 0)}px) scale(${comparing ? 1 : 0.94})`,
                 width: comparing ? `${robotW - 8}vw` : 0,
                 maxWidth: robotMaxW,
                 marginLeft: comparing ? effectiveGap : 0,

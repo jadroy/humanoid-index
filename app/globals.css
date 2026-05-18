@@ -172,55 +172,6 @@ h1, h2, h3, h4, h5, h6 {
   transition: none !important;
 }
 
-/* Stats content transition — when the active layer remounts (key change on
-   compare toggle), each direct row in `.stats-flow-rows` fades in with a
-   per-position stagger so the content reads as flowing in rather than as a
-   single layer popping. Hairlines are direct siblings too so they ride the
-   same wave. Performant: only opacity/transform/filter (GPU-accelerated). */
-@keyframes stats-row-flow-in {
-  from { opacity: 0; transform: translateY(3px); filter: blur(1.5px); }
-  to   { opacity: 1; transform: translateY(0);   filter: blur(0);     }
-}
-.stats-flow-rows > * {
-  animation: stats-row-flow-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.stats-flow-rows > *:nth-child(1)  { animation-delay: 0ms;   }
-.stats-flow-rows > *:nth-child(2)  { animation-delay: 14ms;  }
-.stats-flow-rows > *:nth-child(3)  { animation-delay: 28ms;  }
-.stats-flow-rows > *:nth-child(4)  { animation-delay: 42ms;  }
-.stats-flow-rows > *:nth-child(5)  { animation-delay: 56ms;  }
-.stats-flow-rows > *:nth-child(6)  { animation-delay: 70ms;  }
-.stats-flow-rows > *:nth-child(7)  { animation-delay: 84ms;  }
-.stats-flow-rows > *:nth-child(8)  { animation-delay: 98ms;  }
-.stats-flow-rows > *:nth-child(9)  { animation-delay: 112ms; }
-.stats-flow-rows > *:nth-child(10) { animation-delay: 126ms; }
-.stats-flow-rows > *:nth-child(11) { animation-delay: 140ms; }
-.stats-flow-rows > *:nth-child(12) { animation-delay: 154ms; }
-.stats-flow-rows > *:nth-child(13) { animation-delay: 168ms; }
-.stats-flow-rows > *:nth-child(14) { animation-delay: 182ms; }
-.stats-flow-rows > *:nth-child(15) { animation-delay: 196ms; }
-.stats-flow-rows > *:nth-child(16) { animation-delay: 210ms; }
-.stats-flow-rows > *:nth-child(17) { animation-delay: 224ms; }
-.stats-flow-rows > *:nth-child(18) { animation-delay: 238ms; }
-.stats-flow-rows > *:nth-child(19) { animation-delay: 252ms; }
-.stats-flow-rows > *:nth-child(20) { animation-delay: 266ms; }
-.stats-flow-rows > *:nth-child(21) { animation-delay: 280ms; }
-.stats-flow-rows > *:nth-child(22) { animation-delay: 294ms; }
-.stats-flow-rows > *:nth-child(23) { animation-delay: 308ms; }
-.stats-flow-rows > *:nth-child(24) { animation-delay: 322ms; }
-
-/* Brief white wash over the stats column during compare ↔ single swap — the
-   stagger does the heavy lifting; the flash just covers the structural
-   handoff between row layouts so the eye stops trying to follow it. */
-@keyframes stats-swap-flash {
-  0%   { opacity: 0; }
-  35%  { opacity: 0.42; }
-  100% { opacity: 0; }
-}
-.stats-swap-flash {
-  animation: stats-swap-flash 340ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
 /* Hide scrollbar */
 .scrollbar-hide {
   -ms-overflow-style: none;
@@ -1228,11 +1179,45 @@ main {
               0 8px 28px rgba(0, 0, 0, 0.06);
 }
 
-/* Compare minus (−) — always visible, with a small lift on hover. */
+/* Right side of the compare transition — wheel + card + stats values slide
+   in together from the screen-right edge so the eye can read it as the 2nd
+   humanoid "entering" the layout (instead of just popping into place). All
+   three pieces ride the same collapse clock as the layout shift. */
+@keyframes compare-r-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.compare-r-enter {
+  animation: compare-r-slide-in var(--collapse-dur, 360ms) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Compare minus (−) — slides up from behind the right card on enter, then a
+   small lift on hover. The `both` fill keeps the final position after the
+   keyframe finishes so the hover transition can take over normally. */
+@keyframes compare-x-emerge {
+  0% {
+    opacity: 0;
+    transform: translateY(42px) scale(0.45);
+  }
+  55% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.7;
+    transform: translateY(0) scale(1);
+  }
+}
 .compare-x-bounce {
   opacity: 0.7;
   transform: translateY(0) scale(1);
   transition: opacity 200ms ease, transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: compare-x-emerge var(--collapse-dur, 360ms) cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 .compare-x-bounce:hover {
   opacity: 1;
