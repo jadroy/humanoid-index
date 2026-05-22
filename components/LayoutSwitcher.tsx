@@ -1251,66 +1251,31 @@ export function LayoutSwitcher({
         style={{ top: "var(--corner-y, 8px)", background: "transparent" }}
       >
         <div
-          className="grid items-center"
-          style={{
-            minHeight: 26,
-            width: "min(720px, 80vw)",
-            margin: "0 auto",
-            gridTemplateColumns: "1fr 80px 1fr",
-          }}
+          className="flex items-center justify-center"
+          style={{ minHeight: 26 }}
         >
-          <div className="pointer-events-auto" style={{ justifySelf: "start" }}>
-            <Chip
-              onClick={() => onGoHome?.()}
-              style={{ ...trioLabelStyle, padding: "0 4px" }}
-            >
-              Humanoid Index
-            </Chip>
-          </div>
-          <div className="pointer-events-auto" style={{ justifySelf: "center" }}>
-            <button
-              onClick={() => {
-                setDiceRollNonce((n) => n + 1);
-                onRandomHumanoid?.();
-              }}
-              aria-label="Shuffle"
-              className="trio-spin"
-              style={{
-                background: "transparent",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-                fontSize: 18,
-                lineHeight: 1,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 2,
-              }}
-            >
-              <span
-                key={`a-${diceRollNonce}`}
-                role="img"
-                aria-hidden
-                className={diceRollNonce ? "dice-roll-a" : undefined}
-              >🎲</span>
-              {comparing && (
-                <span
-                  key={`b-${diceRollNonce}`}
-                  role="img"
-                  aria-hidden
-                  className={diceRollNonce ? "dice-roll-b" : undefined}
-                >🎲</span>
-              )}
-            </button>
-          </div>
-          <div className="pointer-events-auto" style={{ justifySelf: "end" }}>
-            <Chip
-              onClick={() => onShareSite?.()}
-              style={{ ...trioLabelStyle, padding: "0 4px" }}
-            >
-              Share
-            </Chip>
-          </div>
+          <button
+            type="button"
+            onClick={() => onGoHome?.()}
+            aria-label="Humanoid Index"
+            className="pointer-events-auto"
+            style={{
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <svg width="36" height="36" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: "oklch(65% 0.011 222.2)", opacity: 0.45 }}>
+              <rect x="7.72656" y="12.9392" width="8.69168" height="19.1217" rx="0.5" fill="currentColor" />
+              <rect x="26.8438" y="19.189" width="6.6221" height="19.1217" rx="0.5" transform="rotate(90 26.8438 19.189)" fill="currentColor" />
+              <rect x="18.1562" y="12.9392" width="8.69168" height="19.1217" rx="0.5" fill="currentColor" />
+              <rect x="28.5859" y="12.9392" width="8.69168" height="19.1217" rx="0.5" fill="currentColor" />
+            </svg>
+          </button>
         </div>
       </nav>
     );

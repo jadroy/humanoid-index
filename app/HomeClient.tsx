@@ -65,6 +65,7 @@ import { useSpring, SCROLL_PRESETS, type PresetKey } from "@/hooks/useSpring";
 import { useIsDev } from "@/hooks/useIsDev";
 import { ArcDots, ARC_STYLES, ARC_PRESETS, arcStyleLabels, MARKER_VARIANTS, type ArcStyle } from "@/components/ArcDots";
 import OptionsMenu, { BUTTON_VARIANTS, BUTTON_LABELS, type ButtonVariant } from "@/components/OptionsMenu";
+import { Chip } from "@/lib/design/primitives/Chip";
 import { FONTS, FAVORITE_FONTS } from "@/lib/fonts";
 import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSettings } from "@/lib/cardPhysics";
 
@@ -1507,8 +1508,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
   type BlurbExpandIndicator = "chevron" | "inline" | "edgebar" | "minimal" | "pill";
   const [blurbExpandIndicator, setBlurbExpandIndicator] = useState<BlurbExpandIndicator>("pill");
-  const [bubbleVariant, setBubbleVariant] = useState(5);
-  const [bubbleOutline, setBubbleOutline] = useState(true);
+  const [bubbleVariant, setBubbleVariant] = useState(7);
+  const [outlineStyle, setOutlineStyle] = useState<"off" | "flat" | "sheen" | "light" | "halo" | "gloss">("off");
   const toggleBlurbExpand = (id: string) => {
     setExpandedBlurbs(prev => {
       const next = new Set(prev);
@@ -1750,7 +1751,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     return [...derived, ...neutrals];
   }, [cardFillColor]);
   const bubble = bubbleVariants[bubbleVariant - 1] ?? bubbleVariants[0];
-  const bubbleShadow = bubbleOutline ? bubble.shadow : undefined;
+  const bubbleShadow = (() => {
+    const base = bubble.shadow;
+    switch (outlineStyle) {
+      case "off":   return undefined;
+      case "flat":  return base;
+      case "sheen": return `inset 0 1px 0 rgba(255,255,255,0.95), ${base}`;
+      case "light": return `inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.04), ${base}`;
+      case "halo":  return `${base}, 0 1px 12px rgba(0,0,0,0.04)`;
+      case "gloss": return `inset 0 1px 0 rgba(255,255,255,1), inset 0 10px 22px -10px rgba(255,255,255,0.55), ${base}`;
+    }
+  })();
   // Page background tint — 0 = pure white, higher = more grey
   const [pageBgLevel, setPageBgLevel] = useState(0);
   const pageBg = `rgb(${255 - pageBgLevel}, ${255 - pageBgLevel}, ${255 - pageBgLevel})`;
@@ -3540,52 +3551,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const engineerRows = engineerMode
               ? ENGINEER_FIELDS.map((f) => renderStatRow(f.label, formatEngineerValue(h, f.key), (v) => `${v}`))
               : [];
-            // Engineer toggle — uses the shared in-card icon system so it stays
-            // visually in lockstep with the info "i" and other card icons.
-            // A soft radial fade behind it keeps scrolling row text legible
-            // when it passes under the button.
-            const engIco = cardIconRender({ active: engineerMode });
-            const engIconBox = engIco.iconBoxPx;
-            const plusMinusIcon = engineerMode ? (
-              <svg width={engIconBox} height={engIconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={engIco.iconStrokeWidth} strokeLinecap="round">
-                <line x1="3.5" y1="8" x2="12.5" y2="8" />
-              </svg>
-            ) : (
-              <svg width={engIconBox} height={engIconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={engIco.iconStrokeWidth} strokeLinecap="round">
-                <line x1="3.5" y1="8" x2="12.5" y2="8" />
-                <line x1="8" y1="3.5" x2="8" y2="12.5" />
-              </svg>
-            );
-            const toggleFadeSize = cardIconSize + 28;
-            const engineerTabs = (
-              <div
-                className="pointer-events-none"
-                style={{
-                  position: "absolute",
-                  top: cardIconInset - 4,
-                  right: cardIconInset - 4,
-                  width: toggleFadeSize,
-                  height: toggleFadeSize,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "radial-gradient(circle at center, rgba(249,249,249,0.95) 38%, rgba(249,249,249,0) 78%)",
-                  borderRadius: 999,
-                  zIndex: 12,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setEngineerMode((v) => !v); }}
-                  aria-pressed={engineerMode}
-                  aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
-                  className={engIco.className}
-                  style={{ ...engIco.style, WebkitTapHighlightColor: "transparent" }}
-                >
-                  {plusMinusIcon}
-                </button>
-              </div>
-            );
             // Basic view stays lean: Company, Year, Country, Height, Weight, Use.
             // The more technical rows (DOF, Speed, Drive) only appear in engineer
             // mode alongside the extended `engineering` block.
@@ -3866,7 +3831,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // the visual fade.
             return (
               <div className="flex flex-col h-full pointer-events-auto" style={{ width: "100%", gap: stackGap, position: "relative", zIndex: 11 }}>
-                {engineerTabs}
                 <div
                   className="flex flex-col"
                   style={{
@@ -4361,7 +4325,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: compareStatsW, minWidth: compareStatsW, position: "relative", zIndex: 11 }}>
               <div className="flex flex-col" style={{ flex: 1, justifyContent: denseDividers ? "stretch" : "center", minHeight: 0 }}>
                 {blurbBlock}
-                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                   <StatsScrollArea flex={denseDividers ? 1 : undefined}>
                     <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap }}>
                       {denseDividers ? (
@@ -4449,7 +4413,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <>
               {/* New badge — rides with the humanoid */}
               {mh.year === 2025 && (
-                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 font-semibold" style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "#8e8e93", color: "#ffffff" }}>New</div>
+                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 font-semibold" style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "#AEAEB2", color: "#ffffff" }}>New</div>
               )}
               <div
                 ref={(el) => { galleryScrollRefs.current[mIdx] = el; }}
@@ -4749,7 +4713,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     {h.year === 2025 && (
                       <div
                         className="absolute top-3 left-3 z-20 px-2 py-0.5 font-semibold pointer-events-none"
-                        style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "#8e8e93", color: "#ffffff" }}
+                        style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "#AEAEB2", color: "#ffffff" }}
                       >
                         New
                       </div>
@@ -4788,6 +4752,55 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       }}
                     >
                       i
+                    </button>
+                  );
+                })()}
+                {/* Density toggle — supplementary to the "i", only visible when
+                    info is showing. Switches stats between basic and engineer. */}
+                {collapseVariant === "info-icon" && !comparing && isFirst && (() => {
+                  const ico = cardIconRender({ active: engineerMode });
+                  const iconBox = ico.iconBoxPx;
+                  return (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setEngineerMode((v) => !v); }}
+                      aria-pressed={engineerMode}
+                      aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
+                      className={`${ico.className} absolute z-30`}
+                      style={{
+                        ...ico.style,
+                        top: cardIconInset,
+                        right: cardIconInset + cardIconSize + cardIconGap,
+                        opacity: statsCollapsed ? 0 : 1,
+                        transform: statsCollapsed ? "translateX(6px)" : "translateX(0)",
+                        pointerEvents: statsCollapsed ? "none" : "auto",
+                        transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round">
+                        {engineerMode ? (
+                          <>
+                            <circle cx="4" cy="4" r="0.6" fill="currentColor" stroke="none" />
+                            <line x1="6.5" y1="4" x2="13" y2="4" />
+                            <circle cx="4" cy="6.75" r="0.6" fill="currentColor" stroke="none" />
+                            <line x1="6.5" y1="6.75" x2="13" y2="6.75" />
+                            <circle cx="4" cy="9.5" r="0.6" fill="currentColor" stroke="none" />
+                            <line x1="6.5" y1="9.5" x2="13" y2="9.5" />
+                            <circle cx="4" cy="12.25" r="0.6" fill="currentColor" stroke="none" />
+                            <line x1="6.5" y1="12.25" x2="13" y2="12.25" />
+                          </>
+                        ) : (
+                          <>
+                            <circle cx="4" cy="5" r="0.6" fill="currentColor" stroke="none" />
+                            <line x1="6.5" y1="5" x2="13" y2="5" />
+                            <circle cx="4" cy="8" r="0.6" fill="currentColor" stroke="none" />
+                            <line x1="6.5" y1="8" x2="13" y2="8" />
+                            <circle cx="4" cy="11" r="0.6" fill="currentColor" stroke="none" />
+                            <line x1="6.5" y1="11" x2="13" y2="11" />
+                          </>
+                        )}
+                      </svg>
                     </button>
                   );
                 })()}
@@ -6093,16 +6106,21 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <input type="range" min={9} max={16} value={blurbFontSize} onChange={(e) => setBlurbFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
               <label className="text-[12px] text-neutral-500 flex justify-between mt-2">
                 <span>Stat-col fill <span className="text-neutral-400">· {bubbleVariants[bubbleVariant - 1].name}</span></span>
-                <button
-                  type="button"
-                  onClick={() => setBubbleOutline((v) => !v)}
-                  className="text-[11px] px-1.5 py-0.5 rounded transition-colors"
-                  style={{ background: bubbleOutline ? "#1a1a1a" : "#f0f0f0", color: bubbleOutline ? "#fff" : "#666", border: "none", cursor: "pointer" }}
-                  title="Toggle stat-col outline"
-                >
-                  Outline {bubbleOutline ? "ON" : "OFF"}
-                </button>
+                <span className="text-[11px] text-neutral-400 capitalize">{outlineStyle}</span>
               </label>
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {(["off","flat","sheen","light","halo","gloss"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setOutlineStyle(s)}
+                    className="text-[11px] px-1.5 py-0.5 rounded capitalize cursor-pointer transition-colors"
+                    style={{ background: outlineStyle === s ? "#1a1a1a" : "#f0f0f0", color: outlineStyle === s ? "#fff" : "#666", border: "none" }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
               <div className="text-[10px] text-neutral-400 uppercase tracking-wider mt-1.5 mb-1">From card</div>
               <div className="grid grid-cols-6 gap-1.5">
                 {bubbleVariants.filter((b) => b.fromCard).map((b) => {
@@ -6707,6 +6725,7 @@ export default function HomeClient() {
   const [comparingUsed, setComparingUsed] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
+  const [diceRollNonce, setDiceRollNonce] = useState(0);
   const [toScale, setToScale] = useState(false);
   const [useImperial, setUseImperial] = useState(true);
   // Default to metric for non-US locales. Runs post-hydration so SSR + first
@@ -7136,25 +7155,69 @@ export default function HomeClient() {
             style={{ bottom: "var(--corner-y, 8px)" }}
           >
             <div
-              className="grid items-center"
+              className="relative flex items-center justify-between"
               style={{
                 minHeight: 26,
-                width: "min(720px, 80vw)",
-                margin: "0 auto",
-                gridTemplateColumns: "1fr 80px 1fr",
+                paddingLeft: "var(--nav-edge, 24px)",
+                paddingRight: "var(--nav-edge, 24px)",
               }}
             >
-              <div className="pointer-events-auto" style={{ justifySelf: "start" }}>
-                <span style={creditStyle}>Roy Jad © 2026</span>
-              </div>
-              <div />
-              <div className="pointer-events-auto" style={{ justifySelf: "end" }}>
-                <SiteOptionsMenu
-                  inline
-                  shareLabel={shareViewLabel}
-                  onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
-                  visible={introDone}
-                />
+              <span className="pointer-events-auto" style={creditStyle}>Roy Jad © 2026</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDiceRollNonce((n) => n + 1);
+                  onRandomHumanoid();
+                }}
+                aria-label="Shuffle"
+                className="pointer-events-auto absolute left-1/2 top-1/2"
+                style={{
+                  transform: "translate(-50%, calc(-50% - 16px))",
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  fontSize: 21,
+                  lineHeight: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 2,
+                }}
+              >
+                <span
+                  key={`a-${diceRollNonce}`}
+                  role="img"
+                  aria-hidden
+                  className={diceRollNonce ? "dice-roll-a" : undefined}
+                >🎲</span>
+                {comparing && (
+                  <span
+                    key={`b-${diceRollNonce}`}
+                    role="img"
+                    aria-hidden
+                    className={diceRollNonce ? "dice-roll-b" : undefined}
+                  >🎲</span>
+                )}
+              </button>
+              <div className="flex items-center" style={{ gap: 8 }}>
+                <Chip
+                  className="pointer-events-auto"
+                  onClick={() => {
+                    const origin = typeof window !== "undefined" ? window.location.origin : "";
+                    copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
+                  }}
+                  style={{ ...creditStyle, padding: "0 4px" }}
+                >
+                  Share
+                </Chip>
+                <div className="pointer-events-auto">
+                  <SiteOptionsMenu
+                    inline
+                    shareLabel={shareViewLabel}
+                    onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
+                    visible={introDone}
+                  />
+                </div>
               </div>
             </div>
           </div>

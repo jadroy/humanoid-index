@@ -22,7 +22,7 @@ function CarouselCard({ humanoid: h, isNew, width = CARD_W, allCaps }: { humanoi
       {/* Image */}
       <div className="relative aspect-[3/4] overflow-hidden" style={{ borderRadius: cardRadius, background: "#FAFAFA" }}>
         {isNew && (
-          <div className="absolute top-2 left-2 z-10 px-1.5 py-0 rounded-full text-[12px] font-semibold" style={{ background: "#8e8e93", color: "#ffffff" }}>
+          <div className="absolute top-2 left-2 z-10 px-1.5 py-0 rounded-full text-[12px] font-semibold" style={{ background: "#AEAEB2", color: "#ffffff" }}>
             New
           </div>
         )}
