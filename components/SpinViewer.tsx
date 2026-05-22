@@ -222,17 +222,50 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
     setDragging(false);
   };
 
+  // Safety net: if the pointer is released anywhere outside the canvas — off
+  // the window, dropped on another element, gesture cancelled by the OS — the
+  // local onPointerUp may never fire and the drag/cursor state sticks. Listen
+  // globally to guarantee the state always resets.
+  useEffect(() => {
+    if (!dragging) return;
+    const reset = () => {
+      dragRef.current = null;
+      setDragging(false);
+    };
+    window.addEventListener("pointerup", reset);
+    window.addEventListener("pointercancel", reset);
+    window.addEventListener("blur", reset);
+    return () => {
+      window.removeEventListener("pointerup", reset);
+      window.removeEventListener("pointercancel", reset);
+      window.removeEventListener("blur", reset);
+    };
+  }, [dragging]);
+
   const pillVisible = showHint && loaded && hovered && pillReady && !dragging;
 
   return (
     <div className={`relative ${className}`} style={style}>
+      {/* Static underlay — first frame. Fades out as the canvas fades in so the
+          crossfade lands on an identical image (no flash). Hidden once loaded
+          to avoid front-pose ghosting through rotated frames' transparent BG. */}
+      <img
+        src={`${path}/frame_0000.webp`}
+        alt=""
+        aria-hidden
+        draggable={false}
+        className={`absolute inset-0 w-full h-full select-none pointer-events-none transition-opacity duration-500 ${
+          loaded ? "opacity-0" : "opacity-100"
+        }`}
+        style={{ objectFit: "contain" }}
+      />
       <canvas
         ref={canvasRef}
-        width={800}
+        width={600}
         height={1000}
-        className={`select-none transition-opacity duration-500 ${
+        className={`relative select-none transition-opacity duration-500 ${
           loaded ? "opacity-100" : "opacity-0"
-        } cursor-grab active:cursor-grabbing`}
+        } ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
         style={{
           width: "100%",
           height: "100%",

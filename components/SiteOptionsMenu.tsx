@@ -51,7 +51,7 @@ export default function SiteOptionsMenu({ visible, inline = false }: Props) {
         style={{
           position: "absolute",
           bottom: "100%",
-          right: -14,
+          right: 0,
           paddingBottom: 6,
           display: "flex",
           flexDirection: "column",
@@ -81,9 +81,7 @@ export default function SiteOptionsMenu({ visible, inline = false }: Props) {
         aria-label="Contribute"
         aria-expanded={open}
         style={{
-          padding: "6px 14px",
-          marginRight: -14,
-          borderRadius: 999,
+          padding: 0,
           background: "transparent",
           border: "none",
           color: "oklch(65% 0.011 222.2)",
@@ -92,7 +90,7 @@ export default function SiteOptionsMenu({ visible, inline = false }: Props) {
           justifyContent: "center",
           cursor: "pointer",
           fontSize: 13,
-          fontWeight: 400,
+          fontWeight: 500,
           letterSpacing: "normal",
         }}
       >
@@ -115,13 +113,13 @@ function PopItem({ label, onClick }: { label: string; onClick: () => void }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        padding: "2px 14px",
+        padding: "2px 0 2px 14px",
         border: "none",
         background: "transparent",
         color: hover ? "oklch(40% 0.011 222.2)" : "oklch(65% 0.011 222.2)",
         cursor: "pointer",
         fontSize: 13,
-        fontWeight: 400,
+        fontWeight: 500,
         letterSpacing: "normal",
         whiteSpace: "nowrap",
         transition: "color 140ms ease",

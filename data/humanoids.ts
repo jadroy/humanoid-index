@@ -36,6 +36,45 @@ export interface Humanoid {
   purchaseUrl?: string; // Link to buy/learn more about the robot
   sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
   tags?: string[]; // Short descriptor chips — facets like use case, drive, vibe, reception (country lives on its own `country` field now)
+  // Extended engineering specs surfaced when the stats column is in Engineer mode
+  // (toggle persists in localStorage). All fields optional — missing rows render as
+  // a dimmed em-dash so cards stay vertically aligned across robots.
+  engineering?: {
+    // Motion & strength
+    payload?: number;             // kg — total carrying capacity
+    reach?: number;               // cm — typical arm reach
+    liftPerArm?: number;          // kg — per-arm lift
+    peakTorque?: number;          // Nm — peak joint torque
+    walkSpeed?: number;           // m/s — nominal walking speed (separate from maxSpeed)
+    // Power
+    runtime?: number;             // hours — single-charge runtime
+    batteryCapacity?: number;     // kWh
+    batteryVoltage?: number;      // V
+    chargeTime?: number;          // minutes — full charge time
+    swappableBattery?: boolean;
+    // Joints
+    handDof?: number;             // DOF per hand
+    armDof?: number;              // DOF per arm
+    legDof?: number;              // DOF per leg
+    // Actuation
+    actuators?: string;           // e.g. "BLDC + harmonic drive"
+    // Sensing
+    cameras?: string;             // e.g. "4× RGB, 2× depth"
+    lidar?: string;               // e.g. "Velodyne VLP-16" or omit
+    imu?: string;                 // e.g. "9-axis"
+    microphones?: number;
+    forceSensors?: boolean;
+    // Compute & software
+    compute?: string;             // e.g. "NVIDIA Jetson Orin NX"
+    software?: string;            // e.g. "ROS2"
+    teleop?: boolean;
+    // Environment
+    ipRating?: string;            // e.g. "IP54"
+    operatingTemp?: string;       // e.g. "0–40°C"
+    noiseLevel?: number;          // dB
+    // Connectivity
+    connectivity?: string;        // e.g. "WiFi 6 / 5G / Ethernet"
+  };
 }
 
 // Flip to false to hide the 2026-05-08 density-experiment stubs (ids 30–135).
@@ -295,6 +334,13 @@ const allHumanoids: Humanoid[] = [
     dof: 28,
     description: "Tesla's second-gen humanoid with improved hands and enhanced balance capabilities.",
     tags: ["Highly hyped"],
+    engineering: {
+      handDof: 11,
+      armDof: 7,
+      walkSpeed: 0.6,
+      actuators: "Custom electric",
+      compute: "Tesla custom",
+    },
   },
   {
     id: "2",
@@ -338,6 +384,13 @@ const allHumanoids: Humanoid[] = [
     purchaseUrl: "https://www.1x.tech/order",
     sceneUrl: "/scenes/neo-scene.png",
     tags: ["Soft & lightweight"],
+    engineering: {
+      payload: 20,
+      walkSpeed: 1.4,
+      actuators: "Tendon-driven",
+      teleop: true,
+      noiseLevel: 22,
+    },
   },
   {
     id: "7",
@@ -418,6 +471,19 @@ const allHumanoids: Humanoid[] = [
     description: "Compact, affordable humanoid with advanced mobility for research and commercial use.",
     purchaseUrl: "https://shop.unitree.com/products/unitree-g1",
     tags: ["$13.5K affordable", "Best-selling"],
+    engineering: {
+      walkSpeed: 2.0,
+      runtime: 2,
+      batteryVoltage: 22.2,
+      swappableBattery: true,
+      handDof: 3,
+      peakTorque: 120,
+      actuators: "BLDC + harmonic",
+      cameras: "Intel RealSense D435i",
+      imu: "9-axis",
+      compute: "8-core CPU + Jetson option",
+      teleop: true,
+    },
   },
   {
     id: "12",
@@ -439,6 +505,18 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 3.3,
     description: "Full-size humanoid for industrial applications with high-speed locomotion.",
     tags: ["Backflips", "Fast (3.3 m/s)"],
+    engineering: {
+      walkSpeed: 1.5,
+      runtime: 2,
+      batteryCapacity: 0.864,
+      batteryVoltage: 57.6,
+      swappableBattery: true,
+      peakTorque: 360,
+      actuators: "BLDC",
+      imu: "9-axis",
+      compute: "Intel Core + Jetson option",
+      teleop: true,
+    },
   },
   {
     id: "15",
@@ -521,6 +599,16 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 1.5,
     description: "Production-ready humanoid for logistics. Deployed in GXO and Amazon facilities.",
     tags: ["Amazon facilities", "Production-ready"],
+    engineering: {
+      payload: 16,
+      reach: 70,
+      runtime: 4,
+      swappableBattery: true,
+      actuators: "BLDC",
+      cameras: "Multi-camera perception stack",
+      software: "Custom + ROS",
+      teleop: true,
+    },
   },
   {
     id: "9",

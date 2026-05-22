@@ -161,7 +161,9 @@
       "Bash(git diff *)",
       "Bash(perl -i -0777 -pe 's/function countryToFlags\\\\\\(country: string\\\\\\): string \\\\{[\\\\s\\\\S]*?function CountryValue\\\\\\([^\\)]*\\\\\\) \\\\{[\\\\s\\\\S]*?\\\\n\\\\}\\\\n/function CountryValue\\({ country, color }: { country: string; color: string }\\) {\\\\n  const isos = countryToIsoCodes\\(country\\);\\\\n  return \\(\\\\n    <span style={{ display: \"inline-flex\", alignItems: \"center\", gap: 8, color }}>\\\\n      {isos.length > 0 \\\\&\\\\& \\(\\\\n        <span style={{ display: \"inline-flex\", alignItems: \"center\", gap: 3 }}>\\\\n          {isos.map\\(\\(iso\\) => <CircleFlag key={iso} iso={iso} \\\\/>\\)}\\\\n        <\\\\/span>\\\\n      \\)}\\\\n      <span>{country}<\\\\/span>\\\\n    <\\\\/span>\\\\n  \\);\\\\n}\\\\n/' app/HomeClient.tsx)",
       "Bash(mkdir *)",
-      "Bash(lsof -iTCP -sTCP:LISTEN -n -P)"
+      "Bash(lsof -iTCP -sTCP:LISTEN -n -P)",
+      "Bash(label\" app/HomeClient.tsx | head -20)",
+      "Bash(lsof -iTCP:3000 -sTCP:LISTEN)"
     ],
     "deny": [],
     "ask": []

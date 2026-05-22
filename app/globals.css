@@ -418,6 +418,15 @@ h1, h2, h3, h4, h5, h6 {
   animation: info-fade-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/* In-card icon button — shared hover treatment driven by CSS vars set
+   inline by cardIconRender(). The inline style sets the rest values;
+   :hover swaps to the hover vars so variant changes auto-propagate. */
+.card-icon-btn:hover {
+  background: var(--ci-bg-hover) !important;
+  border-color: var(--ci-border-hover) !important;
+  color: var(--ci-color-hover) !important;
+}
+
 /* Flat gray placeholder — sits behind <Image fill>; the swipe-reveal clip-path
    on the image itself plays the loader, so no shimmer needed here. */
 .logo-placeholder {
@@ -1177,23 +1186,6 @@ main {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7),
               0 1px 3px rgba(0, 0, 0, 0.05),
               0 8px 28px rgba(0, 0, 0, 0.06);
-}
-
-/* Right-side arc slides in from off-screen-right in lockstep with the 2nd
-   card — same start offset (50vw) and easing so the pair reads as one unit
-   arriving from the screen edge. */
-@keyframes compare-r-slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(80px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-.compare-r-enter {
-  animation: compare-r-slide-in var(--collapse-dur, 360ms) cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Compare minus (−) — slides up from behind the right card on enter, then a

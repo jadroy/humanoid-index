@@ -27,10 +27,6 @@ const COPY: Record<Variant, { title: string; subject: string; submit: string }> 
 export default function ContactSheet({ variant, email, onClose }: Props) {
   const [mounted, setMounted] = useState(false);
   const [message, setMessage] = useState("");
-  const [name, setName] = useState("");
-  const [manufacturer, setManufacturer] = useState("");
-  const [link, setLink] = useState("");
-  const [why, setWhy] = useState("");
   const firstFieldRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
   useEffect(() => setMounted(true), []);
@@ -47,19 +43,12 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
     };
   }, [onClose]);
 
-  const canSubmit =
-    variant === "feedback"
-      ? message.trim().length > 0
-      : name.trim().length > 0 || manufacturer.trim().length > 0 || why.trim().length > 0;
+  const canSubmit = message.trim().length > 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
-    const body =
-      variant === "feedback"
-        ? message
-        : `Name: ${name}\nManufacturer: ${manufacturer}\nLink: ${link}\n\nWhy it belongs:\n${why}`;
-    const url = `mailto:${email}?subject=${encodeURIComponent(COPY[variant].subject)}&body=${encodeURIComponent(body)}`;
+    const url = `mailto:${email}?subject=${encodeURIComponent(COPY[variant].subject)}&body=${encodeURIComponent(message)}`;
     window.location.href = url;
     onClose();
   };
@@ -142,23 +131,14 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
           </button>
         </div>
 
-        {variant === "feedback" ? (
-          <Field
-            as="textarea"
-            placeholder="What's on your mind?"
-            value={message}
-            onChange={setMessage}
-            rows={5}
-            inputRef={firstFieldRef}
-          />
-        ) : (
-          <>
-            <Field placeholder="Robot name" value={name} onChange={setName} inputRef={firstFieldRef} />
-            <Field placeholder="Manufacturer" value={manufacturer} onChange={setManufacturer} />
-            <Field placeholder="Link (video, site, paper)" value={link} onChange={setLink} type="url" />
-            <Field as="textarea" placeholder="Why it belongs" value={why} onChange={setWhy} rows={3} />
-          </>
-        )}
+        <Field
+          as="textarea"
+          placeholder={variant === "feedback" ? "What's on your mind?" : "Which humanoid are we missing?"}
+          value={message}
+          onChange={setMessage}
+          rows={variant === "feedback" ? 5 : 2}
+          inputRef={firstFieldRef}
+        />
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 2 }}>
           <button

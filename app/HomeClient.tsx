@@ -96,6 +96,51 @@ const formatSpeedMs = (ms: number) => `${ms.toFixed(1)} m/s`;
 const IMPERIAL_FMT = { height: formatHeight, weight: formatWeight, speed: formatSpeed } as const;
 const METRIC_FMT = { height: formatHeightCm, weight: formatWeightKg, speed: formatSpeedMs } as const;
 
+// Engineer-mode rows. Each entry maps an `engineering` field on a Humanoid to
+// a stat row. Missing values render as a dimmed em-dash via `renderStatRow`,
+// so adding a field here doesn't require populating it for every robot.
+type EngineeringField = NonNullable<typeof humanoids[number]["engineering"]>;
+const ENGINEER_FIELDS: ReadonlyArray<{
+  key: keyof EngineeringField;
+  label: string;
+  format: (v: never) => string;
+}> = [
+  { key: "payload",          label: "Payload",     format: ((v: number)  => `${v} kg`)   as (v: never) => string },
+  { key: "reach",            label: "Reach",       format: ((v: number)  => `${v} cm`)   as (v: never) => string },
+  { key: "liftPerArm",       label: "Lift/arm",    format: ((v: number)  => `${v} kg`)   as (v: never) => string },
+  { key: "peakTorque",       label: "Peak torque", format: ((v: number)  => `${v} Nm`)   as (v: never) => string },
+  { key: "walkSpeed",        label: "Walk speed",  format: ((v: number)  => `${v} m/s`)  as (v: never) => string },
+  { key: "runtime",          label: "Runtime",     format: ((v: number)  => `${v} h`)    as (v: never) => string },
+  { key: "batteryCapacity",  label: "Battery",     format: ((v: number)  => `${v} kWh`)  as (v: never) => string },
+  { key: "batteryVoltage",   label: "Voltage",     format: ((v: number)  => `${v} V`)    as (v: never) => string },
+  { key: "chargeTime",       label: "Charge time", format: ((v: number)  => `${v} min`)  as (v: never) => string },
+  { key: "swappableBattery", label: "Battery swap",format: ((v: boolean) => v ? "Yes" : "No") as (v: never) => string },
+  { key: "handDof",          label: "Hand DOF",    format: ((v: number)  => `${v}`)      as (v: never) => string },
+  { key: "armDof",           label: "Arm DOF",     format: ((v: number)  => `${v}`)      as (v: never) => string },
+  { key: "legDof",           label: "Leg DOF",     format: ((v: number)  => `${v}`)      as (v: never) => string },
+  { key: "actuators",        label: "Actuators",   format: ((v: string)  => v)           as (v: never) => string },
+  { key: "cameras",          label: "Cameras",     format: ((v: string)  => v)           as (v: never) => string },
+  { key: "lidar",            label: "LIDAR",       format: ((v: string)  => v)           as (v: never) => string },
+  { key: "imu",              label: "IMU",         format: ((v: string)  => v)           as (v: never) => string },
+  { key: "microphones",      label: "Mics",        format: ((v: number)  => `${v}`)      as (v: never) => string },
+  { key: "forceSensors",     label: "Force sense", format: ((v: boolean) => v ? "Yes" : "No") as (v: never) => string },
+  { key: "compute",          label: "Compute",     format: ((v: string)  => v)           as (v: never) => string },
+  { key: "software",         label: "Software",    format: ((v: string)  => v)           as (v: never) => string },
+  { key: "teleop",           label: "Teleop",      format: ((v: boolean) => v ? "Yes" : "No") as (v: never) => string },
+  { key: "ipRating",         label: "IP rating",   format: ((v: string)  => v)           as (v: never) => string },
+  { key: "operatingTemp",    label: "Op. temp",    format: ((v: string)  => v)           as (v: never) => string },
+  { key: "noiseLevel",       label: "Noise",       format: ((v: number)  => `${v} dB`)   as (v: never) => string },
+  { key: "connectivity",     label: "Network",     format: ((v: string)  => v)           as (v: never) => string },
+];
+
+const formatEngineerValue = (h: typeof humanoids[number], key: keyof EngineeringField): string | null => {
+  const v = h.engineering?.[key];
+  if (v === undefined || v === null || v === "") return null;
+  const def = ENGINEER_FIELDS.find((f) => f.key === key);
+  if (!def) return null;
+  return (def.format as (x: unknown) => string)(v);
+};
+
 // Press 'e' (or use the Epetri toggle) to remap every font CSS variable on
 // <main> to Epetri. Inline styles like `fontFamily: "var(--font-jetbrains-mono)"`
 // resolve against the closest ancestor, so every nested element follows.
@@ -289,26 +334,35 @@ function GalleryVideoSlide({ mIdx, slideIdx, videoPaused, subscribe, read, src, 
   return <VideoSlide src={src} fit={fit} position={position} playing={slideIdx === current && !videoPaused} credit={credit} />;
 }
 
-function GalleryShareButton({ mIdx, allKinds, subscribe, read, onClick }: {
+type CardIconStyleProps = {
+  className: string;
+  style: React.CSSProperties;
+  iconBoxPx: number;
+  iconStrokeWidth: number;
+};
+
+function GalleryShareButton({ mIdx, allKinds, subscribe, read, onClick, getIconStyle, position, hoverFade }: {
   mIdx: number;
   allKinds: ("image" | "video")[];
   subscribe: GallerySubscribe;
   read: GalleryRead;
   onClick: () => void;
+  getIconStyle: (opts: { dark: boolean }) => CardIconStyleProps;
+  position: { bottom: number; right: number };
+  hoverFade: boolean;
 }) {
   const current = useGalleryIdx(mIdx, subscribe, read);
   const currentIsVideo = allKinds[current] === "video";
+  const ico = getIconStyle({ dark: currentIsVideo });
+  const fadeClass = hoverFade ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       aria-label="Copy link"
-      className={`absolute top-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ease-out opacity-0 -translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0 ${
-        currentIsVideo
-          ? "text-white/70 hover:text-white hover:bg-white/15"
-          : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md"
-      }`}
+      className={`${ico.className} absolute z-30 ${fadeClass}`}
+      style={{ ...ico.style, bottom: position.bottom, right: position.right }}
     >
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <svg width={ico.iconBoxPx} height={ico.iconBoxPx} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
       </svg>
@@ -316,27 +370,33 @@ function GalleryShareButton({ mIdx, allKinds, subscribe, read, onClick }: {
   );
 }
 
-function GalleryVideoPauseButton({ mIdx, allKinds, subscribe, read, videoPaused, onToggle }: {
+function GalleryVideoPauseButton({ mIdx, allKinds, subscribe, read, videoPaused, onToggle, getIconStyle, position, hoverFade }: {
   mIdx: number;
   allKinds: ("image" | "video")[];
   subscribe: GallerySubscribe;
   read: GalleryRead;
   videoPaused: boolean;
   onToggle: () => void;
+  getIconStyle: (opts: { dark: boolean }) => CardIconStyleProps;
+  position: { bottom: number; right: number };
+  hoverFade: boolean;
 }) {
   const current = useGalleryIdx(mIdx, subscribe, read);
   const currentIsVideo = allKinds[current] === "video";
   if (!currentIsVideo) return null;
+  const ico = getIconStyle({ dark: true });
+  const fadeClass = hoverFade ? "opacity-0 group-hover/card:opacity-100" : "";
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
       aria-label={videoPaused ? "Play video" : "Pause video"}
-      className="absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto text-white/70 transition-all duration-200 hover:text-white hover:bg-white/15 opacity-0 group-hover/card:opacity-100"
+      className={`${ico.className} absolute z-30 ${fadeClass}`}
+      style={{ ...ico.style, bottom: position.bottom, right: position.right }}
     >
       {videoPaused ? (
-        <Play width={17} height={17} strokeWidth={1.75} />
+        <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
       ) : (
-        <Pause width={17} height={17} strokeWidth={1.75} />
+        <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
       )}
     </button>
   );
@@ -530,7 +590,7 @@ function ExpandedView({ humanoid, onClose, onPrev, onNext }: {
 // Single bot:  ?h=<id>
 // Compare:     ?compare=<leftId>,<rightId>
 // IDs come straight from humanoids.ts; compare takes precedence on hydration.
-function OgPreview({ src }: { src: string }) {
+function OgPreview({ src, onReady }: { src: string; onReady?: () => void }) {
   const [loaded, setLoaded] = useState(false);
   return (
     <div
@@ -548,7 +608,8 @@ function OgPreview({ src }: { src: string }) {
         alt=""
         width={200}
         height={105}
-        onLoad={() => setLoaded(true)}
+        onLoad={() => { setLoaded(true); onReady?.(); }}
+        onError={() => onReady?.()}
         style={{
           display: "block",
           objectFit: "cover",
@@ -572,9 +633,14 @@ function LogoImage({ src, alt }: { src: string; alt: string; sizes?: string }) {
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [loaded, setLoaded] = useState(() => loadedLogoSrcs.has(src));
   useLayoutEffect(() => {
+    // Reset to "not loaded" on src change so the clip-path closes back over
+    // the stale paint from the previous logo; the swipe-reveal then plays
+    // when the new src decodes. Cached srcs stay open (no animation flash).
     if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
       loadedLogoSrcs.add(src);
       setLoaded(true);
+    } else {
+      setLoaded(loadedLogoSrcs.has(src));
     }
   }, [src]);
   return (
@@ -594,6 +660,135 @@ function LogoImage({ src, alt }: { src: string; alt: string; sizes?: string }) {
         transition: "clip-path 520ms cubic-bezier(0.22, 1, 0.36, 1)",
       }}
     />
+  );
+}
+
+// Gates display until the *current* src has actually loaded. Without this,
+// fast scroll past the preloader window leaves the previously-decoded image
+// painted on the recycled <Image> element while the new src is still loading
+// — so one robot appears to "stick" across several swaps.
+function RobotImage({
+  src,
+  alt,
+  sizes,
+  priority,
+  className,
+  style,
+  onReadyChange,
+}: {
+  src: string;
+  alt: string;
+  sizes?: string;
+  priority?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+  onReadyChange?: (ready: boolean) => void;
+}) {
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const ready = loadedSrc === src;
+  // Cached images (warmed by the neighbor preloader) often complete before
+  // React attaches onLoad, so the event never fires and the silhouette sticks.
+  // Sync from the underlying <img>'s complete flag on mount/src change.
+  useLayoutEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      setLoadedSrc(src);
+    }
+  }, [src]);
+  useEffect(() => {
+    onReadyChange?.(ready);
+  }, [ready, onReadyChange]);
+  return (
+    <Image
+      ref={imgRef}
+      src={src}
+      alt={alt}
+      fill
+      sizes={sizes}
+      priority={priority}
+      className={className}
+      onLoad={() => setLoadedSrc(src)}
+      style={{ ...style, opacity: ready ? 1 : 0 }}
+    />
+  );
+}
+
+// Per-slide wrapper: anchors the placeholder silhouette to the full slide cell
+// rather than the inner padded box, so its position stays constant across cards
+// regardless of bottom-aligned vs centered padding. Without this lift, the
+// placeholder jumped ~12px between cards as you scrolled.
+function MediaImageSlide({
+  src,
+  alt,
+  isCover,
+  isBottom,
+  imageStyle,
+  sizes,
+  priority,
+  bottomFadeH,
+  bottomFadeOpacity,
+}: {
+  src: string;
+  alt: string;
+  isCover: boolean;
+  isBottom: boolean;
+  imageStyle: React.CSSProperties;
+  sizes: string;
+  priority: boolean;
+  bottomFadeH: number;
+  bottomFadeOpacity: number;
+}) {
+  const [ready, setReady] = useState(false);
+  return (
+    <div
+      className="relative flex items-center justify-center pointer-events-none"
+      style={{
+        width: "100%",
+        height: "100%",
+        flexShrink: 0,
+        scrollSnapAlign: "start",
+        padding: isCover ? 0 : isBottom ? "24px 24px 0 24px" : 24,
+      }}
+    >
+      {!ready && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <svg width="280" height="280" viewBox="0 0 20 20" fill="none" style={{ opacity: 0.045 }}>
+            <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
+            <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
+          </svg>
+        </div>
+      )}
+      <div className="relative w-full h-full">
+        <RobotImage
+          src={src}
+          alt={alt}
+          className={isCover ? "object-cover" : "object-contain"}
+          style={imageStyle}
+          sizes={sizes}
+          priority={priority}
+          onReadyChange={setReady}
+        />
+        {isBottom && (
+          <div
+            className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]"
+            style={{
+              height: bottomFadeH,
+              background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))`,
+            }}
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -809,19 +1004,34 @@ function UseValue({ useCase, valueStyle }: { useCase: string; valueStyle: React.
 // content fits.
 function StatsScrollArea({ children, style, flex }: { children: React.ReactNode; style?: React.CSSProperties; flex?: number | string }) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [overflowing, setOverflowing] = useState(false);
+  // Bitmask: 1 = content above (scrolled down), 2 = content below (room to scroll)
+  const [edges, setEdges] = useState(0);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const check = () => setOverflowing(el.scrollHeight - el.clientHeight > 1);
+    const check = () => {
+      const top = el.scrollTop > 1;
+      const bottom = el.scrollHeight - el.clientHeight - el.scrollTop > 1;
+      setEdges((top ? 1 : 0) | (bottom ? 2 : 0));
+    };
     check();
+    el.addEventListener("scroll", check, { passive: true });
     const ro = new ResizeObserver(check);
     ro.observe(el);
     if (el.firstElementChild) ro.observe(el.firstElementChild);
-    return () => ro.disconnect();
+    return () => {
+      el.removeEventListener("scroll", check);
+      ro.disconnect();
+    };
   }, [children]);
-  const mask = overflowing
-    ? "linear-gradient(to bottom, black 0%, black 82%, transparent 100%)"
+  const fadeTop = (edges & 1) !== 0;
+  const fadeBottom = (edges & 2) !== 0;
+  const mask = fadeTop && fadeBottom
+    ? "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, black 6%, black 94%, rgba(0,0,0,0.55) 100%)"
+    : fadeBottom
+    ? "linear-gradient(to bottom, black 0%, black 94%, rgba(0,0,0,0.55) 100%)"
+    : fadeTop
+    ? "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, black 6%, black 100%)"
     : undefined;
   return (
     <div
@@ -837,6 +1047,7 @@ function StatsScrollArea({ children, style, flex }: { children: React.ReactNode;
         flexDirection: "column",
         WebkitMaskImage: mask,
         maskImage: mask,
+        transition: "mask-image 200ms ease, -webkit-mask-image 200ms ease",
         ...style,
       }}
     >
@@ -1061,6 +1272,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [buyLayout, setBuyLayout] = useState<"card" | "chip" | "below">("card");
   const [statsCollapsed, setStatsCollapsed] = useState(false);
   const [statsHover, setStatsHover] = useState(false);
+  // Engineer-mode toggle for the stats column — basic (default) reveals the
+  // standard rows; engineer adds the extended `engineering` block of specs.
+  // Persists site-wide in localStorage so the choice carries between robots.
+  const [engineerMode, setEngineerMode] = useState(false);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("humanoid-index:engineerMode");
+      if (stored === "true") setEngineerMode(true);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem("humanoid-index:engineerMode", String(engineerMode)); } catch {}
+  }, [engineerMode]);
   type CollapseVariant = "pull-tab" | "gap-zone" | "hover-fade" | "info-icon" | "none";
   const [collapseVariant, setCollapseVariant] = useState<CollapseVariant>("info-icon");
   useEffect(() => {
@@ -1119,7 +1343,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [arcInset, setArcInset] = useState(150);
   const [arcRightAlign, setArcRightAlign] = useState(true);
   const [arcHugBuffer, setArcHugBuffer] = useState(28);
-  const [navTop, setNavTop] = useState(12);
+  const [navTop, setNavTop] = useState(22);
   const [autoNavX, setAutoNavX] = useState(true);
   const [navX, setNavX] = useState(24);
   const [giveStyle, setGiveStyle] = useState<GiveStyle>("none");
@@ -1283,24 +1507,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
   type BlurbExpandIndicator = "chevron" | "inline" | "edgebar" | "minimal" | "pill";
   const [blurbExpandIndicator, setBlurbExpandIndicator] = useState<BlurbExpandIndicator>("pill");
-  const [bubbleVariant, setBubbleVariant] = useState(1);
-  const bubbleVariants: { name: string; bg: string; shadow: string; shadowHover: string; backdropFilter?: string; ink?: string; inkDim?: string }[] = [
-    { name: "White", bg: "#FFFFFF", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Snow", bg: "#FCFCFC", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Pearl", bg: "#F9F9F9", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Bone", bg: "#F5F5F4", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Paper", bg: "#F2F2F0", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Mist", bg: "#F4F5F7", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Ash", bg: "#EEEEEE", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Stone", bg: "#E8E8E6", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Linen", bg: "#FAF8F4", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Frost", bg: "#F6F8FB", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Greige", bg: "#EEEDEA", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
-    { name: "Silver", bg: "#E2E2E2", shadow: "inset 0 0 0 1px rgba(0,0,0,0.08)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.11)" },
-    { name: "Slate", bg: "#2A2D33", shadow: "inset 0 0 0 1px rgba(255,255,255,0.07)", shadowHover: "inset 0 0 0 1px rgba(255,255,255,0.10)", ink: "#D8D8DC", inkDim: "#9A9AA0" },
-    { name: "Graphite", bg: "#1A1C1F", shadow: "inset 0 0 0 1px rgba(255,255,255,0.08)", shadowHover: "inset 0 0 0 1px rgba(255,255,255,0.11)", ink: "#D0D0D4", inkDim: "#90909A" },
-  ];
-  const bubble = bubbleVariants[bubbleVariant - 1] ?? bubbleVariants[0];
+  const [bubbleVariant, setBubbleVariant] = useState(5);
+  const [bubbleOutline, setBubbleOutline] = useState(true);
   const toggleBlurbExpand = (id: string) => {
     setExpandedBlurbs(prev => {
       const next = new Set(prev);
@@ -1315,6 +1523,118 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [pillLabelUppercase, setPillLabelUppercase] = useState(false);
   const [pillLabelColor, setPillLabelColor] = useState("var(--c-ink-body)");
   const [labelLogoSize, setLabelLogoSize] = useState(22);
+
+  // ── In-card icon system ─────────────────────────────────────────
+  // One source of truth for all icon buttons that sit on a card:
+  // info "i" toggle, engineer +/− toggle, share, 3D toggle, spin
+  // auto-rotate, and video pause. Each button reads its visual
+  // treatment from `cardIconRender(...)` so they stay coherent when
+  // a variant knob changes.
+  type CardIconChrome = "ghost" | "outline" | "filled" | "glass";
+  type CardIconShape = "circle" | "rounded" | "square";
+  type CardIconActive = "tint" | "ink" | "outline";
+  const [cardIconChrome, setCardIconChrome] = useState<CardIconChrome>("ghost");
+  const [cardIconShape, setCardIconShape] = useState<CardIconShape>("circle");
+  const [cardIconSize, setCardIconSize] = useState(30);
+  const [cardIconStroke, setCardIconStroke] = useState(1.5);
+  const [cardIconInset, setCardIconInset] = useState(10);
+  const [cardIconGap, setCardIconGap] = useState(4);
+  const [cardIconActive, setCardIconActive] = useState<CardIconActive>("tint");
+  const [cardIconHoverFade, setCardIconHoverFade] = useState(true);
+  const [cardIcon3DLabel, setCardIcon3DLabel] = useState(false);
+  const cardIconRender = (opts: { active?: boolean; dark?: boolean } = {}): {
+    className: string;
+    style: React.CSSProperties;
+    iconBoxPx: number;
+    iconStrokeWidth: number;
+  } => {
+    const { active = false, dark = false } = opts;
+    const radius = cardIconShape === "circle"
+      ? 999
+      : cardIconShape === "rounded"
+        ? Math.round(cardIconSize * 0.34)
+        : Math.round(cardIconSize * 0.2);
+    const palette = dark ? {
+      bgFilled: "rgba(255,255,255,0.10)",
+      bgGlass: "rgba(0,0,0,0.32)",
+      bgHover: "rgba(255,255,255,0.18)",
+      bgActive: "rgba(255,255,255,0.22)",
+      borderRest: "rgba(255,255,255,0.30)",
+      borderHover: "rgba(255,255,255,0.55)",
+      borderActive: "rgba(255,255,255,0.65)",
+      colorRest: "rgba(255,255,255,0.72)",
+      colorHover: "rgba(255,255,255,1)",
+      colorActive: "rgba(255,255,255,1)",
+      glassBorder: "rgba(255,255,255,0.16)",
+      glassBorderHover: "rgba(255,255,255,0.28)",
+    } : {
+      bgFilled: "rgba(0,0,0,0.04)",
+      bgGlass: "rgba(255,255,255,0.72)",
+      bgHover: "rgba(0,0,0,0.06)",
+      bgActive: "rgba(0,0,0,0.08)",
+      borderRest: "rgba(0,0,0,0.18)",
+      borderHover: "rgba(0,0,0,0.42)",
+      borderActive: "rgba(0,0,0,0.56)",
+      colorRest: "rgba(0,0,0,0.5)",
+      colorHover: "rgba(0,0,0,0.85)",
+      colorActive: "rgba(0,0,0,0.85)",
+      glassBorder: "rgba(0,0,0,0.08)",
+      glassBorderHover: "rgba(0,0,0,0.14)",
+    };
+    let bg: string = "transparent";
+    let borderColor: string = "transparent";
+    let hoverBg: string = palette.bgHover;
+    let hoverBorder: string = "transparent";
+    let activeBg: string = palette.bgActive;
+    let activeBorder: string = "transparent";
+    if (cardIconChrome === "outline") {
+      borderColor = palette.borderRest;
+      hoverBorder = palette.borderHover;
+      activeBorder = palette.borderActive;
+    } else if (cardIconChrome === "filled") {
+      bg = palette.bgFilled;
+    } else if (cardIconChrome === "glass") {
+      bg = palette.bgGlass;
+      borderColor = palette.glassBorder;
+      hoverBorder = palette.glassBorderHover;
+      activeBorder = palette.glassBorderHover;
+    }
+    // Apply active treatment (only the requested dimension; others stay at rest)
+    let color: string = palette.colorRest;
+    let finalBg = bg;
+    let finalBorder = borderColor;
+    if (active) {
+      color = palette.colorActive;
+      if (cardIconActive === "tint") {
+        finalBg = activeBg;
+      } else if (cardIconActive === "outline") {
+        finalBorder = activeBorder;
+      }
+      // "ink" only changes color
+    }
+    return {
+      className: "card-icon-btn cursor-pointer flex items-center justify-center pointer-events-auto",
+      style: {
+        width: cardIconSize,
+        height: cardIconSize,
+        borderRadius: radius,
+        border: "1px solid",
+        borderColor: finalBorder,
+        background: finalBg,
+        color,
+        padding: 0,
+        backdropFilter: cardIconChrome === "glass" ? "blur(10px)" : undefined,
+        WebkitBackdropFilter: cardIconChrome === "glass" ? "blur(10px)" : undefined,
+        transition: "background 180ms ease, border-color 180ms ease, color 180ms ease, opacity 180ms ease, transform 180ms ease",
+        ["--ci-bg-hover" as string]: hoverBg,
+        ["--ci-color-hover" as string]: palette.colorHover,
+        ["--ci-border-hover" as string]: hoverBorder,
+      },
+      iconBoxPx: Math.round(cardIconSize * 0.55),
+      iconStrokeWidth: cardIconStroke,
+    };
+  };
+
   // Action-pill variant — "pill" matches the data rows; "text" reads as a footer text-link;
   // "accent" tints label + arrow with --c-accent and prepends ↗; "dark" inverts the pill
   // (black base, white text); "hairline" prepends a 1px seam above the row to demote it.
@@ -1371,7 +1691,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // (nav + footer credit row). The side inset shares state with `navX`/`--nav-x`
   // so the same slider can live in either the Corner Margins or Nav tuner.
   const [showMarginTuner, setShowMarginTuner] = useState(false);
-  const [cornerY, setCornerY] = useState(8);
+  const [cornerY, setCornerY] = useState(18);
   useEffect(() => {
     document.documentElement.style.setProperty("--corner-y", `${cornerY}px`);
   }, [cornerY]);
@@ -1395,6 +1715,42 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [cardFillColor, setCardFillColor] = useState(SURFACE);
   const [cardFillAlpha, setCardFillAlpha] = useState(63);
   const [cardBlur, setCardBlur] = useState(28);
+  const bubbleVariants = useMemo<{ name: string; bg: string; shadow: string; shadowHover: string; backdropFilter?: string; ink?: string; inkDim?: string; fromCard?: boolean }[]>(() => {
+    const hex = cardFillColor.replace("#", "");
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    const mix = (factor: number) => {
+      const m = (c: number) => Math.round(c + (255 - c) * factor);
+      const toHex = (c: number) => m(c).toString(16).padStart(2, "0");
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+    };
+    const derived = [
+      { name: "Match", bg: cardFillColor.toUpperCase(), shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)", fromCard: true },
+      { name: "Soft", bg: mix(0.35), shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)", fromCard: true },
+      { name: "Softer", bg: mix(0.6), shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)", fromCard: true },
+      { name: "Lightest", bg: mix(0.85), shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)", fromCard: true },
+    ];
+    const neutrals = [
+      { name: "White", bg: "#FFFFFF", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Snow", bg: "#FCFCFC", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Pearl", bg: "#F9F9F9", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Bone", bg: "#F5F5F4", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Paper", bg: "#F2F2F0", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Mist", bg: "#F4F5F7", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Ash", bg: "#EEEEEE", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Stone", bg: "#E8E8E6", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Linen", bg: "#FAF8F4", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Frost", bg: "#F6F8FB", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Greige", bg: "#EEEDEA", shadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.10)" },
+      { name: "Silver", bg: "#E2E2E2", shadow: "inset 0 0 0 1px rgba(0,0,0,0.08)", shadowHover: "inset 0 0 0 1px rgba(0,0,0,0.11)" },
+      { name: "Slate", bg: "#2A2D33", shadow: "inset 0 0 0 1px rgba(255,255,255,0.07)", shadowHover: "inset 0 0 0 1px rgba(255,255,255,0.10)", ink: "#D8D8DC", inkDim: "#9A9AA0" },
+      { name: "Graphite", bg: "#1A1C1F", shadow: "inset 0 0 0 1px rgba(255,255,255,0.08)", shadowHover: "inset 0 0 0 1px rgba(255,255,255,0.11)", ink: "#D0D0D4", inkDim: "#90909A" },
+    ];
+    return [...derived, ...neutrals];
+  }, [cardFillColor]);
+  const bubble = bubbleVariants[bubbleVariant - 1] ?? bubbleVariants[0];
+  const bubbleShadow = bubbleOutline ? bubble.shadow : undefined;
   // Page background tint — 0 = pure white, higher = more grey
   const [pageBgLevel, setPageBgLevel] = useState(0);
   const pageBg = `rgb(${255 - pageBgLevel}, ${255 - pageBgLevel}, ${255 - pageBgLevel})`;
@@ -1449,7 +1805,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
   const centerHalfWidth = (() => {
     const cardPx = comparing
-      ? Math.min((robotW - 8) * windowWidth / 100, robotMaxW)
+      ? Math.min((robotW - 14) * windowWidth / 100, robotMaxW)
       : Math.min(robotW * windowWidth / 100, robotMaxW);
     const gap = statsGap;
     if (comparing) {
@@ -1717,14 +2073,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       if (isDev && (e.target as HTMLElement)?.closest?.("[data-tuner]")) return;
       // Hover ref replaces a closest() walk on every wheel tick.
       if (hoveringGalleryRef.current && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      // If the wheel happens inside a scrollable stats column with room to
-      // scroll in the current direction, let the native scroll take it rather
-      // than driving the humanoid wheel.
-      const statsEl = (e.target as HTMLElement)?.closest?.("[data-stats-scroll]") as HTMLElement | null;
-      if (statsEl) {
-        const canScrollUp = statsEl.scrollTop > 0;
-        const canScrollDown = statsEl.scrollTop + statsEl.clientHeight < statsEl.scrollHeight - 0.5;
-        if ((e.deltaY < 0 && canScrollUp) || (e.deltaY > 0 && canScrollDown)) return;
+      // Scroll zones are rectangles bounded by the card edges. Single view:
+      // anything past the card's right edge (stats column) is dead. Compare:
+      // the gutter between the two cards (middle stats column) is dead.
+      const lCard = leftCardRef.current;
+      if (lCard) {
+        const lr = lCard.getBoundingClientRect();
+        const rCard = rightCardRef.current;
+        if (comparingRef.current && rCard) {
+          const rr = rCard.getBoundingClientRect();
+          if (e.clientX > lr.right && e.clientX < rr.left) return;
+        } else if (e.clientX > lr.right) {
+          return;
+        }
       }
       e.preventDefault();
       const now = performance.now();
@@ -1890,12 +2251,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     }
   }, [comparing, springL.index, springR.index, onShareViewLabelChange]);
 
+  // Initial fade-in only — re-running on every index/compare change made the blurb
+  // re-flash whenever you landed on a card (most obvious on Memo, the home card).
   const [blurbReady, setBlurbReady] = useState(false);
   useEffect(() => {
-    setBlurbReady(false);
     const t = setTimeout(() => setBlurbReady(true), 350);
     return () => clearTimeout(t);
-  }, [springL.index, springR.index, comparing]);
+  }, []);
 
   useEffect(() => {
     onComparingChange?.(comparing);
@@ -2104,10 +2466,22 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           tagPadX={tagPadX} tagPadY={tagPadY} tagRadius={tagRadius} tagMarkerSize={tagMarkerSize} tagMarkerOp={tagMarkerOp}
         />
       </div>
-      {/* Right arc nav */}
-      {comparing && (
-        <div className="compare-r-enter fixed top-0 bottom-0 right-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
-          <ArcDots
+      {/* Right arc nav — always mounted; opacity rides the same clock as the
+          right card, slide-in/out comes from the inner SVG's `right` transition
+          on arcInset (mirrors the left arc). Visibility flips after the fade so
+          interior click targets don't catch events when the arc is hidden. */}
+      <div
+        className="fixed top-0 bottom-0 right-0 z-[3] overflow-visible"
+        style={{
+          width: 0,
+          opacity: comparing ? 1 : 0,
+          visibility: comparing ? "visible" : "hidden",
+          transition: comparing
+            ? "opacity var(--collapse-dur) var(--collapse-ease), visibility 0s linear 0s"
+            : "opacity var(--collapse-dur) var(--collapse-ease), visibility 0s linear var(--collapse-dur)",
+        }}
+      >
+        <ArcDots
             index={springR.index}
             subscribe={springR.subscribe}
             mirrored
@@ -2147,7 +2521,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             tagPadX={tagPadX} tagPadY={tagPadY} tagRadius={tagRadius} tagMarkerSize={tagMarkerSize} tagMarkerOp={tagMarkerOp}
           />
         </div>
-      )}
 
       {/* ── Add compare button — hover zone right of center ── */}
       {!comparing && (() => {
@@ -2158,8 +2531,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         const liftY = addHover ? -1 : 0;
         return (
           <div
-            className="absolute top-0 bottom-0 flex items-center justify-center cursor-pointer"
-            style={{ width: 140, right: "calc(19% - 82px)", zIndex: 12 }}
+            className="absolute flex items-center justify-center cursor-pointer"
+            style={{ width: 110, height: 100, top: "50%", transform: "translateY(-50%)", right: "calc(19% - 67px)", zIndex: 12 }}
             onClick={() => { setAddHover(false); enterCompare(); }}
             onMouseEnter={() => setAddHover(true)}
             onMouseLeave={() => setAddHover(false)}
@@ -2925,10 +3298,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)" }} />
             );
             const rowStyle: React.CSSProperties = {
-              display: "flex",
+              display: "grid",
+              gridTemplateColumns: "78px minmax(0, 1fr)",
               alignItems: "baseline",
-              justifyContent: "space-between",
-              gap: 14,
+              columnGap: 14,
               fontFamily: "var(--font-geist-sans)",
               lineHeight: 1.7,
               whiteSpace: "nowrap",
@@ -3003,7 +3376,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const renderStatRow = (label: string, value: string | number | null | undefined, formatter: (v: number) => string) => (
               <div style={{ ...rowStyle, minWidth: 0 }}>
                 <span style={dimmed}>{label}</span>
-                <MarqueeValue align="right" style={value == null ? missingValueStyle : valueStyle}>
+                <MarqueeValue align="left" style={value == null ? missingValueStyle : valueStyle}>
                   <span className="tabular-nums">
                     {value == null ? "—" : (typeof value === "number" ? formatter(value) : value)}
                   </span>
@@ -3108,11 +3481,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       WebkitTapHighlightColor: "transparent",
                     }}
                   >
+                    <span className="tabular-nums">{formatter(value)}</span>
                     <svg width="8" height="9" viewBox="0 0 8 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35, transform: "translateY(-1px)" }} aria-hidden>
                       <path d="M2 3 4 1 6 3" />
                       <path d="M2 6 4 8 6 6" />
                     </svg>
-                    <span className="tabular-nums">{formatter(value)}</span>
                   </button>
                 )}
               </div>
@@ -3161,6 +3534,70 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 <CountryValue country={h.country} valueStyle={valueStyle} visualSide={valueVisualSide} />
               </div>
             ) : renderStatRow("Country", null, (v) => `${v}`);
+            // Engineer-mode rows expand the specs block with the optional
+            // `engineering` block on each Humanoid. Missing values render as a
+            // dimmed em-dash so the column stays vertically consistent.
+            const engineerRows = engineerMode
+              ? ENGINEER_FIELDS.map((f) => renderStatRow(f.label, formatEngineerValue(h, f.key), (v) => `${v}`))
+              : [];
+            // Engineer toggle — uses the shared in-card icon system so it stays
+            // visually in lockstep with the info "i" and other card icons.
+            // A soft radial fade behind it keeps scrolling row text legible
+            // when it passes under the button.
+            const engIco = cardIconRender({ active: engineerMode });
+            const engIconBox = engIco.iconBoxPx;
+            const plusMinusIcon = engineerMode ? (
+              <svg width={engIconBox} height={engIconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={engIco.iconStrokeWidth} strokeLinecap="round">
+                <line x1="3.5" y1="8" x2="12.5" y2="8" />
+              </svg>
+            ) : (
+              <svg width={engIconBox} height={engIconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={engIco.iconStrokeWidth} strokeLinecap="round">
+                <line x1="3.5" y1="8" x2="12.5" y2="8" />
+                <line x1="8" y1="3.5" x2="8" y2="12.5" />
+              </svg>
+            );
+            const toggleFadeSize = cardIconSize + 28;
+            const engineerTabs = (
+              <div
+                className="pointer-events-none"
+                style={{
+                  position: "absolute",
+                  top: cardIconInset - 4,
+                  right: cardIconInset - 4,
+                  width: toggleFadeSize,
+                  height: toggleFadeSize,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "radial-gradient(circle at center, rgba(249,249,249,0.95) 38%, rgba(249,249,249,0) 78%)",
+                  borderRadius: 999,
+                  zIndex: 12,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setEngineerMode((v) => !v); }}
+                  aria-pressed={engineerMode}
+                  aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
+                  className={engIco.className}
+                  style={{ ...engIco.style, WebkitTapHighlightColor: "transparent" }}
+                >
+                  {plusMinusIcon}
+                </button>
+              </div>
+            );
+            // Basic view stays lean: Company, Year, Country, Height, Weight, Use.
+            // The more technical rows (DOF, Speed, Drive) only appear in engineer
+            // mode alongside the extended `engineering` block.
+            const technicalRows = engineerMode ? [
+              renderStatRow("DOF", h.dof, (v) => `${v}`),
+              speedRow,
+              renderStatRow("Drive", h.drive ?? null, (v) => `${v}`),
+            ] : [];
+            const headerRowCount = 6
+              + (unitToggleVariant === "row" ? 1 : 0)
+              + technicalRows.length;
+            const specsEndIdx = headerRowCount + engineerRows.length;
             const denseRows: React.ReactNode[] = [
               renderStatRow("Company", h.manufacturer ?? null, (v) => `${v}`),
               renderStatRow("Year", h.year ?? null, (v) => `${v}`),
@@ -3168,10 +3605,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               ...(unitToggleVariant === "row" ? [unitsRow] : []),
               heightRow,
               weightRow,
-              renderStatRow("DOF", h.dof, (v) => `${v}`),
-              speedRow,
               renderStatRow("Use", h.useCase ?? null, (v) => `${v}`),
-              renderStatRow("Drive", h.drive ?? null, (v) => `${v}`),
+              ...technicalRows,
+              ...engineerRows,
               renderStatRow("Price", priceChipText ?? null, (v) => `${v}`),
               statusRow,
               ...(purchaseRow ? [purchaseRow] : []),
@@ -3186,7 +3622,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               const scrolling = pinnedLast ? visible.slice(0, -1) : visible;
               const pinned = pinnedLast ? visible[visible.length - 1] : null;
               return (
-                <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding, flex: fill ? 1 : undefined, display: "flex", flexDirection: "column", gap: innerGap, minHeight: 0 }}>
+                <div style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding, flex: fill ? 1 : undefined, display: "flex", flexDirection: "column", gap: innerGap, minHeight: 0 }}>
                   <div className="flex flex-col" style={{ gap: innerGap, flex: fill ? 1 : undefined, justifyContent: fill ? "space-between" : undefined }}>
                     {scrolling.map((row, i) => (
                       <Fragment key={i}>
@@ -3204,13 +3640,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 </div>
               );
             };
-            const specsCard = renderRowsAsCard(denseRows.slice(0, 9), { fill: true }); // Company..Drive
+            const specsCard = renderRowsAsCard(denseRows.slice(0, specsEndIdx), { fill: false }); // Company..Drive (+ engineer rows)
             // Action card breathes a bit more so the 3 rows don't read as cramped after the tall specs card.
-            const actionCard = renderRowsAsCard(denseRows.slice(9), { gap: 8, padding: "10px 18px" }); // Price, Status, CTA
+            const actionCard = renderRowsAsCard(denseRows.slice(specsEndIdx), { gap: 8, padding: "10px 18px" }); // Price, Status, CTA
             const statsCard = (
-              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubble.shadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined}>
-                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
+                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap }}>
                     {denseDividers ? (
                       denseScrollRows.map((row, i) => (
                         <Fragment key={i}>
@@ -3240,7 +3676,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {denseDividers && denseActionRow && (
                   <>
                     {rowHairline}
-                    <div style={{ paddingTop: 12 }}>{denseActionRow}</div>
+                    {denseActionRow}
                   </>
                 )}
               </div>
@@ -3430,6 +3866,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // the visual fade.
             return (
               <div className="flex flex-col h-full pointer-events-auto" style={{ width: "100%", gap: stackGap, position: "relative", zIndex: 11 }}>
+                {engineerTabs}
                 <div
                   className="flex flex-col"
                   style={{
@@ -3447,14 +3884,16 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 >
                   <div className="flex flex-col" style={{ gap: denseDividers && splitCards ? statsGap : stackGap, flex: denseDividers ? 1 : undefined, minHeight: 0 }}>
                     {labelNode}
-                    {denseDividers && splitCards ? (
-                      <>
-                        {specsCard}
-                        {actionCard}
-                      </>
-                    ) : (
-                      statsCard
-                    )}
+                    <div style={{ display: "flex", flexDirection: "column", flex: denseDividers ? 1 : undefined, minHeight: 0, gap: denseDividers && splitCards ? statsGap : 0 }}>
+                      {denseDividers && splitCards ? (
+                        <>
+                          {specsCard}
+                          {actionCard}
+                        </>
+                      ) : (
+                        statsCard
+                      )}
+                    </div>
                     {denseDividers ? null : notesCard}
                     {denseDividers ? null : statusCard}
                   </div>
@@ -3808,42 +4247,43 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             </button>
           );
           const cycleUnits = (e: React.MouseEvent) => { e.stopPropagation(); onUseImperialChange?.(!useImperial); };
-          const compareUnitTapRow = (label: string, valL: string | null, valR: string | null) => (
-            <button
-              type="button"
-              onClick={cycleUnits}
-              aria-label={`Switch to ${useImperial ? "metric" : "imperial"}`}
-              className="cursor-pointer pointer-events-auto"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)",
-                alignItems: "baseline",
-                columnGap: 14,
-                lineHeight: 1.7,
-                background: "transparent",
-                border: "none",
-                padding: 0,
-                margin: 0,
-                width: "100%",
-                textAlign: "left" as const,
-                WebkitTapHighlightColor: "transparent",
-              }}
-            >
-              <span style={{ ...dimmed, whiteSpace: "nowrap", display: "inline-flex", alignItems: "baseline", gap: 5 }}>
-                <span>{label}</span>
-                <svg width="8" height="9" viewBox="0 0 8 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35, transform: "translateY(-1px)" }} aria-hidden>
-                  <path d="M2 3 4 1 6 3" />
-                  <path d="M2 6 4 8 6 6" />
-                </svg>
-              </span>
-              <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
-                <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valL || "—"}</span>
-              </MarqueeValue>
-              <MarqueeValue align="left" style={{ ...(valR ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
-                <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valR || "—"}</span>
-              </MarqueeValue>
-            </button>
-          );
+          const compareUnitTapRow = (label: string, valL: string | null, valR: string | null) => {
+            const valueCell = (val: string | null) => (
+              val == null ? (
+                <MarqueeValue align="left" style={{ ...missingValueStyle, whiteSpace: "nowrap" }}>
+                  <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>—</span>
+                </MarqueeValue>
+              ) : (
+                <MarqueeValue align="left" style={{ ...valueStyle, whiteSpace: "nowrap" }}>
+                  <button
+                    type="button"
+                    onClick={cycleUnits}
+                    aria-label={`Switch to ${useImperial ? "metric" : "imperial"}`}
+                    className="cursor-pointer pointer-events-auto"
+                    style={{
+                      background: "transparent", border: "none", padding: 0, margin: 0,
+                      ...valueStyle,
+                      display: "inline-flex", alignItems: "baseline", gap: 5,
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{val}</span>
+                    <svg width="8" height="9" viewBox="0 0 8 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35, transform: "translateY(-1px)" }} aria-hidden>
+                      <path d="M2 3 4 1 6 3" />
+                      <path d="M2 6 4 8 6 6" />
+                    </svg>
+                  </button>
+                </MarqueeValue>
+              )
+            );
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+                <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
+                {valueCell(valL)}
+                {valueCell(valR)}
+              </div>
+            );
+          };
           const compareUnitsRow = (
             <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Units</span>
@@ -3894,6 +4334,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               </MarqueeValue>
             </div>
           );
+          const engineerCompareRows = engineerMode
+            ? ENGINEER_FIELDS.map((f) => compareRow(f.label, formatEngineerValue(hL, f.key), formatEngineerValue(hR, f.key)))
+            : [];
+          const technicalCompareRows = engineerMode ? [
+            compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null),
+            speedCompareRow,
+            compareRow("Drive", hL.drive ?? null, hR.drive ?? null),
+          ] : [];
           const denseRows: React.ReactNode[] = [
             compareRow("Company", hL.manufacturer ?? null, hR.manufacturer ?? null),
             compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null),
@@ -3901,10 +4349,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             ...(unitToggleVariant === "row" ? [compareUnitsRow] : []),
             heightCompareRow,
             weightCompareRow,
-            compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null),
-            speedCompareRow,
             compareRow("Use", hL.useCase ?? null, hR.useCase ?? null),
-            compareRow("Drive", hL.drive ?? null, hR.drive ?? null),
+            ...technicalCompareRows,
+            ...engineerCompareRows,
             compareRow("Price", priceL, priceR),
             statusRow,
             copyRow,
@@ -3916,7 +4363,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {blurbBlock}
                 <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)", padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                   <StatsScrollArea flex={denseDividers ? 1 : undefined}>
-                    <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, flex: denseDividers ? 1 : undefined, justifyContent: denseDividers ? "space-between" : undefined }}>
+                    <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap }}>
                       {denseDividers ? (
                         denseRows.slice(0, -1).map((row, i) => (
                           <Fragment key={i}>
@@ -3946,7 +4393,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   {denseDividers && denseRows.length > 0 && (
                     <>
                       {rowHairline}
-                      <div style={{ paddingTop: 12 }}>{denseRows[denseRows.length - 1]}</div>
+                      {denseRows[denseRows.length - 1]}
                     </>
                   )}
                 </div>
@@ -4037,28 +4484,29 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       transition: "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
                     } : null),
                   };
-                  return (
-                    <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: isVideo || isCover ? 0 : isBottom ? "24px 24px 0 24px" : 24, background: isVideo ? "#000000" : undefined }}>
-                      <div className="relative w-full h-full">
-                        {isVideo ? (
+                  if (isVideo) {
+                    return (
+                      <div key={i} className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0, scrollSnapAlign: "start", padding: 0, background: "#000000" }}>
+                        <div className="relative w-full h-full">
                           <GalleryVideoSlide mIdx={mIdx} slideIdx={i} videoPaused={videoPaused} subscribe={subscribeGalleryIdx} read={readGalleryIdx} src={item.src} fit={isCover ? "cover" : "contain"} position={item.position} credit={item.credit} />
-                        ) : (
-                          /* No `key={item.src}` here — re-keying on src forces a fresh mount + image decode on every humanoid swap (~40% of decode + paint work in profiling). The previous workaround for a one-frame flash at natural size was `key={item.src}`; in current Next.js the flash appears gone or at most extremely rare, so the perf trade is worth it. If a flash returns, prefer a non-key fix (inline `objectFit` style, aspect-ratio on parent, or `Image.decode()` pre-swap). */
-                          <Image
-                            src={item.src}
-                            alt={`${mh.name} ${i + 1}`}
-                            fill
-                            className={isCover ? "object-cover" : "object-contain"}
-                            style={imageStyle}
-                            sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`}
-                            priority={markPriority && i === 0}
-                          />
-                        )}
-                        {isBottom && !isVideo && (
-                          <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]" style={{ height: bottomFadeH, background: `linear-gradient(to bottom, transparent, rgba(250,250,250,${bottomFadeOpacity}))` }} />
-                        )}
+                        </div>
                       </div>
-                    </div>
+                    );
+                  }
+                  return (
+                    /* MediaImageSlide owns ready-state + placeholder rendering at the slide-cell level so the silhouette sits at the same spot across cards. */
+                    <MediaImageSlide
+                      key={i}
+                      src={item.src}
+                      alt={`${mh.name} ${i + 1}`}
+                      isCover={isCover}
+                      isBottom={isBottom}
+                      imageStyle={imageStyle}
+                      sizes={comparing ? `${robotW - 14}vw` : `${robotW}vw`}
+                      priority={markPriority && i === 0}
+                      bottomFadeH={bottomFadeH}
+                      bottomFadeOpacity={bottomFadeOpacity}
+                    />
                   );
                 }) : (
                   <div className="relative flex items-center justify-center p-6 pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
@@ -4187,39 +4635,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
-            {/* Info-icon collapse affordance — sits above the card on the
-                right edge, where it lived inside the old above-card label row. */}
-            {collapseVariant === "info-icon" && !comparing && isFirst && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
-                aria-label={statsCollapsed ? "Show details" : "Hide details"}
-                className="absolute z-30 cursor-pointer flex items-center justify-center pointer-events-auto"
-                style={{
-                  top: -34,
-                  right: 0,
-                  width: labelLogoSize,
-                  height: labelLogoSize,
-                  borderRadius: 999,
-                  background: "transparent",
-                  color: "rgba(0,0,0,0.45)",
-                  border: "1px solid rgba(0,0,0,0.18)",
-                  padding: 0,
-                  fontFamily: "var(--font-geist-sans)",
-                  fontSize: Math.round(labelLogoSize * 0.55),
-                  fontWeight: 500,
-                  lineHeight: 1,
-                  transition: `border-color ${dur} ${ease}, color ${dur} ${ease}`,
-                }}
-              >
-                i
-              </button>
-            )}
             {/* Inner card */}
             <div
               ref={isFirst ? leftCardRef : rightCardRef}
               className="relative flex flex-col overflow-hidden"
               style={{
-                width: comparing ? `${robotW - 8}vw` : `${robotW}vw`,
+                width: comparing ? `${robotW - 14}vw` : `${robotW}vw`,
                 height: comparing ? `${robotH - 4}vh` : `${robotH}vh`,
                 maxWidth: robotMaxW,
                 borderRadius: cardRadius,
@@ -4342,63 +4763,95 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     subscribe={subscribeGalleryIdx}
                     read={readGalleryIdx}
                     onClick={() => onShareView?.()}
+                    getIconStyle={(opts) => cardIconRender(opts)}
+                    position={{ bottom: cardIconInset, right: cardIconInset }}
+                    hoverFade={cardIconHoverFade}
                   />
                 )}
+                {/* Info-icon collapse affordance — top-right corner of the card,
+                    always visible since it's the primary show/hide-details toggle. */}
+                {collapseVariant === "info-icon" && !comparing && isFirst && (() => {
+                  const ico = cardIconRender({ active: !statsCollapsed });
+                  return (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
+                      aria-label={statsCollapsed ? "Show details" : "Hide details"}
+                      className={`${ico.className} absolute z-30`}
+                      style={{
+                        ...ico.style,
+                        top: cardIconInset,
+                        right: cardIconInset,
+                        fontFamily: "var(--font-geist-sans)",
+                        fontSize: Math.round(cardIconSize * 0.55),
+                        fontWeight: 500,
+                        lineHeight: 1,
+                      }}
+                    >
+                      i
+                    </button>
+                  );
+                })()}
                 {/* 3D toggle — bottom-right, only for robots with a URDF mesh set */}
-                {isFirst && !comparing && THREEDEE_ROBOTS[h.id] && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShow3D((v) => !v);
-                    }}
-                    aria-label={show3D ? "Show photo" : "View in 3D"}
-                    className={`absolute bottom-2 right-2 z-30 h-8 px-2.5 flex items-center gap-1 rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ease-out ${
-                      show3D
-                        ? "bg-white/75 backdrop-blur-md text-neutral-800 opacity-100"
-                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0"
-                    }`}
-                  >
-                    <Box width={15} height={15} strokeWidth={1.75} />
-                    <span className="text-[12px] tracking-tight font-medium">3D</span>
-                  </button>
-                )}
+                {isFirst && !comparing && THREEDEE_ROBOTS[h.id] && (() => {
+                  const ico = cardIconRender({ active: show3D });
+                  const fadeClass = cardIconHoverFade && !show3D ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
+                  // When "3D" text is shown, widen into a pill but reuse all chrome tokens.
+                  const pillStyle: React.CSSProperties = cardIcon3DLabel
+                    ? { ...ico.style, width: "auto", paddingLeft: 10, paddingRight: 12, gap: 6 }
+                    : ico.style;
+                  return (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShow3D((v) => !v);
+                      }}
+                      aria-label={show3D ? "Show photo" : "View in 3D"}
+                      className={`${ico.className} absolute z-30 ${fadeClass}`}
+                      style={{ ...pillStyle, bottom: cardIconInset, right: cardIconInset + cardIconSize + cardIconGap }}
+                    >
+                      <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                      {cardIcon3DLabel && <span className="text-[12px] tracking-tight font-medium">3D</span>}
+                    </button>
+                  );
+                })()}
                 {/* Auto-rotate (play/pause) — bottom-right, only for spin-enabled robots */}
-                {isFirst && !comparing && SPIN_ROBOTS[h.id] && (
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (spinPlaying) {
-                        spinLoopRef.current = false;
-                        spinViewerRef.current?.cancelPlay();
-                        return;
-                      }
-                      spinLoopRef.current = true;
-                      setSpinPlaying(true);
-                      try {
-                        while (spinLoopRef.current) {
-                          const viewer = spinViewerRef.current;
-                          if (!viewer) break;
-                          await viewer.playRotation();
+                {isFirst && !comparing && SPIN_ROBOTS[h.id] && (() => {
+                  const ico = cardIconRender({ active: spinPlaying });
+                  const fadeClass = cardIconHoverFade && !spinPlaying ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
+                  return (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (spinPlaying) {
+                          spinLoopRef.current = false;
+                          spinViewerRef.current?.cancelPlay();
+                          return;
                         }
-                      } finally {
-                        spinLoopRef.current = false;
-                        setSpinPlaying(false);
-                      }
-                    }}
-                    aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
-                    className={`absolute bottom-2 right-2 z-30 w-8 h-8 flex items-center justify-center rounded-full cursor-pointer pointer-events-auto transition-all duration-200 ease-out ${
-                      spinPlaying
-                        ? "bg-white/75 backdrop-blur-md text-neutral-800 opacity-100"
-                        : "text-neutral-500 hover:text-neutral-800 hover:bg-white/75 hover:backdrop-blur-md opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0"
-                    }`}
-                  >
-                    {spinPlaying ? (
-                      <Pause width={17} height={17} strokeWidth={1.75} />
-                    ) : (
-                      <Play width={17} height={17} strokeWidth={1.75} />
-                    )}
-                  </button>
-                )}
+                        spinLoopRef.current = true;
+                        setSpinPlaying(true);
+                        try {
+                          while (spinLoopRef.current) {
+                            const viewer = spinViewerRef.current;
+                            if (!viewer) break;
+                            await viewer.playRotation();
+                          }
+                        } finally {
+                          spinLoopRef.current = false;
+                          setSpinPlaying(false);
+                        }
+                      }}
+                      aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
+                      className={`${ico.className} absolute z-30 ${fadeClass}`}
+                      style={{ ...ico.style, bottom: cardIconInset, right: cardIconInset + cardIconSize + cardIconGap }}
+                    >
+                      {spinPlaying ? (
+                        <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                      ) : (
+                        <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                      )}
+                    </button>
+                  );
+                })()}
                 {/* Video play/pause — appears when on a video slide; lives in the bottom-right cluster */}
                 {isFirst && !comparing && (
                   <GalleryVideoPauseButton
@@ -4408,6 +4861,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     read={readGalleryIdx}
                     videoPaused={videoPaused}
                     onToggle={() => setVideoPaused((p) => !p)}
+                    getIconStyle={(opts) => cardIconRender(opts)}
+                    position={{ bottom: cardIconInset, right: cardIconInset + cardIconSize + cardIconGap }}
+                    hoverFade={cardIconHoverFade}
                   />
                 )}
               </div>
@@ -4652,7 +5108,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 // violent; the fade carries most of the entrance weight.
                 transform: `translateX(${comparing ? 0 : (splitHover ? 60 : 80)}px) scale(${comparing ? 1 : 0.98})`,
                 transformOrigin: "left center",
-                width: comparing ? `${robotW - 8}vw` : 0,
+                width: comparing ? `${robotW - 14}vw` : 0,
                 maxWidth: robotMaxW,
                 marginLeft: comparing ? effectiveGap : 0,
                 overflow: "visible",
@@ -4769,7 +5225,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           </div>
           <div className="pt-2 border-t border-neutral-100">
             <button
-              onClick={() => { setCornerY(8); setNavX(24); setAutoNavX(true); }}
+              onClick={() => { setCornerY(18); setNavX(24); setAutoNavX(true); }}
               className="text-[12px] text-neutral-400 hover:text-neutral-600 cursor-pointer"
             >
               Reset
@@ -5293,6 +5749,57 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             )}
           </div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] tracking-widest uppercase text-neutral-400">Card Icons</p>
+              <button
+                className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer"
+                onClick={() => {
+                  setCardIconChrome("ghost");
+                  setCardIconShape("circle");
+                  setCardIconSize(30);
+                  setCardIconStroke(1.5);
+                  setCardIconInset(10);
+                  setCardIconGap(4);
+                  setCardIconActive("tint");
+                  setCardIconHoverFade(true);
+                  setCardIcon3DLabel(false);
+                }}
+              >
+                Reset
+              </button>
+            </div>
+            <div>
+              <p className="text-[12px] text-neutral-500 mb-1.5">Chrome</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(["ghost", "outline", "filled", "glass"] as const).map((v) => (
+                  <button key={v} onClick={() => setCardIconChrome(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${cardIconChrome === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[12px] text-neutral-500 mb-1.5">Shape</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(["circle", "rounded", "square"] as const).map((v) => (
+                  <button key={v} onClick={() => setCardIconShape(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${cardIconShape === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[12px] text-neutral-500 mb-1.5">Active state</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(["tint", "ink", "outline"] as const).map((v) => (
+                  <button key={v} onClick={() => setCardIconActive(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${cardIconActive === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>
+                ))}
+              </div>
+            </div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Size <span className="tabular-nums text-neutral-400">{cardIconSize}px</span></label><input type="range" min={20} max={44} value={cardIconSize} onChange={(e) => setCardIconSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Stroke <span className="tabular-nums text-neutral-400">{cardIconStroke.toFixed(2)}</span></label><input type="range" min={100} max={250} value={Math.round(cardIconStroke * 100)} onChange={(e) => setCardIconStroke(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Corner inset <span className="tabular-nums text-neutral-400">{cardIconInset}px</span></label><input type="range" min={4} max={20} value={cardIconInset} onChange={(e) => setCardIconInset(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Gap between icons <span className="tabular-nums text-neutral-400">{cardIconGap}px</span></label><input type="range" min={0} max={16} value={cardIconGap} onChange={(e) => setCardIconGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Hover-fade secondary</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIconHoverFade ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIconHoverFade(!cardIconHoverFade)}>{cardIconHoverFade ? "On" : "Off"}</button></div>
+            <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Show &ldquo;3D&rdquo; label</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIcon3DLabel ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIcon3DLabel(!cardIcon3DLabel)}>{cardIcon3DLabel ? "On" : "Off"}</button></div>
+          </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Nav</p>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Chrome</p><div className="flex flex-wrap gap-1.5">{(["split", "joined"] as const).map((s) => (<button key={s} onClick={() => onChromeVariantChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${chromeVariant === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
@@ -5584,11 +6091,65 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div>
               <label className="text-[12px] text-neutral-500 flex justify-between">Blurb size <span className="tabular-nums text-neutral-400">{blurbFontSize}px</span></label>
               <input type="range" min={9} max={16} value={blurbFontSize} onChange={(e) => setBlurbFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
-              <label className="text-[12px] text-neutral-500 flex justify-between mt-2">Bubble variant <span className="tabular-nums text-neutral-400">{bubbleVariant}/{bubbleVariants.length} · {bubbleVariants[bubbleVariant - 1].name}</span></label>
-              <input type="range" min={1} max={bubbleVariants.length} value={bubbleVariant} onChange={(e) => setBubbleVariant(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
-              <div className="flex gap-1 mt-1">
-                <button type="button" onClick={() => setBubbleVariant((v) => Math.max(1, v - 1))} className="text-[12px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>← prev</button>
-                <button type="button" onClick={() => setBubbleVariant((v) => Math.min(bubbleVariants.length, v + 1))} className="text-[12px] px-2 py-1 rounded" style={{ background: "#f0f0f0", color: "#666", border: "none", cursor: "pointer" }}>next →</button>
+              <label className="text-[12px] text-neutral-500 flex justify-between mt-2">
+                <span>Stat-col fill <span className="text-neutral-400">· {bubbleVariants[bubbleVariant - 1].name}</span></span>
+                <button
+                  type="button"
+                  onClick={() => setBubbleOutline((v) => !v)}
+                  className="text-[11px] px-1.5 py-0.5 rounded transition-colors"
+                  style={{ background: bubbleOutline ? "#1a1a1a" : "#f0f0f0", color: bubbleOutline ? "#fff" : "#666", border: "none", cursor: "pointer" }}
+                  title="Toggle stat-col outline"
+                >
+                  Outline {bubbleOutline ? "ON" : "OFF"}
+                </button>
+              </label>
+              <div className="text-[10px] text-neutral-400 uppercase tracking-wider mt-1.5 mb-1">From card</div>
+              <div className="grid grid-cols-6 gap-1.5">
+                {bubbleVariants.filter((b) => b.fromCard).map((b) => {
+                  const i = bubbleVariants.indexOf(b);
+                  const selected = bubbleVariant === i + 1;
+                  return (
+                    <button
+                      key={b.name}
+                      type="button"
+                      title={`${b.name} · ${b.bg}`}
+                      onClick={() => setBubbleVariant(i + 1)}
+                      className="relative h-7 rounded-md cursor-pointer transition-transform hover:scale-[1.06]"
+                      style={{
+                        background: b.bg,
+                        boxShadow: selected
+                          ? `${b.shadow}, 0 0 0 2px #1a1a1a`
+                          : b.shadow,
+                        backdropFilter: b.backdropFilter,
+                        WebkitBackdropFilter: b.backdropFilter,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              <div className="text-[10px] text-neutral-400 uppercase tracking-wider mt-2 mb-1">Neutrals</div>
+              <div className="grid grid-cols-6 gap-1.5">
+                {bubbleVariants.filter((b) => !b.fromCard).map((b) => {
+                  const i = bubbleVariants.indexOf(b);
+                  const selected = bubbleVariant === i + 1;
+                  return (
+                    <button
+                      key={b.name}
+                      type="button"
+                      title={b.name}
+                      onClick={() => setBubbleVariant(i + 1)}
+                      className="relative h-7 rounded-md cursor-pointer transition-transform hover:scale-[1.06]"
+                      style={{
+                        background: b.bg,
+                        boxShadow: selected
+                          ? `${b.shadow}, 0 0 0 2px #1a1a1a`
+                          : b.shadow,
+                        backdropFilter: b.backdropFilter,
+                        WebkitBackdropFilter: b.backdropFilter,
+                      }}
+                    />
+                  );
+                })}
               </div>
               <div className="mt-2">
                 <button
@@ -6166,26 +6727,61 @@ export default function HomeClient() {
   const shareOgRef = useRef("");
   const copyUrl = useCallback((url: string, label: string, ogUrl?: string) => {
     navigator.clipboard.writeText(url);
-    toast.custom((id) => (
-      <div
-        onClick={() => toast.dismiss(id)}
-        style={{
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(20px) saturate(140%)",
-          WebkitBackdropFilter: "blur(20px) saturate(140%)",
-          border: "1px solid #ececec",
-          boxShadow: "0 10px 30px -8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.04)",
-          borderRadius: 16,
-          padding: 6,
-          cursor: "pointer",
-        }}
-      >
-        {ogUrl && <OgPreview src={ogUrl} />}
-        <div style={{ fontSize: 12, color: "#737373", padding: "6px 8px 2px", letterSpacing: "-0.005em" }}>
-          {label}
+    // With an ogUrl, hold the toast open until the image loads (gen can take
+    // longer than a fixed duration on cold cache), then linger so the swipe
+    // reveal is actually visible. Safety timer dismisses if the image never
+    // resolves. Without ogUrl, keep the old fixed duration.
+    if (!ogUrl) {
+      toast.custom((id) => (
+        <div
+          onClick={() => toast.dismiss(id)}
+          style={{
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(20px) saturate(140%)",
+            WebkitBackdropFilter: "blur(20px) saturate(140%)",
+            border: "1px solid #ececec",
+            boxShadow: "0 10px 30px -8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.04)",
+            borderRadius: 16,
+            padding: 6,
+            cursor: "pointer",
+          }}
+        >
+          <div style={{ fontSize: 12, color: "#737373", padding: "6px 8px 2px", letterSpacing: "-0.005em" }}>
+            {label}
+          </div>
         </div>
-      </div>
-    ), { duration: 2600 });
+      ), { duration: 2600 });
+      return;
+    }
+    toast.custom((id) => {
+      let dismissed = false;
+      const dismiss = () => { if (!dismissed) { dismissed = true; toast.dismiss(id); } };
+      const safety = setTimeout(dismiss, 8000);
+      const onReady = () => {
+        // 520ms swipe + ~980ms dwell on the revealed image before dismiss.
+        setTimeout(() => { clearTimeout(safety); dismiss(); }, 1500);
+      };
+      return (
+        <div
+          onClick={() => { clearTimeout(safety); dismiss(); }}
+          style={{
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(20px) saturate(140%)",
+            WebkitBackdropFilter: "blur(20px) saturate(140%)",
+            border: "1px solid #ececec",
+            boxShadow: "0 10px 30px -8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.04)",
+            borderRadius: 16,
+            padding: 6,
+            cursor: "pointer",
+          }}
+        >
+          <OgPreview src={ogUrl} onReady={onReady} />
+          <div style={{ fontSize: 12, color: "#737373", padding: "6px 8px 2px", letterSpacing: "-0.005em" }}>
+            {label}
+          </div>
+        </div>
+      );
+    }, { duration: Infinity });
   }, []);
   const [allCaps, setAllCaps] = useState(false);
 
@@ -6529,26 +7125,37 @@ export default function HomeClient() {
       {introDone && (() => {
         const creditStyle: React.CSSProperties = {
           fontSize: 13,
-          fontWeight: 400,
+          fontWeight: 500,
           letterSpacing: "normal",
           color: "oklch(65% 0.011 222.2)",
           whiteSpace: "nowrap",
         };
         return (
           <div
-            className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none flex items-center justify-between"
-            style={{ bottom: "var(--corner-y, 8px)", minHeight: 26, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}
+            className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none"
+            style={{ bottom: "var(--corner-y, 8px)" }}
           >
-            <div className="flex items-center pointer-events-auto">
-              <span style={creditStyle}>Roy Jad © 2026</span>
-            </div>
-            <div className="flex items-center pointer-events-auto">
-              <SiteOptionsMenu
-                inline
-                shareLabel={shareViewLabel}
-                onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
-                visible={introDone}
-              />
+            <div
+              className="grid items-center"
+              style={{
+                minHeight: 26,
+                width: "min(720px, 80vw)",
+                margin: "0 auto",
+                gridTemplateColumns: "1fr 80px 1fr",
+              }}
+            >
+              <div className="pointer-events-auto" style={{ justifySelf: "start" }}>
+                <span style={creditStyle}>Roy Jad © 2026</span>
+              </div>
+              <div />
+              <div className="pointer-events-auto" style={{ justifySelf: "end" }}>
+                <SiteOptionsMenu
+                  inline
+                  shareLabel={shareViewLabel}
+                  onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
+                  visible={introDone}
+                />
+              </div>
             </div>
           </div>
         );

@@ -217,8 +217,8 @@ function FiltersNav({ onShareSite, onLogoClick }: { onShareSite?: () => void; on
         className="grid items-center"
         style={{
           height: 48,
-          paddingLeft: "var(--nav-x, 24px)",
-          paddingRight: "var(--nav-x, 24px)",
+          paddingLeft: "var(--nav-edge, 24px)",
+          paddingRight: "var(--nav-edge, 24px)",
           gridTemplateColumns: "1fr auto 1fr",
         }}
       >
@@ -469,7 +469,7 @@ function ChipNav({
       className="fixed left-0 right-0 z-50 pointer-events-auto"
       style={{ top: 0, background: "transparent" }}
     >
-      <div className="flex items-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+      <div className="flex items-center" style={{ height: 48, paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
         <Chip
           active
           onClick={onLogoClick}
@@ -643,7 +643,7 @@ export function LayoutSwitcher({
   let navEl: React.ReactElement;
   // ── Style: floating (original — island with border) ──
   if (navStyle === "floating") navEl = (
-    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{mark}</div>
         <div className="flex-1 flex justify-center">
@@ -667,7 +667,7 @@ export function LayoutSwitcher({
 
   // ── Style: pill — rounded capsule, tinted active state ──
   else if (navStyle === "pill") navEl = (
-    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{mark}</div>
         <div className="flex-1 flex justify-center">
@@ -920,7 +920,7 @@ export function LayoutSwitcher({
     }
 
     navEl = (
-      <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 4px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+      <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 4px)", paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
         <div className="flex items-center justify-center gap-4">
           <div className="pointer-events-auto">{mark}</div>
           <div className="pointer-events-auto flex items-center">
@@ -934,7 +934,7 @@ export function LayoutSwitcher({
 
   // ── Style: bordered — full-width top bar with bottom border ──
   else if (navStyle === "bordered") navEl = (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={{ ...frost, paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-neutral-200/60 pointer-events-auto" style={{ ...frost, paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
       <div className="flex items-center gap-4 pb-3">
         <div>{mark}</div>
         <div className="flex-1 flex justify-center">
@@ -956,7 +956,7 @@ export function LayoutSwitcher({
 
   // ── Style: minimal — just text, no container, no border ──
   else if (navStyle === "minimal") navEl = (
-    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{mark}</div>
         <div className="flex-1 flex justify-center">
@@ -1010,7 +1010,7 @@ export function LayoutSwitcher({
         {/* Morphing nav: pill ⇄ panel */}
         <nav
           className="fixed top-0 left-0 right-0 z-[60] pointer-events-none"
-          style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}
+          style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}
         >
           <div className="flex justify-center">
             <div
@@ -1236,8 +1236,7 @@ export function LayoutSwitcher({
     );
   }
 
-  // ── Style: trio — Humanoid Index left, Shuffle center (lighter chip), Share right.
-  //    No tab switcher; shuffle is the only central action. ──
+  // ── Style: trio — Humanoid Index + Dice + Share, bunched centered cluster. ──
   else if (navStyle === "trio") {
     const trioLabelStyle: React.CSSProperties = {
       fontSize: 13,
@@ -1245,31 +1244,30 @@ export function LayoutSwitcher({
       letterSpacing: "normal",
       color: "oklch(65% 0.011 222.2)",
       background: "transparent",
-      paddingLeft: 12,
-      paddingRight: 12,
-      marginLeft: -12,
     };
     navEl = joined ? <></> : (
       <nav
-        className="fixed left-0 right-0 z-50 pointer-events-auto"
+        className="fixed left-0 right-0 z-50 pointer-events-none"
         style={{ top: "var(--corner-y, 8px)", background: "transparent" }}
       >
         <div
-          className="flex items-center justify-between"
+          className="grid items-center"
           style={{
-            paddingLeft: "var(--nav-x, 24px)",
-            paddingRight: "var(--nav-x, 24px)",
+            minHeight: 26,
+            width: "min(720px, 80vw)",
+            margin: "0 auto",
+            gridTemplateColumns: "1fr 80px 1fr",
           }}
         >
-          <div className="flex justify-start items-center">
+          <div className="pointer-events-auto" style={{ justifySelf: "start" }}>
             <Chip
               onClick={() => onGoHome?.()}
-              style={{ ...trioLabelStyle, padding: "0 12px" }}
+              style={{ ...trioLabelStyle, padding: "0 4px" }}
             >
               Humanoid Index
             </Chip>
           </div>
-          <div className="flex justify-end items-center">
+          <div className="pointer-events-auto" style={{ justifySelf: "center" }}>
             <button
               onClick={() => {
                 setDiceRollNonce((n) => n + 1);
@@ -1280,8 +1278,7 @@ export function LayoutSwitcher({
               style={{
                 background: "transparent",
                 border: "none",
-                padding: 4,
-                marginRight: -4,
+                padding: 0,
                 cursor: "pointer",
                 fontSize: 18,
                 lineHeight: 1,
@@ -1306,6 +1303,14 @@ export function LayoutSwitcher({
               )}
             </button>
           </div>
+          <div className="pointer-events-auto" style={{ justifySelf: "end" }}>
+            <Chip
+              onClick={() => onShareSite?.()}
+              style={{ ...trioLabelStyle, padding: "0 4px" }}
+            >
+              Share
+            </Chip>
+          </div>
         </div>
       </nav>
     );
@@ -1319,7 +1324,7 @@ export function LayoutSwitcher({
         className="fixed left-0 right-0 z-50 pointer-events-auto"
         style={{ top: 0, background: "transparent" }}
       >
-        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)", gap: 4 }}>
+        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)", gap: 4 }}>
           <Chip
             onClick={handleClick}
             style={{
@@ -1345,7 +1350,7 @@ export function LayoutSwitcher({
         className="fixed left-0 right-0 z-50 pointer-events-auto"
         style={{ top: 0, background: "transparent" }}
       >
-        <div className="flex items-center justify-between" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+        <div className="flex items-center justify-between" style={{ height: 48, paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
           <Chip
             onClick={handleClick}
             style={{
@@ -1398,7 +1403,7 @@ export function LayoutSwitcher({
         className="fixed left-0 right-0 z-50 pointer-events-auto"
         style={{ top: 0, background: "transparent" }}
       >
-        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
           <button
             onClick={() => onShareSite?.()}
             className="cursor-pointer flip-share-btn"
@@ -1438,7 +1443,7 @@ export function LayoutSwitcher({
         className="fixed left-0 right-0 z-50 pointer-events-auto"
         style={{ top: 0, background: "transparent" }}
       >
-        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
           <Chip
             onClick={() => onShareSite?.()}
             className="share-reveal"
@@ -1477,8 +1482,8 @@ export function LayoutSwitcher({
           className="grid items-center"
           style={{
             height: 48,
-            paddingLeft: "var(--nav-x, 24px)",
-            paddingRight: "var(--nav-x, 24px)",
+            paddingLeft: "var(--nav-edge, 24px)",
+            paddingRight: "var(--nav-edge, 24px)",
             gridTemplateColumns: "1fr auto 1fr",
           }}
         >
@@ -1540,7 +1545,7 @@ export function LayoutSwitcher({
         className="fixed left-0 right-0 z-50 pointer-events-auto"
         style={{ top: 0, background: "transparent" }}
       >
-        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+        <div className="flex items-center justify-center" style={{ height: 48, paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
           <Chip
             onClick={handleClick}
             style={{
@@ -1595,7 +1600,7 @@ export function LayoutSwitcher({
 
   // ── Style: solid — dark bar, inverted text ──
   else navEl = (
-    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-x, 24px)", paddingRight: "var(--nav-x, 24px)" }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: "var(--nav-top, 8px)", paddingLeft: "var(--nav-edge, 24px)", paddingRight: "var(--nav-edge, 24px)" }}>
       <div className="flex items-center gap-4">
         <div className="pointer-events-auto">{solidMark}</div>
         <div className="flex-1 flex justify-center">
