@@ -5,7 +5,7 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
-import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box } from "lucide-react";
+import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, type Humanoid } from "@/data/humanoids";
 import Image from "next/image";
@@ -45,7 +45,9 @@ const THREEDEE_ROBOTS: Record<
   },
 };
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
-import SiteOptionsMenu from "@/components/SiteOptionsMenu";
+import ContactSheet from "@/components/ContactSheet";
+
+const FOOTER_CONTACT_EMAIL = "jadroy77@gmail.com";
 import EnvironmentToggle from "@/components/EnvironmentToggle";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
@@ -216,14 +218,18 @@ function VideoSlide({ src, fit, position, playing, credit }: { src: string; fit:
         style={position ? { objectPosition: position } : undefined}
       />
       {credit && (
-        <div className="absolute bottom-2 left-3 z-[2] text-[11px] tracking-tight text-white/40 pointer-events-auto">
+        <div
+          className="absolute bottom-2 left-3 z-[4] pointer-events-auto"
+          style={{ fontSize: 12, fontWeight: 500, letterSpacing: "normal", lineHeight: 1, color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap" }}
+        >
           {credit.prefix && <span>{credit.prefix} </span>}
           {credit.href ? (
             <a
               href={credit.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/55 hover:text-white/85 transition-colors"
+              className="hover:underline underline-offset-2 transition-colors"
+              style={{ color: "rgba(255,255,255,0.85)" }}
             >
               {credit.name}
             </a>
@@ -263,7 +269,7 @@ function GalleryDots({ mIdx, count, isVideoOn, subscribe, read }: {
   const currentIsVideo = isVideoOn(current);
   return (
     <div
-      className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
+      className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-[3] pointer-events-none"
       style={{
         height: 28,
         background: currentIsVideo
@@ -300,7 +306,7 @@ function GalleryArrows({ mIdx, count, scroll, subscribe, read }: {
     <>
       {current > 0 && (
         <button
-          className="absolute left-1.5 top-1/2 -translate-y-1/2 -translate-x-0.5 group-hover/card:translate-x-0 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-[opacity,transform] duration-200 ease-out cursor-pointer z-[5]"
+          className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity duration-200 ease-out cursor-pointer z-[5]"
           style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
           onClick={(e) => { e.stopPropagation(); scroll(current - 1); }}
         >
@@ -309,7 +315,7 @@ function GalleryArrows({ mIdx, count, scroll, subscribe, read }: {
       )}
       {current < count - 1 && (
         <button
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 translate-x-0.5 group-hover/card:translate-x-0 w-6 h-6 flex items-center justify-center opacity-0 group-hover/card:opacity-60 hover:!opacity-100 transition-[opacity,transform] duration-200 ease-out cursor-pointer z-[5]"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity duration-200 ease-out cursor-pointer z-[5]"
           style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
           onClick={(e) => { e.stopPropagation(); scroll(current + 1); }}
         >
@@ -1287,6 +1293,36 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   useEffect(() => {
     try { localStorage.setItem("humanoid-index:engineerMode", String(engineerMode)); } catch {}
   }, [engineerMode]);
+  // Hide rows whose value is null/missing — useful when engineer mode reveals
+  // a lot of rows and only ~5 robots have full data.
+  const [hideEmptyRows, setHideEmptyRows] = useState(false);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("humanoid-index:hideEmptyRows");
+      if (stored === "true") setHideEmptyRows(true);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem("humanoid-index:hideEmptyRows", String(hideEmptyRows)); } catch {}
+  }, [hideEmptyRows]);
+  // Per-robot favorites — kept in localStorage as a JSON array of ids.
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("humanoid-index:favorites");
+      if (!stored) return;
+      const arr = JSON.parse(stored);
+      if (Array.isArray(arr)) setFavoriteIds(new Set(arr.filter((s) => typeof s === "string")));
+    } catch {}
+  }, []);
+  const toggleFavorite = (id: string) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem("humanoid-index:favorites", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
   type CollapseVariant = "pull-tab" | "gap-zone" | "hover-fade" | "info-icon" | "none";
   const [collapseVariant, setCollapseVariant] = useState<CollapseVariant>("info-icon");
   useEffect(() => {
@@ -1442,7 +1478,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Side of the visual element (flag, status dot) relative to its text label
   // inside a value cell. "left" = visual-then-text (default), "right" = text-then-visual.
   const [valueVisualSide, setValueVisualSide] = useState<"left" | "right">("left");
-  const [statsColScale, setStatsColScale] = useState(0.85); // single-view stats column width = baseCardPx * this
+  const [statsColScale, setStatsColScale] = useState(0.72); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(12);    // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(20);  // px
@@ -1463,11 +1499,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // no inline cm/in toggle (it would break the rhythm).
   const [denseDividers, setDenseDividers] = useState(true);
   const [denseFullWidth, setDenseFullWidth] = useState(true);
-  const [denseRowGap, setDenseRowGap] = useState(12); // px gap between rows
+  const [denseRowGap, setDenseRowGap] = useState(9); // px gap between rows
   const [denseOpacity, setDenseOpacity] = useState(2.5); // percent (0-20)
   // Split the dense stats card into 3 stacked containers (Specs / Context / Action)
   // so visual grouping comes from card gaps instead of internal dividers.
-  const [splitCards, setSplitCards] = useState(false);
+  const [splitCards, setSplitCards] = useState(true);
   // How to expose the cm/in switcher inside the dense card.
   // "tap": Height/Weight values are tap targets that cycle units (no chrome).
   // "row": A dedicated "Units" row at the top with an inline cm/in pill.
@@ -1537,12 +1573,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   type CardIconActive = "tint" | "ink" | "outline";
   const [cardIconChrome, setCardIconChrome] = useState<CardIconChrome>("ghost");
   const [cardIconShape, setCardIconShape] = useState<CardIconShape>("circle");
-  const [cardIconSize, setCardIconSize] = useState(30);
-  const [cardIconStroke, setCardIconStroke] = useState(1.5);
+  const [cardIconSize, setCardIconSize] = useState(32);
+  const [cardIconStroke, setCardIconStroke] = useState(2);
   const [cardIconInset, setCardIconInset] = useState(10);
   const [cardIconGap, setCardIconGap] = useState(4);
   const [cardIconActive, setCardIconActive] = useState<CardIconActive>("tint");
-  const [cardIconHoverFade, setCardIconHoverFade] = useState(true);
+  const [cardIconHoverFade, setCardIconHoverFade] = useState(false);
   const [cardIcon3DLabel, setCardIcon3DLabel] = useState(false);
   const cardIconRender = (opts: { active?: boolean; dark?: boolean } = {}): {
     className: string;
@@ -1570,10 +1606,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       glassBorder: "rgba(255,255,255,0.16)",
       glassBorderHover: "rgba(255,255,255,0.28)",
     } : {
-      bgFilled: "rgba(0,0,0,0.04)",
+      bgFilled: "rgba(0,0,0,0.025)",
       bgGlass: "rgba(255,255,255,0.72)",
-      bgHover: "rgba(0,0,0,0.06)",
-      bgActive: "rgba(0,0,0,0.08)",
+      bgHover: "rgba(0,0,0,0.05)",
+      bgActive: "rgba(0,0,0,0.06)",
       borderRest: "rgba(0,0,0,0.18)",
       borderHover: "rgba(0,0,0,0.42)",
       borderActive: "rgba(0,0,0,0.56)",
@@ -3301,7 +3337,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const stackGap = 16;
             const sectionContentGap = 2;
             const sectionContentMarginTop = 10;
-            const cardFontSize = 15;
+            const cardFontSize = 14;
             const headerStyle: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: 10.5,
@@ -3393,16 +3429,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // Always render the full universal stat set so cards line up across robots.
             // Missing metrics show as a dimmed em-dash rather than collapsing the row.
             const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "var(--c-ink-subtle)" };
-            const renderStatRow = (label: string, value: string | number | null | undefined, formatter: (v: number) => string) => (
-              <div style={{ ...rowStyle, minWidth: 0 }}>
-                <span style={dimmed}>{label}</span>
-                <MarqueeValue align="right" style={value == null ? missingValueStyle : valueStyle}>
-                  <span className="tabular-nums">
-                    {value == null ? "—" : (typeof value === "number" ? formatter(value) : value)}
-                  </span>
-                </MarqueeValue>
-              </div>
-            );
+            const renderStatRow = (label: string, value: string | number | null | undefined, formatter: (v: number) => string) => {
+              if (hideEmptyRows && value == null) return null;
+              return (
+                <div style={{ ...rowStyle, minWidth: 0 }}>
+                  <span style={dimmed}>{label}</span>
+                  <MarqueeValue align="right" style={value == null ? missingValueStyle : valueStyle}>
+                    <span className="tabular-nums">
+                      {value == null ? "—" : (typeof value === "number" ? formatter(value) : value)}
+                    </span>
+                  </MarqueeValue>
+                </div>
+              );
+            };
             const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
             const unitsPillFont: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
@@ -3586,7 +3625,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               statusRow,
               ...(purchaseRow ? [purchaseRow] : []),
             ];
-            const denseScrollRows = denseDividers ? denseRows.slice(0, -1) : [];
+            const denseScrollRows = denseDividers ? denseRows.slice(0, -1).filter(Boolean) : [];
             const denseActionRow = denseDividers ? denseRows[denseRows.length - 1] : null;
             const renderRowsAsCard = (rows: React.ReactNode[], opts?: { fill?: boolean; pinnedLast?: boolean; gap?: number; padding?: string }) => {
               const { fill = false, pinnedLast = false, gap, padding = "14px 18px" } = opts ?? {};
@@ -3596,8 +3635,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               const scrolling = pinnedLast ? visible.slice(0, -1) : visible;
               const pinned = pinnedLast ? visible[visible.length - 1] : null;
               return (
-                <div style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding, flex: fill ? 1 : undefined, display: "flex", flexDirection: "column", gap: innerGap, minHeight: 0 }}>
-                  <div className="flex flex-col" style={{ gap: innerGap, flex: fill ? 1 : undefined, justifyContent: fill ? "space-between" : undefined }}>
+                <div style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding, display: "flex", flexDirection: "column", gap: innerGap, minHeight: fill ? "100%" : 0 }}>
+                  <div className="flex flex-col" style={{ gap: innerGap }}>
                     {scrolling.map((row, i) => (
                       <Fragment key={i}>
                         {i > 0 ? rowHairline : null}
@@ -3614,9 +3653,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 </div>
               );
             };
-            const specsCard = renderRowsAsCard(denseRows.slice(0, specsEndIdx), { fill: false }); // Company..Drive (+ engineer rows)
-            // Action card breathes a bit more so the 3 rows don't read as cramped after the tall specs card.
-            const actionCard = renderRowsAsCard(denseRows.slice(specsEndIdx), { gap: 8, padding: "10px 18px" }); // Price, Status, CTA
+            // Specs card holds all data rows (Company..Drive + engineer + Price + Status).
+            // Action card holds only the CTA/purchase row, anchored below.
+            const specsRowsOnly = purchaseRow ? denseRows.slice(0, -1) : denseRows;
+            const specsCard = renderRowsAsCard(specsRowsOnly, { fill: true });
+            const actionCard = purchaseRow ? renderRowsAsCard([purchaseRow], { gap: 8, padding: "10px 18px" }) : null;
             const statsCard = (
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
@@ -3648,10 +3689,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   </div>
                 </StatsScrollArea>
                 {denseDividers && denseActionRow && (
-                  <>
+                  <div className="flex flex-col" style={{ gap: 2 }}>
                     {rowHairline}
                     {denseActionRow}
-                  </>
+                  </div>
                 )}
               </div>
             );
@@ -3839,7 +3880,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // content doesn't reflow as the slot shrinks; opacity + translate handle
             // the visual fade.
             return (
-              <div className="flex flex-col h-full pointer-events-auto" style={{ width: "100%", gap: stackGap, position: "relative", zIndex: 11 }}>
+              <div className="flex flex-col pointer-events-auto" style={{ width: "100%", height: "100%", maxHeight: "100%", gap: statsGap, position: "relative", zIndex: 11, overflow: "hidden" }}>
                 <div
                   className="flex flex-col"
                   style={{
@@ -3855,22 +3896,31 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                   }}
                 >
-                  <div className="flex flex-col" style={{ gap: denseDividers && splitCards ? statsGap : stackGap, flex: denseDividers ? 1 : undefined, minHeight: 0 }}>
+                  <div className="flex flex-col" style={{ gap: stackGap, flex: denseDividers ? 1 : undefined, minHeight: 0 }}>
                     {labelNode}
-                    <div style={{ display: "flex", flexDirection: "column", flex: denseDividers ? 1 : undefined, minHeight: 0, gap: denseDividers && splitCards ? statsGap : 0 }}>
-                      {denseDividers && splitCards ? (
-                        <>
-                          {specsCard}
-                          {actionCard}
-                        </>
-                      ) : (
-                        statsCard
-                      )}
+                    <div style={{ display: "flex", flexDirection: "column", flex: denseDividers ? 1 : undefined, minHeight: 0 }}>
+                      {denseDividers && splitCards ? specsCard : statsCard}
                     </div>
                     {denseDividers ? null : notesCard}
                     {denseDividers ? null : statusCard}
                   </div>
                 </div>
+                {/* Action card — anchored below the scrollable specs container,
+                    visually mirroring the floating icon row above. */}
+                {denseDividers && splitCards && actionCard && (
+                  <div
+                    style={{
+                      width: expandedStatsW,
+                      flexShrink: 0,
+                      opacity: collapseVariant === "hover-fade" ? (statsHover ? 1 : 0.22) : (statsCollapsed ? 0 : 1),
+                      transform: statsCollapsed ? "translateX(8px)" : "translateX(0)",
+                      pointerEvents: statsCollapsed ? "none" : "auto",
+                      transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
+                    }}
+                  >
+                    {actionCard}
+                  </div>
+                )}
                 {!denseDividers && (
                   <div
                     style={{
@@ -4023,7 +4073,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const priceR = hR.cost && hR.cost !== "N/A" ? hR.cost : null;
           const statusColor = (status?: string) => status === "In Production" ? "#22c55e" : status === "Prototype" ? "#eab308" : status === "Concept" ? "#3b82f6" : status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
 
-          const fz = 15;
+          const fz = 14;
           const stackGap = 18;
           const dimmed: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
@@ -4045,17 +4095,20 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)" }} />
           );
 
-          const compareRow = (label: string, valL: string | null, valR: string | null) => (
-            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
-              <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
-              <MarqueeValue align="right" style={{ ...(valL ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
-                <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valL || "—"}</span>
-              </MarqueeValue>
-              <MarqueeValue align="right" style={{ ...(valR ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
-                <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valR || "—"}</span>
-              </MarqueeValue>
-            </div>
-          );
+          const compareRow = (label: string, valL: string | null, valR: string | null) => {
+            if (hideEmptyRows && !valL && !valR) return null;
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
+                <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
+                <MarqueeValue align="right" style={{ ...(valL ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+                  <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valL || "—"}</span>
+                </MarqueeValue>
+                <MarqueeValue align="right" style={{ ...(valR ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+                  <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valR || "—"}</span>
+                </MarqueeValue>
+              </div>
+            );
+          };
           const fmt = useImperial ? IMPERIAL_FMT : METRIC_FMT;
           const unitsPillFont: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
@@ -4194,34 +4247,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               </span>
             </div>
           );
-          const copyRow = (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
-              className="pointer-events-auto cursor-pointer"
-              style={{
-                background: "transparent",
-                border: "none",
-                padding: 0,
-                lineHeight: 1.55,
-                fontFamily: "var(--font-geist-sans)",
-                fontSize: fz,
-                fontWeight: 400,
-                color: "var(--c-ink-muted)",
-                WebkitTapHighlightColor: "transparent",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span>Copy comparison</span>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
-                <path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10 6" />
-                <path d="M14 11a5 5 0 0 0-7.07 0L5.52 12.41a5 5 0 0 0 7.07 7.07L14 18" />
-              </svg>
-            </button>
-          );
+          // copyRow removed — Copy now lives in the stats-column header row.
           const cycleUnits = (e: React.MouseEvent) => { e.stopPropagation(); onUseImperialChange?.(!useImperial); };
           const compareUnitTapRow = (label: string, valL: string | null, valR: string | null) => {
             const valueCell = (val: string | null) => (
@@ -4330,7 +4356,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             ...engineerCompareRows,
             compareRow("Price", priceL, priceR),
             statusRow,
-            copyRow,
           ];
 
           return (
@@ -4341,7 +4366,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                     <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, paddingLeft: 18, paddingRight: 18 }}>
                       {denseDividers ? (
-                        denseRows.slice(0, -1).map((row, i) => (
+                        denseRows.slice(0, -1).filter(Boolean).map((row, i) => (
                           <Fragment key={i}>
                             {i > 0 ? rowHairline : null}
                             {row}
@@ -4367,44 +4392,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     </div>
                   </StatsScrollArea>
                   {denseDividers && denseRows.length > 0 && (
-                    <>
+                    <div className="flex flex-col" style={{ gap: 2 }}>
                       {rowHairline}
                       {denseRows[denseRows.length - 1]}
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
-              {!denseDividers && (
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
-                  className="pointer-events-auto w-full flex items-center justify-between cursor-pointer"
-                  style={{
-                    borderRadius: cardRadius,
-                    boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07)",
-                    background: "transparent",
-                    padding: `0 ${statPillPadX}px`,
-                    minHeight: statPillPadY * 2 + Math.round(pillLabelFontSize * 1.2),
-                    gap: 8,
-                    color: pillLabelColor,
-                    fontSize: pillLabelFontSize,
-                    fontFamily: pillLabelFont,
-                    fontWeight: pillLabelWeight,
-                    letterSpacing: `${pillLabelLetterSpacing}em`,
-                    textTransform: pillLabelUppercase ? "uppercase" : "none",
-                    border: "none",
-                    WebkitTapHighlightColor: "transparent",
-                  }}
-                >
-                  <span>Copy comparison</span>
-                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: "rgba(0,0,0,0.06)", flexShrink: 0 }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
-                      <path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10 6" />
-                      <path d="M14 11a5 5 0 0 0-7.07 0L5.52 12.41a5 5 0 0 0 7.07 7.07L14 18" />
-                    </svg>
-                  </span>
-                </button>
-              )}
+              {/* "Copy comparison" pill removed — header row now owns the action. */}
             </div>
           );
         };
@@ -4733,20 +4728,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     )}
                   </div>
                 )}
-                {isFirst && (
-                  <GalleryShareButton
-                    mIdx={hIdx}
-                    allKinds={allKinds}
-                    subscribe={subscribeGalleryIdx}
-                    read={readGalleryIdx}
-                    onClick={() => onShareView?.()}
-                    getIconStyle={(opts) => cardIconRender(opts)}
-                    position={{ bottom: cardIconInset, right: cardIconInset }}
-                    hoverFade={cardIconHoverFade}
-                  />
-                )}
+                {/* GalleryShareButton removed — Copy lives in the stats-column header row. */}
                 {/* Info-icon collapse affordance — top-right corner of the card,
-                    always visible since it's the primary show/hide-details toggle. */}
+                    always visible since it's the primary show/hide-details toggle.
+                    Carries a permanent light fill regardless of state. */}
                 {collapseVariant === "info-icon" && !comparing && isFirst && (() => {
                   const ico = cardIconRender({ active: !statsCollapsed });
                   return (
@@ -4756,15 +4741,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       className={`${ico.className} absolute z-30`}
                       style={{
                         ...ico.style,
+                        background: "transparent",
                         top: cardIconInset,
                         right: cardIconInset,
-                        fontFamily: "var(--font-geist-sans)",
-                        fontSize: Math.round(cardIconSize * 0.55),
-                        fontWeight: 500,
-                        lineHeight: 1,
                       }}
                     >
-                      i
+                      <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                     </button>
                   );
                 })()}
@@ -4786,7 +4768,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       }}
                       aria-label={show3D ? "Show photo" : "View in 3D"}
                       className={`${ico.className} absolute z-30 ${fadeClass}`}
-                      style={{ ...pillStyle, bottom: cardIconInset, right: cardIconInset + cardIconSize + cardIconGap }}
+                      style={{ ...pillStyle, background: "transparent", bottom: cardIconInset, right: cardIconInset }}
                     >
                       <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                       {cardIcon3DLabel && <span className="text-[12px] tracking-tight font-medium">3D</span>}
@@ -4821,7 +4803,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       }}
                       aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
                       className={`${ico.className} absolute z-30 ${fadeClass}`}
-                      style={{ ...ico.style, bottom: cardIconInset, right: cardIconInset + cardIconSize + cardIconGap }}
+                      style={{ ...ico.style, background: "transparent", bottom: cardIconInset, right: cardIconInset }}
                     >
                       {spinPlaying ? (
                         <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
@@ -4841,7 +4823,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     videoPaused={videoPaused}
                     onToggle={() => setVideoPaused((p) => !p)}
                     getIconStyle={(opts) => cardIconRender(opts)}
-                    position={{ bottom: cardIconInset, right: cardIconInset + cardIconSize + cardIconGap }}
+                    position={{ bottom: cardIconInset, right: cardIconInset }}
                     hoverFade={cardIconHoverFade}
                   />
                 )}
@@ -5056,10 +5038,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     that button so the centers line up. Shown in both single and
                     compare modes; fades only when collapsed. */}
                 {(() => {
-                  const compact = denseRowGap <= 8;
-                  const spacingIco = cardIconRender({ active: compact });
                   const engineerIco = cardIconRender({ active: engineerMode });
-                  const iconBox = spacingIco.iconBoxPx;
+                  const iconBox = engineerIco.iconBoxPx;
                   // Header buttons get a slight rest fill (inactive = a touch
                   // of tint, not fully transparent) so the row reads as a
                   // group even when nothing is engaged.
@@ -5083,91 +5063,76 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       }}
                     >
                       <div className="flex items-center" style={{ gap: cardIconGap, height: "100%" }}>
-                        {/* Spacing — vertical resize arrows (⇕). Active = compact. */}
+                        {/* Engineer — toggles both the engineer rows AND tighter
+                            spacing in one move (engineer = denser specs view). */}
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setDenseRowGap(compact ? 12 : 6); }}
-                          aria-pressed={compact}
-                          aria-label={compact ? "Use comfortable spacing" : "Use compact spacing"}
-                          className={spacingIco.className}
-                          style={btnStyle(spacingIco)}
-                        >
-                          <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={spacingIco.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="5,4.5 8,2 11,4.5" />
-                            <line x1="8" y1="2" x2="8" y2="14" />
-                            <polyline points="5,11.5 8,14 11,11.5" />
-                          </svg>
-                        </button>
-                        {/* Engineer — sliders (advanced settings). Active = engineer on. */}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setEngineerMode((v) => !v); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEngineerMode((v) => {
+                              const next = !v;
+                              setDenseRowGap(next ? 4 : 9);
+                              return next;
+                            });
+                          }}
                           aria-pressed={engineerMode}
                           aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
                           className={engineerIco.className}
                           style={btnStyle(engineerIco)}
                         >
-                          <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={engineerIco.iconStrokeWidth} strokeLinecap="round">
-                            <line x1="3" y1="4.5" x2="13" y2="4.5" />
-                            <circle cx="6" cy="4.5" r="1.4" fill="currentColor" stroke="none" />
-                            <line x1="3" y1="8" x2="13" y2="8" />
-                            <circle cx="10" cy="8" r="1.4" fill="currentColor" stroke="none" />
-                            <line x1="3" y1="11.5" x2="13" y2="11.5" />
-                            <circle cx="7" cy="11.5" r="1.4" fill="currentColor" stroke="none" />
-                          </svg>
+                          <ChevronsUpDown size={iconBox} strokeWidth={engineerIco.iconStrokeWidth} />
                         </button>
-                        {/* Sort — placeholder (no function yet). */}
+                        {/* Units — metric / imperial. Shows the current unit
+                            as the icon label so the state is self-evident. */}
                         {(() => {
-                          const ico = cardIconRender();
+                          const ico = cardIconRender({ active: !useImperial });
                           return (
-                            <button type="button" onClick={(e) => e.stopPropagation()} aria-label="Sort" className={ico.className} style={btnStyle(ico)}>
-                              <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="3" y1="4" x2="11" y2="4" />
-                                <line x1="3" y1="8" x2="9" y2="8" />
-                                <line x1="3" y1="12" x2="7" y2="12" />
-                                <polyline points="11,9 13,11 11,13" />
-                                <line x1="13" y1="11" x2="13" y2="4" />
-                              </svg>
-                            </button>
-                          );
-                        })()}
-                        {/* Filter — placeholder (no function yet). */}
-                        {(() => {
-                          const ico = cardIconRender();
-                          return (
-                            <button type="button" onClick={(e) => e.stopPropagation()} aria-label="Filter" className={ico.className} style={btnStyle(ico)}>
-                              <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                                <polygon points="2.5,3 13.5,3 9.5,8 9.5,13 6.5,11.5 6.5,8" />
-                              </svg>
-                            </button>
-                          );
-                        })()}
-                        {/* Visibility — placeholder (no function yet). */}
-                        {(() => {
-                          const ico = cardIconRender();
-                          return (
-                            <button type="button" onClick={(e) => e.stopPropagation()} aria-label="Show/hide rows" className={ico.className} style={btnStyle(ico)}>
-                              <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M2 8 C 4 4.5 6 3 8 3 C 10 3 12 4.5 14 8 C 12 11.5 10 13 8 13 C 6 13 4 11.5 2 8 Z" />
-                                <circle cx="8" cy="8" r="2" />
-                              </svg>
-                            </button>
-                          );
-                        })()}
-                        {/* Pin/star — placeholder (no function yet). */}
-                        {(() => {
-                          const ico = cardIconRender();
-                          return (
-                            <button type="button" onClick={(e) => e.stopPropagation()} aria-label="Pin" className={ico.className} style={btnStyle(ico)}>
-                              <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                                <polygon points="8,2 9.6,5.7 13.6,6.1 10.6,8.8 11.5,12.8 8,10.7 4.5,12.8 5.4,8.8 2.4,6.1 6.4,5.7" />
-                              </svg>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onUseImperialChange?.(!useImperial); }}
+                              aria-label={`Switch to ${useImperial ? "metric" : "imperial"}`}
+                              className={ico.className}
+                              style={btnStyle(ico)}
+                            >
+                              <span style={{
+                                fontSize: Math.round(cardIconSize * 0.36),
+                                fontFamily: "var(--font-geist-sans)",
+                                fontWeight: 500,
+                                letterSpacing: "0.01em",
+                                lineHeight: 1,
+                              }}>
+                                {useImperial ? "in" : "cm"}
+                              </span>
                             </button>
                           );
                         })()}
                       </div>
-                      {/* Right side reserved for future filters (sort, scope, etc.) */}
-                      <div />
+                      {/* Right side — share link for the current view. */}
+                      <div className="flex items-center" style={{ gap: cardIconGap, height: "100%" }}>
+                        {(() => {
+                          const ico = cardIconRender();
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
+                              aria-label="Share this view"
+                              className={ico.className}
+                              style={{
+                                ...btnStyle(ico),
+                                width: "auto",
+                                padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
+                                fontFamily: "var(--font-geist-sans)",
+                                fontSize: Math.round(cardIconSize * 0.36),
+                                fontWeight: 500,
+                                letterSpacing: "0.01em",
+                                lineHeight: 1,
+                              }}
+                            >
+                              Share
+                            </button>
+                          );
+                        })()}
+                      </div>
                     </div>
                   );
                 })()}
@@ -6819,6 +6784,7 @@ export default function HomeClient() {
   const [comparingUsed, setComparingUsed] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [diceRollNonce, setDiceRollNonce] = useState(0);
   const [toScale, setToScale] = useState(false);
   const [useImperial, setUseImperial] = useState(true);
@@ -7237,7 +7203,7 @@ export default function HomeClient() {
           To bring chat back, swap this for the <OptionsMenu .../> block. */}
       {introDone && (() => {
         const creditStyle: React.CSSProperties = {
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 500,
           letterSpacing: "normal",
           lineHeight: 1,
@@ -7270,7 +7236,7 @@ export default function HomeClient() {
                   border: "none",
                   padding: 0,
                   cursor: "pointer",
-                  fontSize: 21,
+                  fontSize: 22,
                   lineHeight: 1,
                   display: "inline-flex",
                   alignItems: "center",
@@ -7292,7 +7258,8 @@ export default function HomeClient() {
                   >🎲</span>
                 )}
               </button>
-              <div className="flex items-end" style={{ gap: 10 }}>
+              <div className="flex items-end" style={{ gap: 12 }}>
+                <span className="pointer-events-auto" style={{ ...creditStyle, padding: "0 4px" }}>Roy Jad © 2026</span>
                 <Chip
                   className="pointer-events-auto hover:underline underline-offset-2"
                   onClick={() => {
@@ -7301,17 +7268,15 @@ export default function HomeClient() {
                   }}
                   style={{ ...creditStyle, padding: "0 4px" }}
                 >
-                  Share
+                  Share site
                 </Chip>
-                <span className="pointer-events-auto" style={creditStyle}>Roy Jad © 2026</span>
-                <div className="pointer-events-auto">
-                  <SiteOptionsMenu
-                    inline
-                    shareLabel={shareViewLabel}
-                    onShare={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)}
-                    visible={introDone}
-                  />
-                </div>
+                <Chip
+                  className="pointer-events-auto hover:underline underline-offset-2"
+                  onClick={() => setFeedbackOpen(true)}
+                  style={{ ...creditStyle, padding: "0 4px" }}
+                >
+                  Submit feedback
+                </Chip>
               </div>
             </div>
           </div>
@@ -7328,6 +7293,10 @@ export default function HomeClient() {
       {chatOpen && <GuideChat onSelect={handleSelectHumanoid} config={chatConfig} />}
 
       {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
+
+      {feedbackOpen && (
+        <ContactSheet variant="feedback" email={FOOTER_CONTACT_EMAIL} onClose={() => setFeedbackOpen(false)} />
+      )}
     </main>
   );
 }
