@@ -42,13 +42,25 @@ export default function SiteOptionsMenu({ visible, inline = false }: Props) {
     <div
       ref={wrapRef}
       className={inline
-        ? `relative ${visible ? "intro-nav" : "opacity-0 pointer-events-none"}`
+        ? `relative ${visible ? "" : "opacity-0 pointer-events-none"}`
         : `fixed bottom-6 left-1/2 z-[49] ${visible ? "intro-nav" : "opacity-0 pointer-events-none"}`}
       style={inline ? undefined : { transform: "translateX(-50%)" }}
     >
       <div
         aria-hidden={!open}
-        style={{
+        style={inline ? {
+          position: "absolute",
+          left: "100%",
+          top: 0,
+          bottom: 0,
+          paddingLeft: 10,
+          display: open ? "flex" : "none",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          pointerEvents: open ? "auto" : "none",
+          whiteSpace: "nowrap",
+        } : {
           position: "absolute",
           bottom: "100%",
           right: 0,
@@ -67,6 +79,7 @@ export default function SiteOptionsMenu({ visible, inline = false }: Props) {
           <PopItem
             key={it.label}
             label={it.label}
+            inline={inline}
             onClick={() => {
               it.onSelect();
               setOpen(false);
@@ -80,6 +93,7 @@ export default function SiteOptionsMenu({ visible, inline = false }: Props) {
         onClick={() => setOpen((v) => !v)}
         aria-label="Contribute"
         aria-expanded={open}
+        className="hover:underline underline-offset-2"
         style={{
           padding: 0,
           background: "transparent",
@@ -89,9 +103,11 @@ export default function SiteOptionsMenu({ visible, inline = false }: Props) {
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          fontSize: 13,
+          fontSize: 11,
           fontWeight: 500,
           letterSpacing: "normal",
+          lineHeight: 1,
+          opacity: open ? 0.45 : 1,
         }}
       >
         Contribute
@@ -104,25 +120,23 @@ export default function SiteOptionsMenu({ visible, inline = false }: Props) {
   );
 }
 
-function PopItem({ label, onClick }: { label: string; onClick: () => void }) {
-  const [hover, setHover] = useState(false);
+function PopItem({ label, onClick, inline = false }: { label: string; onClick: () => void; inline?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      className="hover:underline underline-offset-2"
       style={{
-        padding: "2px 0 2px 14px",
+        padding: inline ? 0 : "2px 0 2px 14px",
         border: "none",
         background: "transparent",
-        color: hover ? "oklch(40% 0.011 222.2)" : "oklch(65% 0.011 222.2)",
+        color: "oklch(65% 0.011 222.2)",
         cursor: "pointer",
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: 500,
         letterSpacing: "normal",
+        lineHeight: 1,
         whiteSpace: "nowrap",
-        transition: "color 140ms ease",
       }}
     >
       {label}

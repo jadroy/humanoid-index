@@ -1094,6 +1094,7 @@ function MarqueeValue({ children, align, style }: { children: React.ReactNode; a
         justifyContent: effectiveAlign === "left" ? "flex-start" : "flex-end",
         overflow: "hidden",
         maxWidth: "100%",
+        width: "100%",
         WebkitMaskImage: isOverflow && !hover ? `linear-gradient(to ${maskDir}, #000 88%, transparent 100%)` : undefined,
         maskImage: isOverflow && !hover ? `linear-gradient(to ${maskDir}, #000 88%, transparent 100%)` : undefined,
         transition: "mask-image 300ms ease, -webkit-mask-image 300ms ease",
@@ -1441,7 +1442,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Side of the visual element (flag, status dot) relative to its text label
   // inside a value cell. "left" = visual-then-text (default), "right" = text-then-visual.
   const [valueVisualSide, setValueVisualSide] = useState<"left" | "right">("left");
-  const [statsColScale, setStatsColScale] = useState(0.62); // single-view stats column width = baseCardPx * this
+  const [statsColScale, setStatsColScale] = useState(0.85); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(12);    // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(20);  // px
@@ -1462,8 +1463,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // no inline cm/in toggle (it would break the rhythm).
   const [denseDividers, setDenseDividers] = useState(true);
   const [denseFullWidth, setDenseFullWidth] = useState(true);
-  const [denseRowGap, setDenseRowGap] = useState(2); // px gap between rows
-  const [denseOpacity, setDenseOpacity] = useState(6); // percent (0-20)
+  const [denseRowGap, setDenseRowGap] = useState(12); // px gap between rows
+  const [denseOpacity, setDenseOpacity] = useState(2.5); // percent (0-20)
   // Split the dense stats card into 3 stacked containers (Specs / Context / Action)
   // so visual grouping comes from card gaps instead of internal dividers.
   const [splitCards, setSplitCards] = useState(false);
@@ -1810,7 +1811,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // the frame exactly makes the pill column read as visually wider than the robot.
   const baseCardPx = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
   const singleStatsW = Math.round(baseCardPx * statsColScale);
-  const collapsedRailW = 28;
+  // When info is hidden, the stats slot fully collapses to 0 so the card lands
+  // at viewport center. The "i" toggle lives inside the card label, so no rail
+  // is needed in the info-icon variant (the active default).
+  const collapsedRailW = 0;
   const expandedStatsW = splitBlurb && blurbFloat ? statsW * 2 + cardGap : singleStatsW;
   const effectiveStatsW = statsCollapsed ? collapsedRailW : expandedStatsW;
 
@@ -1826,7 +1830,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       // collapsed and leave the arcs sitting behind the cards.
       return cardPx + gap + compareStatsW / 2;
     }
-    return (cardPx + gap + effectiveStatsW) / 2;
+    // Collapsed: drop the gap too so the arc rebalances around the card alone.
+    return (cardPx + (statsCollapsed ? 0 : gap + effectiveStatsW)) / 2;
   })();
 
   const availableSpace = (windowWidth / 2) - centerHalfWidth;
@@ -3296,7 +3301,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const stackGap = 16;
             const sectionContentGap = 2;
             const sectionContentMarginTop = 10;
-            const cardFontSize = 14;
+            const cardFontSize = 15;
             const headerStyle: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: 10.5,
@@ -3314,22 +3319,26 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               alignItems: "baseline",
               columnGap: 14,
               fontFamily: "var(--font-geist-sans)",
-              lineHeight: 1.7,
+              lineHeight: 1.55,
               whiteSpace: "nowrap",
+              justifyItems: "end",
             };
             const dimmed: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: cardFontSize,
-              fontWeight: 400,
-              color: "var(--c-ink-muted)",
+              fontWeight: 500,
+              color: "var(--c-ink-body)",
+              opacity: 0.7,
               minWidth: 64,
               flexShrink: 0,
+              justifySelf: "start",
             };
             const valueStyle: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: cardFontSize,
-              fontWeight: 450,
-              color: "var(--c-ink-body)",
+              fontWeight: 500,
+              color: "var(--c-ink)",
+              opacity: 0.68,
             };
             const purchaseSection = sections.find((s) => s.key === "purchase") as
               | { key: "purchase"; href?: string; text?: string; price?: string; cost?: string; state?: string; ctaText?: string }
@@ -3387,7 +3396,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const renderStatRow = (label: string, value: string | number | null | undefined, formatter: (v: number) => string) => (
               <div style={{ ...rowStyle, minWidth: 0 }}>
                 <span style={dimmed}>{label}</span>
-                <MarqueeValue align="left" style={value == null ? missingValueStyle : valueStyle}>
+                <MarqueeValue align="right" style={value == null ? missingValueStyle : valueStyle}>
                   <span className="tabular-nums">
                     {value == null ? "—" : (typeof value === "number" ? formatter(value) : value)}
                   </span>
@@ -3431,7 +3440,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               </div>
             );
             const rowHairline = (
-              <div aria-hidden style={{ height: 1, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? 0 : 64 }} />
+              <div aria-hidden style={{ height: 2, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? -18 : 64, marginRight: denseFullWidth ? -18 : 0 }} />
             );
             const statusRow = (
               <div style={{ ...rowStyle, alignItems: "center" }}>
@@ -3459,7 +3468,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     WebkitTapHighlightColor: "transparent",
                   }}
                 >
-                  <span style={{ ...valueStyle, fontWeight: 500 }}>{purchaseSection.ctaText ?? "Buy"}</span>
+                  <span style={{ ...valueStyle, fontWeight: 500, justifySelf: "start" }}>{purchaseSection.ctaText ?? "Buy"}</span>
                   <span style={{ display: "inline-flex", alignItems: "center", color: "var(--c-ink-muted)" }}>
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
                       <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
@@ -3609,9 +3618,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // Action card breathes a bit more so the 3 rows don't read as cramped after the tall specs card.
             const actionCard = renderRowsAsCard(denseRows.slice(specsEndIdx), { gap: 8, padding: "10px 18px" }); // Price, Status, CTA
             const statsCard = (
-              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
-                <StatsScrollArea flex={denseDividers ? 1 : undefined}>
-                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap }}>
+              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+                <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
+                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, paddingLeft: 18, paddingRight: 18 }}>
                     {denseDividers ? (
                       denseScrollRows.map((row, i) => (
                         <Fragment key={i}>
@@ -4014,19 +4023,22 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const priceR = hR.cost && hR.cost !== "N/A" ? hR.cost : null;
           const statusColor = (status?: string) => status === "In Production" ? "#22c55e" : status === "Prototype" ? "#eab308" : status === "Concept" ? "#3b82f6" : status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
 
-          const fz = 14;
+          const fz = 15;
           const stackGap = 18;
           const dimmed: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
             fontSize: fz,
-            fontWeight: 400,
-            color: "var(--c-ink-muted)",
+            fontWeight: 500,
+            color: "var(--c-ink-body)",
+            opacity: 0.7,
+            justifySelf: "start",
           };
           const valueStyle: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
             fontSize: fz,
-            fontWeight: 450,
-            color: "var(--c-ink-body)",
+            fontWeight: 500,
+            color: "var(--c-ink)",
+            opacity: 0.68,
           };
           const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "var(--c-ink-subtle)" };
           const hairlineRule = (
@@ -4034,12 +4046,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           );
 
           const compareRow = (label: string, valL: string | null, valR: string | null) => (
-            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
-              <MarqueeValue align="left" style={{ ...(valL ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+              <MarqueeValue align="right" style={{ ...(valL ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
                 <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valL || "—"}</span>
               </MarqueeValue>
-              <MarqueeValue align="left" style={{ ...(valR ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+              <MarqueeValue align="right" style={{ ...(valR ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
                 <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valR || "—"}</span>
               </MarqueeValue>
             </div>
@@ -4145,10 +4157,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
 
           const rowHairline = (
-            <div aria-hidden style={{ height: 1, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? 0 : 64, marginRight: denseFullWidth ? 0 : 64 }} />
+            <div aria-hidden style={{ height: 2, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? -18 : 64, marginRight: denseFullWidth ? -18 : 64 }} />
           );
           const statusRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "91px 1fr 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.7 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "91px 1fr 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Status</span>
               <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
                 {hL.status ? (
@@ -4191,7 +4203,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 background: "transparent",
                 border: "none",
                 padding: 0,
-                lineHeight: 1.7,
+                lineHeight: 1.55,
                 fontFamily: "var(--font-geist-sans)",
                 fontSize: fz,
                 fontWeight: 400,
@@ -4214,11 +4226,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const compareUnitTapRow = (label: string, valL: string | null, valR: string | null) => {
             const valueCell = (val: string | null) => (
               val == null ? (
-                <MarqueeValue align="left" style={{ ...missingValueStyle, whiteSpace: "nowrap" }}>
+                <MarqueeValue align="right" style={{ ...missingValueStyle, whiteSpace: "nowrap" }}>
                   <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>—</span>
                 </MarqueeValue>
               ) : (
-                <MarqueeValue align="left" style={{ ...valueStyle, whiteSpace: "nowrap" }}>
+                <MarqueeValue align="right" style={{ ...valueStyle, whiteSpace: "nowrap" }}>
                   <button
                     type="button"
                     onClick={cycleUnits}
@@ -4241,7 +4253,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               )
             );
             return (
-              <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
                 <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
                 {valueCell(valL)}
                 {valueCell(valR)}
@@ -4249,7 +4261,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             );
           };
           const compareUnitsRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Units</span>
               <span />
               <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
@@ -4288,12 +4300,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             ? compareUnitTapRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)
             : compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null);
           const compareCountryRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.7 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Country</span>
-              <MarqueeValue align="left" style={{ ...(hL.country ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+              <MarqueeValue align="right" style={{ ...(hL.country ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
                 {hL.country ? <CountryValue country={hL.country} valueStyle={valueStyle} visualSide={valueVisualSide} /> : <span style={missingValueStyle}>—</span>}
               </MarqueeValue>
-              <MarqueeValue align="left" style={{ ...(hR.country ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+              <MarqueeValue align="right" style={{ ...(hR.country ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
                 {hR.country ? <CountryValue country={hR.country} valueStyle={valueStyle} visualSide={valueVisualSide} /> : <span style={missingValueStyle}>—</span>}
               </MarqueeValue>
             </div>
@@ -4325,9 +4337,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: compareStatsW, minWidth: compareStatsW, position: "relative", zIndex: 11 }}>
               <div className="flex flex-col" style={{ flex: 1, justifyContent: denseDividers ? "stretch" : "center", minHeight: 0 }}>
                 {blurbBlock}
-                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "14px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
-                  <StatsScrollArea flex={denseDividers ? 1 : undefined}>
-                    <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap }}>
+                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+                  <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
+                    <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, paddingLeft: 18, paddingRight: 18 }}>
                       {denseDividers ? (
                         denseRows.slice(0, -1).map((row, i) => (
                           <Fragment key={i}>
@@ -4569,7 +4581,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 ) : null}
               </div>
               {/* Info-icon collapse affordance — sits opposite the label, on the
-                  far right of the label row. Outline circle with a standard "i". */}
+                  far right of the label row. Active (info showing) = outline.
+                  Non-active (info hidden) = very low-opacity fill, no border. */}
               {collapseVariant === "info-icon" && !comparing && isFirst && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
@@ -4579,16 +4592,16 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     width: labelLogoSize,
                     height: labelLogoSize,
                     borderRadius: 999,
-                    background: "transparent",
+                    background: statsCollapsed ? "rgba(0,0,0,0.05)" : "transparent",
                     color: "rgba(0,0,0,0.45)",
-                    border: "1px solid rgba(0,0,0,0.18)",
+                    border: statsCollapsed ? "1px solid transparent" : "1px solid rgba(0,0,0,0.18)",
                     padding: 0,
                     fontFamily: "var(--font-geist-sans)",
                     fontSize: Math.round(labelLogoSize * 0.55),
                     fontWeight: 500,
                     lineHeight: 1,
                     pointerEvents: "auto",
-                    transition: `border-color ${dur} ${ease}, color ${dur} ${ease}`,
+                    transition: `background ${dur} ${ease}, border-color ${dur} ${ease}, color ${dur} ${ease}`,
                   }}
                 >
                   i
@@ -4755,55 +4768,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     </button>
                   );
                 })()}
-                {/* Density toggle — supplementary to the "i", only visible when
-                    info is showing. Switches stats between basic and engineer. */}
-                {collapseVariant === "info-icon" && !comparing && isFirst && (() => {
-                  const ico = cardIconRender({ active: engineerMode });
-                  const iconBox = ico.iconBoxPx;
-                  return (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setEngineerMode((v) => !v); }}
-                      aria-pressed={engineerMode}
-                      aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
-                      className={`${ico.className} absolute z-30`}
-                      style={{
-                        ...ico.style,
-                        top: cardIconInset,
-                        right: cardIconInset + cardIconSize + cardIconGap,
-                        opacity: statsCollapsed ? 0 : 1,
-                        transform: statsCollapsed ? "translateX(6px)" : "translateX(0)",
-                        pointerEvents: statsCollapsed ? "none" : "auto",
-                        transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
-                        WebkitTapHighlightColor: "transparent",
-                      }}
-                    >
-                      <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round">
-                        {engineerMode ? (
-                          <>
-                            <circle cx="4" cy="4" r="0.6" fill="currentColor" stroke="none" />
-                            <line x1="6.5" y1="4" x2="13" y2="4" />
-                            <circle cx="4" cy="6.75" r="0.6" fill="currentColor" stroke="none" />
-                            <line x1="6.5" y1="6.75" x2="13" y2="6.75" />
-                            <circle cx="4" cy="9.5" r="0.6" fill="currentColor" stroke="none" />
-                            <line x1="6.5" y1="9.5" x2="13" y2="9.5" />
-                            <circle cx="4" cy="12.25" r="0.6" fill="currentColor" stroke="none" />
-                            <line x1="6.5" y1="12.25" x2="13" y2="12.25" />
-                          </>
-                        ) : (
-                          <>
-                            <circle cx="4" cy="5" r="0.6" fill="currentColor" stroke="none" />
-                            <line x1="6.5" y1="5" x2="13" y2="5" />
-                            <circle cx="4" cy="8" r="0.6" fill="currentColor" stroke="none" />
-                            <line x1="6.5" y1="8" x2="13" y2="8" />
-                            <circle cx="4" cy="11" r="0.6" fill="currentColor" stroke="none" />
-                            <line x1="6.5" y1="11" x2="13" y2="11" />
-                          </>
-                        )}
-                      </svg>
-                    </button>
-                  );
-                })()}
+                {/* Density toggle moved into the new stats-column header
+                    (see the stats slot below). */}
                 {/* 3D toggle — bottom-right, only for robots with a URDF mesh set */}
                 {isFirst && !comparing && THREEDEE_ROBOTS[h.id] && (() => {
                   const ico = cardIconRender({ active: show3D });
@@ -4998,7 +4964,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 onMouseEnter={() => setStatsHover(true)}
                 onMouseLeave={() => setStatsHover(false)}
                 style={{
-                  marginLeft: effectiveGap,
+                  marginLeft: statsCollapsed && !comparing ? 0 : effectiveGap,
                   overflowX: "visible", overflowY: "visible",
                   width: comparing ? compareStatsW : effectiveStatsW,
                   height: comparing ? `${robotH - 4}vh` : `${robotH}vh`,
@@ -5085,7 +5051,131 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   // hover-fade / none — no button; behavior handled in renderStats.
                   return null;
                 })()}
-                <div className="absolute inset-0" style={{
+                {/* Stats column header — row of icon toggles styled to match the
+                    card's "i" button (via cardIconRender). Vertically aligned with
+                    that button so the centers line up. Shown in both single and
+                    compare modes; fades only when collapsed. */}
+                {(() => {
+                  const compact = denseRowGap <= 8;
+                  const spacingIco = cardIconRender({ active: compact });
+                  const engineerIco = cardIconRender({ active: engineerMode });
+                  const iconBox = spacingIco.iconBoxPx;
+                  // Header buttons get a slight rest fill (inactive = a touch
+                  // of tint, not fully transparent) so the row reads as a
+                  // group even when nothing is engaged.
+                  const restFill = "rgba(0,0,0,0.04)";
+                  const btnStyle = (ico: ReturnType<typeof cardIconRender>): React.CSSProperties => ({
+                    ...ico.style,
+                    background: ico.style.background === "transparent" ? restFill : ico.style.background,
+                    WebkitTapHighlightColor: "transparent",
+                  });
+                  return (
+                    <div
+                      className="absolute z-10 flex items-center justify-between"
+                      style={{
+                        top: cardIconInset,
+                        left: 0,
+                        right: 0,
+                        height: cardIconSize,
+                        opacity: statsCollapsed ? 0 : 1,
+                        pointerEvents: statsCollapsed ? "none" : "auto",
+                        transition: `opacity ${dur} ${ease}`,
+                      }}
+                    >
+                      <div className="flex items-center" style={{ gap: cardIconGap, height: "100%" }}>
+                        {/* Spacing — vertical resize arrows (⇕). Active = compact. */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setDenseRowGap(compact ? 12 : 6); }}
+                          aria-pressed={compact}
+                          aria-label={compact ? "Use comfortable spacing" : "Use compact spacing"}
+                          className={spacingIco.className}
+                          style={btnStyle(spacingIco)}
+                        >
+                          <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={spacingIco.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="5,4.5 8,2 11,4.5" />
+                            <line x1="8" y1="2" x2="8" y2="14" />
+                            <polyline points="5,11.5 8,14 11,11.5" />
+                          </svg>
+                        </button>
+                        {/* Engineer — sliders (advanced settings). Active = engineer on. */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setEngineerMode((v) => !v); }}
+                          aria-pressed={engineerMode}
+                          aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
+                          className={engineerIco.className}
+                          style={btnStyle(engineerIco)}
+                        >
+                          <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={engineerIco.iconStrokeWidth} strokeLinecap="round">
+                            <line x1="3" y1="4.5" x2="13" y2="4.5" />
+                            <circle cx="6" cy="4.5" r="1.4" fill="currentColor" stroke="none" />
+                            <line x1="3" y1="8" x2="13" y2="8" />
+                            <circle cx="10" cy="8" r="1.4" fill="currentColor" stroke="none" />
+                            <line x1="3" y1="11.5" x2="13" y2="11.5" />
+                            <circle cx="7" cy="11.5" r="1.4" fill="currentColor" stroke="none" />
+                          </svg>
+                        </button>
+                        {/* Sort — placeholder (no function yet). */}
+                        {(() => {
+                          const ico = cardIconRender();
+                          return (
+                            <button type="button" onClick={(e) => e.stopPropagation()} aria-label="Sort" className={ico.className} style={btnStyle(ico)}>
+                              <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="3" y1="4" x2="11" y2="4" />
+                                <line x1="3" y1="8" x2="9" y2="8" />
+                                <line x1="3" y1="12" x2="7" y2="12" />
+                                <polyline points="11,9 13,11 11,13" />
+                                <line x1="13" y1="11" x2="13" y2="4" />
+                              </svg>
+                            </button>
+                          );
+                        })()}
+                        {/* Filter — placeholder (no function yet). */}
+                        {(() => {
+                          const ico = cardIconRender();
+                          return (
+                            <button type="button" onClick={(e) => e.stopPropagation()} aria-label="Filter" className={ico.className} style={btnStyle(ico)}>
+                              <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="2.5,3 13.5,3 9.5,8 9.5,13 6.5,11.5 6.5,8" />
+                              </svg>
+                            </button>
+                          );
+                        })()}
+                        {/* Visibility — placeholder (no function yet). */}
+                        {(() => {
+                          const ico = cardIconRender();
+                          return (
+                            <button type="button" onClick={(e) => e.stopPropagation()} aria-label="Show/hide rows" className={ico.className} style={btnStyle(ico)}>
+                              <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M2 8 C 4 4.5 6 3 8 3 C 10 3 12 4.5 14 8 C 12 11.5 10 13 8 13 C 6 13 4 11.5 2 8 Z" />
+                                <circle cx="8" cy="8" r="2" />
+                              </svg>
+                            </button>
+                          );
+                        })()}
+                        {/* Pin/star — placeholder (no function yet). */}
+                        {(() => {
+                          const ico = cardIconRender();
+                          return (
+                            <button type="button" onClick={(e) => e.stopPropagation()} aria-label="Pin" className={ico.className} style={btnStyle(ico)}>
+                              <svg width={iconBox} height={iconBox} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="8,2 9.6,5.7 13.6,6.1 10.6,8.8 11.5,12.8 8,10.7 4.5,12.8 5.4,8.8 2.4,6.1 6.4,5.7" />
+                              </svg>
+                            </button>
+                          );
+                        })()}
+                      </div>
+                      {/* Right side reserved for future filters (sort, scope, etc.) */}
+                      <div />
+                    </div>
+                  );
+                })()}
+                <div className="absolute" style={{
+                  top: cardIconInset + cardIconSize + 8,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
                   opacity: comparing ? 0 : 1,
                   pointerEvents: comparing ? "none" : "auto",
                   transition: `opacity 0.2s ${ease}`,
@@ -5096,7 +5186,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     2nd card and wheel — translateX from a small positive offset
                     so the 2nd humanoid's values read as flowing in alongside the
                     rest of the right side. */}
-                <div className="absolute inset-0" style={{
+                <div className="absolute" style={{
+                  top: cardIconInset + cardIconSize + 8,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
                   opacity: comparing ? 1 : 0,
                   transform: comparing ? "translateX(0)" : "translateX(40px)",
                   pointerEvents: comparing ? "auto" : "none",
@@ -7143,26 +7237,26 @@ export default function HomeClient() {
           To bring chat back, swap this for the <OptionsMenu .../> block. */}
       {introDone && (() => {
         const creditStyle: React.CSSProperties = {
-          fontSize: 13,
+          fontSize: 11,
           fontWeight: 500,
           letterSpacing: "normal",
+          lineHeight: 1,
           color: "oklch(65% 0.011 222.2)",
           whiteSpace: "nowrap",
         };
         return (
           <div
             className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none"
-            style={{ bottom: "var(--corner-y, 8px)" }}
+            style={{ bottom: "max(4px, calc(var(--corner-y, 8px) - 6px))" }}
           >
             <div
-              className="relative flex items-center justify-between"
+              className="flex flex-col items-center"
               style={{
-                minHeight: 26,
                 paddingLeft: "var(--nav-edge, 24px)",
                 paddingRight: "var(--nav-edge, 24px)",
+                gap: 36,
               }}
             >
-              <span className="pointer-events-auto" style={creditStyle}>Roy Jad © 2026</span>
               <button
                 type="button"
                 onClick={() => {
@@ -7170,9 +7264,8 @@ export default function HomeClient() {
                   onRandomHumanoid();
                 }}
                 aria-label="Shuffle"
-                className="pointer-events-auto absolute left-1/2 top-1/2"
+                className="pointer-events-auto"
                 style={{
-                  transform: "translate(-50%, calc(-50% - 16px))",
                   background: "transparent",
                   border: "none",
                   padding: 0,
@@ -7199,9 +7292,9 @@ export default function HomeClient() {
                   >🎲</span>
                 )}
               </button>
-              <div className="flex items-center" style={{ gap: 8 }}>
+              <div className="flex items-end" style={{ gap: 10 }}>
                 <Chip
-                  className="pointer-events-auto"
+                  className="pointer-events-auto hover:underline underline-offset-2"
                   onClick={() => {
                     const origin = typeof window !== "undefined" ? window.location.origin : "";
                     copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
@@ -7210,6 +7303,7 @@ export default function HomeClient() {
                 >
                   Share
                 </Chip>
+                <span className="pointer-events-auto" style={creditStyle}>Roy Jad © 2026</span>
                 <div className="pointer-events-auto">
                   <SiteOptionsMenu
                     inline
