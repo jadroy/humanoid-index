@@ -1613,9 +1613,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       borderRest: "rgba(0,0,0,0.18)",
       borderHover: "rgba(0,0,0,0.42)",
       borderActive: "rgba(0,0,0,0.56)",
-      colorRest: "rgba(0,0,0,0.5)",
-      colorHover: "rgba(0,0,0,0.85)",
-      colorActive: "rgba(0,0,0,0.85)",
+      colorRest: "rgba(0,0,0,0.38)",
+      colorHover: "rgba(0,0,0,0.7)",
+      colorActive: "rgba(0,0,0,0.65)",
       glassBorder: "rgba(0,0,0,0.08)",
       glassBorderHover: "rgba(0,0,0,0.14)",
     };
@@ -1668,7 +1668,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         ["--ci-color-hover" as string]: palette.colorHover,
         ["--ci-border-hover" as string]: hoverBorder,
       },
-      iconBoxPx: Math.round(cardIconSize * 0.55),
+      iconBoxPx: Math.round(cardIconSize * 0.65),
       iconStrokeWidth: cardIconStroke,
     };
   };
