@@ -5,7 +5,7 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
-import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight } from "lucide-react";
+import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, type Humanoid } from "@/data/humanoids";
 import Image from "next/image";
@@ -29,7 +29,6 @@ const SPIN_ROBOTS: Record<
   "3": {
     frameCount: 30,
     path: "/spin/memo",
-    credit: { prefix: "Via", name: "sunday.ai" },
   },
 };
 
@@ -192,7 +191,17 @@ const EPETRI_FONT_OVERRIDES: React.CSSProperties = {
 // the icon color; for the action overlay we also expose `--c-ink-body` /
 // `--c-ink-muted` so descendant text that reads those vars flips too.
 type GlassInk = "auto" | "dark" | "light";
+
+// Named glass-chip presets. Each one is a complete snapshot of the six
+// tunable values — applying a preset overwrites all of them at once. First
+// preset is also the Reset target.
+type GlassPreset = { name: string; tint: string; alpha: number; blur: number; ink: GlassInk; outline: number; sheen: number };
+const GLASS_PRESETS: readonly GlassPreset[] = [
+  { name: "Solid",  tint: "#f5f5f5", alpha: 1,    blur: 0,  ink: "auto", outline: 0.15, sheen: 0.10 },
+  { name: "Liquid", tint: "#ffffff", alpha: 0.38, blur: 20, ink: "auto", outline: 0.13, sheen: 0.08 },
+];
 type GlassChrome = React.CSSProperties & {
+  ["--c-ink"]?: string;
   ["--c-ink-body"]?: string;
   ["--c-ink-muted"]?: string;
   ["--ci-bg-hover"]?: string;
@@ -238,6 +247,10 @@ function glassChromeFor({ tint, alpha, blur, ink, outline, sheen }: { tint: stri
     ["--ci-bg-hover"]: fill,
     ["--ci-border-hover"]: "transparent",
     ["--ci-color-hover"]: inkColor,
+    // Override the broader ink vars too — the action-overlay CTA uses
+    // `var(--c-ink)` via valueStyle, not just `--c-ink-body`, so cascading
+    // all three keeps every text token inside the overlay on the same scheme.
+    ["--c-ink"]: inkColor,
     ["--c-ink-body"]: inkColor,
     ["--c-ink-muted"]: inkMuted,
   };
@@ -1664,9 +1677,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [cardIconActive, setCardIconActive] = useState<CardIconActive>("tint");
   const [cardIconHoverFade, setCardIconHoverFade] = useState(true);
   const [cardIcon3DLabel, setCardIcon3DLabel] = useState(false);
+  // Blurb visibility — toggled by the bottom-left info icon on the card.
+  // Only one blurb renders at a time (single view + isFirst), so a single
+  // boolean is enough.
+  const [blurbVisible, setBlurbVisible] = useState(false);
   // Liquid-glass chrome shared across stats-panel toolbar + in-card chips.
   // Tint/alpha/blur are tunable; sheen + edge derive from tint luminance.
-  const [glassTint, setGlassTint] = useState("#fcfcfc");
+  const [glassTint, setGlassTint] = useState("#f5f5f5");
   const [glassAlpha, setGlassAlpha] = useState(1);
   const [glassBlur, setGlassBlur] = useState(0);
   const [glassInk, setGlassInk] = useState<GlassInk>("auto");
@@ -1675,6 +1692,22 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const glassChipChrome = useMemo(
     () => glassChromeFor({ tint: glassTint, alpha: glassAlpha, blur: glassBlur, ink: glassInk, outline: glassOutline, sheen: glassSheen }),
     [glassTint, glassAlpha, glassBlur, glassInk, glassOutline, glassSheen]
+  );
+  const applyGlassPreset = (p: GlassPreset) => {
+    setGlassTint(p.tint);
+    setGlassAlpha(p.alpha);
+    setGlassBlur(p.blur);
+    setGlassInk(p.ink);
+    setGlassOutline(p.outline);
+    setGlassSheen(p.sheen);
+  };
+  const activeGlassPreset = GLASS_PRESETS.find(
+    (p) => p.tint.toLowerCase() === glassTint.toLowerCase()
+      && Math.abs(p.alpha - glassAlpha) < 0.005
+      && p.blur === glassBlur
+      && p.ink === glassInk
+      && Math.abs(p.outline - glassOutline) < 0.005
+      && Math.abs(p.sheen - glassSheen) < 0.005,
   );
   const cardIconRender = (opts: { active?: boolean; dark?: boolean } = {}): {
     className: string;
@@ -1755,7 +1788,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         padding: 0,
         backdropFilter: cardIconChrome === "glass" ? "blur(10px)" : undefined,
         WebkitBackdropFilter: cardIconChrome === "glass" ? "blur(10px)" : undefined,
-        transition: "background 180ms ease, border-color 180ms ease, color 180ms ease, opacity 180ms ease, transform 180ms ease",
+        transition: "background 180ms ease, border-color 180ms ease, color 180ms ease, opacity 325ms cubic-bezier(0.4, 0, 0.2, 1), transform 325ms cubic-bezier(0.4, 0, 0.2, 1)",
         ["--ci-bg-hover" as string]: hoverBg,
         ["--ci-color-hover" as string]: palette.colorHover,
         ["--ci-border-hover" as string]: hoverBorder,
@@ -3783,12 +3816,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // Specs card holds all data rows (Company..Drive + engineer + Price + Status).
             // Action card holds only the CTA/purchase row, anchored below.
             const specsRowsOnly = purchaseRow ? denseRows.slice(0, -1) : denseRows;
-            // Action overlay floats at bottom of the column (pillRowHeight + inset);
-            // reserve bottom padding so the last scroll row clears it. Top edge
-            // intentionally has standard padding only — toolbar chips overlay
-            // rows on hover (iOS-26 glass behaviour).
-            const glassBottomPad = pillRowHeight + cardIconInset * 2;
-            const specsCard = renderRowsAsCard(specsRowsOnly, { fill: true, padding: `18px 18px ${glassBottomPad}px 18px` });
+            // Standard 18px padding on all sides — both toolbar (top) and
+            // action (bottom) chips are hover-only overlays now, so rows can
+            // run edge-to-edge and tuck behind them on reveal.
+            const specsCard = renderRowsAsCard(specsRowsOnly, { fill: true, padding: "18px 18px" });
             const statsCard = (
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
@@ -4049,13 +4080,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       bottom: cardIconInset,
                       left: cardIconInset,
                       right: cardIconInset,
-                      borderRadius: cardRadius,
-                      padding: "10px 18px",
+                      height: cardIconSize,
+                      display: "flex",
+                      alignItems: "center",
+                      borderRadius: cardIconSize / 2,
+                      padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
                       zIndex: 20,
-                      opacity: collapseVariant === "hover-fade" ? (statsHover ? 1 : 0.22) : (statsCollapsed ? 0 : 1),
-                      transform: statsCollapsed ? "translateX(8px)" : "translateX(0)",
-                      pointerEvents: statsCollapsed ? "none" : "auto",
-                      transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
+                      // Hover-only: matches the toolbar chip behaviour so the
+                      // chrome cluster appears as one coordinated reveal.
+                      opacity: statsCollapsed ? 0 : (statsHover ? 1 : 0),
+                      pointerEvents: statsCollapsed || !statsHover ? "none" : "auto",
+                      transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1)",
                     }}
                   >
                     {purchaseRow}
@@ -4956,6 +4991,66 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     glassChipChrome={glassChipChrome}
                   />
                 )}
+                {/* Info icon — bottom-left of the card. Toggles the blurb
+                    strip on/off. Hover-fades with the other in-card chrome. */}
+                {isFirst && !comparing && (() => {
+                  const desc = getRobotDescription(h);
+                  if (!desc.text) return null;
+                  const ico = cardIconRender({ active: blurbVisible });
+                  const fadeClass = cardIconHoverFade && !blurbVisible ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
+                  return (
+                    <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }}
+                        aria-pressed={blurbVisible}
+                        aria-label={blurbVisible ? "Hide info" : "Show info"}
+                        className={`${ico.className} absolute z-30 ${fadeClass}`}
+                        style={{ ...ico.style, ...glassChipChrome, bottom: cardIconInset, left: cardIconInset }}
+                      >
+                        <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                      </button>
+                    </Tooltip>
+                  );
+                })()}
+                {/* Blurb strip — glass chip beside the info icon, fades in
+                    when toggled on. Multi-line, auto-height: grows upward as
+                    content gets longer. Bottom-aligned with the info icon so
+                    short blurbs sit flush, longer blurbs rise above it. */}
+                {isFirst && !comparing && (() => {
+                  const desc = getRobotDescription(h);
+                  const fullText = desc.long ?? desc.text;
+                  if (!fullText) return null;
+                  const hasRightButton = !!(THREEDEE_ROBOTS[h.id] || SPIN_ROBOTS[h.id]);
+                  const rightInset = hasRightButton ? cardIconInset + cardIconSize + 8 : cardIconInset;
+                  const leftInset = cardIconInset + cardIconSize + 8;
+                  return (
+                    <div
+                      className="absolute z-20 pointer-events-none"
+                      style={{
+                        ...glassChipChrome,
+                        bottom: cardIconInset,
+                        left: leftInset,
+                        right: rightInset,
+                        minHeight: cardIconSize,
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "10px 14px",
+                        borderRadius: 14,
+                        fontSize: Math.round(cardIconSize * 0.36),
+                        fontFamily: "var(--font-geist-sans)",
+                        fontWeight: 500,
+                        letterSpacing: "0.01em",
+                        lineHeight: 1.35,
+                        opacity: blurbVisible ? 1 : 0,
+                        transform: blurbVisible ? "translateX(0)" : "translateX(-6px)",
+                        transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1), transform 325ms cubic-bezier(0.4, 0, 0.2, 1)",
+                      }}
+                    >
+                      {fullText}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Hover arrows — anchored to the active humanoid's gallery */}
@@ -5192,7 +5287,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         // one (otherwise the blur pops in late as opacity ramps).
                         opacity: statsCollapsed ? 0 : (statsHover ? 1 : 0),
                         willChange: "opacity",
-                        transition: "opacity 280ms cubic-bezier(0.32, 0.72, 0, 1)",
+                        transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1)",
                       }}
                     >
                       {/* Left side — share link for the current view. */}
@@ -6017,10 +6112,24 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <p className="text-[12px] tracking-widest uppercase text-neutral-400">Glass chip</p>
               <button
                 className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer"
-                onClick={() => { setGlassTint("#fcfcfc"); setGlassAlpha(1); setGlassBlur(0); setGlassInk("auto"); setGlassOutline(0.15); setGlassSheen(0.10); }}
+                onClick={() => applyGlassPreset(GLASS_PRESETS[0])}
               >
                 Reset
               </button>
+            </div>
+            <div>
+              <p className="text-[12px] text-neutral-500 mb-1.5">Preset</p>
+              <div className="flex flex-wrap gap-1.5">
+                {GLASS_PRESETS.map((p) => (
+                  <button
+                    key={p.name}
+                    onClick={() => applyGlassPreset(p)}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${activeGlassPreset?.name === p.name ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
             </div>
             <div>
               <p className="text-[12px] text-neutral-500 mb-1.5">Ink</p>
