@@ -308,7 +308,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
           activeCy = cy;
           activeTangentDeg = tangentDeg;
         }
-        const t = Math.min(dist / 10, 1);
+        const t = Math.min(dist / 5, 1);
 
         if (item.ghost) {
           const ghostEl = ghostRefs.current[idx];
@@ -324,7 +324,11 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         const nameEl = nameRefs.current[idx];
         if (!el || !nameEl) continue;
         const isAct = dist < 0.5;
-        const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
+        // Smooth bell curve: aFsMax at the center, easing down to aFsMin
+        // over ~5 items for a gentle spotlight, not a sharp pop.
+        const prox = Math.max(0, 1 - dist / 5);
+        const eased = prox * prox * (3 - 2 * prox);
+        const fs = aFsMin + (aFsMax - aFsMin) * eased;
         const fw = isAct ? 500 : 400;
         const baseOp = Math.max(0.08, 1 - t * 0.9);
         const op = isAct ? baseOp : baseOp * aInactiveOp;

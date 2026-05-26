@@ -13,6 +13,7 @@ import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
 import MobileView from "@/components/MobileView";
 import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
+import { Tooltip } from "@/components/Tooltip";
 
 // Lazy-loaded so three.js + URDFLoader stay out of the main bundle.
 const Robot3D = dynamic(() => import("@/components/Robot3D"), { ssr: false });
@@ -394,18 +395,20 @@ function GalleryVideoPauseButton({ mIdx, allKinds, subscribe, read, videoPaused,
   const ico = getIconStyle({ dark: true });
   const fadeClass = hoverFade ? "opacity-0 group-hover/card:opacity-100" : "";
   return (
-    <button
-      onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      aria-label={videoPaused ? "Play video" : "Pause video"}
-      className={`${ico.className} absolute z-30 ${fadeClass}`}
-      style={{ ...ico.style, bottom: position.bottom, right: position.right }}
-    >
-      {videoPaused ? (
-        <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-      ) : (
-        <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-      )}
-    </button>
+    <Tooltip label={videoPaused ? "Play video" : "Pause video"} shortcut="Space">
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        aria-label={videoPaused ? "Play video" : "Pause video"}
+        className={`${ico.className} absolute z-30 ${fadeClass}`}
+        style={{ ...ico.style, bottom: position.bottom, right: position.right }}
+      >
+        {videoPaused ? (
+          <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+        ) : (
+          <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+        )}
+      </button>
+    </Tooltip>
   );
 }
 
@@ -1278,7 +1281,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [bottomFadeOpacity, setBottomFadeOpacity] = useState(0.9);
   const [showTuner, setShowTuner] = useState(false);
   const [buyLayout, setBuyLayout] = useState<"card" | "chip" | "below">("card");
-  const [statsCollapsed, setStatsCollapsed] = useState(false);
+  const [statsCollapsed, setStatsCollapsed] = useState(true);
   const [statsHover, setStatsHover] = useState(false);
   // Engineer-mode toggle for the stats column — basic (default) reveals the
   // standard rows; engineer adds the extended `engineering` block of specs.
@@ -1338,6 +1341,25 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const spinViewerRightRef = useRef<SpinViewerHandle>(null);
   const spinLoopRef = useRef(false);
   const [spinPlaying, setSpinPlaying] = useState(false);
+  const toggleSpin = useCallback(async () => {
+    if (spinLoopRef.current) {
+      spinLoopRef.current = false;
+      spinViewerRef.current?.cancelPlay();
+      return;
+    }
+    spinLoopRef.current = true;
+    setSpinPlaying(true);
+    try {
+      while (spinLoopRef.current) {
+        const viewer = spinViewerRef.current;
+        if (!viewer) break;
+        await viewer.playRotation();
+      }
+    } finally {
+      spinLoopRef.current = false;
+      setSpinPlaying(false);
+    }
+  }, []);
   const [show3D, setShow3D] = useState(false);
   const [material3D, setMaterial3D] = useState<"clay" | "brushed" | "chrome">("clay");
   const [videoPaused, setVideoPaused] = useState(false);
@@ -2224,6 +2246,41 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [activeGo, comparing, activeSide, arcStyle, springL, springR, isDev]);
+
+  // In-card icon shortcuts — mirror the buttons one-for-one. Plain single
+  // keys (no modifier) so ⌘C/⌘R/⌘D etc. still trigger native browser actions.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const currentId = humanoids[springL.index]?.id;
+      switch (e.key) {
+        case "d": case "D":
+          if (!comparing) { setStatsCollapsed((v) => !v); }
+          return;
+        case "e": case "E":
+          setEngineerMode((v) => { const next = !v; setDenseRowGap(next ? 4 : 9); return next; });
+          return;
+        case "u": case "U":
+          onUseImperialChange?.(!useImperial);
+          return;
+        case "c": case "C":
+          onShareView?.();
+          return;
+        case "3":
+          if (!comparing && currentId && THREEDEE_ROBOTS[currentId]) setShow3D((v) => !v);
+          return;
+        case "r": case "R":
+          if (!comparing && currentId && SPIN_ROBOTS[currentId]) void toggleSpin();
+          return;
+        case " ":
+          if (!comparing) { e.preventDefault(); setVideoPaused((p) => !p); }
+          return;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [comparing, springL, useImperial, onUseImperialChange, onShareView, toggleSpin]);
 
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
@@ -3652,10 +3709,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // Specs card holds all data rows (Company..Drive + engineer + Price + Status).
             // Action card holds only the CTA/purchase row, anchored below.
             const specsRowsOnly = purchaseRow ? denseRows.slice(0, -1) : denseRows;
-            const specsCard = renderRowsAsCard(specsRowsOnly, { fill: true });
-            const actionCard = purchaseRow ? renderRowsAsCard([purchaseRow], { gap: 8, padding: "10px 18px" }) : null;
+            // Toolbar chips float at top:cardIconInset; reserve enough top
+            // padding so the first row clears them with breathing room.
+            const glassTopPad = cardIconInset + cardIconSize + 10;
+            // Action overlay floats at bottom of the column (pillRowHeight + inset);
+            // reserve bottom padding so the last scroll row clears it.
+            const glassBottomPad = pillRowHeight + cardIconInset * 2;
+            const specsCard = renderRowsAsCard(specsRowsOnly, { fill: true, padding: `${glassTopPad}px 18px ${glassBottomPad}px 18px` });
             const statsCard = (
-              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: `${glassTopPad}px 18px 18px 18px`, flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                   <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, paddingLeft: 18, paddingRight: 18 }}>
                     {denseDividers ? (
@@ -3901,20 +3963,32 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     {denseDividers ? null : statusCard}
                   </div>
                 </div>
-                {/* Action card — anchored below the scrollable specs container,
-                    visually mirroring the floating icon row above. */}
-                {denseDividers && splitCards && actionCard && (
+                {/* Action overlay — iOS-26 glass chip floating at the bottom
+                    of the stats container, mirroring the toolbar chips on top.
+                    Stats rows scroll behind it (glassBottomPad keeps the last
+                    row from sitting under the glass). */}
+                {denseDividers && splitCards && purchaseRow && (
                   <div
+                    className="pointer-events-auto"
                     style={{
-                      width: expandedStatsW,
-                      flexShrink: 0,
+                      position: "absolute",
+                      bottom: cardIconInset,
+                      left: cardIconInset,
+                      right: cardIconInset,
+                      borderRadius: cardRadius,
+                      background: "rgba(255,255,255,0.55)",
+                      backdropFilter: "blur(18px) saturate(1.6)",
+                      WebkitBackdropFilter: "blur(18px) saturate(1.6)",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 1px rgba(255,255,255,0.35), 0 1px 3px rgba(0,0,0,0.04)",
+                      padding: "10px 18px",
+                      zIndex: 20,
                       opacity: collapseVariant === "hover-fade" ? (statsHover ? 1 : 0.22) : (statsCollapsed ? 0 : 1),
                       transform: statsCollapsed ? "translateX(8px)" : "translateX(0)",
                       pointerEvents: statsCollapsed ? "none" : "auto",
                       transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                     }}
                   >
-                    {actionCard}
+                    {purchaseRow}
                   </div>
                 )}
                 {!denseDividers && (
@@ -4358,7 +4432,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: compareStatsW, minWidth: compareStatsW, position: "relative", zIndex: 11 }}>
               <div className="flex flex-col" style={{ flex: 1, justifyContent: denseDividers ? "stretch" : "center", minHeight: 0 }}>
                 {blurbBlock}
-                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: `${cardIconInset + cardIconSize + 10}px 18px 18px 18px`, flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                   <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                     <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, paddingLeft: 18, paddingRight: 18 }}>
                       {denseDividers ? (
@@ -4731,19 +4805,21 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {collapseVariant === "info-icon" && !comparing && isFirst && (() => {
                   const ico = cardIconRender({ active: !statsCollapsed });
                   return (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
-                      aria-label={statsCollapsed ? "Show details" : "Hide details"}
-                      className={`${ico.className} absolute z-30`}
-                      style={{
-                        ...ico.style,
-                        background: "transparent",
-                        top: cardIconInset,
-                        right: cardIconInset,
-                      }}
-                    >
-                      <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                    </button>
+                    <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
+                        aria-label={statsCollapsed ? "Show details" : "Hide details"}
+                        className={`${ico.className} absolute z-30`}
+                        style={{
+                          ...ico.style,
+                          background: "transparent",
+                          top: cardIconInset,
+                          right: cardIconInset,
+                        }}
+                      >
+                        <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                      </button>
+                    </Tooltip>
                   );
                 })()}
                 {/* Density toggle moved into the new stats-column header
@@ -4757,18 +4833,20 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     ? { ...ico.style, width: "auto", paddingLeft: 10, paddingRight: 12, gap: 6 }
                     : ico.style;
                   return (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShow3D((v) => !v);
-                      }}
-                      aria-label={show3D ? "Show photo" : "View in 3D"}
-                      className={`${ico.className} absolute z-30 ${fadeClass}`}
-                      style={{ ...pillStyle, background: "transparent", bottom: cardIconInset, right: cardIconInset }}
-                    >
-                      <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                      {cardIcon3DLabel && <span className="text-[12px] tracking-tight font-medium">3D</span>}
-                    </button>
+                    <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShow3D((v) => !v);
+                        }}
+                        aria-label={show3D ? "Show photo" : "View in 3D"}
+                        className={`${ico.className} absolute z-30 ${fadeClass}`}
+                        style={{ ...pillStyle, background: "transparent", bottom: cardIconInset, right: cardIconInset }}
+                      >
+                        <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                        {cardIcon3DLabel && <span className="text-[12px] tracking-tight font-medium">3D</span>}
+                      </button>
+                    </Tooltip>
                   );
                 })()}
                 {/* Auto-rotate (play/pause) — bottom-right, only for spin-enabled robots */}
@@ -4776,37 +4854,20 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   const ico = cardIconRender({ active: spinPlaying });
                   const fadeClass = cardIconHoverFade && !spinPlaying ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
                   return (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (spinPlaying) {
-                          spinLoopRef.current = false;
-                          spinViewerRef.current?.cancelPlay();
-                          return;
-                        }
-                        spinLoopRef.current = true;
-                        setSpinPlaying(true);
-                        try {
-                          while (spinLoopRef.current) {
-                            const viewer = spinViewerRef.current;
-                            if (!viewer) break;
-                            await viewer.playRotation();
-                          }
-                        } finally {
-                          spinLoopRef.current = false;
-                          setSpinPlaying(false);
-                        }
-                      }}
-                      aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
-                      className={`${ico.className} absolute z-30 ${fadeClass}`}
-                      style={{ ...ico.style, background: "transparent", bottom: cardIconInset, right: cardIconInset }}
-                    >
-                      {spinPlaying ? (
-                        <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                      ) : (
-                        <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                      )}
-                    </button>
+                    <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); void toggleSpin(); }}
+                        aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
+                        className={`${ico.className} absolute z-30 ${fadeClass}`}
+                        style={{ ...ico.style, background: "transparent", bottom: cardIconInset, right: cardIconInset }}
+                      >
+                        {spinPlaying ? (
+                          <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                        ) : (
+                          <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                        )}
+                      </button>
+                    </Tooltip>
                   );
                 })()}
                 {/* Video play/pause — appears when on a video slide; lives in the bottom-right cluster */}
@@ -5036,96 +5097,104 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {(() => {
                   const engineerIco = cardIconRender({ active: engineerMode });
                   const iconBox = engineerIco.iconBoxPx;
-                  // Header buttons get a slight rest fill (inactive = a touch
-                  // of tint, not fully transparent) so the row reads as a
-                  // group even when nothing is engaged.
-                  const restFill = "rgba(0,0,0,0.04)";
-                  const btnStyle = (ico: ReturnType<typeof cardIconRender>): React.CSSProperties => ({
+                  // iOS-26 liquid-glass treatment: buttons float over the
+                  // stats container at the top corners. Translucent fill +
+                  // backdrop blur lets the row beneath read through softly.
+                  const glassBtnStyle = (ico: ReturnType<typeof cardIconRender>): React.CSSProperties => ({
                     ...ico.style,
-                    background: ico.style.background === "transparent" ? restFill : ico.style.background,
+                    background: "rgba(255,255,255,0.55)",
+                    backdropFilter: "blur(18px) saturate(1.6)",
+                    WebkitBackdropFilter: "blur(18px) saturate(1.6)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 1px rgba(255,255,255,0.35), 0 1px 3px rgba(0,0,0,0.04)",
+                    borderColor: "transparent",
                     WebkitTapHighlightColor: "transparent",
                   });
                   return (
                     <div
-                      className="absolute z-10 flex items-center justify-between"
+                      className="absolute z-20 flex items-center justify-between pointer-events-none"
                       style={{
                         top: cardIconInset,
-                        left: 0,
-                        right: 0,
+                        left: cardIconInset,
+                        right: cardIconInset,
                         height: cardIconSize,
                         opacity: statsCollapsed ? 0 : 1,
-                        pointerEvents: statsCollapsed ? "none" : "auto",
                         transition: `opacity ${dur} ${ease}`,
                       }}
                     >
-                      <div className="flex items-center" style={{ gap: cardIconGap, height: "100%" }}>
+                      <div className="flex items-center pointer-events-auto" style={{ gap: cardIconGap, height: "100%" }}>
                         {/* Engineer — toggles both the engineer rows AND tighter
                             spacing in one move (engineer = denser specs view). */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEngineerMode((v) => {
-                              const next = !v;
-                              setDenseRowGap(next ? 4 : 9);
-                              return next;
-                            });
-                          }}
-                          aria-pressed={engineerMode}
-                          aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
-                          className={engineerIco.className}
-                          style={btnStyle(engineerIco)}
-                        >
-                          <ChevronsUpDown size={iconBox} strokeWidth={engineerIco.iconStrokeWidth} />
-                        </button>
+                        <Tooltip label={engineerMode ? "Hide engineer specs" : "Show engineer specs"} shortcut="E">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEngineerMode((v) => {
+                                const next = !v;
+                                setDenseRowGap(next ? 4 : 9);
+                                return next;
+                              });
+                            }}
+                            aria-pressed={engineerMode}
+                            aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
+                            className={engineerIco.className}
+                            style={glassBtnStyle(engineerIco)}
+                          >
+                            <ChevronsUpDown size={iconBox} strokeWidth={engineerIco.iconStrokeWidth} />
+                          </button>
+                        </Tooltip>
                         {/* Units — metric / imperial. Shows the current unit
                             as the icon label so the state is self-evident. */}
                         {(() => {
                           const ico = cardIconRender({ active: !useImperial });
                           return (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); onUseImperialChange?.(!useImperial); }}
-                              aria-label={`Switch to ${useImperial ? "metric" : "imperial"}`}
-                              className={ico.className}
-                              style={btnStyle(ico)}
-                            >
-                              <span style={{
-                                fontSize: Math.round(cardIconSize * 0.36),
-                                fontFamily: "var(--font-geist-sans)",
-                                fontWeight: 500,
-                                letterSpacing: "0.01em",
-                                lineHeight: 1,
-                              }}>
-                                {useImperial ? "in" : "cm"}
-                              </span>
-                            </button>
+                            <Tooltip label={`Switch to ${useImperial ? "metric" : "imperial"}`} shortcut="U">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onUseImperialChange?.(!useImperial); }}
+                                aria-label={`Switch to ${useImperial ? "metric" : "imperial"}`}
+                                className={ico.className}
+                                style={glassBtnStyle(ico)}
+                              >
+                                <span style={{
+                                  fontSize: Math.round(cardIconSize * 0.36),
+                                  fontFamily: "var(--font-geist-sans)",
+                                  fontWeight: 500,
+                                  letterSpacing: "0.01em",
+                                  lineHeight: 1,
+                                }}>
+                                  {useImperial ? "in" : "cm"}
+                                </span>
+                              </button>
+                            </Tooltip>
                           );
                         })()}
                       </div>
                       {/* Right side — share link for the current view. */}
-                      <div className="flex items-center" style={{ gap: cardIconGap, height: "100%" }}>
+                      <div className="flex items-center pointer-events-auto" style={{ gap: cardIconGap, height: "100%" }}>
                         {(() => {
                           const ico = cardIconRender();
                           return (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
-                              aria-label="Share this view"
-                              className={ico.className}
-                              style={{
-                                ...btnStyle(ico),
-                                width: "auto",
-                                padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
-                                fontFamily: "var(--font-geist-sans)",
-                                fontSize: Math.round(cardIconSize * 0.36),
-                                fontWeight: 500,
-                                letterSpacing: "0.01em",
-                                lineHeight: 1,
-                              }}
-                            >
-                              Share
-                            </button>
+                            <Tooltip label="Share this view" shortcut="C">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
+                                aria-label="Share this view"
+                                className={ico.className}
+                                style={{
+                                  ...glassBtnStyle(ico),
+                                  width: "auto",
+                                  padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
+                                  fontFamily: "var(--font-geist-sans)",
+                                  fontSize: Math.round(cardIconSize * 0.36),
+                                  fontWeight: 500,
+                                  letterSpacing: "0.01em",
+                                  lineHeight: 1,
+                                }}
+                              >
+                                Share
+                              </button>
+                            </Tooltip>
                           );
                         })()}
                       </div>
@@ -5133,7 +5202,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   );
                 })()}
                 <div className="absolute" style={{
-                  top: cardIconInset + cardIconSize + 8,
+                  top: 0,
                   left: 0,
                   right: 0,
                   bottom: 0,
@@ -5148,7 +5217,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     so the 2nd humanoid's values read as flowing in alongside the
                     rest of the right side. */}
                 <div className="absolute" style={{
-                  top: cardIconInset + cardIconSize + 8,
+                  top: 0,
                   left: 0,
                   right: 0,
                   bottom: 0,
