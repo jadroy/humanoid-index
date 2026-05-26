@@ -1283,15 +1283,19 @@ function CountryValue({ country, valueStyle, visualSide = "left" }: { country: s
       ))}
     </span>
   );
-  // NOTE: don't re-spread valueStyle here — callers wrap us in a parent
-  // that already applies it (e.g. MarqueeValue), so re-applying compounds
-  // the opacity and the row reads dimmer than its peers.
-  void valueStyle;
+  // Spread valueStyle minus the opacity. Callers may already wrap us in a
+  // parent (e.g. MarqueeValue) that applies the opacity, and compounding
+  // it dims the row vs its peers. We still need the font props so country
+  // text matches the other values' size — otherwise it inherits a larger
+  // default fontSize and the row's baseline shifts when scrolling between
+  // robots with/without a country.
+  const { opacity: _opacity, ...fontStyle } = valueStyle;
+  void _opacity;
   return (
     <span
       title={country}
       aria-label={country}
-      style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}
+      style={{ ...fontStyle, display: "inline-flex", alignItems: "baseline", gap: 6 }}
     >
       {visualSide === "left" ? flags : null}
       <span>{country}</span>
@@ -1301,11 +1305,11 @@ function CountryValue({ country, valueStyle, visualSide = "left" }: { country: s
 }
 
 const STATUS_LEGEND: Array<{ label: string; color: string }> = [
-  { label: "In Production", color: "#22c55e" },
-  { label: "Prototype", color: "#eab308" },
-  { label: "Concept", color: "#3b82f6" },
-  { label: "Anticipated", color: "#8b5cf6" },
-  { label: "Discontinued", color: "#a3a3a3" },
+  { label: "In Production", color: "#34c759" },
+  { label: "Prototype", color: "#ff9500" },
+  { label: "Concept", color: "#5e5ce6" },
+  { label: "Anticipated", color: "#af52de" },
+  { label: "Discontinued", color: "#8e8e93" },
 ];
 
 // Clickable wrapper used in compare view: renders the dot pill as a
@@ -1646,14 +1650,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [robotMaxW, setRobotMaxW] = useState(400); // px
   // Compare-mode middle column width. Stats need ~150-180px; the rest is
   // breathing room (and blurb width when the AI overview is on).
-  const [statsW, setStatsW] = useState(200);       // px
+  const [statsW, setStatsW] = useState(180);       // px
   // Compare mode needs more room to render long manufacturer names like
   // "Sunday Robotics" / "LimX Dynamics" without truncating.
   const compareStatsW = statsW + 200;
   // Side of the visual element (flag, status dot) relative to its text label
   // inside a value cell. "left" = visual-then-text (default), "right" = text-then-visual.
   const [valueVisualSide, setValueVisualSide] = useState<"left" | "right">("left");
-  const [statsColScale, setStatsColScale] = useState(0.72); // single-view stats column width = baseCardPx * this
+  const [statsColScale, setStatsColScale] = useState(0.65); // single-view stats column width = baseCardPx * this
   const [cardGap, setCardGap] = useState(8);       // px
   const [statsGap, setStatsGap] = useState(12);    // px — gap between robot and stats
   const [cardRadius, setCardRadius] = useState(20);  // px
@@ -3024,7 +3028,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         const weightPct = Math.min(((h.weight ?? 0) / 120) * 100, 100);
         const dofPct = Math.min(((h.dof ?? 0) / 50) * 100, 100);
         const speedPct = Math.min(((h.maxSpeed ?? 0) / 5) * 100, 100);
-        const statusColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : h.status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
+        const statusColor = h.status === "In Production" ? "#34c759" : h.status === "Prototype" ? "#ff9500" : h.status === "Concept" ? "#5e5ce6" : h.status === "Anticipated" ? "#af52de" : "#8e8e93";
 
         const barViz = (label: string, value: string, _pct: number, delay: number) => (
           <div
@@ -3213,7 +3217,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const robotDesc = getRobotDescription(h);
           const pillBg = statPillBg;
           const pillBackdrop: string | undefined = undefined;
-          const statusColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : h.status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
+          const statusColor = h.status === "In Production" ? "#34c759" : h.status === "Prototype" ? "#ff9500" : h.status === "Concept" ? "#5e5ce6" : h.status === "Anticipated" ? "#af52de" : "#8e8e93";
           const useSplit = splitBlurb && blurbFloat && !!robotDesc.text;
           const blurbNode = blurbFloat && robotDesc.text && (() => {
                 const isExpanded = expandedBlurbs.has(h.id);
@@ -3572,7 +3576,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const stackGap = 16;
             const sectionContentGap = 2;
             const sectionContentMarginTop = 10;
-            const cardFontSize = engineerMode ? 14 : 16;
+            const cardFontSize = engineerMode ? 14 : 15;
             const headerStyle: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: 10.5,
@@ -3584,6 +3588,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const hairlineRule = (
               <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)" }} />
             );
+            const rowHeight = Math.round(cardFontSize * 1.55);
             const rowStyle: React.CSSProperties = {
               display: "grid",
               gridTemplateColumns: "78px minmax(0, 1fr)",
@@ -3593,6 +3598,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               lineHeight: 1.55,
               whiteSpace: "nowrap",
               justifyItems: "end",
+              // Fixed row height keeps the column from jutting when scrolling
+              // between humanoids where some values (flags, em-dashes) sit at
+              // slightly different intrinsic heights.
+              minHeight: rowHeight,
+              height: rowHeight,
             };
             const dimmed: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
@@ -3825,7 +3835,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const countryRow = h.country ? (
               <div style={rowStyle}>
                 <span style={dimmed}>Country</span>
-                <CountryValue country={h.country} valueStyle={valueStyle} visualSide={valueVisualSide} />
+                <MarqueeValue align="right" style={valueStyle}>
+                  <CountryValue country={h.country} valueStyle={valueStyle} visualSide={valueVisualSide} />
+                </MarqueeValue>
               </div>
             ) : renderStatRow("Country", null, (v) => `${v}`);
             // Engineer-mode rows expand the specs block with the optional
@@ -3869,19 +3881,32 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               if (visible.length === 0) return null;
               const scrolling = pinnedLast ? visible.slice(0, -1) : visible;
               const pinned = pinnedLast ? visible[visible.length - 1] : null;
+              // Parse padding string to extract horizontal value so the scroll
+              // area can bleed full-width while the rows themselves keep their
+              // inset (matches compare-card pattern).
+              const paddingX = (() => {
+                const parts = padding.split(/\s+/);
+                const px = parts.length >= 2 ? parts[1] : parts[0];
+                return parseInt(px, 10) || 18;
+              })();
+              // Simple mode (engineer off) drops the hairline separators —
+              // rows just sit with `innerGap` between them for a cleaner look.
+              const showHairlines = engineerMode;
               return (
-                <div style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding, display: "flex", flexDirection: "column", gap: innerGap, minHeight: fill ? "100%" : 0 }}>
-                  <div className="flex flex-col" style={{ gap: innerGap }}>
-                    {scrolling.map((row, i) => (
-                      <Fragment key={i}>
-                        {i > 0 ? rowHairline : null}
-                        {row}
-                      </Fragment>
-                    ))}
-                  </div>
+                <div style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding, display: "flex", flexDirection: "column", gap: innerGap, flex: fill ? 1 : undefined, minHeight: 0 }}>
+                  <StatsScrollArea flex={fill ? 1 : undefined} style={{ marginLeft: -paddingX, marginRight: -paddingX }}>
+                    <div className="flex flex-col" style={{ gap: innerGap, paddingLeft: paddingX, paddingRight: paddingX }}>
+                      {scrolling.map((row, i) => (
+                        <Fragment key={i}>
+                          {showHairlines && i > 0 ? rowHairline : null}
+                          {row}
+                        </Fragment>
+                      ))}
+                    </div>
+                  </StatsScrollArea>
                   {pinned && (
                     <>
-                      {scrolling.length > 0 ? rowHairline : null}
+                      {showHairlines && scrolling.length > 0 ? rowHairline : null}
                       {pinned}
                     </>
                   )}
@@ -4146,96 +4171,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     of the stats container, mirroring the toolbar chips on top.
                     Stats rows scroll behind it (glassBottomPad keeps the last
                     row from sitting under the glass). */}
-                {/* Bottom row: engineer/condense anchored left, action chip
-                    anchored right. Both fade/swoop in together when the stats
-                    column is hovered. */}
-                {denseDividers && splitCards && (() => {
-                  const engineerIco = cardIconRender({ active: engineerMode });
-                  const actionIco = cardIconRender();
-                  // iOS-26 liquid-glass blue only when the action is a real
-                  // link. Static states ("Not for sale", "Inquire") use the
-                  // neutral glass chip so they don't visually shout an action.
-                  const hasActionableHref = !!purchaseSection?.href;
-                  const actionChipChrome = hasActionableHref
-                    ? glassChromeFor({ tint: "#0a84ff", alpha: 1, blur: 0, ink: "light", outline: 0, sheen: 0.4 })
-                    : glassChipChrome;
-                  const arrowSize = Math.round(actionIco.iconBoxPx * 0.7);
-                  const hoverFadeStyle: React.CSSProperties = {
-                    opacity: statsCollapsed ? 0 : (statsHover ? 1 : 0),
-                    transform: statsHover ? "translateY(0)" : "translateY(12px)",
-                    pointerEvents: statsCollapsed || !statsHover ? "none" : "auto",
-                    transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1), transform 325ms cubic-bezier(0.4, 0, 0.2, 1)",
-                  };
-                  return (
-                    <>
-                      {purchaseSection && (() => {
-                        const href = purchaseSection.href;
-                        const cta = purchaseSection.ctaText ?? "Buy";
-                        const label = href ? cta : (purchaseSection.state ?? purchaseSection.text ?? "Not for sale");
-                        const Tag = (href ? "a" : "div") as React.ElementType;
-                        const tagProps = href
-                          ? { href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
-                          : {};
-                        return (
-                          <Tag
-                            {...tagProps}
-                            className="absolute pointer-events-auto cursor-pointer"
-                            style={{
-                              ...actionChipChrome,
-                              bottom: cardIconInset,
-                              right: cardIconInset,
-                              maxWidth: `calc(100% - ${cardIconInset * 2 + cardIconSize + cardIconGap}px)`,
-                              height: cardIconSize,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 10,
-                              borderRadius: cardIconSize / 2,
-                              padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
-                              zIndex: 20,
-                              textDecoration: "none",
-                              ...hoverFadeStyle,
-                            }}
-                          >
-                            <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: Math.round(cardIconSize * 0.36), fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
-                            {href && (
-                              <span style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, opacity: 0.85 }}>
-                                <svg width={arrowSize} height={arrowSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
-                                </svg>
-                              </span>
-                            )}
-                          </Tag>
-                        );
-                      })()}
-                      <Tooltip label={engineerMode ? "Hide engineer specs" : "Show engineer specs"} shortcut="E">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEngineerMode((v) => {
-                              const next = !v;
-                              setDenseRowGap(next ? 4 : 9);
-                              return next;
-                            });
-                          }}
-                          aria-pressed={engineerMode}
-                          aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
-                          className={`${engineerIco.className} absolute`}
-                          style={{
-                            ...engineerIco.style,
-                            ...glassChipChrome,
-                            bottom: cardIconInset,
-                            left: cardIconInset,
-                            zIndex: 20,
-                            ...hoverFadeStyle,
-                          }}
-                        >
-                          <ChevronsUpDown size={engineerIco.iconBoxPx} strokeWidth={engineerIco.iconStrokeWidth} />
-                        </button>
-                      </Tooltip>
-                    </>
-                  );
-                })()}
+                {/* Bottom-left cluster moved to the parent stats slot so it
+                    persists across single + compare modes. See below. */}
                 {!denseDividers && (
                   <div
                     style={{
@@ -4386,9 +4323,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const speedL = hL.maxSpeed ?? 0, speedR = hR.maxSpeed ?? 0;
           const priceL = hL.cost && hL.cost !== "N/A" ? hL.cost : null;
           const priceR = hR.cost && hR.cost !== "N/A" ? hR.cost : null;
-          const statusColor = (status?: string) => status === "In Production" ? "#22c55e" : status === "Prototype" ? "#eab308" : status === "Concept" ? "#3b82f6" : status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
+          const statusColor = (status?: string) => status === "In Production" ? "#34c759" : status === "Prototype" ? "#ff9500" : status === "Concept" ? "#5e5ce6" : status === "Anticipated" ? "#af52de" : "#8e8e93";
 
-          const fz = engineerMode ? 14 : 16;
+          const fz = engineerMode ? 14 : 15;
           const stackGap = 18;
           const dimmed: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
@@ -4409,11 +4346,22 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const hairlineRule = (
             <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)" }} />
           );
+          const compareRowHeight = Math.round(fz * 1.55);
+          const compareRowGridStyle: React.CSSProperties = {
+            display: "grid",
+            gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)",
+            alignItems: "baseline",
+            columnGap: 14,
+            lineHeight: 1.55,
+            justifyItems: "end",
+            minHeight: compareRowHeight,
+            height: compareRowHeight,
+          };
 
           const compareRow = (label: string, valL: string | null, valR: string | null) => {
             if (hideEmptyRows && !valL && !valR) return null;
             return (
-              <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
+              <div style={compareRowGridStyle}>
                 <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
                 <MarqueeValue align="right" style={{ ...(valL ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
                   <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valL || "—"}</span>
@@ -4528,7 +4476,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div aria-hidden style={{ height: 2, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? -18 : 64, marginRight: denseFullWidth ? -18 : 64 }} />
           );
           const statusRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "91px 1fr 1fr", alignItems: "center", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
+            <div style={{ ...compareRowGridStyle, gridTemplateColumns: "91px 1fr 1fr", alignItems: "center" }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Status</span>
               <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
                 {hL.status ? (
@@ -4598,7 +4546,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               )
             );
             return (
-              <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
+              <div style={compareRowGridStyle}>
                 <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
                 {valueCell(valL)}
                 {valueCell(valR)}
@@ -4606,7 +4554,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             );
           };
           const compareUnitsRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
+            <div style={compareRowGridStyle}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Units</span>
               <span />
               <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
@@ -4645,7 +4593,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             ? compareUnitTapRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)
             : compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null);
           const compareCountryRow = (
-            <div style={{ display: "grid", gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)", alignItems: "baseline", columnGap: 14, lineHeight: 1.55, justifyItems: "end" }}>
+            <div style={compareRowGridStyle}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Country</span>
               <MarqueeValue align="right" style={{ ...(hL.country ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
                 {hL.country ? <CountryValue country={hL.country} valueStyle={valueStyle} visualSide={valueVisualSide} /> : <span style={missingValueStyle}>—</span>}
@@ -4685,9 +4633,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                     <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, paddingLeft: 18, paddingRight: 18 }}>
                       {denseDividers ? (
-                        denseRows.slice(0, -1).filter(Boolean).map((row, i) => (
+                        denseRows.filter(Boolean).map((row, i) => (
                           <Fragment key={i}>
-                            {i > 0 ? rowHairline : null}
+                            {engineerMode && i > 0 ? rowHairline : null}
                             {row}
                           </Fragment>
                         ))
@@ -4710,12 +4658,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       )}
                     </div>
                   </StatsScrollArea>
-                  {denseDividers && denseRows.length > 0 && (
-                    <div className="flex flex-col" style={{ gap: 2 }}>
-                      {rowHairline}
-                      {denseRows[denseRows.length - 1]}
-                    </div>
-                  )}
+                  {/* Pinned bottom row removed — status now scrolls with the
+                      rest of the compare rows instead of being persistently
+                      visible below the scroll mask. */}
                 </div>
               </div>
               {/* "Copy comparison" pill removed — header row now owns the action. */}
@@ -4881,7 +4826,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 <p className="text-[12.7px] font-medium truncate flex items-center" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42, gap: 6 }}>
                   <span className="truncate">{h.manufacturer}{yearPlacement === "beside" && h.year ? ` · ${h.year}` : ''}</span>
                   {stackedInfo && statusPlacement === "label" && h.status && (() => {
-                    const labelDotColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : h.status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
+                    const labelDotColor = h.status === "In Production" ? "#34c759" : h.status === "Prototype" ? "#ff9500" : h.status === "Concept" ? "#5e5ce6" : h.status === "Anticipated" ? "#af52de" : "#8e8e93";
                     return (
                       <span className="relative flex h-2 w-2 flex-shrink-0" title={h.status}>
                         {h.status === "In Production" && <span className="absolute inline-flex h-full w-full rounded-full animate-ping" style={{ background: labelDotColor, opacity: 0.4 }} />}
@@ -4943,7 +4888,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               }}
             >
               {stackedInfo && statusPlacement === "corner" && h.status && !comparing && (() => {
-                const cornerColor = h.status === "In Production" ? "#22c55e" : h.status === "Prototype" ? "#eab308" : h.status === "Concept" ? "#3b82f6" : h.status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
+                const cornerColor = h.status === "In Production" ? "#34c759" : h.status === "Prototype" ? "#ff9500" : h.status === "Concept" ? "#5e5ce6" : h.status === "Anticipated" ? "#af52de" : "#8e8e93";
                 return (
                   <span className="absolute" style={{ top: 14, right: 14, zIndex: 5 }} title={h.status} aria-label={h.status}>
                     <span className="relative flex h-2.5 w-2.5">
@@ -5455,6 +5400,113 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   {renderMergedStats()}
                 </div>
 
+                {/* Persistent bottom-left cluster — engineer/condense chip
+                    and action chip (left-robot's CTA in compare). Lives at
+                    the stats-slot level so it shows over both single and
+                    compare stats; always visible when the column is open
+                    (compare always counts as open). */}
+                {(() => {
+                  if (!denseDividers || !splitCards) return null;
+                  const showCluster = comparing || !statsCollapsed;
+                  if (!showCluster) return null;
+                  const engineerIco = cardIconRender({ active: engineerMode });
+                  const actionIco = cardIconRender();
+                  // Compute action CTA inline from hL (active/left robot).
+                  const ctaInfo = (() => {
+                    const isSundayBeta = hL.manufacturer === "Sunday Robotics";
+                    const buyHref = withUtm(isSundayBeta ? "https://www.sunday.ai/beta-program" : (hL.purchaseUrl || undefined), hL.id);
+                    const visitHref = !buyHref ? withUtm(hL.infoUrl || hL.manufacturerUrl, hL.id) : undefined;
+                    const href = buyHref || visitHref;
+                    const isRotaku = hL.manufacturer === "Rotaku";
+                    const ctaText = isSundayBeta
+                      ? "Apply for Beta"
+                      : (buyHref ? (isRotaku ? "Reserve" : "Buy") : "Visit");
+                    const availabilityLabel: string | undefined = (
+                      hL.availability === "enterprise" ? "Enterprise only" :
+                      hL.availability === "research" ? "Research only" :
+                      hL.availability === "discontinued" ? "Discontinued" :
+                      hL.availability === "prototype" ? "Not yet for sale" :
+                      undefined
+                    );
+                    const stateLabel = availabilityLabel ?? (href ? undefined : "Not for sale");
+                    return { href, ctaText, stateLabel };
+                  })();
+                  const arrowSize = Math.round(actionIco.iconBoxPx * 0.7);
+                  return (
+                    <div
+                      className="absolute pointer-events-auto"
+                      style={{
+                        bottom: cardIconInset,
+                        left: cardIconInset,
+                        zIndex: 25,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: cardIconGap,
+                        maxWidth: `calc(100% - ${cardIconInset * 2}px)`,
+                        // Persistent — visible whenever the cluster renders.
+                        opacity: 1,
+                        transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1)",
+                      }}
+                    >
+                      <Tooltip label={engineerMode ? "Hide engineer specs" : "Show engineer specs"} shortcut="E">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEngineerMode((v) => {
+                              const next = !v;
+                              setDenseRowGap(next ? 4 : 9);
+                              return next;
+                            });
+                          }}
+                          aria-pressed={engineerMode}
+                          aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
+                          className={engineerIco.className}
+                          style={{ ...engineerIco.style, ...glassChipChrome, flexShrink: 0 }}
+                        >
+                          <ChevronsUpDown size={engineerIco.iconBoxPx} strokeWidth={engineerIco.iconStrokeWidth} />
+                        </button>
+                      </Tooltip>
+                      {(() => {
+                        const href = ctaInfo.href;
+                        const label = href ? ctaInfo.ctaText : (ctaInfo.stateLabel ?? "Not for sale");
+                        const Tag = (href ? "a" : "div") as React.ElementType;
+                        const tagProps = href
+                          ? { href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
+                          : {};
+                        return (
+                          <Tag
+                            {...tagProps}
+                            className="pointer-events-auto cursor-pointer"
+                            style={{
+                              ...glassChipChrome,
+                              border: "1px solid transparent",
+                              maxWidth: "100%",
+                              height: cardIconSize,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 10,
+                              borderRadius: cardIconSize / 2,
+                              padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
+                              textDecoration: "none",
+                              flexShrink: 1,
+                              minWidth: 0,
+                            }}
+                          >
+                            <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: Math.round(cardIconSize * 0.36), fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+                            {href && (
+                              <span style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, opacity: 0.85 }}>
+                                <svg width={arrowSize} height={arrowSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
+                                </svg>
+                              </span>
+                            )}
+                          </Tag>
+                        );
+                      })()}
+                    </div>
+                  );
+                })()}
                 {/* Middle exit-compare hover zone removed — the X on the right
                     card is the sole way out. */}
               </div>
@@ -7567,78 +7619,78 @@ export default function HomeClient() {
       {/* Launch: chat trigger hidden, replaced with credit link.
           To bring chat back, swap this for the <OptionsMenu .../> block. */}
       {introDone && (() => {
-        const creditStyle: React.CSSProperties = {
-          fontSize: 12,
+        const footerChipStyle: React.CSSProperties = {
+          fontSize: 13,
           fontWeight: 500,
           letterSpacing: "normal",
-          lineHeight: 1,
-          color: "oklch(65% 0.011 222.2)",
-          whiteSpace: "nowrap",
+          color: "rgba(95, 96, 89, 0.8)",
+          background: "transparent",
         };
         return (
           <div
             className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none"
-            style={{ bottom: "max(4px, calc(var(--corner-y, 8px) - 6px))" }}
+            style={{ bottom: "var(--corner-y, 8px)" }}
           >
             <div
-              className="flex flex-col items-center"
               style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto 1fr",
+                alignItems: "center",
                 paddingLeft: "var(--nav-edge, 24px)",
                 paddingRight: "var(--nav-edge, 24px)",
-                gap: 36,
               }}
             >
-              <button
-                type="button"
+              <div className="flex justify-start">
+                <Chip
+                  className="pointer-events-auto"
+                  style={{ ...footerChipStyle, cursor: "default" }}
+                >
+                  Roy Jad © 2026
+                </Chip>
+              </div>
+              <Chip
+                className="pointer-events-auto justify-self-center"
                 onClick={() => {
                   setDiceRollNonce((n) => n + 1);
                   onRandomHumanoid();
                 }}
-                aria-label="Shuffle"
-                className="pointer-events-auto"
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  fontSize: 22,
-                  lineHeight: 1,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 2,
-                }}
+                style={footerChipStyle}
               >
-                <span
-                  key={`a-${diceRollNonce}`}
-                  role="img"
-                  aria-hidden
-                  className={diceRollNonce ? "dice-roll-a" : undefined}
-                >🎲</span>
-                {comparing && (
-                  <span
-                    key={`b-${diceRollNonce}`}
-                    role="img"
-                    aria-hidden
-                    className={diceRollNonce ? "dice-roll-b" : undefined}
-                  >🎲</span>
-                )}
-              </button>
-              <div className="flex items-end" style={{ gap: 12 }}>
-                <span className="pointer-events-auto" style={{ ...creditStyle, padding: "0 4px" }}>Roy Jad © 2026</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 14, lineHeight: 1 }}>
+                    <span
+                      key={`a-${diceRollNonce}`}
+                      role="img"
+                      aria-hidden
+                      className={diceRollNonce ? "dice-roll-a" : undefined}
+                    >🎲</span>
+                    {comparing && (
+                      <span
+                        key={`b-${diceRollNonce}`}
+                        role="img"
+                        aria-hidden
+                        className={diceRollNonce ? "dice-roll-b" : undefined}
+                      >🎲</span>
+                    )}
+                  </span>
+                  <span>Shuffle</span>
+                </span>
+              </Chip>
+              <div className="flex justify-end items-center">
                 <Chip
-                  className="pointer-events-auto hover:underline underline-offset-2"
+                  className="pointer-events-auto"
                   onClick={() => {
                     const origin = typeof window !== "undefined" ? window.location.origin : "";
                     copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
                   }}
-                  style={{ ...creditStyle, padding: "0 4px" }}
+                  style={footerChipStyle}
                 >
                   Share site
                 </Chip>
                 <Chip
-                  className="pointer-events-auto hover:underline underline-offset-2"
+                  className="pointer-events-auto"
                   onClick={() => setFeedbackOpen(true)}
-                  style={{ ...creditStyle, padding: "0 4px" }}
+                  style={footerChipStyle}
                 >
                   Submit feedback
                 </Chip>
