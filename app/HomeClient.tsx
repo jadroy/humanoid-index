@@ -182,6 +182,49 @@ const EPETRI_FONT_OVERRIDES: React.CSSProperties = {
   "--font-epetri-pixel": "var(--font-epetri)",
 } as React.CSSProperties;
 
+// Helper that builds the iOS-26 liquid-glass chrome at a given tint/alpha/blur.
+// State for these lives in Browse() so they can be tuned live; the helper is
+// shared so the shape stays consistent across stats-panel + in-card chips.
+//
+// `ink` controls foreground color: "auto" derives from effective luminance
+// (tint composited over the assumed light surface), "dark"/"light" force.
+// Returned object includes `color` so spreading it onto a button overrides
+// the icon color; for the action overlay we also expose `--c-ink-body` /
+// `--c-ink-muted` so descendant text that reads those vars flips too.
+type GlassInk = "auto" | "dark" | "light";
+type GlassChrome = React.CSSProperties & { ["--c-ink-body"]?: string; ["--c-ink-muted"]?: string };
+function glassChromeFor({ tint, alpha, blur, ink, outline, sheen }: { tint: string; alpha: number; blur: number; ink: GlassInk; outline: number; sheen: number }): GlassChrome {
+  const hex = tint.replace("#", "");
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+  // Effective luminance composited over a light surface (~0.95 lum).
+  const eff = lum * alpha + 0.95 * (1 - alpha);
+  const isLight = ink === "light" || (ink === "auto" && eff < 0.55);
+  // Sheen + edge channel scale with tint luminance so dark tints don't get
+  // a bright top highlight that fights the fill. When ink is light, push
+  // them up so the chip still reads as "glass" instead of flat dark paint.
+  const sheenChan = Math.round((isLight ? 0.8 : lum * 0.7) * 255);
+  const edgeChan = Math.round((isLight ? 0.55 : 0.25 + lum * 0.15) * 255);
+  const inkColor = isLight ? "#ffffff" : "rgba(0,0,0,0.78)";
+  const inkMuted = isLight ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.55)";
+  const layers: string[] = [];
+  if (sheen > 0) layers.push(`inset 0 1px 0 rgba(${sheenChan},${sheenChan},${sheenChan},${sheen})`);
+  if (outline > 0) layers.push(`inset 0 0 0 1px rgba(${edgeChan},${edgeChan},${edgeChan},${outline})`);
+  layers.push("0 1px 3px rgba(0,0,0,0.05)");
+  return {
+    background: `rgba(${r}, ${g}, ${b}, ${alpha})`,
+    backdropFilter: `blur(${blur}px) saturate(1.6)`,
+    WebkitBackdropFilter: `blur(${blur}px) saturate(1.6)`,
+    boxShadow: layers.join(", "),
+    borderColor: "transparent",
+    color: inkColor,
+    ["--c-ink-body"]: inkColor,
+    ["--c-ink-muted"]: inkMuted,
+  };
+}
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   useEffect(() => {
@@ -378,7 +421,7 @@ function GalleryShareButton({ mIdx, allKinds, subscribe, read, onClick, getIconS
   );
 }
 
-function GalleryVideoPauseButton({ mIdx, allKinds, subscribe, read, videoPaused, onToggle, getIconStyle, position, hoverFade }: {
+function GalleryVideoPauseButton({ mIdx, allKinds, subscribe, read, videoPaused, onToggle, getIconStyle, position, hoverFade, glassChipChrome }: {
   mIdx: number;
   allKinds: ("image" | "video")[];
   subscribe: GallerySubscribe;
@@ -388,6 +431,7 @@ function GalleryVideoPauseButton({ mIdx, allKinds, subscribe, read, videoPaused,
   getIconStyle: (opts: { dark: boolean }) => CardIconStyleProps;
   position: { bottom: number; right: number };
   hoverFade: boolean;
+  glassChipChrome: React.CSSProperties;
 }) {
   const current = useGalleryIdx(mIdx, subscribe, read);
   const currentIsVideo = allKinds[current] === "video";
@@ -400,7 +444,7 @@ function GalleryVideoPauseButton({ mIdx, allKinds, subscribe, read, videoPaused,
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         aria-label={videoPaused ? "Play video" : "Pause video"}
         className={`${ico.className} absolute z-30 ${fadeClass}`}
-        style={{ ...ico.style, bottom: position.bottom, right: position.right }}
+        style={{ ...ico.style, ...glassChipChrome, bottom: position.bottom, right: position.right }}
       >
         {videoPaused ? (
           <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
@@ -1595,13 +1639,25 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   type CardIconActive = "tint" | "ink" | "outline";
   const [cardIconChrome, setCardIconChrome] = useState<CardIconChrome>("ghost");
   const [cardIconShape, setCardIconShape] = useState<CardIconShape>("circle");
-  const [cardIconSize, setCardIconSize] = useState(32);
-  const [cardIconStroke, setCardIconStroke] = useState(2);
-  const [cardIconInset, setCardIconInset] = useState(10);
+  const [cardIconSize, setCardIconSize] = useState(35);
+  const [cardIconStroke, setCardIconStroke] = useState(1.5);
+  const [cardIconInset, setCardIconInset] = useState(9);
   const [cardIconGap, setCardIconGap] = useState(4);
   const [cardIconActive, setCardIconActive] = useState<CardIconActive>("tint");
   const [cardIconHoverFade, setCardIconHoverFade] = useState(false);
   const [cardIcon3DLabel, setCardIcon3DLabel] = useState(false);
+  // Liquid-glass chrome shared across stats-panel toolbar + in-card chips.
+  // Tint/alpha/blur are tunable; sheen + edge derive from tint luminance.
+  const [glassTint, setGlassTint] = useState("#6b6b6b");
+  const [glassAlpha, setGlassAlpha] = useState(0);
+  const [glassBlur, setGlassBlur] = useState(5);
+  const [glassInk, setGlassInk] = useState<GlassInk>("auto");
+  const [glassOutline, setGlassOutline] = useState(0.13);
+  const [glassSheen, setGlassSheen] = useState(0.08);
+  const glassChipChrome = useMemo(
+    () => glassChromeFor({ tint: glassTint, alpha: glassAlpha, blur: glassBlur, ink: glassInk, outline: glassOutline, sheen: glassSheen }),
+    [glassTint, glassAlpha, glassBlur, glassInk, glassOutline, glassSheen]
+  );
   const cardIconRender = (opts: { active?: boolean; dark?: boolean } = {}): {
     className: string;
     style: React.CSSProperties;
@@ -3971,15 +4027,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   <div
                     className="pointer-events-auto"
                     style={{
+                      ...glassChipChrome,
                       position: "absolute",
                       bottom: cardIconInset,
                       left: cardIconInset,
                       right: cardIconInset,
                       borderRadius: cardRadius,
-                      background: "rgba(255,255,255,0.55)",
-                      backdropFilter: "blur(18px) saturate(1.6)",
-                      WebkitBackdropFilter: "blur(18px) saturate(1.6)",
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 1px rgba(255,255,255,0.35), 0 1px 3px rgba(0,0,0,0.04)",
                       padding: "10px 18px",
                       zIndex: 20,
                       opacity: collapseVariant === "hover-fade" ? (statsHover ? 1 : 0.22) : (statsCollapsed ? 0 : 1),
@@ -4490,7 +4543,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <>
               {/* New badge — rides with the humanoid */}
               {mh.year === 2025 && (
-                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 font-semibold" style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "#AEAEB2", color: "#ffffff" }}>New</div>
+                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 font-semibold" style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "rgba(60,60,67,0.55)", color: "#ffffff", backdropFilter: "blur(18px) saturate(1.6)", WebkitBackdropFilter: "blur(18px) saturate(1.6)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 0 0 1px rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.06)" }}>New</div>
               )}
               <div
                 ref={(el) => { galleryScrollRefs.current[mIdx] = el; }}
@@ -4791,7 +4844,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     {h.year === 2025 && (
                       <div
                         className="absolute top-3 left-3 z-20 px-2 py-0.5 font-semibold pointer-events-none"
-                        style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "#AEAEB2", color: "#ffffff" }}
+                        style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "rgba(60,60,67,0.55)", color: "#ffffff", backdropFilter: "blur(18px) saturate(1.6)", WebkitBackdropFilter: "blur(18px) saturate(1.6)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 0 0 1px rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.06)" }}
                       >
                         New
                       </div>
@@ -4812,7 +4865,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         className={`${ico.className} absolute z-30`}
                         style={{
                           ...ico.style,
-                          background: "transparent",
+                          ...glassChipChrome,
                           top: cardIconInset,
                           right: cardIconInset,
                         }}
@@ -4841,7 +4894,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         }}
                         aria-label={show3D ? "Show photo" : "View in 3D"}
                         className={`${ico.className} absolute z-30 ${fadeClass}`}
-                        style={{ ...pillStyle, background: "transparent", bottom: cardIconInset, right: cardIconInset }}
+                        style={{ ...pillStyle, ...glassChipChrome, bottom: cardIconInset, right: cardIconInset }}
                       >
                         <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                         {cardIcon3DLabel && <span className="text-[12px] tracking-tight font-medium">3D</span>}
@@ -4859,7 +4912,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         onClick={(e) => { e.stopPropagation(); void toggleSpin(); }}
                         aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
                         className={`${ico.className} absolute z-30 ${fadeClass}`}
-                        style={{ ...ico.style, background: "transparent", bottom: cardIconInset, right: cardIconInset }}
+                        style={{ ...ico.style, ...glassChipChrome, bottom: cardIconInset, right: cardIconInset }}
                       >
                         {spinPlaying ? (
                           <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
@@ -4882,6 +4935,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     getIconStyle={(opts) => cardIconRender(opts)}
                     position={{ bottom: cardIconInset, right: cardIconInset }}
                     hoverFade={cardIconHoverFade}
+                    glassChipChrome={glassChipChrome}
                   />
                 )}
               </div>
@@ -5097,16 +5151,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {(() => {
                   const engineerIco = cardIconRender({ active: engineerMode });
                   const iconBox = engineerIco.iconBoxPx;
-                  // iOS-26 liquid-glass treatment: buttons float over the
-                  // stats container at the top corners. Translucent fill +
-                  // backdrop blur lets the row beneath read through softly.
+                  // Buttons float over the stats container at the top corners
+                  // using the state-driven glassChipChrome so the row beneath reads
+                  // through softly.
                   const glassBtnStyle = (ico: ReturnType<typeof cardIconRender>): React.CSSProperties => ({
                     ...ico.style,
-                    background: "rgba(255,255,255,0.55)",
-                    backdropFilter: "blur(18px) saturate(1.6)",
-                    WebkitBackdropFilter: "blur(18px) saturate(1.6)",
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 1px rgba(255,255,255,0.35), 0 1px 3px rgba(0,0,0,0.04)",
-                    borderColor: "transparent",
+                    ...glassChipChrome,
                     WebkitTapHighlightColor: "transparent",
                   });
                   return (
@@ -5894,12 +5944,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 onClick={() => {
                   setCardIconChrome("ghost");
                   setCardIconShape("circle");
-                  setCardIconSize(30);
+                  setCardIconSize(35);
                   setCardIconStroke(1.5);
-                  setCardIconInset(10);
+                  setCardIconInset(9);
                   setCardIconGap(4);
                   setCardIconActive("tint");
-                  setCardIconHoverFade(true);
+                  setCardIconHoverFade(false);
                   setCardIcon3DLabel(false);
                 }}
               >
@@ -5936,6 +5986,57 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Gap between icons <span className="tabular-nums text-neutral-400">{cardIconGap}px</span></label><input type="range" min={0} max={16} value={cardIconGap} onChange={(e) => setCardIconGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Hover-fade secondary</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIconHoverFade ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIconHoverFade(!cardIconHoverFade)}>{cardIconHoverFade ? "On" : "Off"}</button></div>
             <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Show &ldquo;3D&rdquo; label</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIcon3DLabel ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIcon3DLabel(!cardIcon3DLabel)}>{cardIcon3DLabel ? "On" : "Off"}</button></div>
+          </div>
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] tracking-widest uppercase text-neutral-400">Glass chip</p>
+              <button
+                className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer"
+                onClick={() => { setGlassTint("#6b6b6b"); setGlassAlpha(0); setGlassBlur(5); setGlassInk("auto"); setGlassOutline(0.13); setGlassSheen(0.08); }}
+              >
+                Reset
+              </button>
+            </div>
+            <div>
+              <p className="text-[12px] text-neutral-500 mb-1.5">Ink</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(["auto", "dark", "light"] as const).map((v) => (
+                  <button key={v} onClick={() => setGlassInk(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${glassInk === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex justify-between">Tint <span className="tabular-nums text-neutral-400">{glassTint}</span></label>
+              <div className="flex gap-1.5 mt-1.5 items-center">
+                {["#ffffff", "#cccccc", "#9a9a9a", "#6b6b6b", "#3a3a3a", "#000000"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setGlassTint(c)}
+                    className="w-6 h-6 rounded cursor-pointer"
+                    style={{ background: c, border: glassTint.toLowerCase() === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={glassTint}
+                  onChange={(e) => setGlassTint(e.target.value)}
+                  className="w-6 h-6 rounded cursor-pointer border border-neutral-200"
+                  style={{ padding: 0 }}
+                />
+              </div>
+            </div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Alpha <span className="tabular-nums text-neutral-400">{glassAlpha.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(glassAlpha * 100)} onChange={(e) => setGlassAlpha(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Blur <span className="tabular-nums text-neutral-400">{glassBlur}px</span></label><input type="range" min={0} max={40} value={glassBlur} onChange={(e) => setGlassBlur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Outline <span className="tabular-nums text-neutral-400">{glassOutline.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(glassOutline * 100)} onChange={(e) => setGlassOutline(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Sheen <span className="tabular-nums text-neutral-400">{glassSheen.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(glassSheen * 100)} onChange={(e) => setGlassSheen(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div
+              className="rounded-lg p-3 flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%)", minHeight: 56 }}
+            >
+              <div style={{ ...glassChipChrome, width: 40, height: 40, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
+                Aa
+              </div>
+            </div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Nav</p>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
