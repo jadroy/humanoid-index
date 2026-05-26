@@ -259,6 +259,19 @@ function glassChromeFor({ tint, alpha, blur, ink, outline, sheen }: { tint: stri
   };
 }
 
+// Footer chips reuse the same liquid-glass chrome as the in-card icon
+// buttons + the compare minus button. Static because the footer lives
+// outside Browse() (where the live glass tuner state sits) — defaults
+// match the "Outlined" GLASS_PRESET.
+const FOOTER_GLASS_CHROME = glassChromeFor({
+  tint: "#ffffff",
+  alpha: 1,
+  blur: 0,
+  ink: "auto",
+  outline: 0.18,
+  sheen: 0.10,
+});
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   useEffect(() => {
@@ -3618,8 +3631,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               fontFamily: "var(--font-geist-sans)",
               fontSize: cardFontSize,
               fontWeight: 500,
-              color: "var(--c-ink)",
-              opacity: 0.68,
+              // Use color-mix with transparent instead of `opacity` so the
+              // dimming only applies to text + currentColor SVGs — leaves
+              // flags and other explicit-color assets at full opacity.
+              color: "color-mix(in srgb, var(--c-ink) 68%, transparent)",
             };
             const purchaseSection = sections.find((s) => s.key === "purchase") as
               | { key: "purchase"; href?: string; text?: string; price?: string; cost?: string; state?: string; ctaText?: string }
@@ -4339,8 +4354,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             fontFamily: "var(--font-geist-sans)",
             fontSize: fz,
             fontWeight: 500,
-            color: "var(--c-ink)",
-            opacity: 0.68,
+            // Color-mix with transparent so the dimming only affects text +
+            // currentColor SVGs — flags and explicit-color assets stay full.
+            color: "color-mix(in srgb, var(--c-ink) 68%, transparent)",
           };
           const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "var(--c-ink-subtle)" };
           const hairlineRule = (
@@ -7619,84 +7635,109 @@ export default function HomeClient() {
       {/* Launch: chat trigger hidden, replaced with credit link.
           To bring chat back, swap this for the <OptionsMenu .../> block. */}
       {introDone && (() => {
-        const footerChipStyle: React.CSSProperties = {
+        const labelStyle: React.CSSProperties = {
           fontSize: 13,
           fontWeight: 500,
           letterSpacing: "normal",
+        };
+        const creditStyle: React.CSSProperties = {
+          ...labelStyle,
           color: "rgba(95, 96, 89, 0.8)",
           background: "transparent",
+          cursor: "default",
+        };
+        const glassChipStyle: React.CSSProperties = {
+          ...FOOTER_GLASS_CHROME,
+          ...labelStyle,
+        };
+        const shuffleSize = 52;
+        const shuffleStyle: React.CSSProperties = {
+          ...FOOTER_GLASS_CHROME,
+          // Outline painted in front of sheen so the top edge stays crisp
+          // (mirrors the EnvironmentToggle fix).
+          boxShadow:
+            "inset 0 0 0 1px rgba(102,102,102,0.18), inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.05)",
+          height: shuffleSize,
+          minWidth: shuffleSize,
+          padding: comparing ? "0 16px" : 0,
+          borderRadius: shuffleSize / 2,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 22,
+          lineHeight: 1,
         };
         return (
-          <div
-            className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none"
-            style={{ bottom: "var(--corner-y, 8px)" }}
-          >
+          <>
             <div
+              className="fixed left-1/2 z-[48] pointer-events-none"
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr auto 1fr",
-                alignItems: "center",
-                paddingLeft: "var(--nav-edge, 24px)",
-                paddingRight: "var(--nav-edge, 24px)",
+                bottom: "calc(var(--corner-y, 8px) + 36px)",
+                transform: "translateX(-50%)",
               }}
             >
-              <div className="flex justify-start">
-                <Chip
-                  className="pointer-events-auto"
-                  style={{ ...footerChipStyle, cursor: "default" }}
-                >
-                  Roy Jad © 2026
-                </Chip>
-              </div>
               <Chip
-                className="pointer-events-auto justify-self-center"
+                className="intro-credit pointer-events-auto"
                 onClick={() => {
                   setDiceRollNonce((n) => n + 1);
                   onRandomHumanoid();
                 }}
-                style={footerChipStyle}
+                style={shuffleStyle}
               >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 14, lineHeight: 1 }}>
+                <span aria-label="Shuffle" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                  <span
+                    key={`a-${diceRollNonce}`}
+                    role="img"
+                    aria-hidden
+                    className={diceRollNonce ? "dice-roll-a" : undefined}
+                  >🎲</span>
+                  {comparing && (
                     <span
-                      key={`a-${diceRollNonce}`}
+                      key={`b-${diceRollNonce}`}
                       role="img"
                       aria-hidden
-                      className={diceRollNonce ? "dice-roll-a" : undefined}
+                      className={diceRollNonce ? "dice-roll-b" : undefined}
                     >🎲</span>
-                    {comparing && (
-                      <span
-                        key={`b-${diceRollNonce}`}
-                        role="img"
-                        aria-hidden
-                        className={diceRollNonce ? "dice-roll-b" : undefined}
-                      >🎲</span>
-                    )}
-                  </span>
-                  <span>Shuffle</span>
+                  )}
                 </span>
               </Chip>
-              <div className="flex justify-end items-center">
-                <Chip
-                  className="pointer-events-auto"
-                  onClick={() => {
-                    const origin = typeof window !== "undefined" ? window.location.origin : "";
-                    copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
-                  }}
-                  style={footerChipStyle}
-                >
-                  Share site
+            </div>
+            <div
+              className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none"
+              style={{ bottom: "var(--corner-y, 8px)" }}
+            >
+              <div
+                className="flex items-center justify-between"
+                style={{
+                  paddingLeft: "var(--nav-edge, 24px)",
+                  paddingRight: "var(--nav-edge, 24px)",
+                }}
+              >
+                <Chip className="pointer-events-auto" style={creditStyle}>
+                  Roy Jad © 2026
                 </Chip>
-                <Chip
-                  className="pointer-events-auto"
-                  onClick={() => setFeedbackOpen(true)}
-                  style={footerChipStyle}
-                >
-                  Submit feedback
-                </Chip>
+                <div className="flex items-center" style={{ gap: 8 }}>
+                  <Chip
+                    className="pointer-events-auto"
+                    onClick={() => {
+                      const origin = typeof window !== "undefined" ? window.location.origin : "";
+                      copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
+                    }}
+                    style={glassChipStyle}
+                  >
+                    Share site
+                  </Chip>
+                  <Chip
+                    className="pointer-events-auto"
+                    onClick={() => setFeedbackOpen(true)}
+                    style={glassChipStyle}
+                  >
+                    Submit feedback
+                  </Chip>
+                </div>
               </div>
             </div>
-          </div>
+          </>
         );
       })()}
 

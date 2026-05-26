@@ -58,10 +58,10 @@ export default function EnvironmentToggle({ available, enabled, onToggle, visibl
           lineHeight: 1,
           whiteSpace: "nowrap",
           cursor: "pointer",
-          // Mirror the floating chip's box-shadow stack (subtle inner sheen +
-          // inset outline + soft drop) so the Scene toggle reads as part of
-          // the same chip system.
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6), inset 0 0 0 1px rgba(102,102,102,0.18), 0 1px 3px rgba(0,0,0,0.05)",
+          // Outline painted in front of sheen — otherwise the white sheen's
+          // top edge (inset 0 1px 0) hides the outline's top, making the
+          // chip read as faded at the top.
+          boxShadow: "inset 0 0 0 1px rgba(102,102,102,0.18), inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.05)",
           transition: "background 200ms ease, color 200ms ease",
         }}
       >
