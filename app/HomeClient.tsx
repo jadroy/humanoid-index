@@ -192,7 +192,13 @@ const EPETRI_FONT_OVERRIDES: React.CSSProperties = {
 // the icon color; for the action overlay we also expose `--c-ink-body` /
 // `--c-ink-muted` so descendant text that reads those vars flips too.
 type GlassInk = "auto" | "dark" | "light";
-type GlassChrome = React.CSSProperties & { ["--c-ink-body"]?: string; ["--c-ink-muted"]?: string };
+type GlassChrome = React.CSSProperties & {
+  ["--c-ink-body"]?: string;
+  ["--c-ink-muted"]?: string;
+  ["--ci-bg-hover"]?: string;
+  ["--ci-border-hover"]?: string;
+  ["--ci-color-hover"]?: string;
+};
 function glassChromeFor({ tint, alpha, blur, ink, outline, sheen }: { tint: string; alpha: number; blur: number; ink: GlassInk; outline: number; sheen: number }): GlassChrome {
   const hex = tint.replace("#", "");
   const r = parseInt(hex.slice(0, 2), 16);
@@ -213,13 +219,25 @@ function glassChromeFor({ tint, alpha, blur, ink, outline, sheen }: { tint: stri
   if (sheen > 0) layers.push(`inset 0 1px 0 rgba(${sheenChan},${sheenChan},${sheenChan},${sheen})`);
   if (outline > 0) layers.push(`inset 0 0 0 1px rgba(${edgeChan},${edgeChan},${edgeChan},${outline})`);
   layers.push("0 1px 3px rgba(0,0,0,0.05)");
+  const filter = blur > 0 ? `blur(${blur}px) saturate(1.6)` : undefined;
+  const fill = `rgba(${r}, ${g}, ${b}, ${alpha})`;
   return {
-    background: `rgba(${r}, ${g}, ${b}, ${alpha})`,
-    backdropFilter: `blur(${blur}px) saturate(1.6)`,
-    WebkitBackdropFilter: `blur(${blur}px) saturate(1.6)`,
+    background: fill,
+    backdropFilter: filter,
+    WebkitBackdropFilter: filter,
     boxShadow: layers.join(", "),
     borderColor: "transparent",
     color: inkColor,
+    // Pre-promote the layer when blur is active so backdrop-filter is
+    // composited from frame one (otherwise the blur "pops" late during
+    // hover-fade). No layer hint when blur is off — nothing to optimize.
+    willChange: filter ? "opacity" : undefined,
+    // Match the `.card-icon-btn:hover` CSS vars to the rest state so the
+    // global hover override (which uses !important) doesn't darken or
+    // recolor the chip on hover. Tooltip + cursor still signal hoverability.
+    ["--ci-bg-hover"]: fill,
+    ["--ci-border-hover"]: "transparent",
+    ["--ci-color-hover"]: inkColor,
     ["--c-ink-body"]: inkColor,
     ["--c-ink-muted"]: inkMuted,
   };
@@ -1641,19 +1659,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [cardIconShape, setCardIconShape] = useState<CardIconShape>("circle");
   const [cardIconSize, setCardIconSize] = useState(35);
   const [cardIconStroke, setCardIconStroke] = useState(1.5);
-  const [cardIconInset, setCardIconInset] = useState(9);
+  const [cardIconInset, setCardIconInset] = useState(7);
   const [cardIconGap, setCardIconGap] = useState(4);
   const [cardIconActive, setCardIconActive] = useState<CardIconActive>("tint");
-  const [cardIconHoverFade, setCardIconHoverFade] = useState(false);
+  const [cardIconHoverFade, setCardIconHoverFade] = useState(true);
   const [cardIcon3DLabel, setCardIcon3DLabel] = useState(false);
   // Liquid-glass chrome shared across stats-panel toolbar + in-card chips.
   // Tint/alpha/blur are tunable; sheen + edge derive from tint luminance.
-  const [glassTint, setGlassTint] = useState("#6b6b6b");
-  const [glassAlpha, setGlassAlpha] = useState(0);
-  const [glassBlur, setGlassBlur] = useState(5);
+  const [glassTint, setGlassTint] = useState("#fcfcfc");
+  const [glassAlpha, setGlassAlpha] = useState(1);
+  const [glassBlur, setGlassBlur] = useState(0);
   const [glassInk, setGlassInk] = useState<GlassInk>("auto");
-  const [glassOutline, setGlassOutline] = useState(0.13);
-  const [glassSheen, setGlassSheen] = useState(0.08);
+  const [glassOutline, setGlassOutline] = useState(0.15);
+  const [glassSheen, setGlassSheen] = useState(0.10);
   const glassChipChrome = useMemo(
     () => glassChromeFor({ tint: glassTint, alpha: glassAlpha, blur: glassBlur, ink: glassInk, outline: glassOutline, sheen: glassSheen }),
     [glassTint, glassAlpha, glassBlur, glassInk, glassOutline, glassSheen]
@@ -3765,15 +3783,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // Specs card holds all data rows (Company..Drive + engineer + Price + Status).
             // Action card holds only the CTA/purchase row, anchored below.
             const specsRowsOnly = purchaseRow ? denseRows.slice(0, -1) : denseRows;
-            // Toolbar chips float at top:cardIconInset; reserve enough top
-            // padding so the first row clears them with breathing room.
-            const glassTopPad = cardIconInset + cardIconSize + 10;
             // Action overlay floats at bottom of the column (pillRowHeight + inset);
-            // reserve bottom padding so the last scroll row clears it.
+            // reserve bottom padding so the last scroll row clears it. Top edge
+            // intentionally has standard padding only — toolbar chips overlay
+            // rows on hover (iOS-26 glass behaviour).
             const glassBottomPad = pillRowHeight + cardIconInset * 2;
-            const specsCard = renderRowsAsCard(specsRowsOnly, { fill: true, padding: `${glassTopPad}px 18px ${glassBottomPad}px 18px` });
+            const specsCard = renderRowsAsCard(specsRowsOnly, { fill: true, padding: `18px 18px ${glassBottomPad}px 18px` });
             const statsCard = (
-              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: `${glassTopPad}px 18px 18px 18px`, flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                   <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, paddingLeft: 18, paddingRight: 18 }}>
                     {denseDividers ? (
@@ -4485,7 +4502,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: compareStatsW, minWidth: compareStatsW, position: "relative", zIndex: 11 }}>
               <div className="flex flex-col" style={{ flex: 1, justifyContent: denseDividers ? "stretch" : "center", minHeight: 0 }}>
                 {blurbBlock}
-                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: `${cardIconInset + cardIconSize + 10}px 18px 18px 18px`, flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                   <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                     <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, paddingLeft: 18, paddingRight: 18 }}>
                       {denseDividers ? (
@@ -4857,12 +4874,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     Carries a permanent light fill regardless of state. */}
                 {collapseVariant === "info-icon" && !comparing && isFirst && (() => {
                   const ico = cardIconRender({ active: !statsCollapsed });
+                  const fadeClass = cardIconHoverFade ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
                   return (
                     <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
                       <button
                         onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
                         aria-label={statsCollapsed ? "Show details" : "Hide details"}
-                        className={`${ico.className} absolute z-30`}
+                        className={`${ico.className} absolute z-30 ${fadeClass}`}
                         style={{
                           ...ico.style,
                           ...glassChipChrome,
@@ -5167,10 +5185,45 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         left: cardIconInset,
                         right: cardIconInset,
                         height: cardIconSize,
-                        opacity: statsCollapsed ? 0 : 1,
-                        transition: `opacity ${dur} ${ease}`,
+                        // Hover-only: chips fade in when the stats column is
+                        // hovered, fade out otherwise (and stay hidden when the
+                        // column is fully collapsed). will-change pre-promotes
+                        // the layer so backdrop-filter is composited from frame
+                        // one (otherwise the blur pops in late as opacity ramps).
+                        opacity: statsCollapsed ? 0 : (statsHover ? 1 : 0),
+                        willChange: "opacity",
+                        transition: "opacity 280ms cubic-bezier(0.32, 0.72, 0, 1)",
                       }}
                     >
+                      {/* Left side — share link for the current view. */}
+                      <div className="flex items-center pointer-events-auto" style={{ gap: cardIconGap, height: "100%" }}>
+                        {(() => {
+                          const ico = cardIconRender();
+                          return (
+                            <Tooltip label="Share this view" shortcut="C">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
+                                aria-label="Share this view"
+                                className={ico.className}
+                                style={{
+                                  ...glassBtnStyle(ico),
+                                  width: "auto",
+                                  padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
+                                  fontFamily: "var(--font-geist-sans)",
+                                  fontSize: Math.round(cardIconSize * 0.36),
+                                  fontWeight: 500,
+                                  letterSpacing: "0.01em",
+                                  lineHeight: 1,
+                                }}
+                              >
+                                Share
+                              </button>
+                            </Tooltip>
+                          );
+                        })()}
+                      </div>
+                      {/* Right side — stats settings (engineer + units). */}
                       <div className="flex items-center pointer-events-auto" style={{ gap: cardIconGap, height: "100%" }}>
                         {/* Engineer — toggles both the engineer rows AND tighter
                             spacing in one move (engineer = denser specs view). */}
@@ -5215,34 +5268,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                                 }}>
                                   {useImperial ? "in" : "cm"}
                                 </span>
-                              </button>
-                            </Tooltip>
-                          );
-                        })()}
-                      </div>
-                      {/* Right side — share link for the current view. */}
-                      <div className="flex items-center pointer-events-auto" style={{ gap: cardIconGap, height: "100%" }}>
-                        {(() => {
-                          const ico = cardIconRender();
-                          return (
-                            <Tooltip label="Share this view" shortcut="C">
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
-                                aria-label="Share this view"
-                                className={ico.className}
-                                style={{
-                                  ...glassBtnStyle(ico),
-                                  width: "auto",
-                                  padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
-                                  fontFamily: "var(--font-geist-sans)",
-                                  fontSize: Math.round(cardIconSize * 0.36),
-                                  fontWeight: 500,
-                                  letterSpacing: "0.01em",
-                                  lineHeight: 1,
-                                }}
-                              >
-                                Share
                               </button>
                             </Tooltip>
                           );
@@ -5946,10 +5971,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   setCardIconShape("circle");
                   setCardIconSize(35);
                   setCardIconStroke(1.5);
-                  setCardIconInset(9);
+                  setCardIconInset(7);
                   setCardIconGap(4);
                   setCardIconActive("tint");
-                  setCardIconHoverFade(false);
+                  setCardIconHoverFade(true);
                   setCardIcon3DLabel(false);
                 }}
               >
@@ -5992,7 +6017,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               <p className="text-[12px] tracking-widest uppercase text-neutral-400">Glass chip</p>
               <button
                 className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer"
-                onClick={() => { setGlassTint("#6b6b6b"); setGlassAlpha(0); setGlassBlur(5); setGlassInk("auto"); setGlassOutline(0.13); setGlassSheen(0.08); }}
+                onClick={() => { setGlassTint("#fcfcfc"); setGlassAlpha(1); setGlassBlur(0); setGlassInk("auto"); setGlassOutline(0.15); setGlassSheen(0.10); }}
               >
                 Reset
               </button>
