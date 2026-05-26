@@ -1637,19 +1637,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       hoverBorder = palette.glassBorderHover;
       activeBorder = palette.glassBorderHover;
     }
-    // Apply active treatment (only the requested dimension; others stay at rest)
-    let color: string = palette.colorRest;
-    let finalBg = bg;
-    let finalBorder = borderColor;
-    if (active) {
-      color = palette.colorActive;
-      if (cardIconActive === "tint") {
-        finalBg = activeBg;
-      } else if (cardIconActive === "outline") {
-        finalBorder = activeBorder;
-      }
-      // "ink" only changes color
-    }
+    // Active state intentionally mirrors rest — only hover should change
+    // the visual treatment. `active` is still threaded through for callers
+    // that need it (e.g. functional state), but it doesn't alter appearance.
+    void active;
+    void activeBg;
+    void activeBorder;
+    const color: string = palette.colorRest;
+    const finalBg = bg;
+    const finalBorder = borderColor;
     return {
       className: "card-icon-btn cursor-pointer flex items-center justify-center pointer-events-auto",
       style: {
