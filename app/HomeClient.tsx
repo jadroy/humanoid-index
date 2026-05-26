@@ -5,7 +5,7 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
-import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info } from "lucide-react";
+import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, type Humanoid } from "@/data/humanoids";
 import Image from "next/image";
@@ -197,8 +197,11 @@ type GlassInk = "auto" | "dark" | "light";
 // preset is also the Reset target.
 type GlassPreset = { name: string; tint: string; alpha: number; blur: number; ink: GlassInk; outline: number; sheen: number };
 const GLASS_PRESETS: readonly GlassPreset[] = [
-  { name: "Solid",  tint: "#f5f5f5", alpha: 1,    blur: 0,  ink: "auto", outline: 0.15, sheen: 0.10 },
-  { name: "Liquid", tint: "#ffffff", alpha: 0.38, blur: 20, ink: "auto", outline: 0.13, sheen: 0.08 },
+  { name: "Solid",    tint: "#f5f5f5", alpha: 1,    blur: 0,  ink: "auto",  outline: 0.15, sheen: 0.10 },
+  { name: "Liquid",   tint: "#ffffff", alpha: 0.38, blur: 20, ink: "auto",  outline: 0.13, sheen: 0.08 },
+  { name: "Flat",     tint: "#f5f5f5", alpha: 1,    blur: 0,  ink: "auto",  outline: 0,    sheen: 0.10 },
+  { name: "Outlined", tint: "#ffffff", alpha: 1,    blur: 0,  ink: "auto",  outline: 0.18, sheen: 0.10 },
+  { name: "Tinted",   tint: "#cccccc", alpha: 1,    blur: 0,  ink: "light", outline: 0.18, sheen: 0.10 },
 ];
 type GlassChrome = React.CSSProperties & {
   ["--c-ink"]?: string;
@@ -222,8 +225,8 @@ function glassChromeFor({ tint, alpha, blur, ink, outline, sheen }: { tint: stri
   // them up so the chip still reads as "glass" instead of flat dark paint.
   const sheenChan = Math.round((isLight ? 0.8 : lum * 0.7) * 255);
   const edgeChan = Math.round((isLight ? 0.55 : 0.25 + lum * 0.15) * 255);
-  const inkColor = isLight ? "#ffffff" : "rgba(0,0,0,0.78)";
-  const inkMuted = isLight ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.55)";
+  const inkColor = isLight ? "#ffffff" : "rgba(0,0,0,0.6)";
+  const inkMuted = isLight ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.4)";
   const layers: string[] = [];
   if (sheen > 0) layers.push(`inset 0 1px 0 rgba(${sheenChan},${sheenChan},${sheenChan},${sheen})`);
   if (outline > 0) layers.push(`inset 0 0 0 1px rgba(${edgeChan},${edgeChan},${edgeChan},${outline})`);
@@ -369,32 +372,55 @@ function GalleryDots({ mIdx, count, isVideoOn, subscribe, read }: {
   );
 }
 
-function GalleryArrows({ mIdx, count, scroll, subscribe, read }: {
+function GalleryArrows({ mIdx, count, scroll, subscribe, read, size, inset, iconBoxPx, iconStrokeWidth, glassChipChrome }: {
   mIdx: number;
   count: number;
   scroll: (idx: number) => void;
   subscribe: GallerySubscribe;
   read: GalleryRead;
+  size: number;
+  inset: number;
+  iconBoxPx: number;
+  iconStrokeWidth: number;
+  glassChipChrome: React.CSSProperties;
 }) {
   const current = useGalleryIdx(mIdx, subscribe, read);
+  const baseStyle: React.CSSProperties = {
+    ...glassChipChrome,
+    position: "absolute",
+    top: "50%",
+    transform: "translateY(-50%)",
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    pointerEvents: "auto",
+    cursor: "pointer",
+    zIndex: 5,
+    transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1)",
+  };
   return (
     <>
       {current > 0 && (
         <button
-          className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity duration-200 ease-out cursor-pointer z-[5]"
-          style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
+          className="opacity-0 group-hover/card:opacity-100"
+          style={{ ...baseStyle, left: inset }}
           onClick={(e) => { e.stopPropagation(); scroll(current - 1); }}
+          aria-label="Previous"
         >
-          <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,1.5 2,5 6,8.5" /></svg>
+          <svg width={iconBoxPx} height={iconBoxPx} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round"><polyline points="10,3 5,8 10,13" /></svg>
         </button>
       )}
       {current < count - 1 && (
         <button
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity duration-200 ease-out cursor-pointer z-[5]"
-          style={{ background: "rgba(255,255,255,0.8)", borderRadius: "50%", pointerEvents: "auto" }}
+          className="opacity-0 group-hover/card:opacity-100"
+          style={{ ...baseStyle, right: inset }}
           onClick={(e) => { e.stopPropagation(); scroll(current + 1); }}
+          aria-label="Next"
         >
-          <svg width="8" height="10" viewBox="0 0 8 10" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,1.5 6,5 2,8.5" /></svg>
+          <svg width={iconBoxPx} height={iconBoxPx} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round"><polyline points="6,3 11,8 6,13" /></svg>
         </button>
       )}
     </>
@@ -436,7 +462,7 @@ function GalleryShareButton({ mIdx, allKinds, subscribe, read, onClick, getIconS
   const current = useGalleryIdx(mIdx, subscribe, read);
   const currentIsVideo = allKinds[current] === "video";
   const ico = getIconStyle({ dark: currentIsVideo });
-  const fadeClass = hoverFade ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
+  const fadeClass = hoverFade ? "opacity-0 translate-y-3 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onClick(); }}
@@ -449,6 +475,54 @@ function GalleryShareButton({ mIdx, allKinds, subscribe, read, onClick, getIconS
         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
       </svg>
     </button>
+  );
+}
+
+// Inner-button variant: returns just the icon button (no chrome, no
+// absolute positioning) when the current slide is a video. Used inside
+// the combined bottom-right chip alongside info / 3D / Play.
+function VideoPauseInnerButton({ mIdx, allKinds, subscribe, read, videoPaused, onToggle, iconBoxPx, iconStrokeWidth, size }: {
+  mIdx: number;
+  allKinds: ("image" | "video")[];
+  subscribe: GallerySubscribe;
+  read: GalleryRead;
+  videoPaused: boolean;
+  onToggle: () => void;
+  iconBoxPx: number;
+  iconStrokeWidth: number;
+  size: number;
+}) {
+  const current = useGalleryIdx(mIdx, subscribe, read);
+  const currentIsVideo = allKinds[current] === "video";
+  if (!currentIsVideo) return null;
+  const inner: React.CSSProperties = {
+    width: size,
+    height: size,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "transparent",
+    border: "none",
+    padding: 0,
+    color: "inherit",
+    cursor: "pointer",
+    WebkitTapHighlightColor: "transparent",
+  };
+  return (
+    <Tooltip label={videoPaused ? "Play video" : "Pause video"} shortcut="Space">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        aria-label={videoPaused ? "Play video" : "Pause video"}
+        style={inner}
+      >
+        {videoPaused ? (
+          <Play width={iconBoxPx} height={iconBoxPx} strokeWidth={iconStrokeWidth} />
+        ) : (
+          <Pause width={iconBoxPx} height={iconBoxPx} strokeWidth={iconStrokeWidth} />
+        )}
+      </button>
+    </Tooltip>
   );
 }
 
@@ -468,7 +542,7 @@ function GalleryVideoPauseButton({ mIdx, allKinds, subscribe, read, videoPaused,
   const currentIsVideo = allKinds[current] === "video";
   if (!currentIsVideo) return null;
   const ico = getIconStyle({ dark: true });
-  const fadeClass = hoverFade ? "opacity-0 group-hover/card:opacity-100" : "";
+  const fadeClass = hoverFade ? "opacity-0 translate-y-3 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
   return (
     <Tooltip label={videoPaused ? "Play video" : "Pause video"} shortcut="Space">
       <button
@@ -1209,11 +1283,15 @@ function CountryValue({ country, valueStyle, visualSide = "left" }: { country: s
       ))}
     </span>
   );
+  // NOTE: don't re-spread valueStyle here — callers wrap us in a parent
+  // that already applies it (e.g. MarqueeValue), so re-applying compounds
+  // the opacity and the row reads dimmer than its peers.
+  void valueStyle;
   return (
     <span
       title={country}
       aria-label={country}
-      style={{ ...valueStyle, display: "inline-flex", alignItems: "baseline", gap: 6 }}
+      style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}
     >
       {visualSide === "left" ? flags : null}
       <span>{country}</span>
@@ -1642,8 +1720,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [hoveredBlurbId, setHoveredBlurbId] = useState<string | null>(null);
   type BlurbExpandIndicator = "chevron" | "inline" | "edgebar" | "minimal" | "pill";
   const [blurbExpandIndicator, setBlurbExpandIndicator] = useState<BlurbExpandIndicator>("pill");
-  const [bubbleVariant, setBubbleVariant] = useState(7);
-  const [outlineStyle, setOutlineStyle] = useState<"off" | "flat" | "sheen" | "light" | "halo" | "gloss">("off");
+  const [bubbleVariant, setBubbleVariant] = useState(4);
+  const [outlineStyle, setOutlineStyle] = useState<"off" | "flat" | "sheen" | "light" | "halo" | "gloss">("flat");
   const toggleBlurbExpand = (id: string) => {
     setExpandedBlurbs(prev => {
       const next = new Set(prev);
@@ -1670,12 +1748,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   type CardIconActive = "tint" | "ink" | "outline";
   const [cardIconChrome, setCardIconChrome] = useState<CardIconChrome>("ghost");
   const [cardIconShape, setCardIconShape] = useState<CardIconShape>("circle");
-  const [cardIconSize, setCardIconSize] = useState(35);
+  const [cardIconSize, setCardIconSize] = useState(40);
   const [cardIconStroke, setCardIconStroke] = useState(1.5);
   const [cardIconInset, setCardIconInset] = useState(7);
   const [cardIconGap, setCardIconGap] = useState(4);
   const [cardIconActive, setCardIconActive] = useState<CardIconActive>("tint");
-  const [cardIconHoverFade, setCardIconHoverFade] = useState(true);
+  const [cardIconHoverFade, setCardIconHoverFade] = useState(false);
   const [cardIcon3DLabel, setCardIcon3DLabel] = useState(false);
   // Blurb visibility — toggled by the bottom-left info icon on the card.
   // Only one blurb renders at a time (single view + isFirst), so a single
@@ -1683,11 +1761,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [blurbVisible, setBlurbVisible] = useState(false);
   // Liquid-glass chrome shared across stats-panel toolbar + in-card chips.
   // Tint/alpha/blur are tunable; sheen + edge derive from tint luminance.
-  const [glassTint, setGlassTint] = useState("#f5f5f5");
+  const [glassTint, setGlassTint] = useState("#ffffff");
   const [glassAlpha, setGlassAlpha] = useState(1);
   const [glassBlur, setGlassBlur] = useState(0);
   const [glassInk, setGlassInk] = useState<GlassInk>("auto");
-  const [glassOutline, setGlassOutline] = useState(0.15);
+  const [glassOutline, setGlassOutline] = useState(0.18);
   const [glassSheen, setGlassSheen] = useState(0.10);
   const glassChipChrome = useMemo(
     () => glassChromeFor({ tint: glassTint, alpha: glassAlpha, blur: glassBlur, ink: glassInk, outline: glassOutline, sheen: glassSheen }),
@@ -1793,7 +1871,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         ["--ci-color-hover" as string]: palette.colorHover,
         ["--ci-border-hover" as string]: hoverBorder,
       },
-      iconBoxPx: Math.round(cardIconSize * 0.65),
+      iconBoxPx: Math.round(cardIconSize * 0.5),
       iconStrokeWidth: cardIconStroke,
     };
   };
@@ -2758,20 +2836,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 transition: "transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease",
               }}
             >
-              <div
-                className="rounded-full flex items-center justify-center"
-                style={{
-                  width: 40,
-                  height: 40,
-                  background: addHover ? "rgba(0,0,0,0.075)" : "rgba(0,0,0,0.06)",
-                  transition: "background 220ms ease",
-                }}
-              >
-                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
-                  <line x1="10" y1="4" x2="10" y2="16" />
-                  <line x1="4" y1="10" x2="16" y2="10" />
-                </svg>
-              </div>
+              {(() => {
+                const ico = cardIconRender();
+                return (
+                  <div
+                    className={ico.className}
+                    style={{ ...ico.style, ...glassChipChrome }}
+                  >
+                    <Plus size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                  </div>
+                );
+              })()}
               <span style={{
                 fontSize: 12,
                 color: "rgba(95, 96, 89, 0.8)",
@@ -3497,7 +3572,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const stackGap = 16;
             const sectionContentGap = 2;
             const sectionContentMarginTop = 10;
-            const cardFontSize = 14;
+            const cardFontSize = engineerMode ? 14 : 16;
             const headerStyle: React.CSSProperties = {
               fontFamily: "var(--font-geist-sans)",
               fontSize: 10.5,
@@ -3700,11 +3775,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       WebkitTapHighlightColor: "transparent",
                     }}
                   >
-                    <span className="tabular-nums">{formatter(value)}</span>
                     <svg width="8" height="9" viewBox="0 0 8 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35, transform: "translateY(-1px)" }} aria-hidden>
                       <path d="M2 3 4 1 6 3" />
                       <path d="M2 6 4 8 6 6" />
                     </svg>
+                    <span className="tabular-nums">{formatter(value)}</span>
                   </button>
                 )}
               </div>
@@ -4071,31 +4146,96 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     of the stats container, mirroring the toolbar chips on top.
                     Stats rows scroll behind it (glassBottomPad keeps the last
                     row from sitting under the glass). */}
-                {denseDividers && splitCards && purchaseRow && (
-                  <div
-                    className="pointer-events-auto"
-                    style={{
-                      ...glassChipChrome,
-                      position: "absolute",
-                      bottom: cardIconInset,
-                      left: cardIconInset,
-                      right: cardIconInset,
-                      height: cardIconSize,
-                      display: "flex",
-                      alignItems: "center",
-                      borderRadius: cardIconSize / 2,
-                      padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
-                      zIndex: 20,
-                      // Hover-only: matches the toolbar chip behaviour so the
-                      // chrome cluster appears as one coordinated reveal.
-                      opacity: statsCollapsed ? 0 : (statsHover ? 1 : 0),
-                      pointerEvents: statsCollapsed || !statsHover ? "none" : "auto",
-                      transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1)",
-                    }}
-                  >
-                    {purchaseRow}
-                  </div>
-                )}
+                {/* Bottom row: engineer/condense anchored left, action chip
+                    anchored right. Both fade/swoop in together when the stats
+                    column is hovered. */}
+                {denseDividers && splitCards && (() => {
+                  const engineerIco = cardIconRender({ active: engineerMode });
+                  const actionIco = cardIconRender();
+                  // iOS-26 liquid-glass blue only when the action is a real
+                  // link. Static states ("Not for sale", "Inquire") use the
+                  // neutral glass chip so they don't visually shout an action.
+                  const hasActionableHref = !!purchaseSection?.href;
+                  const actionChipChrome = hasActionableHref
+                    ? glassChromeFor({ tint: "#0a84ff", alpha: 1, blur: 0, ink: "light", outline: 0, sheen: 0.4 })
+                    : glassChipChrome;
+                  const arrowSize = Math.round(actionIco.iconBoxPx * 0.7);
+                  const hoverFadeStyle: React.CSSProperties = {
+                    opacity: statsCollapsed ? 0 : (statsHover ? 1 : 0),
+                    transform: statsHover ? "translateY(0)" : "translateY(12px)",
+                    pointerEvents: statsCollapsed || !statsHover ? "none" : "auto",
+                    transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1), transform 325ms cubic-bezier(0.4, 0, 0.2, 1)",
+                  };
+                  return (
+                    <>
+                      {purchaseSection && (() => {
+                        const href = purchaseSection.href;
+                        const cta = purchaseSection.ctaText ?? "Buy";
+                        const label = href ? cta : (purchaseSection.state ?? purchaseSection.text ?? "Not for sale");
+                        const Tag = (href ? "a" : "div") as React.ElementType;
+                        const tagProps = href
+                          ? { href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
+                          : {};
+                        return (
+                          <Tag
+                            {...tagProps}
+                            className="absolute pointer-events-auto cursor-pointer"
+                            style={{
+                              ...actionChipChrome,
+                              bottom: cardIconInset,
+                              right: cardIconInset,
+                              maxWidth: `calc(100% - ${cardIconInset * 2 + cardIconSize + cardIconGap}px)`,
+                              height: cardIconSize,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 10,
+                              borderRadius: cardIconSize / 2,
+                              padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
+                              zIndex: 20,
+                              textDecoration: "none",
+                              ...hoverFadeStyle,
+                            }}
+                          >
+                            <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: Math.round(cardIconSize * 0.36), fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+                            {href && (
+                              <span style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, opacity: 0.85 }}>
+                                <svg width={arrowSize} height={arrowSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
+                                </svg>
+                              </span>
+                            )}
+                          </Tag>
+                        );
+                      })()}
+                      <Tooltip label={engineerMode ? "Hide engineer specs" : "Show engineer specs"} shortcut="E">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEngineerMode((v) => {
+                              const next = !v;
+                              setDenseRowGap(next ? 4 : 9);
+                              return next;
+                            });
+                          }}
+                          aria-pressed={engineerMode}
+                          aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
+                          className={`${engineerIco.className} absolute`}
+                          style={{
+                            ...engineerIco.style,
+                            ...glassChipChrome,
+                            bottom: cardIconInset,
+                            left: cardIconInset,
+                            zIndex: 20,
+                            ...hoverFadeStyle,
+                          }}
+                        >
+                          <ChevronsUpDown size={engineerIco.iconBoxPx} strokeWidth={engineerIco.iconStrokeWidth} />
+                        </button>
+                      </Tooltip>
+                    </>
+                  );
+                })()}
                 {!denseDividers && (
                   <div
                     style={{
@@ -4248,7 +4388,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const priceR = hR.cost && hR.cost !== "N/A" ? hR.cost : null;
           const statusColor = (status?: string) => status === "In Production" ? "#22c55e" : status === "Prototype" ? "#eab308" : status === "Concept" ? "#3b82f6" : status === "Anticipated" ? "#8b5cf6" : "#a3a3a3";
 
-          const fz = 14;
+          const fz = engineerMode ? 14 : 16;
           const stackGap = 18;
           const dimmed: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
@@ -4439,16 +4579,20 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     className="cursor-pointer pointer-events-auto"
                     style={{
                       background: "transparent", border: "none", padding: 0, margin: 0,
-                      ...valueStyle,
+                      // Inherit text styling from the parent MarqueeValue (which
+                      // already has valueStyle) — re-applying valueStyle here
+                      // would compound the 0.68 opacity and dim the row.
+                      font: "inherit",
+                      color: "inherit",
                       display: "inline-flex", alignItems: "baseline", gap: 5,
                       WebkitTapHighlightColor: "transparent",
                     }}
                   >
-                    <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{val}</span>
                     <svg width="8" height="9" viewBox="0 0 8 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35, transform: "translateY(-1px)" }} aria-hidden>
                       <path d="M2 3 4 1 6 3" />
                       <path d="M2 6 4 8 6 6" />
                     </svg>
+                    <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{val}</span>
                   </button>
                 </MarqueeValue>
               )
@@ -4594,8 +4738,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           return (
             <>
               {/* New badge — rides with the humanoid */}
-              {mh.year === 2025 && (
-                <div className="absolute top-3 left-3 z-20 px-2 py-0.5 font-semibold" style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "rgba(60,60,67,0.55)", color: "#ffffff", backdropFilter: "blur(18px) saturate(1.6)", WebkitBackdropFilter: "blur(18px) saturate(1.6)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 0 0 1px rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.06)" }}>New</div>
+              {false && mh.year === 2025 && (
+                <div className="absolute z-20 inline-flex items-center justify-center font-semibold" style={{ top: cardIconInset, left: cardIconInset, height: Math.round(cardIconSize * 0.65), padding: `0 ${Math.round(cardIconSize * 0.32)}px`, fontSize: Math.round(cardIconSize * 0.28), lineHeight: 1, letterSpacing: "0.01em", borderRadius: cardIconSize / 2, background: "rgba(60,60,67,0.55)", color: "#ffffff", backdropFilter: "blur(18px) saturate(1.6)", WebkitBackdropFilter: "blur(18px) saturate(1.6)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 0 0 1px rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.06)" }}>New</div>
               )}
               <div
                 ref={(el) => { galleryScrollRefs.current[mIdx] = el; }}
@@ -4893,10 +5037,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       showHint={isFirst && !comparing && !spinPlaying}
                       className="w-full h-full"
                     />
-                    {h.year === 2025 && (
+                    {false && h.year === 2025 && (
                       <div
-                        className="absolute top-3 left-3 z-20 px-2 py-0.5 font-semibold pointer-events-none"
-                        style={{ fontSize: newBadgeFontSize, borderRadius: Math.max(3, cardRadius - 1), background: "rgba(60,60,67,0.55)", color: "#ffffff", backdropFilter: "blur(18px) saturate(1.6)", WebkitBackdropFilter: "blur(18px) saturate(1.6)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 0 0 1px rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.06)" }}
+                        className="absolute z-20 inline-flex items-center justify-center font-semibold pointer-events-none"
+                        style={{ top: cardIconInset, left: cardIconInset, height: Math.round(cardIconSize * 0.65), padding: `0 ${Math.round(cardIconSize * 0.32)}px`, fontSize: Math.round(cardIconSize * 0.28), lineHeight: 1, letterSpacing: "0.01em", borderRadius: cardIconSize / 2, background: "rgba(60,60,67,0.55)", color: "#ffffff", backdropFilter: "blur(18px) saturate(1.6)", WebkitBackdropFilter: "blur(18px) saturate(1.6)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 0 0 1px rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.06)" }}
                       >
                         New
                       </div>
@@ -4904,113 +5048,128 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   </div>
                 )}
                 {/* GalleryShareButton removed — Copy lives in the stats-column header row. */}
-                {/* Info-icon collapse affordance — top-right corner of the card,
-                    always visible since it's the primary show/hide-details toggle.
-                    Carries a permanent light fill regardless of state. */}
-                {collapseVariant === "info-icon" && !comparing && isFirst && (() => {
-                  const ico = cardIconRender({ active: !statsCollapsed });
-                  const fadeClass = cardIconHoverFade ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
-                  return (
-                    <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
-                        aria-label={statsCollapsed ? "Show details" : "Hide details"}
-                        className={`${ico.className} absolute z-30 ${fadeClass}`}
-                        style={{
-                          ...ico.style,
-                          ...glassChipChrome,
-                          top: cardIconInset,
-                          right: cardIconInset,
-                        }}
-                      >
-                        <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                      </button>
-                    </Tooltip>
-                  );
-                })()}
-                {/* Density toggle moved into the new stats-column header
-                    (see the stats slot below). */}
-                {/* 3D toggle — bottom-right, only for robots with a URDF mesh set */}
-                {isFirst && !comparing && THREEDEE_ROBOTS[h.id] && (() => {
-                  const ico = cardIconRender({ active: show3D });
-                  const fadeClass = cardIconHoverFade && !show3D ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
-                  // When "3D" text is shown, widen into a pill but reuse all chrome tokens.
-                  const pillStyle: React.CSSProperties = cardIcon3DLabel
-                    ? { ...ico.style, width: "auto", paddingLeft: 10, paddingRight: 12, gap: 6 }
-                    : ico.style;
-                  return (
-                    <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShow3D((v) => !v);
-                        }}
-                        aria-label={show3D ? "Show photo" : "View in 3D"}
-                        className={`${ico.className} absolute z-30 ${fadeClass}`}
-                        style={{ ...pillStyle, ...glassChipChrome, bottom: cardIconInset, right: cardIconInset }}
-                      >
-                        <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                        {cardIcon3DLabel && <span className="text-[12px] tracking-tight font-medium">3D</span>}
-                      </button>
-                    </Tooltip>
-                  );
-                })()}
-                {/* Auto-rotate (play/pause) — bottom-right, only for spin-enabled robots */}
-                {isFirst && !comparing && SPIN_ROBOTS[h.id] && (() => {
-                  const ico = cardIconRender({ active: spinPlaying });
-                  const fadeClass = cardIconHoverFade && !spinPlaying ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
-                  return (
-                    <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); void toggleSpin(); }}
-                        aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
-                        className={`${ico.className} absolute z-30 ${fadeClass}`}
-                        style={{ ...ico.style, ...glassChipChrome, bottom: cardIconInset, right: cardIconInset }}
-                      >
-                        {spinPlaying ? (
-                          <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                        ) : (
-                          <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                        )}
-                      </button>
-                    </Tooltip>
-                  );
-                })()}
-                {/* Video play/pause — appears when on a video slide; lives in the bottom-right cluster */}
-                {isFirst && !comparing && (
-                  <GalleryVideoPauseButton
-                    mIdx={hIdx}
-                    allKinds={allKinds}
-                    subscribe={subscribeGalleryIdx}
-                    read={readGalleryIdx}
-                    videoPaused={videoPaused}
-                    onToggle={() => setVideoPaused((p) => !p)}
-                    getIconStyle={(opts) => cardIconRender(opts)}
-                    position={{ bottom: cardIconInset, right: cardIconInset }}
-                    hoverFade={cardIconHoverFade}
-                    glassChipChrome={glassChipChrome}
-                  />
-                )}
-                {/* Info icon — bottom-left of the card. Toggles the blurb
-                    strip on/off. Hover-fades with the other in-card chrome. */}
-                {isFirst && !comparing && (() => {
+                {/* Floating options menu — single glass chip at the bottom-
+                    center of the card, housing every in-card action (Share,
+                    PanelRight, Info, 3D, Play, Video pause). One iOS-26 style
+                    multi-action pill. */}
+                {!comparing && isFirst && (() => {
                   const desc = getRobotDescription(h);
-                  if (!desc.text) return null;
-                  const ico = cardIconRender({ active: blurbVisible });
-                  const fadeClass = cardIconHoverFade && !blurbVisible ? "opacity-0 translate-y-0.5 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
+                  const hasInfo = !!desc.text;
+                  const hasThreeD = !!THREEDEE_ROBOTS[h.id];
+                  const hasSpin = !!SPIN_ROBOTS[h.id];
+                  const hasShare = !!onShareView;
+                  const hasPanel = collapseVariant === "info-icon";
+                  if (!hasShare && !hasPanel && !hasInfo && !hasThreeD && !hasSpin) return null;
+                  const ico = cardIconRender();
+                  const fadeClass = cardIconHoverFade ? "opacity-0 translate-y-3 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
+                  const innerBtnStyle: React.CSSProperties = {
+                    width: cardIconSize,
+                    height: cardIconSize,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "transparent",
+                    border: "none",
+                    padding: 0,
+                    color: "inherit",
+                    cursor: "pointer",
+                    WebkitTapHighlightColor: "transparent",
+                  };
                   return (
-                    <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }}
-                        aria-pressed={blurbVisible}
-                        aria-label={blurbVisible ? "Hide info" : "Show info"}
-                        className={`${ico.className} absolute z-30 ${fadeClass}`}
-                        style={{ ...ico.style, ...glassChipChrome, bottom: cardIconInset, left: cardIconInset }}
-                      >
-                        <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                      </button>
-                    </Tooltip>
+                    <div
+                      className={`absolute z-30 pointer-events-auto ${fadeClass}`}
+                      style={{
+                        ...glassChipChrome,
+                        bottom: cardIconInset,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        height: cardIconSize,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        borderRadius: cardIconSize / 2,
+                        transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1), transform 325ms cubic-bezier(0.4, 0, 0.2, 1)",
+                      }}
+                    >
+                      {hasShare && (
+                        <Tooltip label="Share this view" shortcut="C">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
+                            aria-label="Share this view"
+                            style={innerBtnStyle}
+                          >
+                            <Share size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                          </button>
+                        </Tooltip>
+                      )}
+                      {hasPanel && (
+                        <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
+                            aria-label={statsCollapsed ? "Show details" : "Hide details"}
+                            aria-pressed={!statsCollapsed}
+                            style={innerBtnStyle}
+                          >
+                            <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                          </button>
+                        </Tooltip>
+                      )}
+                      {hasInfo && (
+                        <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }}
+                            aria-pressed={blurbVisible}
+                            aria-label={blurbVisible ? "Hide info" : "Show info"}
+                            style={innerBtnStyle}
+                          >
+                            <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                          </button>
+                        </Tooltip>
+                      )}
+                      {hasThreeD && (
+                        <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }}
+                            aria-pressed={show3D}
+                            aria-label={show3D ? "Show photo" : "View in 3D"}
+                            style={innerBtnStyle}
+                          >
+                            <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                          </button>
+                        </Tooltip>
+                      )}
+                      {hasSpin && (
+                        <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); void toggleSpin(); }}
+                            aria-pressed={spinPlaying}
+                            aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
+                            style={innerBtnStyle}
+                          >
+                            {spinPlaying ? (
+                              <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                            ) : (
+                              <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                            )}
+                          </button>
+                        </Tooltip>
+                      )}
+                      <VideoPauseInnerButton
+                        mIdx={hIdx}
+                        allKinds={allKinds}
+                        subscribe={subscribeGalleryIdx}
+                        read={readGalleryIdx}
+                        videoPaused={videoPaused}
+                        onToggle={() => setVideoPaused((p) => !p)}
+                        iconBoxPx={ico.iconBoxPx}
+                        iconStrokeWidth={ico.iconStrokeWidth}
+                        size={cardIconSize}
+                      />
+                    </div>
                   );
                 })()}
                 {/* Blurb strip — glass chip beside the info icon, fades in
@@ -5021,17 +5180,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   const desc = getRobotDescription(h);
                   const fullText = desc.long ?? desc.text;
                   if (!fullText) return null;
-                  const hasRightButton = !!(THREEDEE_ROBOTS[h.id] || SPIN_ROBOTS[h.id]);
-                  const rightInset = hasRightButton ? cardIconInset + cardIconSize + 8 : cardIconInset;
-                  const leftInset = cardIconInset + cardIconSize + 8;
                   return (
                     <div
                       className="absolute z-20 pointer-events-none"
                       style={{
                         ...glassChipChrome,
-                        bottom: cardIconInset,
-                        left: leftInset,
-                        right: rightInset,
+                        // Sits above the bottom-center cluster, horizontally
+                        // centered, capped at most of the card width so it
+                        // doesn't bleed to the edges.
+                        bottom: cardIconInset + cardIconSize + 8,
+                        left: "50%",
+                        transform: blurbVisible ? "translateX(-50%) translateY(0)" : "translateX(-50%) translateY(6px)",
+                        maxWidth: `calc(100% - ${cardIconInset * 2}px)`,
+                        width: "max-content",
                         minHeight: cardIconSize,
                         display: "flex",
                         alignItems: "center",
@@ -5043,7 +5204,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         letterSpacing: "0.01em",
                         lineHeight: 1.35,
                         opacity: blurbVisible ? 1 : 0,
-                        transform: blurbVisible ? "translateX(0)" : "translateX(-6px)",
                         transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1), transform 325ms cubic-bezier(0.4, 0, 0.2, 1)",
                       }}
                     >
@@ -5054,15 +5214,23 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               </div>
 
               {/* Hover arrows — anchored to the active humanoid's gallery */}
-              {hasGallery && (
-                <GalleryArrows
-                  mIdx={hIdx}
-                  count={allImages.length}
-                  scroll={scrollGallery}
-                  subscribe={subscribeGalleryIdx}
-                  read={readGalleryIdx}
-                />
-              )}
+              {hasGallery && (() => {
+                const ico = cardIconRender();
+                return (
+                  <GalleryArrows
+                    mIdx={hIdx}
+                    count={allImages.length}
+                    scroll={scrollGallery}
+                    subscribe={subscribeGalleryIdx}
+                    read={readGalleryIdx}
+                    size={cardIconSize}
+                    inset={cardIconInset}
+                    iconBoxPx={ico.iconBoxPx}
+                    iconStrokeWidth={ico.iconStrokeWidth}
+                    glassChipChrome={glassChipChrome}
+                  />
+                );
+              })()}
 
               {buyLayout === "chip" && renderBuyChip(h)}
 
@@ -5257,120 +5425,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   // hover-fade / none — no button; behavior handled in renderStats.
                   return null;
                 })()}
-                {/* Stats column header — row of icon toggles styled to match the
-                    card's "i" button (via cardIconRender). Vertically aligned with
-                    that button so the centers line up. Shown in both single and
-                    compare modes; fades only when collapsed. */}
-                {(() => {
-                  const engineerIco = cardIconRender({ active: engineerMode });
-                  const iconBox = engineerIco.iconBoxPx;
-                  // Buttons float over the stats container at the top corners
-                  // using the state-driven glassChipChrome so the row beneath reads
-                  // through softly.
-                  const glassBtnStyle = (ico: ReturnType<typeof cardIconRender>): React.CSSProperties => ({
-                    ...ico.style,
-                    ...glassChipChrome,
-                    WebkitTapHighlightColor: "transparent",
-                  });
-                  return (
-                    <div
-                      className="absolute z-20 flex items-center justify-between pointer-events-none"
-                      style={{
-                        top: cardIconInset,
-                        left: cardIconInset,
-                        right: cardIconInset,
-                        height: cardIconSize,
-                        // Hover-only: chips fade in when the stats column is
-                        // hovered, fade out otherwise (and stay hidden when the
-                        // column is fully collapsed). will-change pre-promotes
-                        // the layer so backdrop-filter is composited from frame
-                        // one (otherwise the blur pops in late as opacity ramps).
-                        opacity: statsCollapsed ? 0 : (statsHover ? 1 : 0),
-                        willChange: "opacity",
-                        transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1)",
-                      }}
-                    >
-                      {/* Left side — share link for the current view. */}
-                      <div className="flex items-center pointer-events-auto" style={{ gap: cardIconGap, height: "100%" }}>
-                        {(() => {
-                          const ico = cardIconRender();
-                          return (
-                            <Tooltip label="Share this view" shortcut="C">
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
-                                aria-label="Share this view"
-                                className={ico.className}
-                                style={{
-                                  ...glassBtnStyle(ico),
-                                  width: "auto",
-                                  padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
-                                  fontFamily: "var(--font-geist-sans)",
-                                  fontSize: Math.round(cardIconSize * 0.36),
-                                  fontWeight: 500,
-                                  letterSpacing: "0.01em",
-                                  lineHeight: 1,
-                                }}
-                              >
-                                Share
-                              </button>
-                            </Tooltip>
-                          );
-                        })()}
-                      </div>
-                      {/* Right side — stats settings (engineer + units). */}
-                      <div className="flex items-center pointer-events-auto" style={{ gap: cardIconGap, height: "100%" }}>
-                        {/* Engineer — toggles both the engineer rows AND tighter
-                            spacing in one move (engineer = denser specs view). */}
-                        <Tooltip label={engineerMode ? "Hide engineer specs" : "Show engineer specs"} shortcut="E">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEngineerMode((v) => {
-                                const next = !v;
-                                setDenseRowGap(next ? 4 : 9);
-                                return next;
-                              });
-                            }}
-                            aria-pressed={engineerMode}
-                            aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
-                            className={engineerIco.className}
-                            style={glassBtnStyle(engineerIco)}
-                          >
-                            <ChevronsUpDown size={iconBox} strokeWidth={engineerIco.iconStrokeWidth} />
-                          </button>
-                        </Tooltip>
-                        {/* Units — metric / imperial. Shows the current unit
-                            as the icon label so the state is self-evident. */}
-                        {(() => {
-                          const ico = cardIconRender({ active: !useImperial });
-                          return (
-                            <Tooltip label={`Switch to ${useImperial ? "metric" : "imperial"}`} shortcut="U">
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); onUseImperialChange?.(!useImperial); }}
-                                aria-label={`Switch to ${useImperial ? "metric" : "imperial"}`}
-                                className={ico.className}
-                                style={glassBtnStyle(ico)}
-                              >
-                                <span style={{
-                                  fontSize: Math.round(cardIconSize * 0.36),
-                                  fontFamily: "var(--font-geist-sans)",
-                                  fontWeight: 500,
-                                  letterSpacing: "0.01em",
-                                  lineHeight: 1,
-                                }}>
-                                  {useImperial ? "in" : "cm"}
-                                </span>
-                              </button>
-                            </Tooltip>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  );
-                })()}
+                {/* Top toolbar removed — engineer/condense moved into the
+                    bottom-center cluster alongside the action chip. */}
                 <div className="absolute" style={{
                   top: 0,
                   left: 0,
@@ -5425,29 +5481,38 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     the card vertically — no horizontal drift from the card's
                     translateX(56) slide-in. On exit it fades quickly before
                     the card starts sliding out. */}
-                <button
-                  onClick={exitCompare}
-                  aria-label="Remove from compare"
-                  className="absolute z-30 flex items-center justify-center cursor-pointer"
-                  style={{
-                    top: -34,
-                    right: 0,
-                    width: 24,
-                    height: 24,
-                    borderRadius: 999,
-                    background: "rgba(0,0,0,0.08)",
-                    opacity: comparing ? 1 : 0,
-                    transform: comparing ? "translateY(0)" : "translateY(10px)",
-                    pointerEvents: comparing ? "auto" : "none",
-                    transition: comparing
-                      ? "opacity 220ms ease 280ms, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 280ms"
-                      : "opacity 140ms ease 0ms, transform 140ms ease 0ms",
-                  }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="rgba(0,0,0,0.78)" strokeWidth="1.8" strokeLinecap="round">
-                    <line x1="4" y1="10" x2="16" y2="10" />
-                  </svg>
-                </button>
+                {(() => {
+                  const ico = cardIconRender();
+                  return (
+                    <button
+                      onClick={exitCompare}
+                      aria-label="Remove from compare"
+                      className="absolute z-30 cursor-pointer"
+                      style={{
+                        ...glassChipChrome,
+                        width: cardIconSize,
+                        height: cardIconSize,
+                        borderRadius: cardIconSize / 2,
+                        border: "none",
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        top: -(cardIconSize + 8),
+                        right: 0,
+                        opacity: comparing ? 1 : 0,
+                        transform: comparing ? "translateY(0)" : "translateY(10px)",
+                        pointerEvents: comparing ? "auto" : "none",
+                        transition: comparing
+                          ? "opacity 220ms ease 280ms, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 280ms"
+                          : "opacity 140ms ease 0ms, transform 140ms ease 0ms",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      <Minus size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                    </button>
+                  );
+                })()}
                 {renderRobot(hR, distR, springR.index, false)}
               </div>
             </div>
@@ -6064,12 +6129,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 onClick={() => {
                   setCardIconChrome("ghost");
                   setCardIconShape("circle");
-                  setCardIconSize(35);
+                  setCardIconSize(40);
                   setCardIconStroke(1.5);
                   setCardIconInset(7);
                   setCardIconGap(4);
                   setCardIconActive("tint");
-                  setCardIconHoverFade(true);
+                  setCardIconHoverFade(false);
                   setCardIcon3DLabel(false);
                 }}
               >
