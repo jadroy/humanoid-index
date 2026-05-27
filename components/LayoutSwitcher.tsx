@@ -551,7 +551,6 @@ export function LayoutSwitcher({
   switcherStyle = "toggle",
   onRandomHumanoid,
   luckyNonce = 0,
-  hintNonce = 0,
   indexView,
   onIndexViewChange,
   onShareSite,
@@ -570,7 +569,6 @@ export function LayoutSwitcher({
   switcherStyle?: SwitcherStyle;
   onRandomHumanoid?: () => void;
   luckyNonce?: number;
-  hintNonce?: number;
   indexView: IndexView;
   onIndexViewChange: (v: IndexView) => void;
   onShareSite?: () => void;
@@ -588,8 +586,8 @@ export function LayoutSwitcher({
   };
 
 
-  const mark = <LogoMark onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} />;
-  const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} ringColor="#fff" />;
+  const mark = <LogoMark onClick={handleClick} luckyNonce={luckyNonce} />;
+  const solidMark = <LogoMark fill="#fff" opacity={0.4} onClick={handleClick} luckyNonce={luckyNonce} ringColor="#fff" />;
 
   const [diceRollNonce, setDiceRollNonce] = useState(0);
 
@@ -982,7 +980,7 @@ export function LayoutSwitcher({
   else if (navStyle === "sunday") {
     const SUNDAY_INK = "#171717";
     const SUNDAY_WORDMARK = "#494440";
-    const sundayMark = <LogoMark fill={SUNDAY_WORDMARK} ringColor={SUNDAY_WORDMARK} opacity={1} onClick={handleClick} luckyNonce={luckyNonce} hintNonce={hintNonce} showLuckyHint={false} />;
+    const sundayMark = <LogoMark fill={SUNDAY_WORDMARK} ringColor={SUNDAY_WORDMARK} opacity={1} onClick={handleClick} luckyNonce={luckyNonce} showLuckyHint={false} />;
     const closeAndPick = (l: Layout, v?: IndexView) => {
       if (active !== l) onChange(l);
       if (v && indexView !== v) onIndexViewChange(v);

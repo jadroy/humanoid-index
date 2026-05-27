@@ -19,7 +19,6 @@ export function LogoMark({
   size = 20,
   onClick,
   luckyNonce = 0,
-  hintNonce = 0,
   ringColor = "var(--c-ink)",
   showLuckyHint = true,
 }: {
@@ -28,7 +27,6 @@ export function LogoMark({
   size?: number;
   onClick?: () => void;
   luckyNonce?: number;
-  hintNonce?: number;
   ringColor?: string;
   showLuckyHint?: boolean;
 }) {
@@ -46,17 +44,6 @@ export function LogoMark({
     const t = setTimeout(() => setRingVisible(false), 720);
     return () => clearTimeout(t);
   }, [luckyNonce]);
-
-  // Hint pulse — expanding ring each time hintNonce bumps.
-  const [hintKey, setHintKey] = useState(0);
-  const [hintVisible, setHintVisible] = useState(false);
-  useEffect(() => {
-    if (!hintNonce) return;
-    setHintKey((k) => k + 1);
-    setHintVisible(true);
-    const t = setTimeout(() => setHintVisible(false), 2000);
-    return () => clearTimeout(t);
-  }, [hintNonce]);
 
   return (
     <div
@@ -76,30 +63,6 @@ export function LogoMark({
         >
           I&rsquo;m feeling lucky
         </span>
-      )}
-      {hintVisible && (
-        <svg
-          key={`hint-${hintKey}`}
-          width={total}
-          height={total}
-          viewBox={`0 0 ${total} ${total}`}
-          fill="none"
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            transformOrigin: "center",
-            animation: "lucky-ring-hint 2000ms cubic-bezier(0.22, 1, 0.36, 1) forwards",
-          }}
-        >
-          <circle
-            cx={total / 2}
-            cy={total / 2}
-            r={total / 2 - 2}
-            fill="none"
-            stroke={ringColor}
-            strokeWidth="1"
-            strokeLinecap="round"
-          />
-        </svg>
       )}
       {ringVisible && (
         <svg

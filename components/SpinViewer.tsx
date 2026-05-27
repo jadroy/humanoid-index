@@ -296,12 +296,12 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
             style={{ left: 0, top: 0, willChange: "transform" }}
           >
             <div
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-neutral-900/70 backdrop-blur-sm text-white text-[13px] font-medium tracking-tight whitespace-nowrap origin-top -translate-x-1/2 translate-y-[4px] transition-[opacity,transform] duration-200 ease-out ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-900/70 backdrop-blur-sm text-white text-[14px] font-medium tracking-tight whitespace-nowrap origin-top -translate-x-1/2 translate-y-[4px] transition-[opacity,transform] duration-200 ease-out ${
                 pillVisible ? "opacity-100 scale-100" : "opacity-0 scale-90"
               }`}
             >
               <span>Drag to rotate</span>
-              <RotateCw width={12} height={12} strokeWidth={2} className="opacity-70" />
+              <RotateCw width={14} height={14} strokeWidth={2} className="opacity-70" />
             </div>
           </div>,
           document.body

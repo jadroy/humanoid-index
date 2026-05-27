@@ -1446,7 +1446,7 @@ function StatusLegendModal({ children, style }: { children: React.ReactNode; sty
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange, footerLayout = "center", onFooterLayoutChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void; footerLayout?: "center" | "sides"; onFooterLayoutChange?: (v: "center" | "sides") => void }) {
+function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange, footerLayout = "center", onFooterLayoutChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void; footerLayout?: "center" | "sides"; onFooterLayoutChange?: (v: "center" | "sides") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -2507,20 +2507,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
-  const enterCompare = () => { springR.jumpTo(springL.index < humanoids.length - 1 ? springL.index + 1 : 0); setComparing(true); setActiveSide("right"); onEnterCompare?.(); };
-
-  // Add-compare nudge — a quick double-tap leftward motion via CSS keyframe.
-  // Bumps a key so the animation restarts on every nudge cycle.
-  const [addNudgeKey, setAddNudgeKey] = useState(0);
-  const [addHintVisible, setAddHintVisible] = useState(false);
-  useEffect(() => {
-    if (!addHintNonce) return;
-    if (addCtaMode === "always") return;
-    setAddNudgeKey((k) => k + 1);
-    setAddHintVisible(true);
-    const t = setTimeout(() => setAddHintVisible(false), 1400);
-    return () => clearTimeout(t);
-  }, [addHintNonce, addCtaMode]);
+  const enterCompare = () => { springR.jumpTo(springL.index < humanoids.length - 1 ? springL.index + 1 : 0); setComparing(true); setActiveSide("right"); };
   const exitCompare = () => { setComparing(false); setActiveSide("left"); setSplitHover(false); };
 
   useEffect(() => {
@@ -2838,7 +2825,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       {/* ── Add compare button — hover zone right of center ── */}
       {!comparing && (() => {
         const alwaysMode = addCtaMode === "always";
-        const addShown = alwaysMode || addHover || addHintVisible;
+        const addShown = alwaysMode || addHover;
         const baseScale = alwaysMode ? 1 : (addShown ? 1 : 0.75);
         const hoverScale = addHover ? 1.015 : 1;
         const liftY = addHover ? -1 : 0;
@@ -4347,7 +4334,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const statusColor = (status?: string) => status === "In Production" ? "#34c759" : status === "Prototype" ? "#ff9500" : status === "Concept" ? "#5e5ce6" : status === "Anticipated" ? "#af52de" : "#8e8e93";
 
           const fz = engineerMode ? 14 : 15;
-          const stackGap = 18;
           const dimmed: React.CSSProperties = {
             fontFamily: "var(--font-geist-sans)",
             fontSize: fz,
@@ -4431,67 +4417,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             </div>
           );
 
-          const compareBlurb = getCompareBlurb(hL, hR);
-          const compareBlurbId = `${hL.id}|${hR.id}`;
           const hasStatus = !!(hL.status || hR.status);
-          const hasBlurb = blurbVisible && !!compareBlurb.text;
-
-          const blurbBlock = hasBlurb ? (() => {
-            const isExpanded = expandedBlurbs.has(compareBlurbId);
-            const canExpand = !!compareBlurb.long;
-            const fullText = canExpand ? compareBlurb.long : compareBlurb.text;
-            const collapsedH = Math.round(fz * 1.55 * 3);
-            const isHovered = canExpand && hoveredBlurbId === compareBlurbId;
-            const Wrapper = (canExpand ? "button" : "div") as React.ElementType;
-            const wrapperProps = canExpand
-              ? {
-                  type: "button" as const,
-                  onClick: (e: React.MouseEvent) => { e.stopPropagation(); toggleBlurbExpand(compareBlurbId); },
-                  onMouseEnter: () => setHoveredBlurbId(compareBlurbId),
-                  onMouseLeave: () => setHoveredBlurbId(null),
-                }
-              : {};
-            return (
-              <Wrapper
-                key={compareBlurbId}
-                className="pointer-events-auto"
-                {...wrapperProps}
-                style={{
-                  position: "relative",
-                  ...(canExpand ? {
-                    background: "transparent",
-                    boxShadow: "none",
-                    border: "none",
-                    padding: 0,
-                    textAlign: "left" as const,
-                    width: "100%",
-                    cursor: "pointer",
-                    display: "block",
-                    WebkitTapHighlightColor: "transparent",
-                  } : {}),
-                  opacity: blurbReady ? 1 : 0,
-                  transform: blurbReady ? "translateY(0)" : "translateY(-3px)",
-                  filter: blurbReady ? "blur(0)" : "blur(2px)",
-                  transition: "opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
-                }}
-              >
-                <div
-                  style={{
-                    maxHeight: isExpanded ? 320 : collapsedH,
-                    overflow: "hidden",
-                    transition: "max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), -webkit-mask-image 0.3s ease, mask-image 0.3s ease",
-                    WebkitMaskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 75%, transparent 100%)" : "none",
-                    maskImage: canExpand && !isExpanded ? "linear-gradient(to bottom, #000 75%, transparent 100%)" : "none",
-                  }}
-                >
-                  <p style={{ fontFamily: "var(--font-geist-sans)", fontSize: fz, lineHeight: 1.55, color: "var(--c-ink-body)", fontWeight: 400 }}>
-                    {fullText}
-                  </p>
-                </div>
-                {canExpand && renderExpandIndicator({ isExpanded, isHovered })}
-              </Wrapper>
-            );
-          })() : null;
+          // Compare blurb is rendered as a glass-chip overlay on the left
+          // robot card (see renderRobot), matching single-mode placement.
 
 
           const rowHairline = (
@@ -4650,8 +4578,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           return (
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: compareStatsW, minWidth: compareStatsW, position: "relative", zIndex: 11 }}>
               <div className="flex flex-col" style={{ flex: 1, justifyContent: denseDividers ? "stretch" : "center", minHeight: 0 }}>
-                {blurbBlock}
-                <div className="ui-frost" style={{ marginTop: blurbBlock ? stackGap : 0, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
+                <div className="ui-frost" style={{ borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                   <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                     <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, paddingLeft: 18, paddingRight: 18 }}>
                       {denseDividers ? (
@@ -4685,6 +4612,43 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       visible below the scroll mask. */}
                 </div>
               </div>
+              {/* Compare blurb — glass-chip overlay on the middle column,
+                  positioned the same way the single-mode description chip
+                  rides the robot card. Toggled by Info in the bottom cluster. */}
+              {(() => {
+                const cb = getCompareBlurb(hL, hR);
+                const fullText = cb.long || cb.text;
+                if (!fullText) return null;
+                const isClusterBelow = chipLayout === "below" || chipLayout === "below-left";
+                const bottomPx = isClusterBelow ? cardIconInset : cardIconInset + cardIconSize + 8;
+                return (
+                  <div
+                    className="absolute z-20 pointer-events-none"
+                    style={{
+                      ...glassChipChrome,
+                      bottom: bottomPx,
+                      left: "50%",
+                      transform: blurbVisible ? "translateX(-50%) translateY(0)" : "translateX(-50%) translateY(6px)",
+                      maxWidth: `calc(100% - ${cardIconInset * 2}px)`,
+                      width: "max-content",
+                      minHeight: cardIconSize,
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "10px 14px",
+                      borderRadius: 14,
+                      fontSize: Math.round(cardIconSize * 0.36),
+                      fontFamily: "var(--font-geist-sans)",
+                      fontWeight: 500,
+                      letterSpacing: "0.01em",
+                      lineHeight: 1.35,
+                      opacity: blurbVisible ? 1 : 0,
+                      transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1), transform 325ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    }}
+                  >
+                    {fullText}
+                  </div>
+                );
+              })()}
               {/* "Copy comparison" pill removed — header row now owns the action. */}
             </div>
           );
@@ -5308,13 +5272,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div className={`flex ${labelPosition === "above" ? "items-end" : "items-start"}`}>
               {/* Left robot */}
               <div
-                key={addHintVisible ? `nudge-${addNudgeKey}` : "idle-l"}
-                className={addHintVisible ? "animate-add-nudge-double" : ""}
                 style={{
-                  transform: addHintVisible
-                    ? undefined
-                    : splitHover ? "translateX(-12px)" : (addHover && addCtaMode !== "always") ? "translateX(-16px)" : "translateX(0)",
-                  transition: addHintVisible ? undefined : `transform ${dur} ${ease}`,
+                  transform: splitHover ? "translateX(-12px)" : (addHover && addCtaMode !== "always") ? "translateX(-16px)" : "translateX(0)",
+                  transition: `transform ${dur} ${ease}`,
                 }}
               >
                 {renderRobot(hL, distL, springL.index, true)}
@@ -5322,8 +5282,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
               {/* Stats slot — crossfade single ↔ merged */}
               <div
-                key={addHintVisible ? `nudge-${addNudgeKey}-s` : "idle-s"}
-                className={`flex-shrink-0 relative${addHintVisible ? " animate-add-nudge-double" : ""}`}
+                className="flex-shrink-0 relative"
                 onMouseEnter={() => setStatsHover(true)}
                 onMouseLeave={() => setStatsHover(false)}
                 style={{
@@ -5339,12 +5298,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   overflowX: "visible", overflowY: "visible",
                   width: comparing ? compareStatsW : effectiveStatsW,
                   height: comparing ? `${robotH - 4}vh` : `${robotH}vh`,
-                  transform: addHintVisible
-                    ? undefined
-                    : !comparing && addHover && addCtaMode !== "always" ? "translateX(-16px)" : "translateX(0)",
-                  transition: addHintVisible
-                    ? "width var(--collapse-dur) var(--collapse-ease), height var(--collapse-dur) var(--collapse-ease), opacity var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease)"
-                    : "width var(--collapse-dur) var(--collapse-ease), height var(--collapse-dur) var(--collapse-ease), opacity var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease)",
+                  transform: !comparing && addHover && addCtaMode !== "always" ? "translateX(-16px)" : "translateX(0)",
+                  transition: "width var(--collapse-dur) var(--collapse-ease), height var(--collapse-dur) var(--collapse-ease), opacity var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease)",
                 }}
               >
                 {/* Collapse affordance — variants swap the chrome but all toggle
@@ -5493,7 +5448,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     marginTop: 6,
                     zIndex: 25,
                     display: "flex",
-                    justifyContent: chipLayout === "below-left" ? "flex-start" : "center",
+                    // Single view: always left-align the stats-col cluster so
+                    // the chevron + CTA hug the slot's left edge regardless of
+                    // the humanoid card's below/below-left choice.
+                    justifyContent: !comparing ? "flex-start" : (chipLayout === "below-left" ? "flex-start" : "center"),
                     alignItems: "center",
                     gap: cardIconGap,
                     opacity: 1,
@@ -7325,10 +7283,6 @@ export default function HomeClient() {
   });
   const [goToIndex, setGoToIndex] = useState<number | null>(null);
   const [luckyNonce, setLuckyNonce] = useState(0);
-  const [luckyUsed, setLuckyUsed] = useState(false);
-  const [hintNonce, setHintNonce] = useState(0);
-  const [addHintNonce, setAddHintNonce] = useState(0);
-  const [comparingUsed, setComparingUsed] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -7520,7 +7474,6 @@ export default function HomeClient() {
     if (layout !== "E") setLayout("E");
     setChatOpen(false);
     setLuckyNonce((n) => n + 1);
-    setLuckyUsed(true);
   }, [layout]);
 
   const [homeNonce, setHomeNonce] = useState(0);
@@ -7533,30 +7486,6 @@ export default function HomeClient() {
   }, []);
 
   const introDone = introPhase === "done";
-
-  // Subtle affordance: the add-compare nudge fires first (primary action),
-  // then the logo pulse a bit later (secondary, lower priority). Repeats
-  // until each one is used.
-  useEffect(() => {
-    if (!introDone) return;
-    if (luckyUsed && comparingUsed) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const fireCycle = () => {
-      if (!comparingUsed) setAddHintNonce((n) => n + 1);
-      if (!luckyUsed) {
-        timers.push(setTimeout(() => setHintNonce((n) => n + 1), 5500));
-      }
-    };
-    const schedule = (delay: number) => {
-      const t = setTimeout(() => {
-        fireCycle();
-        schedule(20000);
-      }, delay);
-      timers.push(t);
-    };
-    schedule(5500);
-    return () => { timers.forEach(clearTimeout); };
-  }, [introDone, luckyUsed, comparingUsed]);
 
   // Avoid desktop-layout flash on first paint while we measure viewport
   if (isMobile === null) {
@@ -7634,7 +7563,6 @@ export default function HomeClient() {
               switcherStyle={switcherStyle}
               onRandomHumanoid={onRandomHumanoid}
               luckyNonce={luckyNonce}
-              hintNonce={hintNonce}
               indexView={indexView}
               onIndexViewChange={setIndexView}
               onShareSite={() => {
@@ -7655,7 +7583,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} footerLayout={footerLayout} onFooterLayoutChange={setFooterLayout} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} footerLayout={footerLayout} onFooterLayoutChange={setFooterLayout} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
