@@ -5,7 +5,7 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
-import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus } from "lucide-react";
+import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus, Dices } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, type Humanoid } from "@/data/humanoids";
 import Image from "next/image";
@@ -48,7 +48,6 @@ import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import ContactSheet from "@/components/ContactSheet";
 
 const FOOTER_CONTACT_EMAIL = "jadroy77@gmail.com";
-import EnvironmentToggle from "@/components/EnvironmentToggle";
 import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { getRobotDescription } from "@/lib/robotDescription";
@@ -1182,16 +1181,23 @@ function StatsScrollArea({ children, style, flex }: { children: React.ReactNode;
     const el = ref.current;
     if (!el) return;
     const check = () => {
-      const top = el.scrollTop > 1;
-      const bottom = el.scrollHeight - el.clientHeight - el.scrollTop > 1;
+      // Sub-pixel-friendly thresholds: trackpads can leave scrollTop at
+      // fractional values for several frames, so `> 1` was missing early
+      // top-fade activations. `> 0.5` is still tolerant of layout jitter.
+      const top = el.scrollTop > 0.5;
+      const bottom = el.scrollHeight - el.clientHeight - el.scrollTop > 0.5;
       setEdges((top ? 1 : 0) | (bottom ? 2 : 0));
     };
     check();
+    // Re-check on the next frame to catch the initial layout — the mount
+    // pass can run before flex/min-height has settled the scroll height.
+    const raf = requestAnimationFrame(check);
     el.addEventListener("scroll", check, { passive: true });
     const ro = new ResizeObserver(check);
     ro.observe(el);
     if (el.firstElementChild) ro.observe(el.firstElementChild);
     return () => {
+      cancelAnimationFrame(raf);
       el.removeEventListener("scroll", check);
       ro.disconnect();
     };
@@ -1440,7 +1446,7 @@ function StatusLegendModal({ children, style }: { children: React.ReactNode; sty
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void }) {
+function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, addHintNonce = 0, onEnterCompare, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange, footerLayout = "center", onFooterLayoutChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; addHintNonce?: number; onEnterCompare?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void; footerLayout?: "center" | "sides"; onFooterLayoutChange?: (v: "center" | "sides") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -1772,6 +1778,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [cardIconActive, setCardIconActive] = useState<CardIconActive>("tint");
   const [cardIconHoverFade, setCardIconHoverFade] = useState(false);
   const [cardIcon3DLabel, setCardIcon3DLabel] = useState(false);
+  const [chipLayout, setChipLayout] = useState<"floating" | "panel" | "below" | "below-left">("below");
   // Blurb visibility — toggled by the bottom-left info icon on the card.
   // Only one blurb renders at a time (single view + isFirst), so a single
   // boolean is enough.
@@ -2331,6 +2338,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     let velocity = 0;
     let decay: ReturnType<typeof setTimeout>;
 
+    // Gesture-direction lock for the wheel burst. Trackpads emit events
+    // with noisy deltaX/deltaY ratios — without a lock, individual frames
+    // mid-swipe can flip "horizontal" → "vertical" and get captured for
+    // card nav, killing the native gallery scroll. Lock at burst start
+    // and hold until 150ms of silence.
+    let gestureDir: "h" | "v" | null = null;
+    let lastWheelTime = 0;
+
     const route = (delta: number, nudgeAmt?: number) => {
       if (!comparingRef.current) {
         if (nudgeAmt !== undefined) springL.nudge(nudgeAmt);
@@ -2343,8 +2358,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     const onWheel = (e: WheelEvent) => {
       // Tuners only exist in dev; skip the DOM walk in production.
       if (isDev && (e.target as HTMLElement)?.closest?.("[data-tuner]")) return;
+      const wheelNow = performance.now();
+      if (wheelNow - lastWheelTime > 150) gestureDir = null;
+      if (gestureDir === null) {
+        gestureDir = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? "h" : "v";
+      }
+      lastWheelTime = wheelNow;
       // Hover ref replaces a closest() walk on every wheel tick.
-      if (hoveringGalleryRef.current && Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      if (hoveringGalleryRef.current && gestureDir === "h") return;
       // Scroll zones are rectangles bounded by the card edges. Single view:
       // anything past the card's right edge (stats column) is dead. Compare:
       // the gutter between the two cards (middle stats column) is dead.
@@ -2703,21 +2724,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           }}
         />
       )}
-      {/* Scene is dev-only for now — hidden from production users while Roy
-          iterates on a separate launch. Flip to an env-var-driven feature
-          flag (LAUNCH_MODE) when ready to ship. */}
-      {process.env.NODE_ENV === "development" && (
-        <EnvironmentToggle
-          available={sceneAvailable}
-          enabled={sceneEnabled}
-          onToggle={() => {
-            setSceneInteracted(true);
-            setSceneEnabled((v) => !v);
-          }}
-          visible={introDone}
-        />
-      )}
-
       {/* Neighbor-image preloader — off-screen Next/Image tags matching the
           card's sizes, so the optimized variants are cached before crossings. */}
       <div aria-hidden style={{ position: "absolute", left: -99999, top: 0, width: `${robotW}vw`, height: `${robotH}vh`, maxWidth: robotMaxW, pointerEvents: "none", opacity: 0 }}>
@@ -4428,7 +4434,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const compareBlurb = getCompareBlurb(hL, hR);
           const compareBlurbId = `${hL.id}|${hR.id}`;
           const hasStatus = !!(hL.status || hR.status);
-          const hasBlurb = showCompareBlurb && !!compareBlurb.text;
+          const hasBlurb = blurbVisible && !!compareBlurb.text;
 
           const blurbBlock = hasBlurb ? (() => {
             const isExpanded = expandedBlurbs.has(compareBlurbId);
@@ -4885,6 +4891,84 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             </div>
           );
 
+          // Chip cluster — shared button fragment used by both the floating
+          // (absolute over image) and panel (flex row below image) layouts.
+          const chipCtx = (!comparing && isFirst) ? (() => {
+            const desc = getRobotDescription(h);
+            const hasInfo = !!desc.text;
+            const hasThreeD = !!THREEDEE_ROBOTS[h.id];
+            const hasSpin = !!SPIN_ROBOTS[h.id];
+            const hasShare = !!onShareView;
+            const hasPanel = collapseVariant === "info-icon";
+            const hasScene = process.env.NODE_ENV === "development" && !!h.sceneUrl;
+            if (!hasShare && !hasPanel && !hasInfo && !hasThreeD && !hasSpin && !hasScene) return null;
+            const ico = cardIconRender();
+            const innerBtnStyle: React.CSSProperties = {
+              width: cardIconSize,
+              height: cardIconSize,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              color: "inherit",
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+            };
+            const buttons = (
+              <>
+                {hasShare && (
+                  <Tooltip label="Share this view" shortcut="C">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); onShareView?.(); }} aria-label="Share this view" style={innerBtnStyle}>
+                      <Share size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                    </button>
+                  </Tooltip>
+                )}
+                {hasPanel && (
+                  <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={innerBtnStyle}>
+                      <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                    </button>
+                  </Tooltip>
+                )}
+                {hasInfo && (
+                  <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={innerBtnStyle}>
+                      <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                    </button>
+                  </Tooltip>
+                )}
+                {hasScene && (
+                  <Tooltip label={sceneEnabled ? "Hide scene" : "Show scene"} shortcut="E">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setSceneInteracted(true); setSceneEnabled((v) => !v); }} aria-pressed={sceneEnabled} aria-label={sceneEnabled ? "Hide scene" : "Show scene"} style={innerBtnStyle}>
+                      <svg width={ico.iconBoxPx} height={ico.iconBoxPx} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M3 18l5-6 4 5 3-4 6 7" />
+                        <circle cx="17" cy="6" r="2" />
+                      </svg>
+                    </button>
+                  </Tooltip>
+                )}
+                {hasThreeD && (
+                  <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }} aria-pressed={show3D} aria-label={show3D ? "Show photo" : "View in 3D"} style={innerBtnStyle}>
+                      <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                    </button>
+                  </Tooltip>
+                )}
+                {hasSpin && (
+                  <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); void toggleSpin(); }} aria-pressed={spinPlaying} aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"} style={innerBtnStyle}>
+                      {spinPlaying ? <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} /> : <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />}
+                    </button>
+                  </Tooltip>
+                )}
+                <VideoPauseInnerButton mIdx={hIdx} allKinds={allKinds} subscribe={subscribeGalleryIdx} read={readGalleryIdx} videoPaused={videoPaused} onToggle={() => setVideoPaused((p) => !p)} iconBoxPx={ico.iconBoxPx} iconStrokeWidth={ico.iconStrokeWidth} size={cardIconSize} />
+              </>
+            );
+            return { buttons };
+          })() : null;
+
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
             {/* Inner card */}
@@ -5013,29 +5097,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     center of the card, housing every in-card action (Share,
                     PanelRight, Info, 3D, Play, Video pause). One iOS-26 style
                     multi-action pill. */}
-                {!comparing && isFirst && (() => {
-                  const desc = getRobotDescription(h);
-                  const hasInfo = !!desc.text;
-                  const hasThreeD = !!THREEDEE_ROBOTS[h.id];
-                  const hasSpin = !!SPIN_ROBOTS[h.id];
-                  const hasShare = !!onShareView;
-                  const hasPanel = collapseVariant === "info-icon";
-                  if (!hasShare && !hasPanel && !hasInfo && !hasThreeD && !hasSpin) return null;
-                  const ico = cardIconRender();
+                {chipCtx && chipLayout === "floating" && (() => {
                   const fadeClass = cardIconHoverFade ? "opacity-0 translate-y-3 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
-                  const innerBtnStyle: React.CSSProperties = {
-                    width: cardIconSize,
-                    height: cardIconSize,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "transparent",
-                    border: "none",
-                    padding: 0,
-                    color: "inherit",
-                    cursor: "pointer",
-                    WebkitTapHighlightColor: "transparent",
-                  };
                   return (
                     <div
                       className={`absolute z-30 pointer-events-auto ${fadeClass}`}
@@ -5051,85 +5114,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1), transform 325ms cubic-bezier(0.4, 0, 0.2, 1)",
                       }}
                     >
-                      {hasShare && (
-                        <Tooltip label="Share this view" shortcut="C">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
-                            aria-label="Share this view"
-                            style={innerBtnStyle}
-                          >
-                            <Share size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                          </button>
-                        </Tooltip>
-                      )}
-                      {hasPanel && (
-                        <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
-                            aria-label={statsCollapsed ? "Show details" : "Hide details"}
-                            aria-pressed={!statsCollapsed}
-                            style={innerBtnStyle}
-                          >
-                            <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                          </button>
-                        </Tooltip>
-                      )}
-                      {hasInfo && (
-                        <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }}
-                            aria-pressed={blurbVisible}
-                            aria-label={blurbVisible ? "Hide info" : "Show info"}
-                            style={innerBtnStyle}
-                          >
-                            <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                          </button>
-                        </Tooltip>
-                      )}
-                      {hasThreeD && (
-                        <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }}
-                            aria-pressed={show3D}
-                            aria-label={show3D ? "Show photo" : "View in 3D"}
-                            style={innerBtnStyle}
-                          >
-                            <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                          </button>
-                        </Tooltip>
-                      )}
-                      {hasSpin && (
-                        <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); void toggleSpin(); }}
-                            aria-pressed={spinPlaying}
-                            aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"}
-                            style={innerBtnStyle}
-                          >
-                            {spinPlaying ? (
-                              <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                            ) : (
-                              <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                            )}
-                          </button>
-                        </Tooltip>
-                      )}
-                      <VideoPauseInnerButton
-                        mIdx={hIdx}
-                        allKinds={allKinds}
-                        subscribe={subscribeGalleryIdx}
-                        read={readGalleryIdx}
-                        videoPaused={videoPaused}
-                        onToggle={() => setVideoPaused((p) => !p)}
-                        iconBoxPx={ico.iconBoxPx}
-                        iconStrokeWidth={ico.iconStrokeWidth}
-                        size={cardIconSize}
-                      />
+                      {chipCtx.buttons}
                     </div>
                   );
                 })()}
@@ -5146,10 +5131,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       className="absolute z-20 pointer-events-none"
                       style={{
                         ...glassChipChrome,
-                        // Sits above the bottom-center cluster, horizontally
-                        // centered, capped at most of the card width so it
-                        // doesn't bleed to the edges.
-                        bottom: cardIconInset + cardIconSize + 8,
+                        // Sits above the bottom-center cluster in floating
+                        // layout; in panel layout the chip row lives below the
+                        // media area, so the blurb only needs to clear the
+                        // bottom inset.
+                        bottom: chipLayout === "panel" ? cardIconInset : cardIconInset + cardIconSize + 8,
                         left: "50%",
                         transform: blurbVisible ? "translateX(-50%) translateY(0)" : "translateX(-50%) translateY(6px)",
                         maxWidth: `calc(100% - ${cardIconInset * 2}px)`,
@@ -5174,6 +5160,23 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 })()}
               </div>
 
+              {/* Panel chip row — fixed-height flex sibling below the media
+                  area. Reserves its own slot so the image never sits behind
+                  the chips, and drops the glass chrome (no backdrop-blur). */}
+              {chipCtx && chipLayout === "panel" && (
+                <div
+                  className="flex-shrink-0 flex items-center justify-center pointer-events-auto"
+                  style={{
+                    height: cardIconSize + cardIconInset * 2,
+                    padding: `${cardIconInset}px`,
+                    gap: cardIconGap,
+                    background: "#F9F9F9",
+                  }}
+                >
+                  {chipCtx.buttons}
+                </div>
+              )}
+
               {/* Hover arrows — anchored to the active humanoid's gallery */}
               {hasGallery && (() => {
                 const ico = cardIconRender();
@@ -5196,6 +5199,31 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               {buyLayout === "chip" && renderBuyChip(h)}
 
             </div>
+
+            {/* Below-card chip row — sibling of the inner card, sits in page
+                space under the rounded rectangle. Uses glass chrome so it
+                reads as floating UI on the page rather than card chrome. */}
+            {chipCtx && (chipLayout === "below" || chipLayout === "below-left") && (
+              <div
+                className="pointer-events-auto"
+                style={{
+                  marginTop: 6,
+                  display: "flex",
+                  justifyContent: chipLayout === "below-left" ? "flex-start" : "center",
+                }}
+              >
+                <div
+                  className="inline-flex items-center"
+                  style={{
+                    ...glassChipChrome,
+                    height: cardIconSize,
+                    borderRadius: cardIconSize / 2,
+                  }}
+                >
+                  {chipCtx.buttons}
+                </div>
+              </div>
+            )}
 
             {buyLayout === "below" && !comparing && (() => {
               const isSundayBeta = h.manufacturer === "Sunday Robotics";
@@ -5300,6 +5328,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 onMouseLeave={() => setStatsHover(false)}
                 style={{
                   marginLeft: statsCollapsed && !comparing ? 0 : effectiveGap,
+                  // Single view + below mode: humanoid wrapper grows by chip
+                  // row height. With items-end on the row, the slot would sit
+                  // taller than the humanoid wrapper, dropping the cluster
+                  // below the humanoid chips. Reserve matching bottom margin
+                  // so the slot bottom moves up the same amount, aligning
+                  // both rows. In compare mode the humanoid cards have no
+                  // chip row, so no margin needed.
+                  marginBottom: !comparing && (chipLayout === "below" || chipLayout === "below-left") ? cardIconSize + 6 : 0,
                   overflowX: "visible", overflowY: "visible",
                   width: comparing ? compareStatsW : effectiveStatsW,
                   height: comparing ? `${robotH - 4}vh` : `${robotH}vh`,
@@ -5417,10 +5453,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 </div>
 
                 {/* Persistent bottom-left cluster — engineer/condense chip
-                    and action chip (left-robot's CTA in compare). Lives at
-                    the stats-slot level so it shows over both single and
-                    compare stats; always visible when the column is open
-                    (compare always counts as open). */}
+                    plus a contextual pill: the robot's CTA in single mode,
+                    Copy-view in compare (where a single CTA is ambiguous).
+                    Lives at the stats-slot level so it shows over both
+                    single and compare stats; always visible when the column
+                    is open (compare always counts as open). */}
                 {(() => {
                   if (!denseDividers || !splitCards) return null;
                   const showCluster = comparing || !statsCollapsed;
@@ -5448,21 +5485,35 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     return { href, ctaText, stateLabel };
                   })();
                   const arrowSize = Math.round(actionIco.iconBoxPx * 0.7);
+                  const isBelow = chipLayout === "below" || chipLayout === "below-left";
+                  const belowWrapperStyle: React.CSSProperties = {
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    marginTop: 6,
+                    zIndex: 25,
+                    display: "flex",
+                    justifyContent: chipLayout === "below-left" ? "flex-start" : "center",
+                    alignItems: "center",
+                    gap: cardIconGap,
+                    opacity: 1,
+                    transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1)",
+                  };
+                  const insideWrapperStyle: React.CSSProperties = {
+                    bottom: cardIconInset,
+                    left: cardIconInset,
+                    zIndex: 25,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: cardIconGap,
+                    maxWidth: `calc(100% - ${cardIconInset * 2}px)`,
+                    opacity: 1,
+                    transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1)",
+                  };
                   return (
                     <div
                       className="absolute pointer-events-auto"
-                      style={{
-                        bottom: cardIconInset,
-                        left: cardIconInset,
-                        zIndex: 25,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: cardIconGap,
-                        maxWidth: `calc(100% - ${cardIconInset * 2}px)`,
-                        // Persistent — visible whenever the cluster renders.
-                        opacity: 1,
-                        transition: "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1)",
-                      }}
+                      style={isBelow ? belowWrapperStyle : insideWrapperStyle}
                     >
                       <Tooltip label={engineerMode ? "Hide engineer specs" : "Show engineer specs"} shortcut="E">
                         <button
@@ -5483,7 +5534,54 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                           <ChevronsUpDown size={engineerIco.iconBoxPx} strokeWidth={engineerIco.iconStrokeWidth} />
                         </button>
                       </Tooltip>
+                      {comparing && !!getCompareBlurb(hL, hR).text && (
+                        <Tooltip label={blurbVisible ? "Hide overview" : "Show overview"} shortcut="I">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }}
+                            aria-pressed={blurbVisible}
+                            aria-label={blurbVisible ? "Hide overview" : "Show overview"}
+                            className={actionIco.className}
+                            style={{ ...actionIco.style, ...glassChipChrome, flexShrink: 0 }}
+                          >
+                            <Info size={actionIco.iconBoxPx} strokeWidth={actionIco.iconStrokeWidth} />
+                          </button>
+                        </Tooltip>
+                      )}
                       {(() => {
+                        // Compare view: a single CTA is ambiguous across two
+                        // robots, so the slot becomes a Copy-view pill instead.
+                        if (comparing) {
+                          if (!onShareView) return null;
+                          return (
+                            <Tooltip label="Copy view link" shortcut="C">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
+                                aria-label="Copy view link"
+                                className="pointer-events-auto cursor-pointer"
+                                style={{
+                                  ...glassChipChrome,
+                                  border: "1px solid transparent",
+                                  maxWidth: "100%",
+                                  height: cardIconSize,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  borderRadius: cardIconSize / 2,
+                                  padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
+                                  flexShrink: 1,
+                                  minWidth: 0,
+                                }}
+                              >
+                                <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: Math.round(cardIconSize * 0.36), fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Copy view</span>
+                                <span style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, opacity: 0.85 }}>
+                                  <Share size={arrowSize} strokeWidth={1.6} />
+                                </span>
+                              </button>
+                            </Tooltip>
+                          );
+                        }
                         const href = ctaInfo.href;
                         const label = href ? ctaInfo.ctaText : (ctaInfo.stateLabel ?? "Not for sale");
                         const Tag = (href ? "a" : "div") as React.ElementType;
@@ -6012,6 +6110,20 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       )}
       {showTuner && (
         <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide" style={{ overscrollBehavior: "contain" }}>
+          <div className="space-y-2">
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400">Footer layout</p>
+            <div className="flex gap-1.5">
+              {(["center", "sides"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => onFooterLayoutChange?.(v)}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${footerLayout === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400">Dense dividers</p>
@@ -6238,6 +6350,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Corner inset <span className="tabular-nums text-neutral-400">{cardIconInset}px</span></label><input type="range" min={4} max={20} value={cardIconInset} onChange={(e) => setCardIconInset(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Gap between icons <span className="tabular-nums text-neutral-400">{cardIconGap}px</span></label><input type="range" min={0} max={16} value={cardIconGap} onChange={(e) => setCardIconGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Hover-fade secondary</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIconHoverFade ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIconHoverFade(!cardIconHoverFade)}>{cardIconHoverFade ? "On" : "Off"}</button></div>
+            <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Chip layout</label><div className="inline-flex rounded overflow-hidden border border-neutral-200">{([["floating", "Float"], ["panel", "Panel"], ["below", "Below"], ["below-left", "Below L"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] cursor-pointer ${chipLayout === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setChipLayout(m)}>{label}</button>))}</div></div>
             <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Show &ldquo;3D&rdquo; label</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIcon3DLabel ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIcon3DLabel(!cardIcon3DLabel)}>{cardIcon3DLabel ? "On" : "Off"}</button></div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100">
@@ -7198,6 +7311,7 @@ export default function HomeClient() {
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
   const [chatOpen, setChatOpen] = useState(false);
   const [showChatTuner, setShowChatTuner] = useState(false);
+  const [footerLayout, setFooterLayout] = useState<"center" | "sides">("sides");
   const [chatConfig, setChatConfig] = useState({
     bgOpacity: 92,
     blur: 24,
@@ -7218,7 +7332,6 @@ export default function HomeClient() {
   const [comparing, setComparing] = useState(false);
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [diceRollNonce, setDiceRollNonce] = useState(0);
   const [toScale, setToScale] = useState(false);
   const [useImperial, setUseImperial] = useState(true);
   // Default to metric for non-US locales. Runs post-hydration so SSR + first
@@ -7542,7 +7655,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} addHintNonce={addHintNonce} onEnterCompare={() => setComparingUsed(true)} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} footerLayout={footerLayout} onFooterLayoutChange={setFooterLayout} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -7635,8 +7748,9 @@ export default function HomeClient() {
       {/* Launch: chat trigger hidden, replaced with credit link.
           To bring chat back, swap this for the <OptionsMenu .../> block. */}
       {introDone && (() => {
+        const footerChipHeight = 40;
         const labelStyle: React.CSSProperties = {
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 500,
           letterSpacing: "normal",
         };
@@ -7645,26 +7759,30 @@ export default function HomeClient() {
           color: "rgba(95, 96, 89, 0.8)",
           background: "transparent",
           cursor: "default",
+          padding: `0 4px`,
+          height: footerChipHeight,
+          display: "inline-flex",
+          alignItems: "center",
         };
         const glassChipStyle: React.CSSProperties = {
           ...FOOTER_GLASS_CHROME,
           ...labelStyle,
+          height: footerChipHeight,
+          padding: `0 20px`,
+          borderRadius: footerChipHeight / 2,
+          display: "inline-flex",
+          alignItems: "center",
         };
-        const shuffleSize = 52;
         const shuffleStyle: React.CSSProperties = {
           ...FOOTER_GLASS_CHROME,
-          // Outline painted in front of sheen so the top edge stays crisp
-          // (mirrors the EnvironmentToggle fix).
-          boxShadow:
-            "inset 0 0 0 1px rgba(102,102,102,0.18), inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.05)",
-          height: shuffleSize,
-          minWidth: shuffleSize,
-          padding: comparing ? "0 16px" : 0,
-          borderRadius: shuffleSize / 2,
+          height: footerChipHeight,
+          minWidth: footerChipHeight,
+          padding: comparing ? `0 14px` : 0,
+          borderRadius: footerChipHeight / 2,
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 22,
+          gap: 2,
           lineHeight: 1,
         };
         return (
@@ -7672,33 +7790,18 @@ export default function HomeClient() {
             <div
               className="fixed left-1/2 z-[48] pointer-events-none"
               style={{
-                bottom: "calc(var(--corner-y, 8px) + 36px)",
+                bottom: "calc(var(--corner-y, 8px) + 4px)",
                 transform: "translateX(-50%)",
               }}
             >
               <Chip
                 className="intro-credit pointer-events-auto"
-                onClick={() => {
-                  setDiceRollNonce((n) => n + 1);
-                  onRandomHumanoid();
-                }}
+                onClick={() => onRandomHumanoid()}
                 style={shuffleStyle}
               >
-                <span aria-label="Shuffle" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-                  <span
-                    key={`a-${diceRollNonce}`}
-                    role="img"
-                    aria-hidden
-                    className={diceRollNonce ? "dice-roll-a" : undefined}
-                  >🎲</span>
-                  {comparing && (
-                    <span
-                      key={`b-${diceRollNonce}`}
-                      role="img"
-                      aria-hidden
-                      className={diceRollNonce ? "dice-roll-b" : undefined}
-                    >🎲</span>
-                  )}
+                <span aria-label="Shuffle" style={{ display: "inline-flex", alignItems: "center", gap: 2, color: "rgba(95, 96, 89, 0.8)" }}>
+                  <Dices size={22} strokeWidth={1.6} />
+                  {comparing && <Dices size={22} strokeWidth={1.6} />}
                 </span>
               </Chip>
             </div>
@@ -7706,17 +7809,42 @@ export default function HomeClient() {
               className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none"
               style={{ bottom: "var(--corner-y, 8px)" }}
             >
-              <div
-                className="flex items-center justify-between"
-                style={{
-                  paddingLeft: "var(--nav-edge, 24px)",
-                  paddingRight: "var(--nav-edge, 24px)",
-                }}
-              >
-                <Chip className="pointer-events-auto" style={creditStyle}>
-                  Roy Jad © 2026
-                </Chip>
-                <div className="flex items-center" style={{ gap: 8 }}>
+              {footerLayout === "sides" ? (
+                <div
+                  className="flex items-center justify-between"
+                  style={{
+                    paddingLeft: "var(--nav-edge, 24px)",
+                    paddingRight: "var(--nav-edge, 24px)",
+                  }}
+                >
+                  <Chip className="pointer-events-auto" style={creditStyle}>
+                    Roy Jad © 2026
+                  </Chip>
+                  <div className="flex items-center" style={{ gap: 8 }}>
+                    <Chip
+                      className="pointer-events-auto"
+                      onClick={() => {
+                        const origin = typeof window !== "undefined" ? window.location.origin : "";
+                        copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
+                      }}
+                      style={glassChipStyle}
+                    >
+                      Share site
+                    </Chip>
+                    <Chip
+                      className="pointer-events-auto"
+                      onClick={() => setFeedbackOpen(true)}
+                      style={glassChipStyle}
+                    >
+                      Submit feedback
+                    </Chip>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center" style={{ gap: 8 }}>
+                  <Chip className="pointer-events-auto" style={creditStyle}>
+                    Roy Jad © 2026
+                  </Chip>
                   <Chip
                     className="pointer-events-auto"
                     onClick={() => {
@@ -7735,7 +7863,7 @@ export default function HomeClient() {
                     Submit feedback
                   </Chip>
                 </div>
-              </div>
+              )}
             </div>
           </>
         );
