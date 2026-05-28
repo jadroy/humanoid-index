@@ -1462,11 +1462,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Engineer-mode toggle for the stats column — basic (default) reveals the
   // standard rows; engineer adds the extended `engineering` block of specs.
   // Persists site-wide in localStorage so the choice carries between robots.
-  const [engineerMode, setEngineerMode] = useState(false);
+  const [engineerMode, setEngineerMode] = useState(true);
   useEffect(() => {
     try {
       const stored = localStorage.getItem("humanoid-index:engineerMode");
-      if (stored === "true") setEngineerMode(true);
+      if (stored === "false") {
+        setEngineerMode(false);
+        setDenseRowGap(9);
+      }
     } catch {}
   }, []);
   useEffect(() => {
@@ -1697,7 +1700,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // no inline cm/in toggle (it would break the rhythm).
   const [denseDividers, setDenseDividers] = useState(true);
   const [denseFullWidth, setDenseFullWidth] = useState(true);
-  const [denseRowGap, setDenseRowGap] = useState(9); // px gap between rows
+  const [denseRowGap, setDenseRowGap] = useState(4); // px gap between rows
+  const [statsTopOffset, setStatsTopOffset] = useState(0); // px leading space above the stats column
   const [denseOpacity, setDenseOpacity] = useState(2.5); // percent (0-20)
   // Split the dense stats card into 3 stacked containers (Specs / Context / Action)
   // so visual grouping comes from card gaps instead of internal dividers.
@@ -1773,12 +1777,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [cardIconShape, setCardIconShape] = useState<CardIconShape>("circle");
   const [cardIconSize, setCardIconSize] = useState(40);
   const [cardIconStroke, setCardIconStroke] = useState(1.5);
-  const [cardIconInset, setCardIconInset] = useState(7);
+  const [cardIconInset, setCardIconInset] = useState(2);
   const [cardIconGap, setCardIconGap] = useState(4);
   const [cardIconActive, setCardIconActive] = useState<CardIconActive>("tint");
   const [cardIconHoverFade, setCardIconHoverFade] = useState(false);
   const [cardIcon3DLabel, setCardIcon3DLabel] = useState(false);
-  const [chipLayout, setChipLayout] = useState<"floating" | "panel" | "below" | "below-left">("below");
+  const [chipLayout, setChipLayout] = useState<"floating" | "panel" | "below" | "below-left" | "corners">("below");
+  const [compareBtnStyle, setCompareBtnStyle] = useState<"glass" | "flat">("flat");
+  const [cornersCloseMode, setCornersCloseMode] = useState<"slim-minus" | "click-card" | "hover-x" | "edge-chevron" | "card-edge-tab">("slim-minus");
+  const [cornerRowHover, setCornerRowHover] = useState(false);
   // Blurb visibility — toggled by the bottom-left info icon on the card.
   // Only one blurb renders at a time (single view + isFirst), so a single
   // boolean is enough.
@@ -2077,7 +2084,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // When info is hidden, the stats slot fully collapses to 0 so the card lands
   // at viewport center. The "i" toggle lives inside the card label, so no rail
   // is needed in the info-icon variant (the active default).
-  const collapsedRailW = 0;
+  // Corners chip layout renders the collapsed state as a slim panel (same
+  // height as the card, "+" centered) instead of an invisible rail, so the
+  // affordance to expand stays in-context with the card. card-edge-tab mode
+  // moves the affordance onto the card itself, so the rail collapses to 0.
+  const collapsedRailW = (chipLayout === "corners" && cornersCloseMode !== "card-edge-tab") ? Math.round(singleStatsW * 0.1) : 0;
   const expandedStatsW = splitBlurb && blurbFloat ? statsW * 2 + cardGap : singleStatsW;
   const effectiveStatsW = statsCollapsed ? collapsedRailW : expandedStatsW;
 
@@ -2848,10 +2859,42 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             >
               {(() => {
                 const ico = cardIconRender();
+                // Both variants are built from scratch — DO NOT spread
+                // ico.style. ico.style emits a `border` shorthand alongside a
+                // `borderColor` longhand, and the longhand wins the cascade
+                // no matter where the override sits. Only iconBoxPx is reused.
+                const baseStyle: React.CSSProperties = {
+                  width: cardIconSize,
+                  height: cardIconSize,
+                  borderRadius: 999,
+                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "background 180ms ease, border-color 180ms ease, color 180ms ease, opacity 325ms cubic-bezier(0.4, 0, 0.2, 1), transform 325ms cubic-bezier(0.4, 0, 0.2, 1)",
+                };
+                const flatStyle: React.CSSProperties = {
+                  ...baseStyle,
+                  border: "none",
+                  background: "rgba(0,0,0,0.06)",
+                  color: "rgba(0,0,0,0.62)",
+                  ["--ci-bg-hover" as string]: "rgba(0,0,0,0.09)",
+                  ["--ci-border-hover" as string]: "transparent",
+                  ["--ci-color-hover" as string]: "rgba(0,0,0,0.78)",
+                };
+                const glassStyle: React.CSSProperties = {
+                  ...baseStyle,
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  background: "transparent",
+                  color: "rgba(0,0,0,0.4)",
+                  ["--ci-bg-hover" as string]: "rgba(0,0,0,0.03)",
+                  ["--ci-border-hover" as string]: "rgba(0,0,0,0.2)",
+                  ["--ci-color-hover" as string]: "rgba(0,0,0,0.55)",
+                };
                 return (
                   <div
                     className={ico.className}
-                    style={{ ...ico.style, ...glassChipChrome }}
+                    style={compareBtnStyle === "flat" ? flatStyle : glassStyle}
                   >
                     <Plus size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                   </div>
@@ -3734,6 +3777,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const rowHairline = (
               <div aria-hidden style={{ height: 2, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? -18 : 64, marginRight: denseFullWidth ? -18 : 0 }} />
             );
+            // Section break — pure whitespace between Identity / Status /
+            // Specs. A line here competed with the per-row hairlines in
+            // engineer mode and looked busy; an empty spacer separates
+            // sections through air instead.
+            const sectionDivider = (
+              <div aria-hidden style={{ height: 10 }} />
+            );
             const statusRow = (
               <div style={{ ...rowStyle, alignItems: "center" }}>
                 <span style={dimmed}>Status</span>
@@ -3866,7 +3916,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               + (unitToggleVariant === "row" ? 1 : 0)
               + technicalRows.length;
             const specsEndIdx = headerRowCount + engineerRows.length;
-            const denseRows: React.ReactNode[] = [
+            // Stats column is grouped into three sections separated by a
+            // heavier `sectionDivider`: Identity (basic stats), Status
+            // (price + availability + purchase CTA), Specs (engineer
+            // technical + engineering extras — only when engineer mode is
+            // on). Empty sections drop out so basic mode shows just two.
+            const identityRows: React.ReactNode[] = [
               renderStatRow("Company", h.manufacturer ?? null, (v) => `${v}`),
               renderStatRow("Year", h.year ?? null, (v) => `${v}`),
               countryRow,
@@ -3874,21 +3929,27 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               heightRow,
               weightRow,
               renderStatRow("Use", h.useCase ?? null, (v) => `${v}`),
-              ...technicalRows,
-              ...engineerRows,
+            ];
+            const statusRows: React.ReactNode[] = [
               renderStatRow("Price", priceChipText ?? null, (v) => `${v}`),
               statusRow,
               ...(purchaseRow ? [purchaseRow] : []),
             ];
-            const denseScrollRows = denseDividers ? denseRows.slice(0, -1).filter(Boolean) : [];
-            const denseActionRow = denseDividers ? denseRows[denseRows.length - 1] : null;
-            const renderRowsAsCard = (rows: React.ReactNode[], opts?: { fill?: boolean; pinnedLast?: boolean; gap?: number; padding?: string }) => {
-              const { fill = false, pinnedLast = false, gap, padding = "14px 18px" } = opts ?? {};
+            const specsRows: React.ReactNode[] = [
+              ...technicalRows,
+              ...engineerRows,
+            ];
+            const denseSections: React.ReactNode[][] = [
+              identityRows,
+              statusRows,
+              ...(specsRows.length > 0 ? [specsRows] : []),
+            ].map((s) => s.filter(Boolean)).filter((s) => s.length > 0);
+            const denseRows: React.ReactNode[] = denseSections.flat();
+            const renderRowsAsCard = (sections: React.ReactNode[][], opts?: { fill?: boolean; gap?: number; padding?: string }) => {
+              const { fill = false, gap, padding = "14px 18px" } = opts ?? {};
               const innerGap = gap ?? denseRowGap;
-              const visible = rows.filter(Boolean);
-              if (visible.length === 0) return null;
-              const scrolling = pinnedLast ? visible.slice(0, -1) : visible;
-              const pinned = pinnedLast ? visible[visible.length - 1] : null;
+              const visibleSections = sections.map((s) => s.filter(Boolean)).filter((s) => s.length > 0);
+              if (visibleSections.length === 0) return null;
               // Parse padding string to extract horizontal value so the scroll
               // area can bleed full-width while the rows themselves keep their
               // inset (matches compare-card pattern).
@@ -3897,46 +3958,48 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 const px = parts.length >= 2 ? parts[1] : parts[0];
                 return parseInt(px, 10) || 18;
               })();
-              // Simple mode (engineer off) drops the hairline separators —
-              // rows just sit with `innerGap` between them for a cleaner look.
+              // Simple mode (engineer off) drops the per-row hairlines —
+              // rows just sit with `innerGap` between them. Section dividers
+              // still render in basic mode so the Identity/Status break is
+              // visible without engineer rows being on.
               const showHairlines = engineerMode;
               return (
                 <div style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding, display: "flex", flexDirection: "column", gap: innerGap, flex: fill ? 1 : undefined, minHeight: 0 }}>
                   <StatsScrollArea flex={fill ? 1 : undefined} style={{ marginLeft: -paddingX, marginRight: -paddingX }}>
                     <div className="flex flex-col" style={{ gap: innerGap, paddingLeft: paddingX, paddingRight: paddingX }}>
-                      {scrolling.map((row, i) => (
-                        <Fragment key={i}>
-                          {showHairlines && i > 0 ? rowHairline : null}
-                          {row}
+                      {visibleSections.map((section, si) => (
+                        <Fragment key={si}>
+                          {si > 0 ? sectionDivider : null}
+                          {section.map((row, ri) => (
+                            <Fragment key={ri}>
+                              {showHairlines && ri > 0 ? rowHairline : null}
+                              {row}
+                            </Fragment>
+                          ))}
                         </Fragment>
                       ))}
                     </div>
                   </StatsScrollArea>
-                  {pinned && (
-                    <>
-                      {showHairlines && scrolling.length > 0 ? rowHairline : null}
-                      {pinned}
-                    </>
-                  )}
                 </div>
               );
             };
-            // Specs card holds all data rows (Company..Drive + engineer + Price + Status).
-            // Action card holds only the CTA/purchase row, anchored below.
-            const specsRowsOnly = purchaseRow ? denseRows.slice(0, -1) : denseRows;
-            // Standard 18px padding on all sides — both toolbar (top) and
-            // action (bottom) chips are hover-only overlays now, so rows can
-            // run edge-to-edge and tuck behind them on reveal.
-            const specsCard = renderRowsAsCard(specsRowsOnly, { fill: true, padding: "18px 18px" });
+            // Specs card renders the three sections (Identity / Status /
+            // Specs) with a heavier `sectionDivider` between them.
+            const specsCard = renderRowsAsCard(denseSections, { fill: true, padding: "18px 18px" });
             const statsCard = (
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                   <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, paddingLeft: 18, paddingRight: 18 }}>
                     {denseDividers ? (
-                      denseScrollRows.map((row, i) => (
-                        <Fragment key={i}>
-                          {i > 0 ? rowHairline : null}
-                          {row}
+                      denseSections.map((section, si) => (
+                        <Fragment key={si}>
+                          {si > 0 ? sectionDivider : null}
+                          {section.map((row, ri) => (
+                            <Fragment key={ri}>
+                              {engineerMode && ri > 0 ? rowHairline : null}
+                              {row}
+                            </Fragment>
+                          ))}
                         </Fragment>
                       ))
                     ) : (
@@ -3958,12 +4021,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     )}
                   </div>
                 </StatsScrollArea>
-                {denseDividers && denseActionRow && (
-                  <div className="flex flex-col" style={{ gap: 2 }}>
-                    {rowHairline}
-                    {denseActionRow}
-                  </div>
-                )}
               </div>
             );
 
@@ -4160,6 +4217,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     overflowY: "auto",
                     overflowX: "hidden",
                     width: expandedStatsW,
+                    paddingTop: statsTopOffset,
                     opacity: collapseVariant === "hover-fade" ? (statsHover ? 1 : 0.22) : (statsCollapsed ? 0 : 1),
                     transform: statsCollapsed ? "translateX(8px)" : "translateX(0)",
                     pointerEvents: statsCollapsed ? "none" : "auto",
@@ -4425,6 +4483,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           const rowHairline = (
             <div aria-hidden style={{ height: 2, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? -18 : 64, marginRight: denseFullWidth ? -18 : 64 }} />
           );
+          // Section break — whitespace-only, matches the single view.
+          const sectionDivider = (
+            <div aria-hidden style={{ height: 10 }} />
+          );
           const statusRow = (
             <div style={{ ...compareRowGridStyle, gridTemplateColumns: "91px 1fr 1fr", alignItems: "center" }}>
               <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Status</span>
@@ -4561,7 +4623,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             speedCompareRow,
             compareRow("Drive", hL.drive ?? null, hR.drive ?? null),
           ] : [];
-          const denseRows: React.ReactNode[] = [
+          // Sections mirror the single view: Identity / Status / Specs
+          // (specs only when engineer mode adds rows).
+          const identityCompareRows: React.ReactNode[] = [
             compareRow("Company", hL.manufacturer ?? null, hR.manufacturer ?? null),
             compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null),
             compareCountryRow,
@@ -4569,11 +4633,21 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             heightCompareRow,
             weightCompareRow,
             compareRow("Use", hL.useCase ?? null, hR.useCase ?? null),
-            ...technicalCompareRows,
-            ...engineerCompareRows,
+          ];
+          const statusCompareRows: React.ReactNode[] = [
             compareRow("Price", priceL, priceR),
             statusRow,
           ];
+          const specsCompareRows: React.ReactNode[] = [
+            ...technicalCompareRows,
+            ...engineerCompareRows,
+          ];
+          const denseCompareSections: React.ReactNode[][] = [
+            identityCompareRows,
+            statusCompareRows,
+            ...(specsCompareRows.length > 0 ? [specsCompareRows] : []),
+          ].map((s) => s.filter(Boolean)).filter((s) => s.length > 0);
+          const denseRows: React.ReactNode[] = denseCompareSections.flat();
 
           return (
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: compareStatsW, minWidth: compareStatsW, position: "relative", zIndex: 11 }}>
@@ -4582,10 +4656,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                     <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, paddingLeft: 18, paddingRight: 18 }}>
                       {denseDividers ? (
-                        denseRows.filter(Boolean).map((row, i) => (
-                          <Fragment key={i}>
-                            {engineerMode && i > 0 ? rowHairline : null}
-                            {row}
+                        denseCompareSections.map((section, si) => (
+                          <Fragment key={si}>
+                            {si > 0 ? sectionDivider : null}
+                            {section.map((row, ri) => (
+                              <Fragment key={ri}>
+                                {engineerMode && ri > 0 ? rowHairline : null}
+                                {row}
+                              </Fragment>
+                            ))}
                           </Fragment>
                         ))
                       ) : (
@@ -4607,9 +4686,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       )}
                     </div>
                   </StatsScrollArea>
-                  {/* Pinned bottom row removed — status now scrolls with the
-                      rest of the compare rows instead of being persistently
-                      visible below the scroll mask. */}
                 </div>
               </div>
               {/* Compare blurb — glass-chip overlay on the middle column,
@@ -4635,7 +4711,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       display: "flex",
                       alignItems: "center",
                       padding: "10px 14px",
-                      borderRadius: 14,
+                      // Concentric rounding — see twin in renderRobot.
+                      borderRadius: Math.max(8, cardRadius - cardIconInset),
                       fontSize: Math.round(cardIconSize * 0.36),
                       fontFamily: "var(--font-geist-sans)",
                       fontWeight: 500,
@@ -4880,15 +4957,42 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               cursor: "pointer",
               WebkitTapHighlightColor: "transparent",
             };
-            const buttons = (
+            const shareButton = hasShare ? (
+              <Tooltip label="Share this view" shortcut="C">
+                <button type="button" onClick={(e) => { e.stopPropagation(); onShareView?.(); }} aria-label="Share this view" style={innerBtnStyle}>
+                  <Share size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                </button>
+              </Tooltip>
+            ) : null;
+            const infoButton = hasInfo ? (
+              <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
+                <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={innerBtnStyle}>
+                  <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                </button>
+              </Tooltip>
+            ) : null;
+            const mediaButtons = (
               <>
-                {hasShare && (
-                  <Tooltip label="Share this view" shortcut="C">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); onShareView?.(); }} aria-label="Share this view" style={innerBtnStyle}>
-                      <Share size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                {hasThreeD && (
+                  <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }} aria-pressed={show3D} aria-label={show3D ? "Show photo" : "View in 3D"} style={innerBtnStyle}>
+                      <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                     </button>
                   </Tooltip>
                 )}
+                {hasSpin && (
+                  <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); void toggleSpin(); }} aria-pressed={spinPlaying} aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"} style={innerBtnStyle}>
+                      {spinPlaying ? <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} /> : <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />}
+                    </button>
+                  </Tooltip>
+                )}
+                <VideoPauseInnerButton mIdx={hIdx} allKinds={allKinds} subscribe={subscribeGalleryIdx} read={readGalleryIdx} videoPaused={videoPaused} onToggle={() => setVideoPaused((p) => !p)} iconBoxPx={ico.iconBoxPx} iconStrokeWidth={ico.iconStrokeWidth} size={cardIconSize} />
+              </>
+            );
+            const hasMedia = hasThreeD || hasSpin;
+            const otherButtons = (
+              <>
                 {hasPanel && (
                   <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
                     <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={innerBtnStyle}>
@@ -4930,15 +5034,52 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 <VideoPauseInnerButton mIdx={hIdx} allKinds={allKinds} subscribe={subscribeGalleryIdx} read={readGalleryIdx} videoPaused={videoPaused} onToggle={() => setVideoPaused((p) => !p)} iconBoxPx={ico.iconBoxPx} iconStrokeWidth={ico.iconStrokeWidth} size={cardIconSize} />
               </>
             );
-            return { buttons };
+            const buttons = (<>{shareButton}{otherButtons}</>);
+            return { buttons, shareButton, otherButtons, infoButton, mediaButtons, hasMedia };
           })() : null;
 
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
+            {/* Card-edge toggle — sticks out the right edge of the LEFT card
+                when chipLayout=corners + cornersCloseMode=card-edge-tab.
+                Acts as both expand and collapse. */}
+            {isFirst && !comparing && chipLayout === "corners" && cornersCloseMode === "card-edge-tab" && (() => {
+              const tabW = 22;
+              const tabH = 56;
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
+                  aria-label={statsCollapsed ? "Expand stats" : "Collapse stats"}
+                  className="absolute cursor-pointer flex items-center justify-center"
+                  style={{
+                    top: "50%",
+                    right: -Math.round(tabW / 2),
+                    transform: "translateY(-50%)",
+                    width: tabW,
+                    height: tabH,
+                    borderRadius: 999,
+                    background: "#F4F4F4",
+                    color: "rgba(60,60,67,0.55)",
+                    zIndex: 5,
+                    border: "none",
+                    padding: 0,
+                    pointerEvents: "auto",
+                    WebkitTapHighlightColor: "transparent",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                  }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ transform: statsCollapsed ? "rotate(0deg)" : "rotate(180deg)", transition: `transform ${dur} ${ease}` }}>
+                    <path d="M6 4 L10 8 L6 12" />
+                  </svg>
+                </button>
+              );
+            })()}
             {/* Inner card */}
             <div
               ref={isFirst ? leftCardRef : rightCardRef}
               className="relative flex flex-col overflow-hidden"
+              onClick={isFirst && !comparing && chipLayout === "corners" && cornersCloseMode === "click-card" && !statsCollapsed ? () => setStatsCollapsed(true) : undefined}
               style={{
                 width: comparing ? `${robotW - 14}vw` : `${robotW}vw`,
                 height: comparing ? `${robotH - 4}vh` : `${robotH}vh`,
@@ -4946,6 +5087,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 borderRadius: cardRadius,
                 background: "#F9F9F9",
                 pointerEvents: "auto",
+                cursor: isFirst && !comparing && chipLayout === "corners" && cornersCloseMode === "click-card" && !statsCollapsed ? "pointer" : undefined,
                 transition: "width var(--collapse-dur) var(--collapse-ease), height var(--collapse-dur) var(--collapse-ease), max-width var(--collapse-dur) var(--collapse-ease)",
                 willChange: "transform",
                 zIndex: 2,
@@ -5082,6 +5224,55 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     </div>
                   );
                 })()}
+                {/* Corners — Share anchors bottom-left, every other chip
+                    clusters bottom-right. Bare icons (no glass chrome) so the
+                    affordance reads as a quiet system control, not a pill. */}
+                {chipCtx && chipLayout === "corners" && (() => {
+                  const fadeClass = cardIconHoverFade ? "opacity-0 translate-y-3 group-hover/card:opacity-100 group-hover/card:translate-y-0" : "";
+                  const transitionStyle = "opacity 325ms cubic-bezier(0.4, 0, 0.2, 1), transform 325ms cubic-bezier(0.4, 0, 0.2, 1)";
+                  const bareStyle: React.CSSProperties = {
+                    height: cardIconSize,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    color: "rgba(60,60,67,0.75)",
+                    transition: transitionStyle,
+                  };
+                  return (
+                    <>
+                      {(chipCtx.shareButton || chipCtx.hasMedia) && (() => {
+                        // Tighter inter-icon spacing in the bottom-left
+                        // cluster: render share + media in a single flex row
+                        // and pull each subsequent child left so the icons
+                        // sit closer than the default cardIconSize stride.
+                        const tighten = 3;
+                        return (
+                          <div
+                            className={`absolute z-30 pointer-events-auto ${fadeClass}`}
+                            style={{ ...bareStyle, bottom: cardIconInset, left: cardIconInset }}
+                          >
+                            {chipCtx.shareButton}
+                            {chipCtx.hasMedia && (
+                              <div style={{ display: "inline-flex", alignItems: "center", marginLeft: -tighten }}>
+                                {React.Children.map(chipCtx.mediaButtons.props.children, (child, idx) => {
+                                  if (!child) return child;
+                                  return idx === 0 ? child : <span style={{ marginLeft: -tighten, display: "inline-flex" }}>{child}</span>;
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      {chipCtx.infoButton && (
+                        <div
+                          className={`absolute z-30 pointer-events-auto ${fadeClass}`}
+                          style={{ ...bareStyle, bottom: cardIconInset, right: cardIconInset }}
+                        >
+                          {chipCtx.infoButton}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 {/* Blurb strip — glass chip beside the info icon, fades in
                     when toggled on. Multi-line, auto-height: grows upward as
                     content gets longer. Bottom-aligned with the info icon so
@@ -5095,11 +5286,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       className="absolute z-20 pointer-events-none"
                       style={{
                         ...glassChipChrome,
-                        // Sits above the bottom-center cluster in floating
-                        // layout; in panel layout the chip row lives below the
-                        // media area, so the blurb only needs to clear the
-                        // bottom inset.
-                        bottom: chipLayout === "panel" ? cardIconInset : cardIconInset + cardIconSize + 8,
+                        // Sits above the bottom cluster only when chips float
+                        // over the image (floating/corners). Panel/below modes
+                        // move the chip row out of the media area entirely, so
+                        // the blurb can sit flush with the bottom inset.
+                        bottom: (chipLayout === "floating" || chipLayout === "corners") ? cardIconInset + cardIconSize + 8 : cardIconInset,
                         left: "50%",
                         transform: blurbVisible ? "translateX(-50%) translateY(0)" : "translateX(-50%) translateY(6px)",
                         maxWidth: `calc(100% - ${cardIconInset * 2}px)`,
@@ -5108,7 +5299,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         display: "flex",
                         alignItems: "center",
                         padding: "10px 14px",
-                        borderRadius: 14,
+                        // Concentric rounding: blurb radius = card radius
+                        // minus the inset between blurb and card edge, so
+                        // the blurb's corners feel like the card's interior.
+                        borderRadius: Math.max(8, cardRadius - cardIconInset),
                         fontSize: Math.round(cardIconSize * 0.36),
                         fontFamily: "var(--font-geist-sans)",
                         fontWeight: 500,
@@ -5164,14 +5358,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
             </div>
 
-            {/* Below-card chip row — sibling of the inner card, sits in page
-                space under the rounded rectangle. Uses glass chrome so it
-                reads as floating UI on the page rather than card chrome. */}
+            {/* Below-card chip row — absolutely positioned below the card so
+                it floats over the page without inflating the card wrapper's
+                bounding box. Keeps the card's vertical center aligned with
+                the arc names instead of getting pushed up by the chip row. */}
             {chipCtx && (chipLayout === "below" || chipLayout === "below-left") && (
               <div
-                className="pointer-events-auto"
+                className="pointer-events-auto absolute"
                 style={{
-                  marginTop: 6,
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  right: 0,
                   display: "flex",
                   justifyContent: chipLayout === "below-left" ? "flex-start" : "center",
                 }}
@@ -5267,9 +5464,24 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         };
 
         const effectiveGap = statsGap;
+        // Corners chip layout: keep the card centered ONLY when the stats
+        // column is collapsed to the slim panel. On expand the stats column
+        // would otherwise push past the Compare button (anchored at
+        // right:19vw), so we let the natural centering take over and the card
+        // drifts left as the panel opens. Shift uses the actual collapsed gap
+        // (4px) so the math matches the rendered marginLeft.
+        const cornersCollapsedGap = 6;
+        const cornerCenterShift = (!comparing && chipLayout === "corners" && statsCollapsed)
+          ? (cornersCollapsedGap + effectiveStatsW) / 2
+          : 0;
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 11 }}>
-            <div className={`flex ${labelPosition === "above" ? "items-end" : "items-start"}`}>
+            <div
+              className={`flex ${labelPosition === "above" ? "items-end" : "items-start"}`}
+              style={cornerCenterShift ? { transform: `translateX(${cornerCenterShift}px)`, transition: `transform ${dur} ${ease}` } : undefined}
+              onMouseEnter={chipLayout === "corners" ? () => setCornerRowHover(true) : undefined}
+              onMouseLeave={chipLayout === "corners" ? () => setCornerRowHover(false) : undefined}
+            >
               {/* Left robot */}
               <div
                 style={{
@@ -5286,7 +5498,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 onMouseEnter={() => setStatsHover(true)}
                 onMouseLeave={() => setStatsHover(false)}
                 style={{
-                  marginLeft: statsCollapsed && !comparing ? 0 : effectiveGap,
+                  marginLeft: statsCollapsed && !comparing && chipLayout !== "corners"
+                    ? 0
+                    : (statsCollapsed && !comparing && chipLayout === "corners" ? 6 : effectiveGap),
                   // Single view + below mode: humanoid wrapper grows by chip
                   // row height. With items-end on the row, the slot would sit
                   // taller than the humanoid wrapper, dropping the cluster
@@ -5294,7 +5508,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   // so the slot bottom moves up the same amount, aligning
                   // both rows. In compare mode the humanoid cards have no
                   // chip row, so no margin needed.
-                  marginBottom: !comparing && (chipLayout === "below" || chipLayout === "below-left") ? cardIconSize + 6 : 0,
+                  // Below-mode chip row is absolutely positioned so the card
+                  // wrapper no longer grows by the chip row height — stats
+                  // slot height matches the card naturally, no margin needed.
+                  marginBottom: 0,
                   overflowX: "visible", overflowY: "visible",
                   width: comparing ? compareStatsW : effectiveStatsW,
                   height: comparing ? `${robotH - 4}vh` : `${robotH}vh`,
@@ -5311,6 +5528,146 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       <path d="M10 4 L6 8 L10 12" />
                     </svg>
                   );
+
+                  // Corners chip layout — collapsed always shows the slim
+                  // "+" panel (open affordance). Expanded close affordance is
+                  // selectable via cornersCloseMode so we can compare in the
+                  // browser without committing.
+                  if (chipLayout === "corners") {
+                    const s = Math.round(cardIconSize * 0.48);
+                    const t = 0.95;
+                    const plusPath = `M ${12 - t} 5 H ${12 + t} V ${12 - t} H 19 V ${12 + t} H ${12 + t} V 19 H ${12 - t} V ${12 + t} H 5 V ${12 - t} H ${12 - t} Z`;
+                    const minusPath = `M 5 ${12 - t} H 19 V ${12 + t} H 5 Z`;
+
+                    // card-edge-tab handles BOTH open and close from a tab
+                    // attached to the card itself, so the stats slot renders
+                    // no separate affordance.
+                    if (cornersCloseMode === "card-edge-tab") return null;
+
+                    // Collapsed state: slim "+" panel.
+                    if (statsCollapsed) {
+                      return (
+                        <button
+                          onClick={toggle}
+                          aria-label="Expand stats"
+                          className="absolute cursor-pointer flex items-center justify-center"
+                          style={{
+                            top: 0,
+                            left: 0,
+                            width: collapsedRailW,
+                            height: "100%",
+                            background: "#F9F9F9",
+                            color: "rgba(0,0,0,0.52)",
+                            borderRadius: 10,
+                            zIndex: 50,
+                            border: "none",
+                            padding: 0,
+                            pointerEvents: "auto",
+                            WebkitTapHighlightColor: "transparent",
+                            transition: `background ${dur} ${ease}`,
+                          }}
+                        >
+                          <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                            <path d={plusPath} />
+                          </svg>
+                        </button>
+                      );
+                    }
+
+                    // Expanded state: pick the close affordance.
+                    if (cornersCloseMode === "click-card") {
+                      // No visible close affordance. The card itself is wired
+                      // to collapse via onClick further down (see card wrapper).
+                      return null;
+                    }
+                    if (cornersCloseMode === "hover-x") {
+                      // Small bare "×" at the top-right of the stats slot,
+                      // visible only when the stats container is hovered.
+                      return (
+                        <button
+                          onClick={toggle}
+                          aria-label="Collapse stats"
+                          className="absolute cursor-pointer flex items-center justify-center"
+                          style={{
+                            top: cardIconInset,
+                            right: cardIconInset,
+                            width: cardIconSize,
+                            height: cardIconSize,
+                            background: "transparent",
+                            color: "rgba(60,60,67,0.6)",
+                            zIndex: 50,
+                            border: "none",
+                            padding: 0,
+                            pointerEvents: "auto",
+                            opacity: statsHover ? 1 : 0,
+                            transition: `opacity 200ms ${ease}`,
+                            WebkitTapHighlightColor: "transparent",
+                          }}
+                        >
+                          <svg width={Math.round(cardIconSize * 0.42)} height={Math.round(cardIconSize * 0.42)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+                            <path d="M6 6 L18 18 M18 6 L6 18" />
+                          </svg>
+                        </button>
+                      );
+                    }
+                    if (cornersCloseMode === "edge-chevron") {
+                      // Tiny chevron-right pip on the LEFT edge of the
+                      // expanded column, sitting in the gap between card and
+                      // stats. "Push the column away" mental model.
+                      return (
+                        <button
+                          onClick={toggle}
+                          aria-label="Collapse stats"
+                          className="absolute cursor-pointer flex items-center justify-center"
+                          style={{
+                            top: "50%",
+                            left: -10,
+                            transform: "translate(-50%, -50%)",
+                            width: 18,
+                            height: 28,
+                            background: "transparent",
+                            color: "rgba(60,60,67,0.55)",
+                            zIndex: 50,
+                            border: "none",
+                            padding: 0,
+                            pointerEvents: "auto",
+                            WebkitTapHighlightColor: "transparent",
+                          }}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M6 4 L10 8 L6 12" />
+                          </svg>
+                        </button>
+                      );
+                    }
+                    // Default — slim "−" panel mirroring the "+" affordance.
+                    return (
+                      <button
+                        onClick={toggle}
+                        aria-label="Collapse stats"
+                        className="absolute cursor-pointer flex items-center justify-center"
+                        style={{
+                          top: 0,
+                          left: 0,
+                          width: collapsedRailW,
+                          height: "100%",
+                          background: "#F9F9F9",
+                          color: "rgba(0,0,0,0.52)",
+                          borderRadius: 10,
+                          zIndex: 50,
+                          border: "none",
+                          padding: 0,
+                          pointerEvents: "auto",
+                          WebkitTapHighlightColor: "transparent",
+                          transition: `background ${dur} ${ease}`,
+                        }}
+                      >
+                        <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                          <path d={minusPath} />
+                        </svg>
+                      </button>
+                    );
+                  }
 
                   if (collapseVariant === "pull-tab") {
                     const hot = statsHover || statsCollapsed;
@@ -5381,12 +5738,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     bottom-center cluster alongside the action chip. */}
                 <div className="absolute" style={{
                   top: 0,
-                  left: 0,
+                  // Slim-minus close mode keeps a persistent panel anchored
+                  // at left:0 of the stats slot, so renderStats content gets
+                  // pushed right by the panel width + small inner gap when
+                  // expanded. Other close modes don't reserve that real
+                  // estate so content stays at 0.
+                  left: (chipLayout === "corners" && cornersCloseMode === "slim-minus" && !statsCollapsed && !comparing) ? collapsedRailW + 8 : 0,
                   right: 0,
                   bottom: 0,
                   opacity: comparing ? 0 : 1,
                   pointerEvents: comparing ? "none" : "auto",
-                  transition: `opacity 0.2s ${ease}`,
+                  transition: `opacity 0.2s ${ease}, left var(--collapse-dur) var(--collapse-ease)`,
                 }}>
                   {renderStats(hL)}
                 </div>
@@ -5607,17 +5969,24 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     the card starts sliding out. */}
                 {(() => {
                   const ico = cardIconRender();
+                  // Match the Compare button styling — flat = filled grey
+                  // circle, glass = existing chrome. Keeps the open-compare
+                  // (Compare "+") and close-compare ("−") buttons paired.
+                  const flatStyle: React.CSSProperties = {
+                    background: "rgba(0,0,0,0.06)",
+                    color: "rgba(0,0,0,0.62)",
+                    border: "none",
+                  };
                   return (
                     <button
                       onClick={exitCompare}
                       aria-label="Remove from compare"
                       className="absolute z-30 cursor-pointer"
                       style={{
-                        ...glassChipChrome,
+                        ...(compareBtnStyle === "flat" ? flatStyle : { ...glassChipChrome, border: "none" }),
                         width: cardIconSize,
                         height: cardIconSize,
                         borderRadius: cardIconSize / 2,
-                        border: "none",
                         padding: 0,
                         display: "inline-flex",
                         alignItems: "center",
@@ -6123,6 +6492,20 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 </div>
                 <div>
                   <label className="text-[12px] text-neutral-500 flex justify-between">
+                    Top offset <span className="tabular-nums text-neutral-400">{statsTopOffset}px</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={200}
+                    step={4}
+                    value={statsTopOffset}
+                    onChange={(e) => setStatsTopOffset(Number(e.target.value))}
+                    className="w-full mt-1.5 cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="text-[12px] text-neutral-500 flex justify-between">
                     Hairline opacity <span className="tabular-nums text-neutral-400">{denseOpacity}%</span>
                   </label>
                   <input
@@ -6308,7 +6691,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Corner inset <span className="tabular-nums text-neutral-400">{cardIconInset}px</span></label><input type="range" min={4} max={20} value={cardIconInset} onChange={(e) => setCardIconInset(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Gap between icons <span className="tabular-nums text-neutral-400">{cardIconGap}px</span></label><input type="range" min={0} max={16} value={cardIconGap} onChange={(e) => setCardIconGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Hover-fade secondary</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIconHoverFade ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIconHoverFade(!cardIconHoverFade)}>{cardIconHoverFade ? "On" : "Off"}</button></div>
-            <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Chip layout</label><div className="inline-flex rounded overflow-hidden border border-neutral-200">{([["floating", "Float"], ["panel", "Panel"], ["below", "Below"], ["below-left", "Below L"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] cursor-pointer ${chipLayout === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setChipLayout(m)}>{label}</button>))}</div></div>
+            <div><label className="text-[12px] text-neutral-500 block mb-1">Chip layout</label><div className="flex flex-wrap gap-1 rounded border border-neutral-200 p-0.5">{([["floating", "Float"], ["panel", "Panel"], ["below", "Below"], ["below-left", "Below L"], ["corners", "Corners"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] rounded cursor-pointer ${chipLayout === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setChipLayout(m)}>{label}</button>))}</div></div>
+            <div><label className="text-[12px] text-neutral-500 block mb-1">Compare button</label><div className="flex flex-wrap gap-1 rounded border border-neutral-200 p-0.5">{([["glass", "Glass"], ["flat", "Flat"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] rounded cursor-pointer ${compareBtnStyle === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCompareBtnStyle(m)}>{label}</button>))}</div></div>
+            <div><label className="text-[12px] text-neutral-500 block mb-1">Corners close</label><div className="flex flex-wrap gap-1 rounded border border-neutral-200 p-0.5">{([["slim-minus", "Slim −"], ["click-card", "Click card"], ["hover-x", "Hover ×"], ["edge-chevron", "Edge ›"], ["card-edge-tab", "Card tab"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] rounded cursor-pointer ${cornersCloseMode === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCornersCloseMode(m)}>{label}</button>))}</div></div>
             <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Show &ldquo;3D&rdquo; label</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIcon3DLabel ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIcon3DLabel(!cardIcon3DLabel)}>{cardIcon3DLabel ? "On" : "Off"}</button></div>
           </div>
           <div className="space-y-3 pt-2 border-t border-neutral-100">
@@ -7705,7 +8090,7 @@ export default function HomeClient() {
           ...FOOTER_GLASS_CHROME,
           height: footerChipHeight,
           minWidth: footerChipHeight,
-          padding: comparing ? `0 14px` : 0,
+          padding: 0,
           borderRadius: footerChipHeight / 2,
           display: "inline-flex",
           alignItems: "center",
@@ -7729,7 +8114,6 @@ export default function HomeClient() {
               >
                 <span aria-label="Shuffle" style={{ display: "inline-flex", alignItems: "center", gap: 2, color: "rgba(95, 96, 89, 0.8)" }}>
                   <Dices size={22} strokeWidth={1.6} />
-                  {comparing && <Dices size={22} strokeWidth={1.6} />}
                 </span>
               </Chip>
             </div>

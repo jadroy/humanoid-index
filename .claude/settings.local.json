@@ -163,7 +163,12 @@
       "Bash(mkdir *)",
       "Bash(lsof -iTCP -sTCP:LISTEN -n -P)",
       "Bash(label\" app/HomeClient.tsx | head -20)",
-      "Bash(lsof -iTCP:3000 -sTCP:LISTEN)"
+      "Bash(lsof -iTCP:3000 -sTCP:LISTEN)",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel env *)",
+      "Bash(vercel teams *)",
+      "Bash(vercel project *)"
     ],
     "deny": [],
     "ask": []
