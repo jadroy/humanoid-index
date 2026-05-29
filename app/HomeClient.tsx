@@ -1747,6 +1747,72 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   //   "dark"           — soft container with a solid dark button right-aligned
   type ActionRowVariant = "split-hairline" | "split-rule" | "split-soft" | "split-bare" | "full" | "dark";
   const [actionRowVariant, setActionRowVariant] = useState<ActionRowVariant>("split-hairline");
+  // Visual treatment for the pinned cluster (Price / Status) at the bottom of
+  // the stats column. "hairline" = current 1px rule; "tinted" = full-bleed
+  // footer slab with faint bg; "shadow" = inset top shadow; "subcard" = lifted
+  // sub-card with gap.
+  type PinnedTreatment = "hairline" | "tinted" | "shadow" | "subcard";
+  const [pinnedTreatment, setPinnedTreatment] = useState<PinnedTreatment>("tinted");
+  const renderPinnedBlock = (rows: React.ReactNode[], paddingX: number, gap: number) => {
+    const filtered = rows.filter(Boolean);
+    if (filtered.length === 0) return null;
+    const innerHairline = (
+      <div aria-hidden style={{ height: 2, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? -paddingX : 64, marginRight: denseFullWidth ? -paddingX : 0 }} />
+    );
+    const rowList = filtered.map((row, i) => (
+      <Fragment key={i}>
+        {engineerMode && i > 0 ? innerHairline : null}
+        {row}
+      </Fragment>
+    ));
+    if (pinnedTreatment === "hairline") {
+      return (
+        <>
+          <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.06)", marginLeft: -paddingX, marginRight: -paddingX }} />
+          <div className="flex flex-col" style={{ gap }}>{rowList}</div>
+        </>
+      );
+    }
+    if (pinnedTreatment === "tinted") {
+      return (
+        <div className="flex flex-col" style={{
+          gap,
+          marginLeft: -paddingX,
+          marginRight: -paddingX,
+          marginBottom: -paddingX,
+          padding: `12px ${paddingX}px ${paddingX}px`,
+          background: "rgba(0,0,0,0.025)",
+          borderTop: "1px solid rgba(0,0,0,0.05)",
+          borderBottomLeftRadius: cardRadius,
+          borderBottomRightRadius: cardRadius,
+        }}>{rowList}</div>
+      );
+    }
+    if (pinnedTreatment === "shadow") {
+      return (
+        <div className="flex flex-col" style={{
+          gap,
+          marginLeft: -paddingX,
+          marginRight: -paddingX,
+          marginBottom: -paddingX,
+          padding: `14px ${paddingX}px ${paddingX}px`,
+          boxShadow: "inset 0 10px 12px -10px rgba(0,0,0,0.18)",
+          borderBottomLeftRadius: cardRadius,
+          borderBottomRightRadius: cardRadius,
+        }}>{rowList}</div>
+      );
+    }
+    // subcard — inset, own bg, slight gap above
+    return (
+      <div className="flex flex-col" style={{
+        gap,
+        marginTop: 4,
+        padding: "12px 14px",
+        background: "rgba(0,0,0,0.04)",
+        borderRadius: Math.max(10, cardRadius - 8),
+      }}>{rowList}</div>
+    );
+  };
   const [blurbFontSize, setBlurbFontSize] = useState(12.7);
   const [blurbFloat, setBlurbFloat] = useState(false);
   const [splitBlurb, setSplitBlurb] = useState(false);
@@ -1963,7 +2029,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // `--collapse-ease`) so the i-toggle and compare add/subtract glide on one
   // shared clock without prop drilling.
   const [showCollapseTuner, setShowCollapseTuner] = useState(false);
-  const [collapseDurMs, setCollapseDurMs] = useState(360);
+  const [collapseDurMs, setCollapseDurMs] = useState(260);
   const COLLAPSE_EASE_PRESETS = [
     { label: "Standard",  value: "cubic-bezier(0.4, 0, 0.2, 1)" },
     { label: "Snappy",    value: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
@@ -4026,19 +4092,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       ))}
                     </div>
                   </StatsScrollArea>
-                  {pinned.length > 0 && (
-                    <>
-                      <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.06)", marginLeft: -paddingX, marginRight: -paddingX }} />
-                      <div className="flex flex-col" style={{ gap: innerGap }}>
-                        {pinned.map((row, i) => (
-                          <Fragment key={i}>
-                            {showHairlines && i > 0 ? rowHairline : null}
-                            {row}
-                          </Fragment>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                  {renderPinnedBlock(pinned, paddingX, innerGap)}
                 </div>
               );
             };
@@ -4075,19 +4129,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     )}
                   </div>
                 </StatsScrollArea>
-                {denseDividers && densePinnedRows.filter(Boolean).length > 0 && (
-                  <>
-                    <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.06)", marginLeft: -18, marginRight: -18 }} />
-                    <div className="flex flex-col" style={{ gap: denseRowGap }}>
-                      {densePinnedRows.filter(Boolean).map((row, i) => (
-                        <Fragment key={i}>
-                          {engineerMode && i > 0 ? rowHairline : null}
-                          {row}
-                        </Fragment>
-                      ))}
-                    </div>
-                  </>
-                )}
+                {denseDividers && renderPinnedBlock(densePinnedRows, 18, denseRowGap)}
               </div>
             );
 
@@ -4767,19 +4809,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       )}
                     </div>
                   </StatsScrollArea>
-                  {denseDividers && densePinnedCompareRows.filter(Boolean).length > 0 && (
-                    <>
-                      <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.06)", marginLeft: -18, marginRight: -18 }} />
-                      <div className="flex flex-col" style={{ gap: denseRowGap }}>
-                        {densePinnedCompareRows.filter(Boolean).map((row, i) => (
-                          <Fragment key={i}>
-                            {engineerMode && i > 0 ? rowHairline : null}
-                            {row}
-                          </Fragment>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                  {denseDividers && renderPinnedBlock(densePinnedCompareRows, 18, denseRowGap)}
                 </div>
               </div>
               {/* Compare blurb — glass-chip overlay on the middle column,
@@ -5962,7 +5992,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   bottom: 0,
                   opacity: comparing ? 0 : 1,
                   pointerEvents: comparing ? "none" : "auto",
-                  transition: `opacity 0.2s ${ease}, left var(--collapse-dur) var(--collapse-ease)`,
+                  transition: "opacity var(--collapse-dur) var(--collapse-ease), left var(--collapse-dur) var(--collapse-ease)",
                 }}>
                   {renderStats(hL)}
                 </div>
@@ -6169,7 +6199,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 maxWidth: robotMaxW,
                 marginLeft: comparing ? effectiveGap : 0,
                 overflow: "visible",
-                transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) cubic-bezier(0.22, 1, 0.36, 1), width var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease)",
+                transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease), width var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease)",
               }}>
                 {/* Minus appears AFTER the card has landed so it rises out of
                     the card vertically — no horizontal drift from the card's
@@ -7314,6 +7344,21 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     type="button"
                     onClick={() => setActionRowVariant(v)}
                     className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${actionRowVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 mb-1.5 block">Pinned section</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(["hairline", "tinted", "shadow", "subcard"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setPinnedTreatment(v)}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${pinnedTreatment === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                   >
                     {v}
                   </button>
