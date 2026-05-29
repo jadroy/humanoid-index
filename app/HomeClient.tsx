@@ -1508,7 +1508,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [sparkMode, setSparkMode] = useSparkMode();
   const sparkData = useFleetSparkData(humanoids);
   const [buyLayout, setBuyLayout] = useState<"card" | "chip" | "below">("card");
-  const [statsCollapsed, setStatsCollapsed] = useState(false);
+  // Recording mode — append `?record` to the URL to enter. Tightens the
+  // first-frame composition (detail panel closed) and trims a few robots from
+  // the shuffle pool that don't film well. Invisible to regular users.
+  const [recordingMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).has("record");
+  });
+  const RECORDING_SHUFFLE_EXCLUDE_IDS = ["23", "25"]; // Armar-6, Roboy
+  const [statsCollapsed, setStatsCollapsed] = useState(recordingMode);
   const [statsHover, setStatsHover] = useState(false);
   // Engineer-mode is the only mode while the basic/engineer toggle is hidden.
   // localStorage hydration intentionally skipped so returning users who'd
@@ -2456,10 +2464,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       }
       return t;
     };
-    const targetL = pickDifferent([springL.index]);
+    const recordingExcludes = recordingMode
+      ? humanoids.reduce<number[]>((acc, h, i) => (RECORDING_SHUFFLE_EXCLUDE_IDS.includes(h.id) ? [...acc, i] : acc), [])
+      : [];
+    const targetL = pickDifferent([springL.index, ...recordingExcludes]);
     springL.jumpTo(targetL);
     if (comparing) {
-      const targetR = pickDifferent([springR.index, targetL]);
+      const targetR = pickDifferent([springR.index, targetL, ...recordingExcludes]);
       springR.jumpTo(targetR);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
