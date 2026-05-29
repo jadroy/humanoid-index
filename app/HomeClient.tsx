@@ -1508,7 +1508,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [sparkMode, setSparkMode] = useSparkMode();
   const sparkData = useFleetSparkData(humanoids);
   const [buyLayout, setBuyLayout] = useState<"card" | "chip" | "below">("card");
-  const [statsCollapsed, setStatsCollapsed] = useState(true);
+  const [statsCollapsed, setStatsCollapsed] = useState(false);
   const [statsHover, setStatsHover] = useState(false);
   // Engineer-mode is the only mode while the basic/engineer toggle is hidden.
   // localStorage hydration intentionally skipped so returning users who'd
