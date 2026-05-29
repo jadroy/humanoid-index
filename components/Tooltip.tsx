@@ -113,14 +113,14 @@ export function Tooltip({ label, shortcut, delay = 350, disabled, children }: To
               gap: 8,
               padding: "6px 10px",
               borderRadius: 8,
-              background: "rgba(28,28,30,0.96)",
+              background: "rgba(28,28,30,0.82)",
               color: "rgba(255,255,255,0.96)",
               fontFamily: "var(--font-geist-sans)",
               fontSize: 13,
               fontWeight: 500,
               lineHeight: 1,
               letterSpacing: "-0.005em",
-              boxShadow: "0 6px 16px rgba(0,0,0,0.22), 0 1px 3px rgba(0,0,0,0.18)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.16), 0 1px 2px rgba(0,0,0,0.12)",
               whiteSpace: "nowrap",
             }}
           >

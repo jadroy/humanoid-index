@@ -32,18 +32,29 @@ const SPIN_ROBOTS: Record<
   },
 };
 
+// ── Hidden for v1 launch ──────────────────────────────────────────────────
+// Things wired up in the codebase but intentionally not user-reachable at
+// launch. Restore by reversing the gate noted next to each item.
+//   • 3D viewer (G1)         — emptied THREEDEE_ROBOTS below. Restore by
+//                              re-adding the G1 entry.
+//   • Scene backdrop         — chip gated on NODE_ENV==="development" (~5027);
+//                              scene tuner gated on isDev (~2473). Flip both
+//                              gates to expose.
+//   • Engineer/basic toggle  — toggle buttons removed from cluster (~6043)
+//                              and unified bar (~6301); engineerMode forced
+//                              to true, no localStorage hydration (~1471).
+//                              "E" keypress still flips state for power use.
+//   • Shortcuts sheet        — "?"/"/" key now triggers shuffle instead of
+//                              opening ShortcutsSheet. Sheet component + state
+//                              still imported, no entry point.
+// ───────────────────────────────────────────────────────────────────────────
+
 // Robots with a Draco-compressed URDF mesh set. Toggling the 3D pill swaps the
 // static media for an articulated three.js viewer; assets only download on first activation.
 const THREEDEE_ROBOTS: Record<
   string,
   { urdfUrl: string; meshBase: string; credit?: { prefix?: string; name: string; href?: string } }
-> = {
-  "11": {
-    urdfUrl: "/3d/g1/g1_23dof.urdf",
-    meshBase: "/3d/g1",
-    credit: { prefix: "Model", name: "unitree_ros", href: "https://github.com/unitreerobotics/unitree_ros" },
-  },
-};
+> = {};
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import ContactSheet from "@/components/ContactSheet";
 
@@ -69,6 +80,14 @@ import OptionsMenu, { BUTTON_VARIANTS, BUTTON_LABELS, type ButtonVariant } from 
 import { Chip } from "@/lib/design/primitives/Chip";
 import { FONTS, FAVORITE_FONTS } from "@/lib/fonts";
 import { applyGive, GIVE_STYLES, giveStyleLabels, type GiveStyle, type GiveSettings } from "@/lib/cardPhysics";
+import {
+  SparkBar,
+  useSparkMode,
+  useFleetSparkData,
+  SPARK_KEY_BY_LABEL,
+  SPARK_HIGHLIGHT,
+  type SparkMode,
+} from "@/components/StatSparkbar";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -1205,11 +1224,11 @@ function StatsScrollArea({ children, style, flex }: { children: React.ReactNode;
   const fadeTop = (edges & 1) !== 0;
   const fadeBottom = (edges & 2) !== 0;
   const mask = fadeTop && fadeBottom
-    ? "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, black 6%, black 94%, rgba(0,0,0,0.55) 100%)"
+    ? "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, black 9%, black 91%, rgba(0,0,0,0.3) 100%)"
     : fadeBottom
-    ? "linear-gradient(to bottom, black 0%, black 94%, rgba(0,0,0,0.55) 100%)"
+    ? "linear-gradient(to bottom, black 0%, black 91%, rgba(0,0,0,0.3) 100%)"
     : fadeTop
-    ? "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, black 6%, black 100%)"
+    ? "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, black 9%, black 100%)"
     : undefined;
   return (
     <div
@@ -1446,7 +1465,7 @@ function StatusLegendModal({ children, style }: { children: React.ReactNode; sty
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange, footerLayout = "center", onFooterLayoutChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void; footerLayout?: "center" | "sides"; onFooterLayoutChange?: (v: "center" | "sides") => void }) {
+function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onRandomHumanoid, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange, footerLayout = "center", onFooterLayoutChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onRandomHumanoid?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void; footerLayout?: "center" | "sides"; onFooterLayoutChange?: (v: "center" | "sides") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -1456,25 +1475,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [bottomFadeH, setBottomFadeH] = useState(40);
   const [bottomFadeOpacity, setBottomFadeOpacity] = useState(0.9);
   const [showTuner, setShowTuner] = useState(false);
+  // Sparkbar — distribution-of-fleet visualization tucked into stat rows.
+  // Picker lives in the Split tuner (\\). Modes: off / inline / below / hero.
+  const [sparkMode, setSparkMode] = useSparkMode();
+  const sparkData = useFleetSparkData(humanoids);
   const [buyLayout, setBuyLayout] = useState<"card" | "chip" | "below">("card");
   const [statsCollapsed, setStatsCollapsed] = useState(true);
   const [statsHover, setStatsHover] = useState(false);
-  // Engineer-mode toggle for the stats column — basic (default) reveals the
-  // standard rows; engineer adds the extended `engineering` block of specs.
-  // Persists site-wide in localStorage so the choice carries between robots.
+  // Engineer-mode is the only mode while the basic/engineer toggle is hidden.
+  // localStorage hydration intentionally skipped so returning users who'd
+  // previously flipped to basic still land in engineer.
   const [engineerMode, setEngineerMode] = useState(true);
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("humanoid-index:engineerMode");
-      if (stored === "false") {
-        setEngineerMode(false);
-        setDenseRowGap(9);
-      }
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try { localStorage.setItem("humanoid-index:engineerMode", String(engineerMode)); } catch {}
-  }, [engineerMode]);
   // Hide rows whose value is null/missing — useful when engineer mode reveals
   // a lot of rows and only ~5 robots have full data.
   const [hideEmptyRows, setHideEmptyRows] = useState(false);
@@ -1633,10 +1644,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const galleryIdxRef = useRef<Record<number, number>>({});
   const galleryListenersRef = useRef<Map<number, Set<(idx: number) => void>>>(new Map());
   const galleryScrollRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  // Tracked via mouseenter/leave so the global wheel handler can pass
-  // horizontal-dominant scroll through to the gallery without doing a
-  // DOM walk on every wheel tick.
-  const hoveringGalleryRef = useRef(false);
 
   const readGalleryIdx = useCallback<GalleryRead>((mIdx) => galleryIdxRef.current[mIdx] ?? 0, []);
   const subscribeGalleryIdx = useCallback<GallerySubscribe>((mIdx, cb) => {
@@ -1700,7 +1707,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // no inline cm/in toggle (it would break the rhythm).
   const [denseDividers, setDenseDividers] = useState(true);
   const [denseFullWidth, setDenseFullWidth] = useState(true);
-  const [denseRowGap, setDenseRowGap] = useState(4); // px gap between rows
+  const [denseRowGap, setDenseRowGap] = useState(11); // px gap between rows
   const [statsTopOffset, setStatsTopOffset] = useState(0); // px leading space above the stats column
   const [denseOpacity, setDenseOpacity] = useState(2.5); // percent (0-20)
   // Split the dense stats card into 3 stacked containers (Specs / Context / Action)
@@ -1719,7 +1726,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Vertical gap (px) between stat rows in the compare middle column. The full
   // 5-row set always renders (Height/Weight/DOF/Speed/Price) so the column
   // doesn't reflow while paging between robots.
-  const [compareRowGap, setCompareRowGap] = useState(4);
+  const [compareRowGap, setCompareRowGap] = useState(7);
   // Where the status indicator (dot + word) lives when stackedInfo is on:
   //   "card"        — dedicated Status card pinned at the bottom of the stack (current)
   //   "chip"        — first chip in the tags row, colored dot + status word
@@ -1782,7 +1789,18 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [cardIconActive, setCardIconActive] = useState<CardIconActive>("tint");
   const [cardIconHoverFade, setCardIconHoverFade] = useState(false);
   const [cardIcon3DLabel, setCardIcon3DLabel] = useState(false);
-  const [chipLayout, setChipLayout] = useState<"floating" | "panel" | "below" | "below-left" | "corners">("below");
+  const [chipLayout, setChipLayout] = useState<"floating" | "panel" | "below" | "below-left" | "corners" | "unified" | "right-rail">("below");
+  // Morph style for the chip-row slots (animates each button's enter/exit
+  // as the active robot's capability set changes during scroll).
+  const [morphStyle, setMorphStyle] = useState<"shrink" | "scale" | "pop" | "slide-up" | "slide-down" | "blur" | "fade-fixed" | "none">("shrink");
+  const [morphDuration, setMorphDuration] = useState(260);
+  // Chip grouping — how variable buttons (3D/spin/scene) are placed.
+  // "single": all in one pill (current default).
+  // "split": stable buttons in main pill, media in a secondary pill that
+  // morphs in/out as a unit.
+  const [chipGrouping, setChipGrouping] = useState<"single" | "split" | "image-corner">("single");
+  // Horizontal alignment for the below chip row.
+  const [bottomAlignment, setBottomAlignment] = useState<"left" | "center" | "right">("center");
   const [compareBtnStyle, setCompareBtnStyle] = useState<"glass" | "flat">("flat");
   const [cornersCloseMode, setCornersCloseMode] = useState<"slim-minus" | "click-card" | "hover-x" | "edge-chevron" | "card-edge-tab">("slim-minus");
   const [cornerRowHover, setCornerRowHover] = useState(false);
@@ -2349,13 +2367,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     let velocity = 0;
     let decay: ReturnType<typeof setTimeout>;
 
-    // Gesture-direction lock for the wheel burst. Trackpads emit events
-    // with noisy deltaX/deltaY ratios — without a lock, individual frames
-    // mid-swipe can flip "horizontal" → "vertical" and get captured for
-    // card nav, killing the native gallery scroll. Lock at burst start
-    // and hold until 150ms of silence.
-    let gestureDir: "h" | "v" | null = null;
+    // Gesture-direction via a rolling 100ms window of |dx|/|dy| sums.
+    // Trackpads emit noisy per-frame ratios — a single mis-typed frame
+    // mid-swipe would otherwise capture the wheel away from the native
+    // gallery scroll. The window outvotes any single noisy frame.
     let lastWheelTime = 0;
+    const recent: { dx: number; dy: number; t: number }[] = [];
+    const AGG_WINDOW_MS = 100;
 
     const route = (delta: number, nudgeAmt?: number) => {
       if (!comparingRef.current) {
@@ -2370,13 +2388,18 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       // Tuners only exist in dev; skip the DOM walk in production.
       if (isDev && (e.target as HTMLElement)?.closest?.("[data-tuner]")) return;
       const wheelNow = performance.now();
-      if (wheelNow - lastWheelTime > 150) gestureDir = null;
-      if (gestureDir === null) {
-        gestureDir = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? "h" : "v";
-      }
+      if (wheelNow - lastWheelTime > 150) recent.length = 0;
       lastWheelTime = wheelNow;
-      // Hover ref replaces a closest() walk on every wheel tick.
-      if (hoveringGalleryRef.current && gestureDir === "h") return;
+
+      recent.push({ dx: Math.abs(e.deltaX), dy: Math.abs(e.deltaY), t: wheelNow });
+      while (recent.length && wheelNow - recent[0].t > AGG_WINDOW_MS) recent.shift();
+      let sx = 0, sy = 0;
+      for (const r of recent) { sx += r.dx; sy += r.dy; }
+      // Use the wheel event's own target, not a tracked hover ref —
+      // mouseenter/leave is unreliable when cards animate under a stationary
+      // cursor (the cursor never "moves" so events don't fire).
+      const overGallery = !!(e.target as Element | null)?.closest?.("[data-gallery]");
+      if (overGallery && sx > sy) return;
       // Scroll zones are rectangles bounded by the card edges. Single view:
       // anything past the card's right edge (stats column) is dead. Compare:
       // the gutter between the two cards (middle stats column) is dead.
@@ -2431,6 +2454,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       }
       acc = 0;
       velocity = 0;
+      // The card-flip intent is "spent" — clear the axis window so the next
+      // gesture (often a horizontal gallery swipe right after) classifies
+      // from fresh frames, not the lingering vertical momentum of this one.
+      recent.length = 0;
     };
     window.addEventListener("wheel", onWheel, { passive: false });
     return () => { window.removeEventListener("wheel", onWheel); clearTimeout(decay); };
@@ -2447,7 +2474,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         if (e.key === "t") { setShowTuner((v) => !v); return; }
         if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
         if (e.key === "b") { setShowSceneTuner((v) => !v); return; }
-        if (e.key === "i") { setShowCollapseTuner((v) => !v); return; }
         if (e.key === "m") { setShowMarginTuner((v) => !v); return; }
       }
       const mod = e.metaKey || e.ctrlKey;
@@ -2492,8 +2518,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         case "d": case "D":
           if (!comparing) { setStatsCollapsed((v) => !v); }
           return;
+        case "i": case "I":
+          setBlurbVisible((v) => !v);
+          return;
         case "e": case "E":
-          setEngineerMode((v) => { const next = !v; setDenseRowGap(next ? 4 : 9); return next; });
+          setEngineerMode((v) => { const next = !v; setDenseRowGap(next ? 9 : 9); return next; });
           return;
         case "u": case "U":
           onUseImperialChange?.(!useImperial);
@@ -3727,14 +3756,51 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const missingValueStyle: React.CSSProperties = { ...valueStyle, color: "var(--c-ink-subtle)" };
             const renderStatRow = (label: string, value: string | number | null | undefined, formatter: (v: number) => string) => {
               if (hideEmptyRows && value == null) return null;
+              const sparkKey = SPARK_KEY_BY_LABEL[label];
+              const showSpark =
+                sparkMode !== "off" && sparkMode !== "hero" && !!sparkKey && typeof value === "number";
+              const valueNode = (
+                <MarqueeValue align="right" style={value == null ? missingValueStyle : valueStyle}>
+                  <span className="tabular-nums">
+                    {value == null ? "—" : (typeof value === "number" ? formatter(value) : value)}
+                  </span>
+                </MarqueeValue>
+              );
+              if (!showSpark) {
+                return (
+                  <div style={{ ...rowStyle, minWidth: 0 }}>
+                    <span style={dimmed}>{label}</span>
+                    {valueNode}
+                  </div>
+                );
+              }
+              const isBelow = sparkMode === "below";
+              const bar = (
+                <SparkBar
+                  entries={sparkData[sparkKey!]}
+                  highlights={[{ id: h.id, color: SPARK_HIGHLIGHT }]}
+                  width={isBelow ? 96 : 54}
+                  height={isBelow ? 9 : 11}
+                  gap={1.2}
+                  baseColor="rgba(0,0,0,0.13)"
+                />
+              );
               return (
                 <div style={{ ...rowStyle, minWidth: 0 }}>
                   <span style={dimmed}>{label}</span>
-                  <MarqueeValue align="right" style={value == null ? missingValueStyle : valueStyle}>
-                    <span className="tabular-nums">
-                      {value == null ? "—" : (typeof value === "number" ? formatter(value) : value)}
-                    </span>
-                  </MarqueeValue>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: isBelow ? "column" : "row",
+                      alignItems: isBelow ? "flex-end" : "center",
+                      gap: isBelow ? 3 : 8,
+                      justifySelf: "end",
+                      minWidth: 0,
+                    }}
+                  >
+                    {valueNode}
+                    {bar}
+                  </div>
                 </div>
               );
             };
@@ -3776,13 +3842,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             );
             const rowHairline = (
               <div aria-hidden style={{ height: 2, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? -18 : 64, marginRight: denseFullWidth ? -18 : 0 }} />
-            );
-            // Section break — pure whitespace between Identity / Status /
-            // Specs. A line here competed with the per-row hairlines in
-            // engineer mode and looked busy; an empty spacer separates
-            // sections through air instead.
-            const sectionDivider = (
-              <div aria-hidden style={{ height: 10 }} />
             );
             const statusRow = (
               <div style={{ ...rowStyle, alignItems: "center" }}>
@@ -3916,12 +3975,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               + (unitToggleVariant === "row" ? 1 : 0)
               + technicalRows.length;
             const specsEndIdx = headerRowCount + engineerRows.length;
-            // Stats column is grouped into three sections separated by a
-            // heavier `sectionDivider`: Identity (basic stats), Status
-            // (price + availability + purchase CTA), Specs (engineer
-            // technical + engineering extras — only when engineer mode is
-            // on). Empty sections drop out so basic mode shows just two.
-            const identityRows: React.ReactNode[] = [
+            // Scrollable rows = basic stats + engineer specs. Pinned rows
+            // = Price + Status only — anchored at the bottom of the column
+            // so essential info lives in one fixed spot no matter how far
+            // you scroll the engineer specs. Purchase CTA is rendered
+            // externally (action pill below the card), so it no longer
+            // appears as a row inside the stats column.
+            const denseScrollableRows: React.ReactNode[] = [
               renderStatRow("Company", h.manufacturer ?? null, (v) => `${v}`),
               renderStatRow("Year", h.year ?? null, (v) => `${v}`),
               countryRow,
@@ -3929,27 +3989,20 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               heightRow,
               weightRow,
               renderStatRow("Use", h.useCase ?? null, (v) => `${v}`),
-            ];
-            const statusRows: React.ReactNode[] = [
-              renderStatRow("Price", priceChipText ?? null, (v) => `${v}`),
-              statusRow,
-              ...(purchaseRow ? [purchaseRow] : []),
-            ];
-            const specsRows: React.ReactNode[] = [
               ...technicalRows,
               ...engineerRows,
             ];
-            const denseSections: React.ReactNode[][] = [
-              identityRows,
-              statusRows,
-              ...(specsRows.length > 0 ? [specsRows] : []),
-            ].map((s) => s.filter(Boolean)).filter((s) => s.length > 0);
-            const denseRows: React.ReactNode[] = denseSections.flat();
-            const renderRowsAsCard = (sections: React.ReactNode[][], opts?: { fill?: boolean; gap?: number; padding?: string }) => {
-              const { fill = false, gap, padding = "14px 18px" } = opts ?? {};
+            const densePinnedRows: React.ReactNode[] = [
+              renderStatRow("Price", priceChipText ?? null, (v) => `${v}`),
+              statusRow,
+            ];
+            const denseRows: React.ReactNode[] = [...denseScrollableRows, ...densePinnedRows];
+            const renderRowsAsCard = (rows: React.ReactNode[], opts?: { fill?: boolean; pinned?: React.ReactNode[]; gap?: number; padding?: string }) => {
+              const { fill = false, pinned: pinnedInput, gap, padding = "14px 18px" } = opts ?? {};
               const innerGap = gap ?? denseRowGap;
-              const visibleSections = sections.map((s) => s.filter(Boolean)).filter((s) => s.length > 0);
-              if (visibleSections.length === 0) return null;
+              const scrolling = rows.filter(Boolean);
+              const pinned = (pinnedInput ?? []).filter(Boolean);
+              if (scrolling.length === 0 && pinned.length === 0) return null;
               // Parse padding string to extract horizontal value so the scroll
               // area can bleed full-width while the rows themselves keep their
               // inset (matches compare-card pattern).
@@ -3958,48 +4011,49 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 const px = parts.length >= 2 ? parts[1] : parts[0];
                 return parseInt(px, 10) || 18;
               })();
-              // Simple mode (engineer off) drops the per-row hairlines —
-              // rows just sit with `innerGap` between them. Section dividers
-              // still render in basic mode so the Identity/Status break is
-              // visible without engineer rows being on.
+              // Simple mode (engineer off) drops the hairline separators —
+              // rows just sit with `innerGap` between them for a cleaner look.
               const showHairlines = engineerMode;
               return (
                 <div style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding, display: "flex", flexDirection: "column", gap: innerGap, flex: fill ? 1 : undefined, minHeight: 0 }}>
                   <StatsScrollArea flex={fill ? 1 : undefined} style={{ marginLeft: -paddingX, marginRight: -paddingX }}>
                     <div className="flex flex-col" style={{ gap: innerGap, paddingLeft: paddingX, paddingRight: paddingX }}>
-                      {visibleSections.map((section, si) => (
-                        <Fragment key={si}>
-                          {si > 0 ? sectionDivider : null}
-                          {section.map((row, ri) => (
-                            <Fragment key={ri}>
-                              {showHairlines && ri > 0 ? rowHairline : null}
-                              {row}
-                            </Fragment>
-                          ))}
+                      {scrolling.map((row, i) => (
+                        <Fragment key={i}>
+                          {showHairlines && i > 0 ? rowHairline : null}
+                          {row}
                         </Fragment>
                       ))}
                     </div>
                   </StatsScrollArea>
+                  {pinned.length > 0 && (
+                    <>
+                      <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.06)", marginLeft: -paddingX, marginRight: -paddingX }} />
+                      <div className="flex flex-col" style={{ gap: innerGap }}>
+                        {pinned.map((row, i) => (
+                          <Fragment key={i}>
+                            {showHairlines && i > 0 ? rowHairline : null}
+                            {row}
+                          </Fragment>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             };
-            // Specs card renders the three sections (Identity / Status /
-            // Specs) with a heavier `sectionDivider` between them.
-            const specsCard = renderRowsAsCard(denseSections, { fill: true, padding: "18px 18px" });
+            // Scrollable rows above, pinned Price/Status/Purchase below
+            // the scroll mask so essential info lives in a fixed slot.
+            const specsCard = renderRowsAsCard(denseScrollableRows, { fill: true, padding: "18px 18px", pinned: densePinnedRows });
             const statsCard = (
               <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
                 <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                   <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, paddingLeft: 18, paddingRight: 18 }}>
                     {denseDividers ? (
-                      denseSections.map((section, si) => (
-                        <Fragment key={si}>
-                          {si > 0 ? sectionDivider : null}
-                          {section.map((row, ri) => (
-                            <Fragment key={ri}>
-                              {engineerMode && ri > 0 ? rowHairline : null}
-                              {row}
-                            </Fragment>
-                          ))}
+                      denseScrollableRows.filter(Boolean).map((row, i) => (
+                        <Fragment key={i}>
+                          {i > 0 ? rowHairline : null}
+                          {row}
                         </Fragment>
                       ))
                     ) : (
@@ -4021,6 +4075,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     )}
                   </div>
                 </StatsScrollArea>
+                {denseDividers && densePinnedRows.filter(Boolean).length > 0 && (
+                  <>
+                    <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.06)", marginLeft: -18, marginRight: -18 }} />
+                    <div className="flex flex-col" style={{ gap: denseRowGap }}>
+                      {densePinnedRows.filter(Boolean).map((row, i) => (
+                        <Fragment key={i}>
+                          {engineerMode && i > 0 ? rowHairline : null}
+                          {row}
+                        </Fragment>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             );
 
@@ -4426,15 +4493,45 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
           const compareRow = (label: string, valL: string | null, valR: string | null) => {
             if (hideEmptyRows && !valL && !valR) return null;
+            const sparkKey = SPARK_KEY_BY_LABEL[label];
+            const showSpark =
+              sparkMode !== "off" && sparkMode !== "hero" && !!sparkKey && (!!valL || !!valR);
+            const wrapValue = (val: string | null, robotId: string | undefined) => {
+              const node = (
+                <MarqueeValue align="right" style={{ ...(val ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+                  <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{val || "—"}</span>
+                </MarqueeValue>
+              );
+              if (!showSpark || !sparkKey || !robotId) return node;
+              const isBelow = sparkMode === "below";
+              return (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: isBelow ? "column" : "row",
+                    alignItems: isBelow ? "flex-end" : "center",
+                    gap: isBelow ? 3 : 8,
+                    justifySelf: "end",
+                    minWidth: 0,
+                  }}
+                >
+                  {node}
+                  <SparkBar
+                    entries={sparkData[sparkKey]}
+                    highlights={[{ id: robotId, color: SPARK_HIGHLIGHT }]}
+                    width={isBelow ? 92 : 50}
+                    height={isBelow ? 9 : 11}
+                    gap={1.2}
+                    baseColor="rgba(0,0,0,0.13)"
+                  />
+                </div>
+              );
+            };
             return (
               <div style={compareRowGridStyle}>
                 <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
-                <MarqueeValue align="right" style={{ ...(valL ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
-                  <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valL || "—"}</span>
-                </MarqueeValue>
-                <MarqueeValue align="right" style={{ ...(valR ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
-                  <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{valR || "—"}</span>
-                </MarqueeValue>
+                {wrapValue(valL, hL?.id)}
+                {wrapValue(valR, hR?.id)}
               </div>
             );
           };
@@ -4482,10 +4579,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
           const rowHairline = (
             <div aria-hidden style={{ height: 2, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? -18 : 64, marginRight: denseFullWidth ? -18 : 64 }} />
-          );
-          // Section break — whitespace-only, matches the single view.
-          const sectionDivider = (
-            <div aria-hidden style={{ height: 10 }} />
           );
           const statusRow = (
             <div style={{ ...compareRowGridStyle, gridTemplateColumns: "91px 1fr 1fr", alignItems: "center" }}>
@@ -4623,9 +4716,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             speedCompareRow,
             compareRow("Drive", hL.drive ?? null, hR.drive ?? null),
           ] : [];
-          // Sections mirror the single view: Identity / Status / Specs
-          // (specs only when engineer mode adds rows).
-          const identityCompareRows: React.ReactNode[] = [
+          // Mirrors the single view: scrollable basic + engineer rows
+          // above, Price + Status pinned below the scroll mask.
+          const denseScrollableCompareRows: React.ReactNode[] = [
             compareRow("Company", hL.manufacturer ?? null, hR.manufacturer ?? null),
             compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null),
             compareCountryRow,
@@ -4633,21 +4726,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             heightCompareRow,
             weightCompareRow,
             compareRow("Use", hL.useCase ?? null, hR.useCase ?? null),
-          ];
-          const statusCompareRows: React.ReactNode[] = [
-            compareRow("Price", priceL, priceR),
-            statusRow,
-          ];
-          const specsCompareRows: React.ReactNode[] = [
             ...technicalCompareRows,
             ...engineerCompareRows,
           ];
-          const denseCompareSections: React.ReactNode[][] = [
-            identityCompareRows,
-            statusCompareRows,
-            ...(specsCompareRows.length > 0 ? [specsCompareRows] : []),
-          ].map((s) => s.filter(Boolean)).filter((s) => s.length > 0);
-          const denseRows: React.ReactNode[] = denseCompareSections.flat();
+          const densePinnedCompareRows: React.ReactNode[] = [
+            compareRow("Price", priceL, priceR),
+            statusRow,
+          ];
+          const denseRows: React.ReactNode[] = [...denseScrollableCompareRows, ...densePinnedCompareRows];
 
           return (
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: compareStatsW, minWidth: compareStatsW, position: "relative", zIndex: 11 }}>
@@ -4656,15 +4742,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
                     <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, paddingLeft: 18, paddingRight: 18 }}>
                       {denseDividers ? (
-                        denseCompareSections.map((section, si) => (
-                          <Fragment key={si}>
-                            {si > 0 ? sectionDivider : null}
-                            {section.map((row, ri) => (
-                              <Fragment key={ri}>
-                                {engineerMode && ri > 0 ? rowHairline : null}
-                                {row}
-                              </Fragment>
-                            ))}
+                        denseScrollableCompareRows.filter(Boolean).map((row, i) => (
+                          <Fragment key={i}>
+                            {engineerMode && i > 0 ? rowHairline : null}
+                            {row}
                           </Fragment>
                         ))
                       ) : (
@@ -4686,6 +4767,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       )}
                     </div>
                   </StatsScrollArea>
+                  {denseDividers && densePinnedCompareRows.filter(Boolean).length > 0 && (
+                    <>
+                      <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.06)", marginLeft: -18, marginRight: -18 }} />
+                      <div className="flex flex-col" style={{ gap: denseRowGap }}>
+                        {densePinnedCompareRows.filter(Boolean).map((row, i) => (
+                          <Fragment key={i}>
+                            {engineerMode && i > 0 ? rowHairline : null}
+                            {row}
+                          </Fragment>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               {/* Compare blurb — glass-chip overlay on the middle column,
@@ -4751,6 +4845,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               )}
               <div
                 ref={(el) => { galleryScrollRefs.current[mIdx] = el; }}
+                data-gallery={mHasGallery ? "true" : undefined}
                 className="scrollbar-hide"
                 style={{
                   display: "flex",
@@ -4760,8 +4855,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   scrollSnapType: "x mandatory",
                 }}
                 onScroll={mHasGallery ? onScroll : undefined}
-                onMouseEnter={mHasGallery ? () => { hoveringGalleryRef.current = true; } : undefined}
-                onMouseLeave={mHasGallery ? () => { hoveringGalleryRef.current = false; } : undefined}
               >
                 {mh.status === "Anticipated" ? (
                   <div className="relative flex items-center justify-center pointer-events-none" style={{ width: "100%", height: "100%", flexShrink: 0 }}>
@@ -4964,6 +5057,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 </button>
               </Tooltip>
             ) : null;
+            const shuffleButton = onRandomHumanoid ? (
+              <Tooltip label="Shuffle" shortcut="?">
+                <button type="button" onClick={(e) => { e.stopPropagation(); onRandomHumanoid(); }} aria-label="Shuffle to a random humanoid" style={innerBtnStyle}>
+                  <Dices size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                </button>
+              </Tooltip>
+            ) : null;
             const infoButton = hasInfo ? (
               <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
                 <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={innerBtnStyle}>
@@ -4991,51 +5091,96 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               </>
             );
             const hasMedia = hasThreeD || hasSpin;
-            const otherButtons = (
+            const panelButton = hasPanel ? (
+              <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
+                <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={innerBtnStyle}>
+                  <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                </button>
+              </Tooltip>
+            ) : null;
+            // Morph slot — keeps the button mounted so its enter/exit can
+            // animate as the active robot's capability set shifts on scroll.
+            // Outer collapses layout (width); inner runs the visual effect
+            // (transform/filter/opacity). The pairing is data-driven so the
+            // dev tuner can swap styles without touching markup.
+            const popEase = "cubic-bezier(0.5, 1.6, 0.5, 1)";
+            const slotLayoutFixed = morphStyle === "fade-fixed";
+            const slotInstant = morphStyle === "none";
+            const innerFor = (present: boolean): React.CSSProperties => {
+              const t = `transform ${morphDuration}ms ${ease}, opacity ${morphDuration}ms ${ease}, filter ${morphDuration}ms ${ease}`;
+              const baseOpacity = present ? 1 : 0;
+              switch (morphStyle) {
+                case "scale":      return { transition: t, transform: present ? "scale(1)" : "scale(0.4)", opacity: baseOpacity };
+                case "pop":        return { transition: `transform ${morphDuration}ms ${popEase}, opacity ${morphDuration}ms ${ease}`, transform: present ? "scale(1)" : "scale(0)", opacity: baseOpacity };
+                case "slide-up":   return { transition: t, transform: present ? "translateY(0)" : "translateY(10px)", opacity: baseOpacity };
+                case "slide-down": return { transition: t, transform: present ? "translateY(0)" : "translateY(-10px)", opacity: baseOpacity };
+                case "blur":       return { transition: t, filter: present ? "blur(0)" : "blur(6px)", opacity: baseOpacity };
+                case "fade-fixed": return { transition: t, opacity: baseOpacity };
+                case "none":       return { opacity: baseOpacity };
+                case "shrink":
+                default:           return { transition: t, opacity: baseOpacity };
+              }
+            };
+            const slot = (present: boolean, key: string, child: React.ReactNode) => (
+              <div
+                key={key}
+                style={{
+                  width: slotLayoutFixed ? cardIconSize : (present ? cardIconSize : 0),
+                  pointerEvents: present ? "auto" : "none",
+                  overflow: "hidden",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  transition: slotInstant || slotLayoutFixed ? "none" : `width ${morphDuration}ms ${ease}`,
+                }}
+                aria-hidden={!present}
+              >
+                <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: cardIconSize, height: cardIconSize, ...innerFor(present) }}>
+                  {child}
+                </div>
+              </div>
+            );
+            const infoSlot = slot(hasInfo, "info", (
+              <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
+                <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={innerBtnStyle} tabIndex={hasInfo ? 0 : -1}>
+                  <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                </button>
+              </Tooltip>
+            ));
+            const mediaSlots = (
               <>
-                {hasPanel && (
-                  <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={innerBtnStyle}>
-                      <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                    </button>
-                  </Tooltip>
-                )}
-                {hasInfo && (
-                  <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={innerBtnStyle}>
-                      <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                    </button>
-                  </Tooltip>
-                )}
-                {hasScene && (
+                {slot(hasScene, "scene", (
                   <Tooltip label={sceneEnabled ? "Hide scene" : "Show scene"} shortcut="E">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setSceneInteracted(true); setSceneEnabled((v) => !v); }} aria-pressed={sceneEnabled} aria-label={sceneEnabled ? "Hide scene" : "Show scene"} style={innerBtnStyle}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setSceneInteracted(true); setSceneEnabled((v) => !v); }} aria-pressed={sceneEnabled} aria-label={sceneEnabled ? "Hide scene" : "Show scene"} style={innerBtnStyle} tabIndex={hasScene ? 0 : -1}>
                       <svg width={ico.iconBoxPx} height={ico.iconBoxPx} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <path d="M3 18l5-6 4 5 3-4 6 7" />
                         <circle cx="17" cy="6" r="2" />
                       </svg>
                     </button>
                   </Tooltip>
-                )}
-                {hasThreeD && (
+                ))}
+                {slot(hasThreeD, "3d", (
                   <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }} aria-pressed={show3D} aria-label={show3D ? "Show photo" : "View in 3D"} style={innerBtnStyle}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }} aria-pressed={show3D} aria-label={show3D ? "Show photo" : "View in 3D"} style={innerBtnStyle} tabIndex={hasThreeD ? 0 : -1}>
                       <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                     </button>
                   </Tooltip>
-                )}
-                {hasSpin && (
+                ))}
+                {slot(hasSpin, "spin", (
                   <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); void toggleSpin(); }} aria-pressed={spinPlaying} aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"} style={innerBtnStyle}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); void toggleSpin(); }} aria-pressed={spinPlaying} aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"} style={innerBtnStyle} tabIndex={hasSpin ? 0 : -1}>
                       {spinPlaying ? <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} /> : <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />}
                     </button>
                   </Tooltip>
-                )}
+                ))}
                 <VideoPauseInnerButton mIdx={hIdx} allKinds={allKinds} subscribe={subscribeGalleryIdx} read={readGalleryIdx} videoPaused={videoPaused} onToggle={() => setVideoPaused((p) => !p)} iconBoxPx={ico.iconBoxPx} iconStrokeWidth={ico.iconStrokeWidth} size={cardIconSize} />
               </>
             );
-            const buttons = (<>{shareButton}{otherButtons}</>);
-            return { buttons, shareButton, otherButtons, infoButton, mediaButtons, hasMedia };
+            const hasMediaPill = hasThreeD || hasSpin || hasScene;
+            const otherButtons = (<>{infoSlot}{mediaSlots}</>);
+            const buttons = (<>{shuffleButton}{shareButton}{otherButtons}{panelButton}</>);
+            return { buttons, shareButton, shuffleButton, otherButtons, infoSlot, mediaSlots, hasMediaPill, panelButton, infoButton, mediaButtons, hasMedia };
           })() : null;
 
           return (
@@ -5224,6 +5369,37 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     </div>
                   );
                 })()}
+                {/* Image-corner media pill — 3D/spin/scene/video sit in the
+                    card's bottom-right, near the image they control. Stable
+                    buttons live in the below row. Fades + scales in as a unit
+                    on scroll using the same morph clock as split mode. */}
+                {chipCtx && chipGrouping === "image-corner" && (chipLayout === "below" || chipLayout === "below-left") && (
+                  <div
+                    aria-hidden={!chipCtx.hasMediaPill}
+                    className="absolute z-30 pointer-events-auto"
+                    style={{
+                      bottom: cardIconInset,
+                      right: cardIconInset,
+                      display: "inline-flex",
+                      pointerEvents: chipCtx.hasMediaPill ? "auto" : "none",
+                    }}
+                  >
+                    <div
+                      className="inline-flex items-center"
+                      style={{
+                        ...glassChipChrome,
+                        height: cardIconSize,
+                        borderRadius: cardIconSize / 2,
+                        opacity: chipCtx.hasMediaPill ? 1 : 0,
+                        transform: chipCtx.hasMediaPill ? "scale(1)" : "scale(0.85)",
+                        transformOrigin: "right center",
+                        transition: `opacity ${morphDuration}ms ${ease}, transform ${morphDuration}ms ${ease}`,
+                      }}
+                    >
+                      {chipCtx.mediaSlots}
+                    </div>
+                  </div>
+                )}
                 {/* Corners — Share anchors bottom-left, every other chip
                     clusters bottom-right. Bare icons (no glass chrome) so the
                     affordance reads as a quiet system control, not a pill. */}
@@ -5370,18 +5546,56 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   left: 0,
                   right: 0,
                   display: "flex",
-                  justifyContent: chipLayout === "below-left" ? "flex-start" : "center",
+                  alignItems: "center",
+                  justifyContent: chipLayout === "below-left"
+                    ? "flex-start"
+                    : (bottomAlignment === "left" ? "flex-start" : bottomAlignment === "right" ? "flex-end" : "center"),
                 }}
               >
-                <div
-                  className="inline-flex items-center"
-                  style={{
-                    ...glassChipChrome,
-                    height: cardIconSize,
-                    borderRadius: cardIconSize / 2,
-                  }}
-                >
-                  {chipCtx.buttons}
+                {/* Main pill stays centered. In split mode, the secondary pill
+                    floats off its right edge via absolute positioning so it can
+                    appear/disappear without shifting the main pill. */}
+                <div className="relative inline-flex items-center">
+                  <div
+                    className="inline-flex items-center"
+                    style={{
+                      ...glassChipChrome,
+                      height: cardIconSize,
+                      borderRadius: cardIconSize / 2,
+                    }}
+                  >
+                    {chipGrouping === "split" || chipGrouping === "image-corner"
+                      ? (<>{chipCtx.shuffleButton}{chipCtx.shareButton}{chipCtx.infoSlot}{chipCtx.panelButton}</>)
+                      : chipCtx.buttons}
+                  </div>
+                  {chipGrouping === "split" && (
+                    <div
+                      aria-hidden={!chipCtx.hasMediaPill}
+                      className="absolute top-1/2"
+                      style={{
+                        left: "100%",
+                        marginLeft: cardIconGap + 2,
+                        transform: "translateY(-50%)",
+                        display: "inline-flex",
+                        pointerEvents: chipCtx.hasMediaPill ? "auto" : "none",
+                      }}
+                    >
+                      <div
+                        className="inline-flex items-center"
+                        style={{
+                          ...glassChipChrome,
+                          height: cardIconSize,
+                          borderRadius: cardIconSize / 2,
+                          opacity: chipCtx.hasMediaPill ? 1 : 0,
+                          transform: chipCtx.hasMediaPill ? "scale(1)" : "scale(0.85)",
+                          transformOrigin: "left center",
+                          transition: `opacity ${morphDuration}ms ${ease}, transform ${morphDuration}ms ${ease}`,
+                        }}
+                      >
+                        {chipCtx.mediaSlots}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -5475,7 +5689,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           ? (cornersCollapsedGap + effectiveStatsW) / 2
           : 0;
         return (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 11 }}>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ zIndex: 11 }}>
             <div
               className={`flex ${labelPosition === "above" ? "items-end" : "items-start"}`}
               style={cornerCenterShift ? { transform: `translateX(${cornerCenterShift}px)`, transition: `transform ${dur} ${ease}` } : undefined}
@@ -5777,9 +5991,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     is open (compare always counts as open). */}
                 {(() => {
                   if (!denseDividers || !splitCards) return null;
+                  if (chipLayout === "unified") return null;
                   const showCluster = comparing || !statsCollapsed;
                   if (!showCluster) return null;
-                  const engineerIco = cardIconRender({ active: engineerMode });
                   const actionIco = cardIconRender();
                   // Compute action CTA inline from hL (active/left robot).
                   const ctaInfo = (() => {
@@ -5835,25 +6049,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       className="absolute pointer-events-auto"
                       style={isBelow ? belowWrapperStyle : insideWrapperStyle}
                     >
-                      <Tooltip label={engineerMode ? "Hide engineer specs" : "Show engineer specs"} shortcut="E">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEngineerMode((v) => {
-                              const next = !v;
-                              setDenseRowGap(next ? 4 : 9);
-                              return next;
-                            });
-                          }}
-                          aria-pressed={engineerMode}
-                          aria-label={engineerMode ? "Hide engineer specs" : "Show engineer specs"}
-                          className={engineerIco.className}
-                          style={{ ...engineerIco.style, ...glassChipChrome, flexShrink: 0 }}
-                        >
-                          <ChevronsUpDown size={engineerIco.iconBoxPx} strokeWidth={engineerIco.iconStrokeWidth} />
-                        </button>
-                      </Tooltip>
+                      {comparing && onRandomHumanoid && (
+                        <Tooltip label="Shuffle" shortcut="?">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onRandomHumanoid(); }}
+                            aria-label="Shuffle to a random humanoid"
+                            className={actionIco.className}
+                            style={{ ...actionIco.style, ...glassChipChrome, flexShrink: 0 }}
+                          >
+                            <Dices size={actionIco.iconBoxPx} strokeWidth={actionIco.iconStrokeWidth} />
+                          </button>
+                        </Tooltip>
+                      )}
                       {comparing && !!getCompareBlurb(hL, hR).text && (
                         <Tooltip label={blurbVisible ? "Hide overview" : "Show overview"} shortcut="I">
                           <button
@@ -6009,6 +6217,155 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 {renderRobot(hR, distR, springR.index, false)}
               </div>
             </div>
+            {/* Unified chip bar — one centered row that morphs between
+                single + compare views. Includes both under-card buttons
+                (share/info/panel/media) and stats-col buttons (engineer/CTA). */}
+            {chipLayout === "unified" && (() => {
+              const ico = cardIconRender();
+              const activeH = hL;
+              const desc = getRobotDescription(activeH);
+              const hasInfo = !!desc.text || (comparing && !!getCompareBlurb(hL, hR).text);
+              const hasThreeD = !comparing && !!THREEDEE_ROBOTS[activeH.id];
+              const hasSpin = !comparing && !!SPIN_ROBOTS[activeH.id];
+              const hasShare = !!onShareView;
+              const hasPanel = !comparing && collapseVariant === "info-icon";
+              const innerBtnStyle: React.CSSProperties = {
+                width: cardIconSize,
+                height: cardIconSize,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                color: "inherit",
+                cursor: "pointer",
+                WebkitTapHighlightColor: "transparent",
+              };
+              const arrowSize = Math.round(ico.iconBoxPx * 0.7);
+              const ctaInfo = (() => {
+                const isSundayBeta = activeH.manufacturer === "Sunday Robotics";
+                const buyHref = withUtm(isSundayBeta ? "https://www.sunday.ai/beta-program" : (activeH.purchaseUrl || undefined), activeH.id);
+                const visitHref = !buyHref ? withUtm(activeH.infoUrl || activeH.manufacturerUrl, activeH.id) : undefined;
+                const href = buyHref || visitHref;
+                const isRotaku = activeH.manufacturer === "Rotaku";
+                const ctaText = isSundayBeta
+                  ? "Apply for Beta"
+                  : (buyHref ? (isRotaku ? "Reserve" : "Buy") : "Visit");
+                const availabilityLabel: string | undefined = (
+                  activeH.availability === "enterprise" ? "Enterprise only" :
+                  activeH.availability === "research" ? "Research only" :
+                  activeH.availability === "discontinued" ? "Discontinued" :
+                  activeH.availability === "prototype" ? "Not yet for sale" :
+                  undefined
+                );
+                const stateLabel = availabilityLabel ?? (href ? undefined : "Not for sale");
+                return { href, ctaText, stateLabel };
+              })();
+              return (
+                <div className="pointer-events-auto" style={{ marginTop: 12, display: "flex", alignItems: "center", gap: cardIconGap }}>
+                  <div className="inline-flex items-center" style={{ ...glassChipChrome, height: cardIconSize, borderRadius: cardIconSize / 2, gap: cardIconGap, padding: `0 ${Math.round(cardIconSize * 0.15)}px` }}>
+                    {hasShare && (
+                      <Tooltip label="Share this view" shortcut="S">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onShareView?.(); }} aria-label="Share this view" style={innerBtnStyle}>
+                          <Share size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                        </button>
+                      </Tooltip>
+                    )}
+                    {hasInfo && (
+                      <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={innerBtnStyle}>
+                          <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                        </button>
+                      </Tooltip>
+                    )}
+                    {hasThreeD && (
+                      <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }} aria-pressed={show3D} aria-label={show3D ? "Show photo" : "View in 3D"} style={innerBtnStyle}>
+                          <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                        </button>
+                      </Tooltip>
+                    )}
+                    {hasSpin && (
+                      <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); void toggleSpin(); }} aria-pressed={spinPlaying} aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"} style={innerBtnStyle}>
+                          {spinPlaying ? <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} /> : <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />}
+                        </button>
+                      </Tooltip>
+                    )}
+                    {hasPanel && (
+                      <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={innerBtnStyle}>
+                          <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                        </button>
+                      </Tooltip>
+                    )}
+                  </div>
+                  {(() => {
+                    if (comparing) {
+                      if (!onShareView) return null;
+                      return (
+                        <Tooltip label="Copy view link" shortcut="C">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
+                            aria-label="Copy view link"
+                            className="pointer-events-auto cursor-pointer"
+                            style={{
+                              ...glassChipChrome,
+                              border: "1px solid transparent",
+                              height: cardIconSize,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 8,
+                              borderRadius: cardIconSize / 2,
+                              padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
+                            }}
+                          >
+                            <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: Math.round(cardIconSize * 0.36), fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1 }}>Copy view</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", opacity: 0.85 }}>
+                              <Share size={arrowSize} strokeWidth={1.6} />
+                            </span>
+                          </button>
+                        </Tooltip>
+                      );
+                    }
+                    const href = ctaInfo.href;
+                    const label = href ? ctaInfo.ctaText : (ctaInfo.stateLabel ?? "Not for sale");
+                    const Tag = (href ? "a" : "div") as React.ElementType;
+                    const tagProps = href
+                      ? { href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
+                      : {};
+                    return (
+                      <Tag
+                        {...tagProps}
+                        className="pointer-events-auto cursor-pointer"
+                        style={{
+                          ...glassChipChrome,
+                          border: "1px solid transparent",
+                          height: cardIconSize,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 10,
+                          borderRadius: cardIconSize / 2,
+                          padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
+                          textDecoration: "none",
+                        }}
+                      >
+                        <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: Math.round(cardIconSize * 0.36), fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1 }}>{label}</span>
+                        {href && (
+                          <span style={{ display: "inline-flex", alignItems: "center", opacity: 0.85 }}>
+                            <svg width={arrowSize} height={arrowSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M5 11.5 11.5 5M6 5h5.5v5.5" />
+                            </svg>
+                          </span>
+                        )}
+                      </Tag>
+                    );
+                  })()}
+                </div>
+              );
+            })()}
           </div>
         );
       })()}
@@ -6100,6 +6457,27 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       )}
       {showSplitTuner && (
         <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
+          <div>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Sparkbar</p>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                ["off", "Off"],
+                ["inline", "A inline"],
+                ["below", "B below"],
+              ] as const).map(([v, label]) => (
+                <button
+                  key={v}
+                  onClick={() => setSparkMode(v as SparkMode)}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${sparkMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-neutral-400 mt-1.5 leading-relaxed">
+              Distribution-of-fleet next to the value. Renders on Height/Weight/DOF/Speed only.
+            </p>
+          </div>
           <div>
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Label Position</p>
             <div className="flex gap-1.5">
@@ -6215,13 +6593,26 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             </div>
             <div>
               <label className="text-[12px] text-neutral-500 flex justify-between">Base <span className="tabular-nums text-neutral-400">{surfaceColor}</span></label>
-              <div className="flex gap-1.5 mt-1.5 items-center">
-                {["#ffffff", "#f7f7f7", "#f2f2f2", "#ececec", "#e5e5e5"].map((c) => (
+              <div className="flex flex-wrap gap-1.5 mt-1.5 items-center">
+                {[
+                  { c: "#ffffff", title: "Pure white" },
+                  { c: "#f7f7f7", title: "Neutral 50" },
+                  { c: "#f2f2f2", title: "Neutral 100" },
+                  { c: "#ececec", title: "Neutral 200" },
+                  { c: "#e5e5e5", title: "Neutral 300" },
+                  { c: "#F2F2F7", title: "Apple system gray" },
+                  { c: "#F1F1F6", title: "Cool tint (current default)" },
+                  { c: "#FAF7F1", title: "Warm cream" },
+                  { c: "#ECEAE3", title: "Deeper cream" },
+                  { c: "#E8E8E8", title: "Deeper neutral" },
+                  { c: "#1A1A1A", title: "Dark" },
+                ].map(({ c, title }) => (
                   <button
                     key={c}
                     onClick={() => onSurfaceColorChange(c)}
+                    title={title}
                     className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: surfaceColor.toLowerCase() === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                    style={{ background: c, border: surfaceColor.toLowerCase() === c.toLowerCase() ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
                   />
                 ))}
                 <input
@@ -6437,6 +6828,34 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       )}
       {showTuner && (
         <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide" style={{ overscrollBehavior: "contain" }}>
+          <div className="space-y-2">
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400">Chip grouping</p>
+            <div className="flex gap-1.5">
+              {([["single", "Single"], ["split", "Split"], ["image-corner", "On card"]] as const).map(([m, label]) => (
+                <button
+                  key={m}
+                  onClick={() => setChipGrouping(m)}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${chipGrouping === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400">Bottom alignment</p>
+            <div className="flex gap-1.5">
+              {([["left", "Left"], ["center", "Center"], ["right", "Right"]] as const).map(([m, label]) => (
+                <button
+                  key={m}
+                  onClick={() => setBottomAlignment(m)}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${bottomAlignment === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="space-y-2">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">Footer layout</p>
             <div className="flex gap-1.5">
@@ -6691,7 +7110,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Corner inset <span className="tabular-nums text-neutral-400">{cardIconInset}px</span></label><input type="range" min={4} max={20} value={cardIconInset} onChange={(e) => setCardIconInset(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Gap between icons <span className="tabular-nums text-neutral-400">{cardIconGap}px</span></label><input type="range" min={0} max={16} value={cardIconGap} onChange={(e) => setCardIconGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Hover-fade secondary</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIconHoverFade ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIconHoverFade(!cardIconHoverFade)}>{cardIconHoverFade ? "On" : "Off"}</button></div>
-            <div><label className="text-[12px] text-neutral-500 block mb-1">Chip layout</label><div className="flex flex-wrap gap-1 rounded border border-neutral-200 p-0.5">{([["floating", "Float"], ["panel", "Panel"], ["below", "Below"], ["below-left", "Below L"], ["corners", "Corners"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] rounded cursor-pointer ${chipLayout === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setChipLayout(m)}>{label}</button>))}</div></div>
+            <div><label className="text-[12px] text-neutral-500 block mb-1">Chip layout</label><div className="flex flex-wrap gap-1 rounded border border-neutral-200 p-0.5">{([["floating", "Float"], ["panel", "Panel"], ["below", "Below"], ["below-left", "Below L"], ["corners", "Corners"], ["unified", "Unified"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] rounded cursor-pointer ${chipLayout === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setChipLayout(m)}>{label}</button>))}</div></div>
+            <div><label className="text-[12px] text-neutral-500 block mb-1">Morph style</label><div className="flex flex-wrap gap-1 rounded border border-neutral-200 p-0.5">{([["shrink", "Shrink"], ["scale", "Scale"], ["pop", "Pop"], ["slide-up", "Slide ↑"], ["slide-down", "Slide ↓"], ["blur", "Blur"], ["fade-fixed", "Fade"], ["none", "None"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] rounded cursor-pointer ${morphStyle === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setMorphStyle(m)}>{label}</button>))}</div></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Morph duration <span className="tabular-nums text-neutral-400">{morphDuration}ms</span></label><input type="range" min={80} max={700} step={20} value={morphDuration} onChange={(e) => setMorphDuration(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 block mb-1">Compare button</label><div className="flex flex-wrap gap-1 rounded border border-neutral-200 p-0.5">{([["glass", "Glass"], ["flat", "Flat"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] rounded cursor-pointer ${compareBtnStyle === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCompareBtnStyle(m)}>{label}</button>))}</div></div>
             <div><label className="text-[12px] text-neutral-500 block mb-1">Corners close</label><div className="flex flex-wrap gap-1 rounded border border-neutral-200 p-0.5">{([["slim-minus", "Slim −"], ["click-card", "Click card"], ["hover-x", "Hover ×"], ["edge-chevron", "Edge ›"], ["card-edge-tab", "Card tab"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] rounded cursor-pointer ${cornersCloseMode === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCornersCloseMode(m)}>{label}</button>))}</div></div>
             <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Show &ldquo;3D&rdquo; label</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIcon3DLabel ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIcon3DLabel(!cardIcon3DLabel)}>{cardIcon3DLabel ? "On" : "Off"}</button></div>
@@ -7765,6 +8186,12 @@ export default function HomeClient() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
+  const onRandomHumanoid = useCallback(() => {
+    if (layout !== "E") setLayout("E");
+    setChatOpen(false);
+    setLuckyNonce((n) => n + 1);
+  }, [layout]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -7793,23 +8220,14 @@ export default function HomeClient() {
           setEpetriMode((v) => !v);
         }
       }
-      if ((e.key === "?" || e.key === "/") && !e.metaKey && !e.ctrlKey) {
+      if ((e.key === "?" || e.key === "/" || (e.key === "R" && e.shiftKey)) && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
-        setShowShortcuts((v) => !v);
-        return;
-      }
-      if (e.key === "R" && e.shiftKey && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        const idx = Math.floor(Math.random() * humanoids.length);
-        setLayout("E");
-        setGoToIndex(idx);
-        setChatOpen(false);
-        setTimeout(() => setGoToIndex(null), 100);
+        onRandomHumanoid();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isDev]);
+  }, [isDev, onRandomHumanoid]);
 
   const handleSelectHumanoid = useCallback((idx: number) => {
     setLayout("E");
@@ -7854,12 +8272,6 @@ export default function HomeClient() {
     }, 400);
     return () => clearTimeout(t);
   }, [introPhase, newHumanoids, firstNewIdx, handleSelectHumanoid]);
-
-  const onRandomHumanoid = useCallback(() => {
-    if (layout !== "E") setLayout("E");
-    setChatOpen(false);
-    setLuckyNonce((n) => n + 1);
-  }, [layout]);
 
   const [homeNonce, setHomeNonce] = useState(0);
   const goHome = useCallback(() => {
@@ -7968,7 +8380,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} footerLayout={footerLayout} onFooterLayoutChange={setFooterLayout} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} onRandomHumanoid={onRandomHumanoid} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} footerLayout={footerLayout} onFooterLayoutChange={setFooterLayout} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -8086,37 +8498,8 @@ export default function HomeClient() {
           display: "inline-flex",
           alignItems: "center",
         };
-        const shuffleStyle: React.CSSProperties = {
-          ...FOOTER_GLASS_CHROME,
-          height: footerChipHeight,
-          minWidth: footerChipHeight,
-          padding: 0,
-          borderRadius: footerChipHeight / 2,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 2,
-          lineHeight: 1,
-        };
         return (
           <>
-            <div
-              className="fixed left-1/2 z-[48] pointer-events-none"
-              style={{
-                bottom: "calc(var(--corner-y, 8px) + 4px)",
-                transform: "translateX(-50%)",
-              }}
-            >
-              <Chip
-                className="intro-credit pointer-events-auto"
-                onClick={() => onRandomHumanoid()}
-                style={shuffleStyle}
-              >
-                <span aria-label="Shuffle" style={{ display: "inline-flex", alignItems: "center", gap: 2, color: "rgba(95, 96, 89, 0.8)" }}>
-                  <Dices size={22} strokeWidth={1.6} />
-                </span>
-              </Chip>
-            </div>
             <div
               className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none"
               style={{ bottom: "var(--corner-y, 8px)" }}

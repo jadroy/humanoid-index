@@ -401,7 +401,7 @@ const allHumanoids: Humanoid[] = [
     useCase: "Industrial",
     drive: "Electric",
     logoUrl: "/robots/Figure-ai.svg",
-    imageUrl: "/robots/figure.png",
+    imageUrl: "/robots/figure-02.png",
     year: 2024,
     cost: "N/A",
     status: "Prototype",

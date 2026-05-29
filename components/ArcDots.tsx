@@ -4,6 +4,13 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { humanoids } from "@/data/humanoids";
 import type { SpringSubscribe } from "@/hooks/useSpring";
 
+// Session memory: once an arc logo has decoded in this tab, future swaps to
+// the same URL skip the swipe-up reveal so the active logo doesn't re-animate
+// every time the user scrolls past it again.
+const loadedArcLogos = new Set<string>();
+const ARC_LOGO_CLOSED = "inset(100% 0 0 0)";
+const ARC_LOGO_OPEN = "inset(0)";
+
 // ═══════════════════════════════════════════════════════════════
 // Arc styles
 // ═══════════════════════════════════════════════════════════════
@@ -386,6 +393,22 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
           if (lastLogoUrlRef.current !== logoUrl) {
             imgEl.setAttribute("href", logoUrl);
             lastLogoUrlRef.current = logoUrl;
+            if (loadedArcLogos.has(logoUrl)) {
+              imgEl.style.clipPath = ARC_LOGO_OPEN;
+            } else {
+              imgEl.style.clipPath = ARC_LOGO_CLOSED;
+              const onImgLoad = () => {
+                loadedArcLogos.add(logoUrl);
+                // Only reveal if we're still showing this logo — a fast
+                // scroll past several robots can swap href again before
+                // load fires.
+                if (lastLogoUrlRef.current === logoUrl) {
+                  imgEl.style.clipPath = ARC_LOGO_OPEN;
+                }
+                imgEl.removeEventListener("load", onImgLoad);
+              };
+              imgEl.addEventListener("load", onImgLoad);
+            }
           }
           groupEl.style.opacity = "1";
         } else {
@@ -534,6 +557,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         </defs>
         <g
           ref={logoGroupRef}
+          clipPath={`url(#${arcLogoClipId})`}
           style={{
             pointerEvents: "none",
             opacity: 0,
@@ -546,7 +570,10 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
             width={LOGO_SIZE}
             height={LOGO_SIZE}
             preserveAspectRatio="xMidYMid slice"
-            clipPath={`url(#${arcLogoClipId})`}
+            style={{
+              clipPath: ARC_LOGO_CLOSED,
+              transition: "clip-path 520ms cubic-bezier(0.22, 1, 0.36, 1)",
+            }}
           />
         </g>
       </svg>
