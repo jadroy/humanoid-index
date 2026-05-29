@@ -563,6 +563,15 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
             opacity: 0,
           }}
         >
+          {/* Grey tile shows through while the image is clipped — matches the
+              share-thumbnail reveal so the swipe actually reads as a slide. */}
+          <rect
+            x={-LOGO_SIZE / 2}
+            y={-LOGO_SIZE / 2}
+            width={LOGO_SIZE}
+            height={LOGO_SIZE}
+            fill="rgba(0,0,0,0.06)"
+          />
           <image
             ref={logoImgRef}
             x={-LOGO_SIZE / 2}

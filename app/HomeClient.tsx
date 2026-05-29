@@ -1196,6 +1196,7 @@ function StatsScrollArea({ children, style, flex }: { children: React.ReactNode;
   const ref = useRef<HTMLDivElement | null>(null);
   // Bitmask: 1 = content above (scrolled down), 2 = content below (room to scroll)
   const [edges, setEdges] = useState(0);
+  const [hover, setHover] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -1230,25 +1231,52 @@ function StatsScrollArea({ children, style, flex }: { children: React.ReactNode;
     : fadeTop
     ? "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, black 9%, black 100%)"
     : undefined;
+  const showChevron = hover && fadeBottom;
   return (
     <div
-      ref={ref}
-      data-stats-scroll
-      className="scrollbar-hide"
-      style={{
-        flex,
-        minHeight: 0,
-        overflowY: "auto",
-        overflowX: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        WebkitMaskImage: mask,
-        maskImage: mask,
-        transition: "mask-image 200ms ease, -webkit-mask-image 200ms ease",
-        ...style,
-      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ flex, minHeight: 0, position: "relative", display: "flex", flexDirection: "column" }}
     >
-      {children}
+      <div
+        ref={ref}
+        data-stats-scroll
+        className="scrollbar-hide"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          WebkitMaskImage: mask,
+          maskImage: mask,
+          transition: "mask-image 200ms ease, -webkit-mask-image 200ms ease",
+          ...style,
+        }}
+      >
+        {children}
+      </div>
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: "50%",
+          bottom: 2,
+          transform: `translateX(-50%) translateY(${showChevron ? 0 : 3}px)`,
+          pointerEvents: "none",
+          opacity: showChevron ? 0.35 : 0,
+          transition: "opacity 240ms ease, transform 240ms ease",
+          color: "rgba(0,0,0,0.7)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 6l4 4 4-4" />
+        </svg>
+      </div>
     </div>
   );
 }
@@ -1752,7 +1780,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // footer slab with faint bg; "shadow" = inset top shadow; "subcard" = lifted
   // sub-card with gap.
   type PinnedTreatment = "hairline" | "tinted" | "shadow" | "subcard";
-  const [pinnedTreatment, setPinnedTreatment] = useState<PinnedTreatment>("tinted");
+  const [pinnedTreatment, setPinnedTreatment] = useState<PinnedTreatment>("hairline");
   const renderPinnedBlock = (rows: React.ReactNode[], paddingX: number, gap: number) => {
     const filtered = rows.filter(Boolean);
     if (filtered.length === 0) return null;
@@ -2038,6 +2066,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     { label: "Linear",    value: "linear" },
   ] as const;
   const [collapseEase, setCollapseEase] = useState<string>(COLLAPSE_EASE_PRESETS[3].value);
+  // Bundled motion presets — pair a duration + ease so a single tap drops the
+  // panel toggle, compare add/subtract, and arc inset slide onto one feel.
+  const MOTION_PRESETS = [
+    { label: "Crisp",  dur: 180, ease: COLLAPSE_EASE_PRESETS[1].value }, // Snappy
+    { label: "Apple",  dur: 260, ease: COLLAPSE_EASE_PRESETS[3].value }, // Out-cubic
+    { label: "Smooth", dur: 360, ease: COLLAPSE_EASE_PRESETS[0].value }, // Standard
+    { label: "Bouncy", dur: 320, ease: "cubic-bezier(0.34, 1.56, 0.64, 1)" },
+    { label: "Slow",   dur: 480, ease: COLLAPSE_EASE_PRESETS[2].value }, // Out-expo
+  ] as const;
   useEffect(() => {
     document.documentElement.style.setProperty("--collapse-dur", `${collapseDurMs}ms`);
     document.documentElement.style.setProperty("--collapse-ease", collapseEase);
@@ -6819,8 +6856,31 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       {showCollapseTuner && (
         <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[260px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Collapse</p>
-            <span className="text-[10px] text-neutral-400">i-toggle · compare</span>
+            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Motion</p>
+            <button
+              onClick={() => setShowCollapseTuner(false)}
+              aria-label="Close motion panel"
+              className="text-[10px] text-neutral-400 hover:text-neutral-700 cursor-pointer"
+            >
+              close
+            </button>
+          </div>
+          <div className="space-y-2">
+            <p className="text-[10px] tracking-widest uppercase text-neutral-400">Starter</p>
+            <div className="flex flex-wrap gap-1.5">
+              {MOTION_PRESETS.map((p) => {
+                const active = collapseDurMs === p.dur && collapseEase === p.ease;
+                return (
+                  <button
+                    key={p.label}
+                    onClick={() => { setCollapseDurMs(p.dur); setCollapseEase(p.ease); }}
+                    className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${active ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div>
             <label className="text-[12px] text-neutral-500 flex justify-between">
@@ -6855,6 +6915,31 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             Test by toggling the i icon or entering/exiting compare.
           </p>
         </div>
+      )}
+      {isDev && !showCollapseTuner && (
+        <button
+          onClick={() => setShowCollapseTuner(true)}
+          aria-label="Open motion panel"
+          className="fixed z-40 cursor-pointer flex items-center justify-center"
+          style={{
+            bottom: 18,
+            right: 18,
+            width: 26,
+            height: 26,
+            borderRadius: 999,
+            background: "rgba(0,0,0,0.06)",
+            color: "rgba(0,0,0,0.55)",
+            border: "1px solid rgba(0,0,0,0.08)",
+            fontSize: 13,
+            fontWeight: 500,
+            letterSpacing: "-0.01em",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            transition: "background 160ms ease, color 160ms ease",
+          }}
+        >
+          ≈
+        </button>
       )}
       {showTuner && (
         <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide" style={{ overscrollBehavior: "contain" }}>
