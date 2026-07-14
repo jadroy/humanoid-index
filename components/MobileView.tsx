@@ -21,6 +21,7 @@ import {
 } from "react";
 import Image from "next/image";
 import { humanoids, type Humanoid } from "@/data/humanoids";
+import { getCompareBlurb } from "@/lib/compareBlurb";
 import { withUtm } from "@/lib/outbound";
 import { getRobotDescription } from "@/lib/robotDescription";
 import { INK, INK_BODY, INK_MUTED, SURFACE } from "@/lib/design/tokens";
@@ -399,7 +400,194 @@ function DetailSheet({ h, onClose }: { h: Humanoid; onClose: () => void }) {
   );
 }
 
+// ── Compare sheet ─────────────────────────────────────────────
+function CompareMini({ h }: { h: Humanoid }) {
+  return (
+    <div className="flex-1 min-w-0 flex flex-col items-center">
+      <div
+        className="relative w-full overflow-hidden flex items-center justify-center"
+        style={{ aspectRatio: "3 / 4", borderRadius: 18, background: SURFACE }}
+      >
+        {h.imageUrl && (
+          <Image
+            src={h.imageUrl}
+            alt={h.name}
+            fill
+            sizes="170px"
+            className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
+            style={{
+              objectPosition: h.imagePosition ?? "center",
+              padding: h.imageFit === "cover" ? 0 : "8%",
+            }}
+          />
+        )}
+      </div>
+      <p
+        className="truncate w-full text-center"
+        style={{ fontSize: 15, fontWeight: 600, color: INK, marginTop: 9 }}
+      >
+        {h.name}
+      </p>
+      <p className="truncate w-full text-center" style={{ fontSize: 12, color: INK_MUTED }}>
+        {h.manufacturer}
+      </p>
+    </div>
+  );
+}
+
+function CompareRow({ label, a, b }: { label: string; a: string; b: string }) {
+  return (
+    <div
+      className="flex items-center"
+      style={{ padding: "10px 0", borderTop: "1px solid rgba(0,0,0,0.05)" }}
+    >
+      <span className="flex-1 text-right" style={{ fontSize: 14, fontWeight: 500, color: INK }}>
+        {a}
+      </span>
+      <span style={{ width: 92, textAlign: "center", fontSize: 11.5, color: INK_MUTED }}>
+        {label}
+      </span>
+      <span className="flex-1" style={{ fontSize: 14, fontWeight: 500, color: INK }}>
+        {b}
+      </span>
+    </div>
+  );
+}
+
+const priceOf = (h: Humanoid) => (h.cost && h.cost !== "N/A" ? h.cost : "—");
+
+function CompareSheet({ primary, onClose }: { primary: Humanoid; onClose: () => void }) {
+  const others = useMemo(() => humanoids.filter((h) => h.id !== primary.id), [primary.id]);
+  const [secId, setSecId] = useState(others[0]?.id);
+  const secondary = humanoids.find((h) => h.id === secId) ?? others[0];
+  const blurb = useMemo(
+    () => (secondary ? getCompareBlurb(primary, secondary) : null),
+    [primary, secondary]
+  );
+
+  if (!secondary) return null;
+
+  const rows = [
+    { label: "Height", a: primary.height ? `${primary.height} cm` : "—", b: secondary.height ? `${secondary.height} cm` : "—" },
+    { label: "Weight", a: primary.weight ? `${primary.weight} kg` : "—", b: secondary.weight ? `${secondary.weight} kg` : "—" },
+    { label: "Speed", a: primary.maxSpeed ? `${primary.maxSpeed} m/s` : "—", b: secondary.maxSpeed ? `${secondary.maxSpeed} m/s` : "—" },
+    { label: "DOF", a: primary.dof ? `${primary.dof}` : "—", b: secondary.dof ? `${secondary.dof}` : "—" },
+    { label: "Price", a: priceOf(primary), b: priceOf(secondary) },
+    { label: "Status", a: primary.status ?? "—", b: secondary.status ?? "—" },
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 flex flex-col justify-end"
+      style={{ zIndex: 200, animation: `mv-backdrop-in 260ms ${EASE_OUT} both` }}
+    >
+      <button
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0"
+        style={{ background: "rgba(20,20,24,0.28)", backdropFilter: "blur(2px)" }}
+      />
+      <div
+        className="relative bg-white overflow-hidden flex flex-col"
+        style={{
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          maxHeight: "92dvh",
+          animation: `mv-sheet-in 380ms ${EASE_SHEET} both`,
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.16)",
+        }}
+      >
+        <div className="flex items-center justify-between flex-shrink-0" style={{ padding: "18px 22px 12px" }}>
+          <h2 style={{ fontSize: 19, fontWeight: 600, color: INK }}>Compare</h2>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="flex items-center justify-center"
+            style={{ width: 32, height: 32, borderRadius: 999, background: SURFACE }}
+          >
+            <CloseGlyph />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto" style={{ padding: "0 22px calc(env(safe-area-inset-bottom) + 24px)" }}>
+          <div className="flex gap-4" style={{ marginTop: 4 }}>
+            <CompareMini h={primary} />
+            <CompareMini h={secondary} />
+          </div>
+
+          <div style={{ marginTop: 20 }}>
+            {rows.map((r) => (
+              <CompareRow key={r.label} label={r.label} a={r.a} b={r.b} />
+            ))}
+          </div>
+
+          {blurb?.text && (
+            <p style={{ fontSize: 14.5, lineHeight: 1.55, color: INK_BODY, marginTop: 20 }}>
+              {blurb.text}
+            </p>
+          )}
+
+          <p style={{ fontSize: 12, color: INK_MUTED, margin: "22px 0 10px" }}>
+            Compare with
+          </p>
+          <div
+            className="flex gap-2 overflow-x-auto"
+            style={{ paddingBottom: 4, WebkitOverflowScrolling: "touch" }}
+          >
+            {others.map((h) => {
+              const sel = h.id === secId;
+              return (
+                <button
+                  key={h.id}
+                  onClick={() => setSecId(h.id)}
+                  className="flex-shrink-0 flex flex-col items-center"
+                  style={{ width: 58 }}
+                >
+                  <div
+                    className="relative overflow-hidden flex items-center justify-center"
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 15,
+                      background: SURFACE,
+                      boxShadow: sel ? `0 0 0 2px ${INK}` : "none",
+                    }}
+                  >
+                    {h.imageUrl && (
+                      <Image
+                        src={h.imageUrl}
+                        alt={h.name}
+                        fill
+                        sizes="52px"
+                        className="object-contain"
+                        style={{ padding: "12%" }}
+                      />
+                    )}
+                  </div>
+                  <span
+                    className="truncate w-full text-center"
+                    style={{ fontSize: 10.5, color: sel ? INK : INK_MUTED, marginTop: 5 }}
+                  >
+                    {h.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Glyphs ────────────────────────────────────────────────────
+function CloseGlyph() {
+  return (
+    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke={INK_BODY} strokeWidth={2} strokeLinecap="round">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
 function ShareGlyph() {
   return (
     <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -423,6 +611,7 @@ export default function MobileView() {
   const [dims, setDims] = useState({ w: 0, h: 0 });
   const [active, setActive] = useState(0);
   const [detail, setDetail] = useState<Humanoid | null>(null);
+  const [compare, setCompare] = useState<Humanoid | null>(null);
 
   const deck = useDeck(setActive);
 
@@ -631,13 +820,20 @@ export default function MobileView() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3" style={{ marginTop: 18 }}>
+            <div className="flex gap-2.5" style={{ marginTop: 18 }}>
               <button
                 onClick={() => setDetail(current)}
                 className="flex-1 flex items-center justify-center"
                 style={{ height: 48, borderRadius: 14, background: INK, color: "white", fontSize: 15, fontWeight: 500 }}
               >
                 Details
+              </button>
+              <button
+                onClick={() => setCompare(current)}
+                className="flex-1 flex items-center justify-center"
+                style={{ height: 48, borderRadius: 14, background: SURFACE, color: INK, fontSize: 15, fontWeight: 500 }}
+              >
+                Compare
               </button>
               <button
                 onClick={() => shareRobot(current)}
@@ -653,6 +849,7 @@ export default function MobileView() {
       </footer>
 
       {detail && <DetailSheet h={detail} onClose={() => setDetail(null)} />}
+      {compare && <CompareSheet primary={compare} onClose={() => setCompare(null)} />}
 
       <style jsx global>{`
         @keyframes mv-copy-in {
