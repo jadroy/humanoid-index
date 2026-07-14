@@ -8430,7 +8430,7 @@ export default function HomeClient() {
     return <main className="min-h-[100dvh] bg-white" />;
   }
   if (isMobile) {
-    return <MobileComingSoon />;
+    return <MobileView />;
   }
 
   return (

@@ -1,536 +1,682 @@
 "use client";
 
-import { useMemo, useState } from "react";
+// Mobile experience — a horizontal spring deck.
+//
+// The desktop signature is the horizontal, spring-loaded ribbon of cards along
+// an arc. On mobile we keep that DNA instead of flattening it into a vertical
+// feed: one robot centered, neighbors peeking along a subtle arc, thumb-swipe
+// left/right that tracks the finger 1:1 then spring-settles with a flick.
+//
+// Physics mirror hooks/useSpring (stiffness 0.22 / damping 0.72 — the "snappy"
+// preset) but run purely on refs + a subscribe loop, so scrolling never touches
+// React state per frame.
+
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
-import { humanoids } from "@/data/humanoids";
-import type { Humanoid } from "@/data/humanoids";
-import { SURFACE, SURFACE_HOVER } from "@/lib/design/tokens";
+import { humanoids, type Humanoid } from "@/data/humanoids";
+import { withUtm } from "@/lib/outbound";
+import { getRobotDescription } from "@/lib/robotDescription";
+import { INK, INK_BODY, INK_MUTED, SURFACE } from "@/lib/design/tokens";
 
-const PAGE_X = 20;
+// ── Tuning ────────────────────────────────────────────────────
+const STIFFNESS = 0.22;
+const DAMPING = 0.72;
+const CARD_W_FRAC = 0.68; // card width as a fraction of the deck width
+const STRIDE_FRAC = 0.74; // spacing between card centers (fraction of deck width)
+const ARC_DEPTH = 26; // px a neighbor dips below the centered card
+const SIDE_SCALE = 0.12; // how much a neighbor shrinks
+const SIDE_FADE = 0.55; // how much a neighbor fades
+const CARD_RADIUS = 26;
+const FLICK = 90; // ms of velocity projected on release → flick distance
+const TAP_SLOP = 8; // px of movement below which a pointer-up counts as a tap
+const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
+const EASE_SHEET = "cubic-bezier(0.32, 0.72, 0, 1)";
 
-const CARD_RADIUS = 22;
-const LABEL_LOGO_SIZE = 20;
-const CARD_W = 200;
-const CARD_GAP = 12;
+const N = humanoids.length;
+const clampIdx = (v: number) => Math.max(0, Math.min(N - 1, v));
 
-// ── Use-case taxonomy ─────────────────────────────────────────
-type UseCase = "home" | "industrial" | "research" | "companion";
+// ── Deck spring ───────────────────────────────────────────────
+// A tiny spring over "card index" space. setPos() is instant (finger tracking,
+// no state); settleTo() animates. onIndex fires only when the rounded index
+// changes, so the footer re-renders a handful of times per drag, not per frame.
+function useDeck(onIndex: (i: number) => void) {
+  const pos = useRef(0);
+  const vel = useRef(0);
+  const target = useRef(0);
+  const raf = useRef(0);
+  const subs = useRef<Set<(p: number) => void>>(new Set());
+  const lastIndex = useRef(0);
+  const onIndexRef = useRef(onIndex);
+  onIndexRef.current = onIndex;
 
-// Hard-coded mapping by robot id. Keep in sync with `data/humanoids.ts`.
-const USE_CASE_BY_ID: Record<string, UseCase> = {
-  "1": "industrial", // Optimus Gen 2 (Tesla)
-  "2": "industrial", // Electric Atlas
-  "3": "home",       // Memo (Sunday)
-  "4": "home",       // Neo (1X)
-  "5": "research",   // ASIMO
-  "7": "industrial", // Figure 02
-  "8": "industrial", // Apollo (Apptronik)
-  "9": "research",   // Atlas (original)
-  "10": "industrial",// Digit (Agility)
-  "11": "research",  // G1 (Unitree)
-  "12": "research",  // H1 (Unitree)
-  "13": "companion", // Ameca (Engineered Arts)
-  "14": "industrial",// Oli (LimX) — service/research, leaning industrial
-  "15": "research",  // (whatever 15 maps to — fallback handled below)
-  "16": "industrial",// K2 (Kepler) — manufacturing
-};
+  const notify = useCallback((p: number) => {
+    subs.current.forEach((cb) => cb(p));
+    const idx = clampIdx(Math.round(p));
+    if (idx !== lastIndex.current) {
+      lastIndex.current = idx;
+      onIndexRef.current(idx);
+    }
+  }, []);
 
-const TILE_BG = SURFACE; // unified neutral surface across all category tiles
+  const tick = useCallback(() => {
+    const force = (target.current - pos.current) * STIFFNESS;
+    vel.current = (vel.current + force) * DAMPING;
+    pos.current += vel.current;
+    const settled =
+      Math.abs(pos.current - target.current) < 0.0005 &&
+      Math.abs(vel.current) < 0.0005;
+    if (settled) {
+      pos.current = target.current;
+      vel.current = 0;
+      notify(pos.current);
+      raf.current = 0;
+      return;
+    }
+    notify(pos.current);
+    raf.current = requestAnimationFrame(tick);
+  }, [notify]);
 
-const CATEGORIES: { key: "all" | UseCase; label: string; icon: React.ReactNode; tint: string }[] = [
-  { key: "all",        label: "All",        tint: TILE_BG, icon: <IconAll /> },
-  { key: "home",       label: "Home",       tint: TILE_BG, icon: <IconHome /> },
-  { key: "industrial", label: "Industrial", tint: TILE_BG, icon: <IconIndustrial /> },
-  { key: "research",   label: "Research",   tint: TILE_BG, icon: <IconResearch /> },
-  { key: "companion",  label: "Companion",  tint: TILE_BG, icon: <IconCompanion /> },
-];
+  const start = useCallback(() => {
+    if (!raf.current) raf.current = requestAnimationFrame(tick);
+  }, [tick]);
 
-function IconAll() {
-  return (
-    <Image
-      src="/categories/all.png"
-      alt=""
-      width={52}
-      height={52}
-      style={{ objectFit: "contain" }}
-    />
-  );
-}
-function IconHome() {
-  return (
-    <Image
-      src="/categories/home.png"
-      alt=""
-      width={52}
-      height={52}
-      style={{ objectFit: "contain" }}
-    />
-  );
-}
-function IconIndustrial() {
-  return (
-    <Image
-      src="/categories/industrial.png"
-      alt=""
-      width={52}
-      height={52}
-      style={{ objectFit: "contain" }}
-    />
-  );
-}
-function IconResearch() {
-  return (
-    <Image
-      src="/categories/research.png"
-      alt=""
-      width={52}
-      height={52}
-      style={{ objectFit: "contain" }}
-    />
-  );
-}
-function IconCompanion() {
-  return (
-    <Image
-      src="/categories/companion.png"
-      alt=""
-      width={52}
-      height={52}
-      style={{ objectFit: "contain" }}
-    />
-  );
-}
+  const stop = useCallback(() => {
+    if (raf.current) cancelAnimationFrame(raf.current);
+    raf.current = 0;
+  }, []);
 
-// ── Card ─────────────────────────────────────────────────────
-function Card({ h }: { h: Humanoid }) {
-  return (
-    <article className="flex flex-col gap-2 shrink-0" style={{ width: CARD_W, scrollSnapAlign: "start" }}>
-      <div
-        className="relative w-full overflow-hidden flex items-center justify-center"
-        style={{
-          aspectRatio: "1 / 1",
-          borderRadius: CARD_RADIUS,
-          background: SURFACE,
-        }}
-      >
-        {h.imageUrl && (
-          <Image
-            src={h.imageUrl}
-            alt={h.name}
-            fill
-            sizes={`${CARD_W}px`}
-            className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
-            style={{
-              objectPosition: h.imagePosition ?? "center",
-              padding: h.imageFit === "cover" ? 0 : "10%",
-            }}
-          />
-        )}
-      </div>
-
-      <div className="flex items-center gap-2 px-0.5">
-        <div
-          className="flex-shrink-0 relative overflow-hidden flex items-center justify-center"
-          style={{
-            width: LABEL_LOGO_SIZE,
-            height: LABEL_LOGO_SIZE,
-            borderRadius: CARD_RADIUS * 0.55,
-            background: h.logoUrl ? "transparent" : "#EFEFEF",
-          }}
-        >
-          {h.logoUrl ? (
-            <Image src={h.logoUrl} alt={h.manufacturer} fill className="object-cover" sizes={`${LABEL_LOGO_SIZE}px`} />
-          ) : (
-            <svg width={10} height={10} viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
-              <circle cx="10" cy="5" r="3" fill="var(--c-ink)" />
-              <rect x="7" y="9.5" width="6" height="8" rx="3" fill="var(--c-ink)" />
-            </svg>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[12.7px] font-medium truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2 }}>
-            {h.name}
-            {h.year ? <span style={{ marginLeft: 6, opacity: 0.42, fontWeight: 400 }}>{h.year}</span> : null}
-          </p>
-          <p className="text-[12px] font-medium mt-0.5 truncate" style={{ color: "var(--c-ink)", lineHeight: 1.2, opacity: 0.42 }}>
-            {h.manufacturer}
-          </p>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function Row({ title, subtitle, items }: { title: string; subtitle?: string; items: Humanoid[] }) {
-  if (items.length === 0) return null;
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-3" style={{ paddingLeft: PAGE_X, paddingRight: PAGE_X }}>
-        <div className="min-w-0 flex items-baseline gap-2">
-          <h2 className="text-[13px] font-medium truncate" style={{ color: "var(--c-ink)", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
-            {title}
-          </h2>
-          {subtitle && (
-            <span className="text-[12px] truncate" style={{ color: "var(--c-ink)", opacity: 0.42, lineHeight: 1.2 }}>
-              {subtitle}
-            </span>
-          )}
-        </div>
-        <span className="text-[11px] tabular-nums shrink-0" style={{ color: "var(--c-ink-muted)" }}>
-          {items.length}
-        </span>
-      </div>
-      <div
-        className="flex overflow-x-auto pb-1 scrollbar-hide"
-        style={{
-          gap: CARD_GAP,
-          paddingLeft: PAGE_X,
-          paddingRight: PAGE_X,
-          scrollSnapType: "x mandatory",
-          scrollPaddingLeft: PAGE_X,
-          WebkitOverflowScrolling: "touch",
-        }}
-      >
-        {items.map((h) => (
-          <Card key={h.id} h={h} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// ── Category icon row ─────────────────────────────────────────
-function CategoryRow({
-  active,
-  onChange,
-  counts,
-}: {
-  active: "all" | UseCase;
-  onChange: (k: "all" | UseCase) => void;
-  counts: Record<"all" | UseCase, number>;
-}) {
-  return (
-    <div
-      className="flex overflow-x-auto pb-1 scrollbar-hide"
-      style={{
-        gap: 12,
-        paddingLeft: PAGE_X,
-        paddingRight: PAGE_X,
-        WebkitOverflowScrolling: "touch",
-      }}
-    >
-      {CATEGORIES.map((c) => {
-        const isActive = active === c.key;
-        return (
-          <button
-            key={c.key}
-            type="button"
-            onClick={() => onChange(c.key)}
-            className="flex flex-col items-center shrink-0"
-            style={{ width: 64 }}
-          >
-            <div
-              className="flex items-center justify-center transition-all"
-              style={{
-                width: 58,
-                height: 58,
-                borderRadius: 18,
-                background: isActive ? SURFACE_HOVER : c.tint,
-                boxSizing: "border-box",
-              }}
-            >
-              {c.icon}
-            </div>
-            <span
-              className="text-[11px] font-medium mt-1.5 truncate w-full text-center"
-              style={{
-                color: "var(--c-ink)",
-                opacity: isActive ? 1 : 0.7,
-                letterSpacing: "-0.01em",
-              }}
-            >
-              {c.label}
-            </span>
-            <span className="text-[10px] tabular-nums" style={{ color: "var(--c-ink-muted)" }}>
-              {counts[c.key]}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Quick filter pills ────────────────────────────────────────
-type PillKey = "buy" | "cheap" | "new" | "legends";
-
-const PILLS: { key: PillKey; label: string; icon: React.ReactNode; match: (h: Humanoid) => boolean }[] = [
-  {
-    key: "buy",
-    label: "For sale",
-    icon: (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <path d="M3 5h10l-1 7.5a1 1 0 01-1 .9H5a1 1 0 01-1-.9L3 5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        <path d="M6 5V3.8a2 2 0 014 0V5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-    match: (h) => Boolean(h.purchaseUrl) || (Boolean(h.cost) && h.cost !== "N/A"),
-  },
-  {
-    key: "cheap",
-    label: "Under $25K",
-    icon: (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="5.6" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M9.6 6.4a1.7 1.7 0 00-1.6-.9c-1 0-1.6.5-1.6 1.2 0 1.7 3.4.6 3.4 2.2 0 .8-.7 1.3-1.7 1.3-1 0-1.7-.5-1.9-1.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      </svg>
-    ),
-    match: (h) => {
-      if (!h.cost || h.cost === "N/A") return false;
-      const m = h.cost.match(/\$?([\d.]+)\s*([Kk]|[Mm])?/);
-      if (!m) return false;
-      const n = parseFloat(m[1]);
-      const unit = m[2]?.toLowerCase();
-      const inK = unit === "m" ? n * 1000 : unit === "k" ? n : n / 1000;
-      return inK > 0 && inK < 25;
+  // Instant position — with rubber-band resistance past the ends.
+  const setPos = useCallback(
+    (p: number) => {
+      stop();
+      let next = p;
+      if (next < 0) next = next * 0.35;
+      else if (next > N - 1) next = N - 1 + (next - (N - 1)) * 0.35;
+      pos.current = next;
+      vel.current = 0;
+      target.current = next;
+      notify(next);
     },
-  },
-  {
-    key: "new",
-    label: "New",
-    icon: (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <path d="M8 2l1.4 3.4L13 6.6l-2.6 2.4.8 3.5L8 10.9 4.8 12.5l.8-3.5L3 6.6l3.6-1.2L8 2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" fill="none" />
-      </svg>
-    ),
-    match: (h) => h.year === 2025,
-  },
-  {
-    key: "legends",
-    label: "Legends",
-    icon: (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <path d="M3 5h10v1.5a3 3 0 01-3 3H6a3 3 0 01-3-3V5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        <path d="M3 5l-1 1.5a1.5 1.5 0 001.5 1.5M13 5l1 1.5a1.5 1.5 0 01-1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        <path d="M6.5 9.5v2M9.5 9.5v2M5 12.5h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-    match: (h) => (h.year ?? 9999) < 2020,
-  },
-];
+    [notify, stop]
+  );
 
-function PillRow({ active, onChange }: { active: PillKey | null; onChange: (k: PillKey | null) => void }) {
+  const settleTo = useCallback(
+    (idx: number) => {
+      target.current = clampIdx(idx);
+      start();
+    },
+    [start]
+  );
+
+  const subscribe = useCallback((cb: (p: number) => void) => {
+    subs.current.add(cb);
+    cb(pos.current);
+    return () => {
+      subs.current.delete(cb);
+    };
+  }, []);
+
+  const getPos = useCallback(() => pos.current, []);
+
+  useEffect(() => () => stop(), [stop]);
+
+  return { subscribe, getPos, setPos, settleTo };
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function statusColor(status?: Humanoid["status"]) {
+  switch (status) {
+    case "In Production":
+      return "#34C759";
+    case "Prototype":
+      return "#FF9F0A";
+    case "Concept":
+      return "#0A84FF";
+    case "Anticipated":
+      return "#BF5AF2";
+    case "Discontinued":
+      return INK_MUTED;
+    default:
+      return INK_MUTED;
+  }
+}
+
+function visitTarget(h: Humanoid): { href?: string; label: string } {
+  if (h.purchaseUrl)
+    return { href: withUtm(h.purchaseUrl, h.id), label: "Order" };
+  const href = withUtm(h.infoUrl || h.manufacturerUrl, h.id);
+  return { href, label: "Visit site" };
+}
+
+async function shareRobot(h: Humanoid) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.searchParams.set("h", h.id);
+  const link = url.toString();
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title: `${h.name} — Humanoid Index`, url: link });
+      return;
+    } catch {
+      return; // cancelled
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(link);
+  } catch {
+    /* no-op */
+  }
+}
+
+// ── Card visual (stable; positioned imperatively by the deck) ──
+function DeckCard({ h, width }: { h: Humanoid; width: number }) {
   return (
     <div
-      className="flex overflow-x-auto pb-1 scrollbar-hide"
+      className="relative overflow-hidden flex items-center justify-center"
       style={{
-        gap: 8,
-        paddingLeft: PAGE_X,
-        paddingRight: PAGE_X,
-        WebkitOverflowScrolling: "touch",
-      }}
-    >
-      {PILLS.map((p) => {
-        const isActive = active === p.key;
-        return (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => onChange(isActive ? null : p.key)}
-            className="inline-flex items-center gap-1.5 shrink-0 transition-all"
-            style={{
-              height: 32,
-              padding: "0 12px",
-              borderRadius: 999,
-              fontSize: 13,
-              fontWeight: 500,
-              letterSpacing: "-0.01em",
-              background: isActive ? "var(--c-ink)" : "#fff",
-              color: isActive ? "#fff" : "var(--c-ink)",
-              border: `1px solid ${isActive ? "var(--c-ink)" : "rgba(0,0,0,0.12)"}`,
-            }}
-          >
-            <span aria-hidden style={{ display: "inline-flex", color: isActive ? "#fff" : "var(--c-ink)" }}>
-              {p.icon}
-            </span>
-            {p.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Page ──────────────────────────────────────────────────────
-export default function MobileView() {
-  const list = useMemo(() => humanoids.filter((h) => h.imageUrl), []);
-  const [active, setActive] = useState<"all" | UseCase>("all");
-  const [pill, setPill] = useState<PillKey | null>(null);
-
-  const counts = useMemo(() => {
-    const c: Record<"all" | UseCase, number> = { all: list.length, home: 0, industrial: 0, research: 0, companion: 0 };
-    list.forEach((h) => {
-      const u = USE_CASE_BY_ID[h.id];
-      if (u) c[u] += 1;
-    });
-    return c;
-  }, [list]);
-
-  const pillDef = pill ? PILLS.find((p) => p.key === pill) : null;
-  const filtered = list
-    .filter((h) => active === "all" || USE_CASE_BY_ID[h.id] === active)
-    .filter((h) => (pillDef ? pillDef.match(h) : true));
-
-  // For "all", show the curated multi-rail layout. For a category, show a single rail.
-  const newest = filtered.filter((h) => h.year === 2025);
-  const inProduction = filtered.filter((h) => h.status === "In Production");
-  const legends = filtered
-    .filter((h) => (h.year ?? 9999) < 2020)
-    .sort((a, b) => (a.year ?? 0) - (b.year ?? 0));
-  const featuredIds = new Set([...newest, ...inProduction, ...legends].map((h) => h.id));
-  const everythingElse = filtered.filter((h) => !featuredIds.has(h.id));
-
-  const activeLabel = CATEGORIES.find((c) => c.key === active)?.label ?? "All";
-
-  return (
-    <main
-      className="w-full min-h-[100dvh]"
-      style={{
-        fontFamily: "var(--font-inter), system-ui, sans-serif",
-        background: "#fff",
-        color: "var(--c-ink)",
-      }}
-    >
-      <header
-        className="sticky top-0 z-30 flex items-center justify-between"
-        style={{
-          paddingLeft: PAGE_X,
-          paddingRight: PAGE_X,
-          height: 48,
-          background: "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-        }}
-      >
-        <span
-          role="img"
-          aria-label="Humanoid Index"
-          style={{
-            height: 11,
-            width: 117,
-            display: "block",
-            background: "rgba(95, 96, 89, 0.9)",
-            WebkitMaskImage: "url(/HI-logo.svg)",
-            maskImage: "url(/HI-logo.svg)",
-            WebkitMaskRepeat: "no-repeat",
-            maskRepeat: "no-repeat",
-            WebkitMaskSize: "contain",
-            maskSize: "contain",
-            WebkitMaskPosition: "left center",
-            maskPosition: "left center",
-          }}
-        />
-        <span className="text-[11px] tabular-nums" style={{ color: "var(--c-ink-muted)" }}>
-          {list.length}
-        </span>
-      </header>
-
-      <div className="pt-3 pb-2">
-        <CategoryRow active={active} onChange={setActive} counts={counts} />
-      </div>
-
-      <div className="pb-2">
-        <PillRow active={pill} onChange={setPill} />
-      </div>
-
-      <div className="flex flex-col gap-7 pt-2 pb-6">
-        {active === "all" && pill === null ? (
-          <>
-            <Row title="New in 2025" subtitle="The freshest humanoids." items={newest} />
-            <Row title="In production" subtitle="Available to buy or deploy." items={inProduction} />
-            <Row title="Legends" subtitle="The robots that got us here." items={legends} />
-            {everythingElse.length > 0 && <Row title="Everything else" items={everythingElse} />}
-          </>
-        ) : (
-          <Row
-            title={pillDef?.label ?? activeLabel}
-            subtitle={`${filtered.length} robots`}
-            items={filtered}
-          />
-        )}
-      </div>
-
-      {/* Browse all — 2-column grid (DoorDash Browse style) */}
-      <BrowseGrid items={list} />
-    </main>
-  );
-}
-
-function BrowseGrid({ items }: { items: Humanoid[] }) {
-  return (
-    <section className="flex flex-col gap-3 pt-4 pb-12">
-      <div style={{ paddingLeft: PAGE_X, paddingRight: PAGE_X }}>
-        <h2
-          className="text-[20px] font-semibold tracking-tight"
-          style={{ color: "var(--c-ink)", letterSpacing: "-0.02em" }}
-        >
-          Browse all
-        </h2>
-      </div>
-      <div
-        className="grid gap-2.5"
-        style={{
-          paddingLeft: PAGE_X,
-          paddingRight: PAGE_X,
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-        }}
-      >
-        {items.map((h) => (
-          <BrowseTile key={h.id} h={h} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function BrowseTile({ h }: { h: Humanoid }) {
-  return (
-    <div
-      className="relative overflow-hidden"
-      style={{
-        aspectRatio: "1.32 / 1",
-        borderRadius: 16,
+        width,
+        height: "100%",
+        borderRadius: CARD_RADIUS,
         background: SURFACE,
       }}
     >
-      <div className="absolute top-0 left-0 right-0 z-10" style={{ padding: "12px 14px" }}>
-        <p
-          className="text-[15px] font-semibold truncate"
-          style={{ color: "var(--c-ink)", letterSpacing: "-0.02em", lineHeight: 1.15 }}
-        >
-          {h.name}
-        </p>
-        <p
-          className="text-[11px] font-medium truncate mt-0.5"
-          style={{ color: "var(--c-ink)", opacity: 0.42, lineHeight: 1.15 }}
-        >
-          {h.manufacturer}
-        </p>
-      </div>
       {h.imageUrl && (
         <Image
           src={h.imageUrl}
           alt={h.name}
           fill
-          sizes="50vw"
+          sizes={`${Math.round(width)}px`}
+          priority={false}
           className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
           style={{
-            objectPosition: "bottom right",
-            // Push the image into the bottom-right with a slight bleed off the edges
-            padding: h.imageFit === "cover" ? 0 : "32% 0 0 30%",
+            objectPosition: h.imagePosition ?? "center",
+            padding: h.imageFit === "cover" ? 0 : "9%",
+            transform: h.imageScale ? `scale(${h.imageScale})` : undefined,
           }}
+          draggable={false}
         />
       )}
+    </div>
+  );
+}
+
+// ── Detail sheet ──────────────────────────────────────────────
+function StatRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      className="flex items-baseline justify-between"
+      style={{ padding: "11px 0", borderTop: "1px solid rgba(0,0,0,0.05)" }}
+    >
+      <span style={{ fontSize: 13, color: INK_MUTED }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: INK }}>{value}</span>
+    </div>
+  );
+}
+
+function DetailSheet({ h, onClose }: { h: Humanoid; onClose: () => void }) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const drag = useRef({ active: false, startY: 0, dy: 0 });
+  const desc = useMemo(() => getRobotDescription(h), [h]);
+  const visit = visitTarget(h);
+
+  const rows: { label: string; value: string }[] = [];
+  if (h.height) rows.push({ label: "Height", value: `${h.height} cm` });
+  if (h.weight) rows.push({ label: "Weight", value: `${h.weight} kg` });
+  if (h.maxSpeed) rows.push({ label: "Top speed", value: `${h.maxSpeed} m/s` });
+  if (h.dof) rows.push({ label: "Degrees of freedom", value: `${h.dof}` });
+  if (h.cost && h.cost !== "N/A") rows.push({ label: "Cost", value: h.cost });
+  if (h.status) rows.push({ label: "Status", value: h.status });
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    drag.current = { active: true, startY: e.clientY, dy: 0 };
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!drag.current.active) return;
+    const dy = Math.max(0, e.clientY - drag.current.startY);
+    drag.current.dy = dy;
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = "none";
+      sheetRef.current.style.transform = `translateY(${dy}px)`;
+    }
+  };
+  const onPointerUp = () => {
+    if (!drag.current.active) return;
+    const shouldClose = drag.current.dy > 120;
+    drag.current.active = false;
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = `transform 320ms ${EASE_SHEET}`;
+      sheetRef.current.style.transform = shouldClose
+        ? "translateY(100%)"
+        : "translateY(0)";
+    }
+    if (shouldClose) window.setTimeout(onClose, 260);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 flex flex-col justify-end"
+      style={{ zIndex: 200, animation: `mv-backdrop-in 260ms ${EASE_OUT} both` }}
+    >
+      <button
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0"
+        style={{ background: "rgba(20,20,24,0.28)", backdropFilter: "blur(2px)" }}
+      />
+      <div
+        ref={sheetRef}
+        className="relative bg-white overflow-hidden"
+        style={{
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          maxHeight: "88dvh",
+          animation: `mv-sheet-in 380ms ${EASE_SHEET} both`,
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.16)",
+        }}
+      >
+        {/* grab handle */}
+        <div
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          style={{ padding: "12px 0 4px", touchAction: "none", cursor: "grab" }}
+          className="flex justify-center"
+        >
+          <div
+            style={{
+              width: 38,
+              height: 5,
+              borderRadius: 3,
+              background: "rgba(0,0,0,0.14)",
+            }}
+          />
+        </div>
+
+        <div
+          className="overflow-y-auto"
+          style={{ padding: "8px 22px 34px", maxHeight: "calc(88dvh - 28px)" }}
+        >
+          <div className="flex items-center gap-3" style={{ marginBottom: 16 }}>
+            {h.logoUrl && (
+              <div
+                className="relative overflow-hidden flex-shrink-0"
+                style={{ width: 34, height: 34, borderRadius: 9 }}
+              >
+                <Image src={h.logoUrl} alt={h.manufacturer} fill sizes="34px" className="object-contain" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h2 style={{ fontSize: 22, fontWeight: 600, color: INK, lineHeight: 1.1 }}>
+                {h.name}
+              </h2>
+              <p style={{ fontSize: 13, color: INK_BODY, marginTop: 2 }}>
+                {h.manufacturer}
+                {h.year ? ` · ${h.year}` : ""}
+              </p>
+            </div>
+          </div>
+
+          {desc.text && (
+            <p style={{ fontSize: 15, lineHeight: 1.5, color: INK_BODY, marginBottom: 18 }}>
+              {desc.long || desc.text}
+            </p>
+          )}
+
+          {h.tags && h.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2" style={{ marginBottom: 18 }}>
+              {h.tags.map((t) => (
+                <span
+                  key={t}
+                  style={{
+                    fontSize: 12.5,
+                    color: INK_BODY,
+                    padding: "5px 11px",
+                    borderRadius: 999,
+                    background: SURFACE,
+                  }}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div style={{ marginBottom: 22 }}>
+            {rows.map((r) => (
+              <StatRow key={r.label} label={r.label} value={r.value} />
+            ))}
+          </div>
+
+          <div className="flex gap-3">
+            {visit.href && (
+              <a
+                href={visit.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center"
+                style={{
+                  height: 50,
+                  borderRadius: 15,
+                  background: INK,
+                  color: "white",
+                  fontSize: 15,
+                  fontWeight: 500,
+                }}
+              >
+                {visit.label}
+              </a>
+            )}
+            <button
+              onClick={() => shareRobot(h)}
+              className="flex items-center justify-center"
+              style={{
+                width: visit.href ? 50 : undefined,
+                flex: visit.href ? undefined : 1,
+                height: 50,
+                paddingInline: visit.href ? 0 : 20,
+                borderRadius: 15,
+                background: SURFACE,
+                color: INK,
+                fontSize: 15,
+                fontWeight: 500,
+              }}
+            >
+              {visit.href ? <ShareGlyph /> : "Share"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Glyphs ────────────────────────────────────────────────────
+function ShareGlyph() {
+  return (
+    <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 15V3M12 3l-4 4M12 3l4 4" />
+      <path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7" />
+    </svg>
+  );
+}
+function ShuffleGlyph() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={INK_BODY} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+    </svg>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────
+export default function MobileView() {
+  const deckRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [dims, setDims] = useState({ w: 0, h: 0 });
+  const [active, setActive] = useState(0);
+  const [detail, setDetail] = useState<Humanoid | null>(null);
+
+  const deck = useDeck(setActive);
+
+  // Measure the deck area.
+  useLayoutEffect(() => {
+    const el = deckRef.current;
+    if (!el) return;
+    const measure = () => setDims({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const cardW = Math.min(320, dims.w * CARD_W_FRAC);
+  const stride = dims.w * STRIDE_FRAC;
+
+  // Position every card from the current spring position.
+  useEffect(() => {
+    if (!dims.w) return;
+    const layout = (p: number) => {
+      for (let i = 0; i < N; i++) {
+        const node = cardRefs.current[i];
+        if (!node) continue;
+        const offset = i - p;
+        const abs = Math.abs(offset);
+        if (abs > 2.6) {
+          node.style.opacity = "0";
+          node.style.pointerEvents = "none";
+          continue;
+        }
+        const clamped = Math.min(abs, 1);
+        const scale = 1 - clamped * SIDE_SCALE;
+        const dip = ARC_DEPTH * Math.min(abs, 2);
+        const opacity = 1 - Math.min(abs, 1.5) * (SIDE_FADE / 1.5);
+        node.style.transform = `translate(-50%, -50%) translateX(${offset * stride}px) translateY(${dip}px) scale(${scale})`;
+        node.style.opacity = String(Math.max(0, opacity));
+        node.style.zIndex = String(100 - Math.round(abs * 10));
+        node.style.pointerEvents = "auto";
+      }
+    };
+    return deck.subscribe(layout);
+  }, [deck, dims.w, stride]);
+
+  // Drag / flick.
+  const gesture = useRef({
+    active: false,
+    startX: 0,
+    startPos: 0,
+    moved: false,
+    lastX: 0,
+    lastT: 0,
+    vx: 0,
+  });
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    gesture.current = {
+      active: true,
+      startX: e.clientX,
+      startPos: deck.getPos(),
+      moved: false,
+      lastX: e.clientX,
+      lastT: e.timeStamp,
+      vx: 0,
+    };
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const g = gesture.current;
+    if (!g.active) return;
+    const dx = e.clientX - g.startX;
+    if (Math.abs(dx) > TAP_SLOP) g.moved = true;
+    const dt = e.timeStamp - g.lastT;
+    if (dt > 0) g.vx = (e.clientX - g.lastX) / dt; // px per ms
+    g.lastX = e.clientX;
+    g.lastT = e.timeStamp;
+    deck.setPos(g.startPos - dx / stride);
+  };
+
+  const onPointerUp = () => {
+    const g = gesture.current;
+    if (!g.active) return;
+    g.active = false;
+    if (!g.moved) return; // tap handled by the card's onClick
+    const projected = deck.getPos() - (g.vx * FLICK) / stride;
+    deck.settleTo(Math.round(projected));
+  };
+
+  const onCardTap = (i: number) => {
+    if (gesture.current.moved) return;
+    if (i === active) setDetail(humanoids[i]);
+    else deck.settleTo(i);
+  };
+
+  const shuffle = useCallback(() => {
+    let next = active;
+    while (next === active && N > 1) next = Math.floor(Math.random() * N);
+    deck.settleTo(next);
+  }, [active, deck]);
+
+  const current = humanoids[active];
+
+  return (
+    <main
+      className="relative flex flex-col bg-white overflow-hidden"
+      style={{
+        height: "100dvh",
+        fontFamily: "var(--font-inter), system-ui, sans-serif",
+        color: INK,
+      }}
+    >
+      {/* Header */}
+      <header
+        className="flex items-center justify-between flex-shrink-0"
+        style={{ padding: "16px 20px 6px" }}
+      >
+        <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>
+          Humanoid Index
+        </span>
+        <button
+          onClick={shuffle}
+          aria-label="Shuffle"
+          className="flex items-center justify-center"
+          style={{ width: 38, height: 38, borderRadius: 999, background: SURFACE }}
+        >
+          <ShuffleGlyph />
+        </button>
+      </header>
+
+      {/* Deck */}
+      <div
+        ref={deckRef}
+        className="relative flex-1 overflow-hidden select-none"
+        style={{ touchAction: "pan-y", minHeight: 0, isolation: "isolate" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        {dims.w > 0 &&
+          humanoids.map((h, i) => (
+            <div
+              key={h.id}
+              ref={(el) => {
+                cardRefs.current[i] = el;
+              }}
+              className="absolute"
+              style={{
+                left: "50%",
+                top: "50%",
+                width: cardW,
+                height: "82%",
+                willChange: "transform, opacity",
+              }}
+              onClick={() => onCardTap(i)}
+            >
+              <DeckCard h={h} width={cardW} />
+            </div>
+          ))}
+      </div>
+
+      {/* Footer — the centered robot */}
+      <footer
+        className="flex-shrink-0"
+        style={{ padding: "14px 24px calc(env(safe-area-inset-bottom) + 20px)" }}
+      >
+        {current && (
+          <div key={current.id} style={{ animation: `mv-copy-in 260ms ${EASE_OUT} both` }}>
+            <div className="flex items-baseline gap-2">
+              <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: INK }}>
+                {current.name}
+              </h1>
+              {current.year && (
+                <span style={{ fontSize: 15, color: INK_MUTED, fontWeight: 400 }}>
+                  {current.year}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2" style={{ marginTop: 3 }}>
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 999,
+                  background: statusColor(current.status),
+                }}
+              />
+              <span style={{ fontSize: 14, color: INK_BODY }}>{current.manufacturer}</span>
+              {current.useCase && (
+                <>
+                  <span style={{ color: INK_MUTED }}>·</span>
+                  <span style={{ fontSize: 14, color: INK_BODY }}>{current.useCase}</span>
+                </>
+              )}
+            </div>
+
+            {/* Compact stat strip */}
+            <div className="flex gap-5" style={{ marginTop: 14 }}>
+              <Stat label="Height" value={current.height ? `${current.height} cm` : "—"} />
+              <Stat label="Weight" value={current.weight ? `${current.weight} kg` : "—"} />
+              <Stat
+                label={current.maxSpeed ? "Speed" : "DOF"}
+                value={current.maxSpeed ? `${current.maxSpeed} m/s` : current.dof ? `${current.dof}` : "—"}
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3" style={{ marginTop: 18 }}>
+              <button
+                onClick={() => setDetail(current)}
+                className="flex-1 flex items-center justify-center"
+                style={{ height: 48, borderRadius: 14, background: INK, color: "white", fontSize: 15, fontWeight: 500 }}
+              >
+                Details
+              </button>
+              <button
+                onClick={() => shareRobot(current)}
+                aria-label="Share"
+                className="flex items-center justify-center"
+                style={{ width: 48, height: 48, borderRadius: 14, background: SURFACE }}
+              >
+                <ShareGlyph />
+              </button>
+            </div>
+          </div>
+        )}
+      </footer>
+
+      {detail && <DetailSheet h={detail} onClose={() => setDetail(null)} />}
+
+      <style jsx global>{`
+        @keyframes mv-copy-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes mv-sheet-in {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        @keyframes mv-backdrop-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
+    </main>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <span style={{ fontSize: 11, color: INK_MUTED, letterSpacing: "0.01em" }}>{label}</span>
+      <span style={{ fontSize: 16, fontWeight: 500, color: INK, marginTop: 2 }}>{value}</span>
     </div>
   );
 }
