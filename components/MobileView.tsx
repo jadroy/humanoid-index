@@ -1,14 +1,17 @@
 "use client";
 
-// Mobile experience — a horizontal spring deck.
+// Mobile experience — a Cover Flow deck.
 //
-// The desktop signature is the horizontal, spring-loaded ribbon of cards along
-// an arc. On mobile we keep that DNA instead of flattening it into a vertical
-// feed: one robot centered, neighbors peeking along a subtle arc, thumb-swipe
-// left/right that tracks the finger 1:1 then spring-settles with a flick.
+// The desktop signature is a horizontal, spring-loaded ribbon of cards along an
+// arc. On mobile we translate that into a Cover Flow: one robot centered and
+// flat, neighbors fanned along a 3D arc — each tilting to face center as it
+// recedes. Thumb-swipe tracks the finger, then settles with a flick; a scrub
+// rail flies across the whole index.
 //
-// Physics mirror hooks/useSpring (stiffness 0.22 / damping 0.72 — the "snappy"
-// preset) but run purely on refs + a subscribe loop, so scrolling never touches
+// Motion is a critically-damped settle (SmoothDamp), not a spring: the finger's
+// release velocity carries straight into it so a flick feels swift and
+// effortless, it decelerates on a smooth curve, and it never overshoots — no
+// bounce. Runs purely on refs + a subscribe loop, so scrolling never touches
 // React state per frame.
 
 import {
@@ -27,21 +30,42 @@ import { getRobotDescription } from "@/lib/robotDescription";
 import { INK, INK_BODY, INK_MUTED, SURFACE } from "@/lib/design/tokens";
 
 // ── Tuning ────────────────────────────────────────────────────
-const STIFFNESS = 0.22;
-const DAMPING = 0.72;
-const CARD_W_FRAC = 0.68; // card width as a fraction of the deck width
-const STRIDE_FRAC = 0.74; // spacing between card centers (fraction of deck width)
-const ARC_DEPTH = 26; // px a neighbor dips below the centered card
-const SIDE_SCALE = 0.12; // how much a neighbor shrinks
-const SIDE_FADE = 0.55; // how much a neighbor fades
-const CARD_RADIUS = 26;
-const FLICK = 90; // ms of velocity projected on release → flick distance
+const SMOOTH_TIME = 0.24; // s — critically-damped settle: swift, effortless, never overshoots
+const DT = 1 / 60; // s per frame, SmoothDamp's time step
+// ── Cover Flow geometry ──
+const CARD_W_FRAC = 0.62; // card width as a fraction of deck width
+const CENTER_GAP_FRAC = 0.52; // center → first sibling (also the per-card drag stride)
+const STACK_GAP_FRAC = 0.12; // each further sibling adds this much X (the fan stack)
+const ROT = 52; // deg — how far side cards tilt to face center
+const DEPTH = 120; // px — z push-back at the first sibling
+const STACK_Z = 46; // px — extra z per further sibling
+const REACH = 3.2; // cards visible each side before the hard cutoff
+const SIDE_FADE = 0.62; // hero → edge opacity drop
+const PERSPECTIVE = 1000; // px — 3D depth of field
+const CARD_RADIUS = 20; // matches web card radius
+const FLICK_PROJECT = 0.14; // s of release velocity folded into the landing card
+const MAX_FLICK = 2; // most cards a single hard flick can cross
 const TAP_SLOP = 8; // px of movement below which a pointer-up counts as a tap
-const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
+const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)"; // the web's signature ease
 const EASE_SHEET = "cubic-bezier(0.32, 0.72, 0, 1)";
 
 const N = humanoids.length;
 const clampIdx = (v: number) => Math.max(0, Math.min(N - 1, v));
+
+// Material — the web's glass-chip language: a light fill with a hairline edge and
+// a whisper of elevation. (Heavy backdrop blur is reserved for the sheets, which
+// sit over dimmed content; footer chips sit on white, where blur reads as nothing.)
+const CHIP = {
+  background: "#FFFFFF",
+  boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
+} as const;
+
+// One small type scale — keep text variance low, favor consistency.
+const TYPE = {
+  title: { fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em" },
+  value: { fontSize: 15, fontWeight: 500 },
+  chip: { fontSize: 12.5, fontWeight: 450 },
+} as const;
 
 // ── Deck spring ───────────────────────────────────────────────
 // A tiny spring over "card index" space. setPos() is instant (finger tracking,
@@ -66,21 +90,35 @@ function useDeck(onIndex: (i: number) => void) {
     }
   }, []);
 
+  // Critically-damped smoothing (Unity's SmoothDamp). Carries the current
+  // velocity so a flick continues into the settle, decelerates on a smooth
+  // curve, and — by construction — never overshoots. No spring, no bounce.
   const tick = useCallback(() => {
-    const force = (target.current - pos.current) * STIFFNESS;
-    vel.current = (vel.current + force) * DAMPING;
-    pos.current += vel.current;
-    const settled =
-      Math.abs(pos.current - target.current) < 0.0005 &&
-      Math.abs(vel.current) < 0.0005;
-    if (settled) {
-      pos.current = target.current;
+    const to = target.current;
+    const current = pos.current;
+    const omega = 2 / SMOOTH_TIME;
+    const x = omega * DT;
+    const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+    const change = current - to;
+    const temp = (vel.current + omega * change) * DT;
+    let v = (vel.current - omega * temp) * exp;
+    let p = to + (change + temp) * exp;
+    // Clamp the exact frame it would cross the target — stops dead, never rebounds.
+    if ((change < 0) === (p > to)) {
+      p = to;
+      v = 0;
+    }
+    vel.current = v;
+    pos.current = p;
+    if (Math.abs(p - to) < 0.0005 && Math.abs(v) < 0.0005) {
+      pos.current = to;
       vel.current = 0;
-      notify(pos.current);
+      notify(to);
       raf.current = 0;
+      navigator.vibrate?.(4); // a light tick as a card lands (Android / PWA; iOS no-ops)
       return;
     }
-    notify(pos.current);
+    notify(p);
     raf.current = requestAnimationFrame(tick);
   }, [notify]);
 
@@ -116,6 +154,39 @@ function useDeck(onIndex: (i: number) => void) {
     [start]
   );
 
+  // Instant jump — no animation. For deeplink hydration on mount.
+  const snapTo = useCallback(
+    (idx: number) => {
+      stop();
+      const c = clampIdx(idx);
+      pos.current = c;
+      vel.current = 0;
+      target.current = c;
+      notify(c);
+    },
+    [notify, stop]
+  );
+
+  // Release with the finger's velocity (index-units per ms, sign-correct: a
+  // positive value advances the deck). The velocity is handed straight to the
+  // SmoothDamp loop so the settle *continues* the flick instead of restarting
+  // from zero — swift and effortless, and it eases to rest without a rebound.
+  const release = useCallback(
+    (vIdxPerMs: number) => {
+      const vSec = vIdxPerMs * 1000; // index/sec — SmoothDamp's velocity unit
+      const base = Math.round(pos.current);
+      const landing = pos.current + vSec * FLICK_PROJECT;
+      const idx = Math.max(
+        base - MAX_FLICK,
+        Math.min(base + MAX_FLICK, Math.round(landing))
+      );
+      target.current = clampIdx(idx);
+      vel.current = vSec;
+      start();
+    },
+    [start]
+  );
+
   const subscribe = useCallback((cb: (p: number) => void) => {
     subs.current.add(cb);
     cb(pos.current);
@@ -128,24 +199,23 @@ function useDeck(onIndex: (i: number) => void) {
 
   useEffect(() => () => stop(), [stop]);
 
-  return { subscribe, getPos, setPos, settleTo };
+  return { subscribe, getPos, setPos, settleTo, snapTo, release };
 }
 
 // ── Helpers ───────────────────────────────────────────────────
+// Status dot colors — matched to the web mapping exactly.
 function statusColor(status?: Humanoid["status"]) {
   switch (status) {
     case "In Production":
-      return "#34C759";
+      return "#34c759";
     case "Prototype":
-      return "#FF9F0A";
+      return "#ff9500";
     case "Concept":
-      return "#0A84FF";
+      return "#5e5ce6";
     case "Anticipated":
-      return "#BF5AF2";
-    case "Discontinued":
-      return INK_MUTED;
+      return "#af52de";
     default:
-      return INK_MUTED;
+      return "#8e8e93";
   }
 }
 
@@ -156,14 +226,10 @@ function visitTarget(h: Humanoid): { href?: string; label: string } {
   return { href, label: "Visit site" };
 }
 
-async function shareRobot(h: Humanoid) {
-  const url = new URL(window.location.href);
-  url.search = "";
-  url.searchParams.set("h", h.id);
-  const link = url.toString();
+async function doShare(title: string, link: string) {
   if (typeof navigator.share === "function") {
     try {
-      await navigator.share({ title: `${h.name} — Humanoid Index`, url: link });
+      await navigator.share({ title, url: link });
       return;
     } catch {
       return; // cancelled
@@ -176,6 +242,20 @@ async function shareRobot(h: Humanoid) {
   }
 }
 
+async function shareRobot(h: Humanoid) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.searchParams.set("h", h.id);
+  await doShare(`${h.name} — Humanoid Index`, url.toString());
+}
+
+async function shareCompare(a: Humanoid, b: Humanoid) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.searchParams.set("compare", `${a.id},${b.id}`);
+  await doShare(`${a.name} vs ${b.name} — Humanoid Index`, url.toString());
+}
+
 // ── Card visual (stable; positioned imperatively by the deck) ──
 function DeckCard({ h, width }: { h: Humanoid; width: number }) {
   return (
@@ -185,7 +265,7 @@ function DeckCard({ h, width }: { h: Humanoid; width: number }) {
         width,
         height: "100%",
         borderRadius: CARD_RADIUS,
-        background: SURFACE,
+        background: "#F9F9F9",
       }}
     >
       {h.imageUrl && (
@@ -316,7 +396,7 @@ function DetailSheet({ h, onClose }: { h: Humanoid; onClose: () => void }) {
               </div>
             )}
             <div className="min-w-0">
-              <h2 style={{ fontSize: 22, fontWeight: 600, color: INK, lineHeight: 1.1 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", color: INK, lineHeight: 1.1 }}>
                 {h.name}
               </h2>
               <p style={{ fontSize: 13, color: INK_BODY, marginTop: 2 }}>
@@ -339,10 +419,11 @@ function DetailSheet({ h, onClose }: { h: Humanoid; onClose: () => void }) {
                   key={t}
                   style={{
                     fontSize: 12.5,
+                    fontWeight: 450,
                     color: INK_BODY,
                     padding: "5px 11px",
                     borderRadius: 999,
-                    background: SURFACE,
+                    border: "1px solid rgba(0,0,0,0.09)",
                   }}
                 >
                   {t}
@@ -363,7 +444,7 @@ function DetailSheet({ h, onClose }: { h: Humanoid; onClose: () => void }) {
                 href={visit.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center"
+                className="mv-tap flex-1 flex items-center justify-center"
                 style={{
                   height: 50,
                   borderRadius: 15,
@@ -378,14 +459,15 @@ function DetailSheet({ h, onClose }: { h: Humanoid; onClose: () => void }) {
             )}
             <button
               onClick={() => shareRobot(h)}
-              className="flex items-center justify-center"
+              className="mv-tap flex items-center justify-center"
               style={{
                 width: visit.href ? 50 : undefined,
                 flex: visit.href ? undefined : 1,
                 height: 50,
                 paddingInline: visit.href ? 0 : 20,
                 borderRadius: 15,
-                background: SURFACE,
+                background: CHIP.background,
+                boxShadow: CHIP.boxShadow,
                 color: INK,
                 fontSize: 15,
                 fontWeight: 500,
@@ -435,19 +517,27 @@ function CompareMini({ h }: { h: Humanoid }) {
   );
 }
 
-function CompareRow({ label, a, b }: { label: string; a: string; b: string }) {
+function CompareRow({ label, a, b, win }: { label: string; a: string; b: string; win?: "a" | "b" }) {
+  // The leading value reads bold/ink; the trailing one recedes to body ink —
+  // the same "highlight the max" structure the web compare panel uses.
   return (
     <div
       className="flex items-center"
       style={{ padding: "10px 0", borderTop: "1px solid rgba(0,0,0,0.05)" }}
     >
-      <span className="flex-1 text-right" style={{ fontSize: 14, fontWeight: 500, color: INK }}>
+      <span
+        className="flex-1 text-right"
+        style={{ fontSize: 14, fontWeight: win === "a" ? 600 : 500, color: win && win !== "a" ? INK_BODY : INK }}
+      >
         {a}
       </span>
       <span style={{ width: 92, textAlign: "center", fontSize: 11.5, color: INK_MUTED }}>
         {label}
       </span>
-      <span className="flex-1" style={{ fontSize: 14, fontWeight: 500, color: INK }}>
+      <span
+        className="flex-1"
+        style={{ fontSize: 14, fontWeight: win === "b" ? 600 : 500, color: win && win !== "b" ? INK_BODY : INK }}
+      >
         {b}
       </span>
     </div>
@@ -456,9 +546,21 @@ function CompareRow({ label, a, b }: { label: string; a: string; b: string }) {
 
 const priceOf = (h: Humanoid) => (h.cost && h.cost !== "N/A" ? h.cost : "—");
 
-function CompareSheet({ primary, onClose }: { primary: Humanoid; onClose: () => void }) {
+function CompareSheet({
+  primary,
+  initialSecondaryId,
+  onClose,
+}: {
+  primary: Humanoid;
+  initialSecondaryId?: string;
+  onClose: () => void;
+}) {
   const others = useMemo(() => humanoids.filter((h) => h.id !== primary.id), [primary.id]);
-  const [secId, setSecId] = useState(others[0]?.id);
+  const [secId, setSecId] = useState(
+    initialSecondaryId && initialSecondaryId !== primary.id && humanoids.some((h) => h.id === initialSecondaryId)
+      ? initialSecondaryId
+      : others[0]?.id
+  );
   const secondary = humanoids.find((h) => h.id === secId) ?? others[0];
   const blurb = useMemo(
     () => (secondary ? getCompareBlurb(primary, secondary) : null),
@@ -467,11 +569,15 @@ function CompareSheet({ primary, onClose }: { primary: Humanoid; onClose: () => 
 
   if (!secondary) return null;
 
-  const rows = [
-    { label: "Height", a: primary.height ? `${primary.height} cm` : "—", b: secondary.height ? `${secondary.height} cm` : "—" },
-    { label: "Weight", a: primary.weight ? `${primary.weight} kg` : "—", b: secondary.weight ? `${secondary.weight} kg` : "—" },
-    { label: "Speed", a: primary.maxSpeed ? `${primary.maxSpeed} m/s` : "—", b: secondary.maxSpeed ? `${secondary.maxSpeed} m/s` : "—" },
-    { label: "DOF", a: primary.dof ? `${primary.dof}` : "—", b: secondary.dof ? `${secondary.dof}` : "—" },
+  // Highlight the larger of two numbers (matches the web's "max value bold").
+  const higher = (x?: number, y?: number): "a" | "b" | undefined =>
+    x == null || y == null || x === y ? undefined : x > y ? "a" : "b";
+
+  const rows: { label: string; a: string; b: string; win?: "a" | "b" }[] = [
+    { label: "Height", a: primary.height ? `${primary.height} cm` : "—", b: secondary.height ? `${secondary.height} cm` : "—", win: higher(primary.height, secondary.height) },
+    { label: "Weight", a: primary.weight ? `${primary.weight} kg` : "—", b: secondary.weight ? `${secondary.weight} kg` : "—", win: higher(primary.weight, secondary.weight) },
+    { label: "Speed", a: primary.maxSpeed ? `${primary.maxSpeed} m/s` : "—", b: secondary.maxSpeed ? `${secondary.maxSpeed} m/s` : "—", win: higher(primary.maxSpeed, secondary.maxSpeed) },
+    { label: "DOF", a: primary.dof ? `${primary.dof}` : "—", b: secondary.dof ? `${secondary.dof}` : "—", win: higher(primary.dof, secondary.dof) },
     { label: "Price", a: priceOf(primary), b: priceOf(secondary) },
     { label: "Status", a: primary.status ?? "—", b: secondary.status ?? "—" },
   ];
@@ -498,15 +604,25 @@ function CompareSheet({ primary, onClose }: { primary: Humanoid; onClose: () => 
         }}
       >
         <div className="flex items-center justify-between flex-shrink-0" style={{ padding: "18px 22px 12px" }}>
-          <h2 style={{ fontSize: 19, fontWeight: 600, color: INK }}>Compare</h2>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="flex items-center justify-center"
-            style={{ width: 32, height: 32, borderRadius: 999, background: SURFACE }}
-          >
-            <CloseGlyph />
-          </button>
+          <h2 style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-0.01em", color: INK }}>Compare</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => shareCompare(primary, secondary)}
+              aria-label="Share comparison"
+              className="mv-tap flex items-center justify-center"
+              style={{ ...CHIP, width: 32, height: 32, borderRadius: 999 }}
+            >
+              <ShareGlyph size={15} />
+            </button>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="mv-tap flex items-center justify-center"
+              style={{ ...CHIP, width: 32, height: 32, borderRadius: 999 }}
+            >
+              <CloseGlyph />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-y-auto" style={{ padding: "0 22px calc(env(safe-area-inset-bottom) + 24px)" }}>
@@ -517,13 +633,13 @@ function CompareSheet({ primary, onClose }: { primary: Humanoid; onClose: () => 
 
           <div style={{ marginTop: 20 }}>
             {rows.map((r) => (
-              <CompareRow key={r.label} label={r.label} a={r.a} b={r.b} />
+              <CompareRow key={r.label} label={r.label} a={r.a} b={r.b} win={r.win} />
             ))}
           </div>
 
           {blurb?.text && (
             <p style={{ fontSize: 14.5, lineHeight: 1.55, color: INK_BODY, marginTop: 20 }}>
-              {blurb.text}
+              {blurb.long || blurb.text}
             </p>
           )}
 
@@ -588,9 +704,9 @@ function CloseGlyph() {
     </svg>
   );
 }
-function ShareGlyph() {
+function ShareGlyph({ size = 19 }: { size?: number }) {
   return (
-    <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 15V3M12 3l-4 4M12 3l4 4" />
       <path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7" />
     </svg>
@@ -604,6 +720,150 @@ function ShuffleGlyph() {
   );
 }
 
+// ── Chip ──────────────────────────────────────────────────────
+// One consistent label pill — hairline outline, muted ink, optional status dot.
+function Chip({ children, dot, pulse }: { children: string; dot?: string; pulse?: boolean }) {
+  return (
+    <span
+      className="inline-flex items-center"
+      style={{ ...TYPE.chip, color: INK_BODY, gap: 6, padding: "4px 10px", borderRadius: 999, border: "1px solid rgba(0,0,0,0.09)" }}
+    >
+      {dot && (
+        <span className="relative inline-flex" style={{ width: 6, height: 6 }}>
+          {pulse && (
+            <span style={{ position: "absolute", inset: 0, borderRadius: 999, background: dot, animation: "mv-ping 1.9s ease-out infinite" }} />
+          )}
+          <span style={{ position: "relative", width: 6, height: 6, borderRadius: 999, background: dot }} />
+        </span>
+      )}
+      {children}
+    </span>
+  );
+}
+
+// ── Intro ─────────────────────────────────────────────────────
+// A brief branded moment on first paint — the logo mark with a drawing ring —
+// that dissolves to reveal the deck. Mirrors the web intro, tuned shorter for the
+// phone. Tap to skip; skipped entirely under reduced-motion.
+function Intro({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = window.setTimeout(onDone, 1150);
+    return () => window.clearTimeout(t);
+  }, [onDone]);
+  return (
+    <div
+      onClick={onDone}
+      className="fixed inset-0 flex items-center justify-center"
+      style={{ zIndex: 300, background: "#fff", animation: `mv-intro-out 300ms ${EASE_OUT} 850ms both` }}
+    >
+      <div className="flex flex-col items-center" style={{ animation: `mv-intro-mark 700ms ${EASE_OUT} both` }}>
+        <svg width={54} height={54} viewBox="0 0 24 24" fill="none">
+          <circle
+            cx="12"
+            cy="12"
+            r="11"
+            stroke={INK}
+            strokeWidth="1"
+            strokeOpacity="0.16"
+            style={{ strokeDasharray: 69.1, strokeDashoffset: 69.1, animation: `mv-ring 820ms ${EASE_OUT} 150ms forwards` }}
+          />
+          <circle cx="12" cy="8.6" r="2.3" fill={INK} />
+          <rect x="9.5" y="12" width="5" height="6.4" rx="1.4" fill={INK} />
+        </svg>
+        <span
+          style={{ marginTop: 14, fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", color: INK, animation: `mv-intro-word 600ms ${EASE_OUT} 250ms both` }}
+        >
+          Humanoid Index
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Scrub bar ─────────────────────────────────────────────────
+// Fast navigation across the whole index — drag to fly through the deck with a
+// live name label. The web's arc-dots, distilled to a thumb on a hairline rail.
+// Fully imperative (refs only) so it never re-renders while you scrub.
+function ScrubBar({ deck }: { deck: ReturnType<typeof useDeck> }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLDivElement>(null);
+  const fillRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+
+  const place = useCallback((frac: number) => {
+    const pct = `${frac * 100}%`;
+    if (thumbRef.current) thumbRef.current.style.left = pct;
+    if (fillRef.current) fillRef.current.style.width = pct;
+    if (labelRef.current) labelRef.current.style.left = pct;
+  }, []);
+
+  // Follow the deck position continuously (also while flicking / tapping).
+  useEffect(() => {
+    return deck.subscribe((p) => {
+      place(N > 1 ? Math.max(0, Math.min(1, p / (N - 1))) : 0);
+    });
+  }, [deck, place]);
+
+  const active = useCallback((on: boolean) => {
+    if (thumbRef.current) {
+      thumbRef.current.style.width = on ? "16px" : "12px";
+      thumbRef.current.style.height = on ? "16px" : "12px";
+    }
+    if (labelRef.current) labelRef.current.style.opacity = on ? "1" : "0";
+  }, []);
+
+  const scrubToX = useCallback((clientX: number) => {
+    const el = trackRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    deck.setPos(frac * (N - 1)); // continuous — the ribbon slides under the finger
+    if (labelRef.current) labelRef.current.textContent = humanoids[Math.round(frac * (N - 1))]?.name ?? "";
+  }, [deck]);
+
+  const onDown = (e: React.PointerEvent) => {
+    dragging.current = true;
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    active(true);
+    scrubToX(e.clientX);
+  };
+  const onMove = (e: React.PointerEvent) => {
+    if (dragging.current) scrubToX(e.clientX);
+  };
+  const onUp = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    deck.settleTo(Math.round(deck.getPos())); // ease to the nearest card
+    active(false);
+  };
+
+  return (
+    <div
+      ref={trackRef}
+      className="relative"
+      style={{ height: 22, touchAction: "none", cursor: "pointer" }}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+    >
+      <div className="absolute" style={{ left: 0, right: 0, top: "50%", height: 3, marginTop: -1.5, borderRadius: 999, background: "rgba(0,0,0,0.07)" }} />
+      <div ref={fillRef} className="absolute" style={{ left: 0, top: "50%", height: 3, marginTop: -1.5, borderRadius: 999, background: "rgba(0,0,0,0.22)", width: "0%" }} />
+      <div
+        ref={thumbRef}
+        className="absolute"
+        style={{ left: "0%", top: "50%", transform: "translate(-50%,-50%)", width: 12, height: 12, borderRadius: 999, background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.1)", transition: "width 140ms ease, height 140ms ease" }}
+      />
+      <div
+        ref={labelRef}
+        className="absolute"
+        style={{ bottom: "100%", left: "0%", transform: "translate(-50%,-8px)", padding: "4px 10px", borderRadius: 9, background: INK, color: "#fff", fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", pointerEvents: "none", opacity: 0, transition: "opacity 140ms ease" }}
+      />
+    </div>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────
 export default function MobileView() {
   const deckRef = useRef<HTMLDivElement>(null);
@@ -611,9 +871,40 @@ export default function MobileView() {
   const [dims, setDims] = useState({ w: 0, h: 0 });
   const [active, setActive] = useState(0);
   const [detail, setDetail] = useState<Humanoid | null>(null);
-  const [compare, setCompare] = useState<Humanoid | null>(null);
+  const [compare, setCompare] = useState<{ primary: Humanoid; secondaryId?: string } | null>(null);
+  const [spin, setSpin] = useState(0);
+  const [introDone, setIntroDone] = useState(false);
 
   const deck = useDeck(setActive);
+
+  // Deeplink hydration — land on the shared robot/comparison instantly on mount,
+  // mirroring the web's snapTo (no animation, correct from the first frame).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) setIntroDone(true);
+    const params = new URLSearchParams(window.location.search);
+    const cmp = params.get("compare");
+    if (cmp) {
+      const [aId, bId] = cmp.split(",");
+      const ai = humanoids.findIndex((h) => h.id === aId);
+      if (ai >= 0) {
+        deck.snapTo(ai);
+        setActive(ai);
+        setCompare({ primary: humanoids[ai], secondaryId: bId });
+      }
+      return;
+    }
+    const hId = params.get("h");
+    if (hId) {
+      const hi = humanoids.findIndex((h) => h.id === hId);
+      if (hi >= 0) {
+        deck.snapTo(hi);
+        setActive(hi);
+      }
+    }
+    // deck identity is stable; run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Measure the deck area.
   useLayoutEffect(() => {
@@ -626,35 +917,43 @@ export default function MobileView() {
     return () => ro.disconnect();
   }, []);
 
-  const cardW = Math.min(320, dims.w * CARD_W_FRAC);
-  const stride = dims.w * STRIDE_FRAC;
+  const cardW = Math.min(300, dims.w * CARD_W_FRAC);
+  const centerGap = dims.w * CENTER_GAP_FRAC; // finger px per card at center
+  const stackGap = dims.w * STACK_GAP_FRAC;
+  const stride = centerGap;
 
-  // Position every card from the current spring position.
+  // Position every card from the current spring position — Cover Flow.
   useEffect(() => {
     if (!dims.w) return;
+    // Cards fan out along a 3D arc: the centered one is flat and forward, siblings
+    // tilt to face center and recede in Z, stacking as they go (the web arc, in 3D).
     const layout = (p: number) => {
       for (let i = 0; i < N; i++) {
         const node = cardRefs.current[i];
         if (!node) continue;
-        const offset = i - p;
-        const abs = Math.abs(offset);
-        if (abs > 2.6) {
+        const o = i - p;
+        const d = Math.abs(o);
+        if (d > REACH + 0.05) {
           node.style.opacity = "0";
           node.style.pointerEvents = "none";
           continue;
         }
-        const clamped = Math.min(abs, 1);
-        const scale = 1 - clamped * SIDE_SCALE;
-        const dip = ARC_DEPTH * Math.min(abs, 2);
-        const opacity = 1 - Math.min(abs, 1.5) * (SIDE_FADE / 1.5);
-        node.style.transform = `translate(-50%, -50%) translateX(${offset * stride}px) translateY(${dip}px) scale(${scale})`;
-        node.style.opacity = String(Math.max(0, opacity));
-        node.style.zIndex = String(100 - Math.round(abs * 10));
-        node.style.pointerEvents = "auto";
+        const sign = o < 0 ? -1 : 1;
+        const near = Math.min(d, 1); // 0..1 as the card slides out of center
+        const far = Math.max(0, d - 1); // stacked distance beyond the first sibling
+        const x = sign * (centerGap * near + far * stackGap);
+        const z = -(near * DEPTH + far * STACK_Z);
+        const rotY = -sign * ROT * near; // face center; full tilt once a card out
+        const opacity = 1 - (Math.min(d, REACH) / REACH) * SIDE_FADE;
+        node.style.transform = `translate(-50%, -50%) translateX(${x}px) translateZ(${z}px) rotateY(${rotY}deg)`;
+        node.style.opacity = Math.max(0, opacity).toFixed(3);
+        node.style.zIndex = String(100 - Math.round(d * 10));
+        // Only the near cards take taps, so fanned neighbors don't swallow a press.
+        node.style.pointerEvents = d < 1.6 ? "auto" : "none";
       }
     };
     return deck.subscribe(layout);
-  }, [deck, dims.w, stride]);
+  }, [deck, dims.w, centerGap, stackGap]);
 
   // Drag / flick.
   const gesture = useRef({
@@ -686,19 +985,24 @@ export default function MobileView() {
     const dx = e.clientX - g.startX;
     if (Math.abs(dx) > TAP_SLOP) g.moved = true;
     const dt = e.timeStamp - g.lastT;
-    if (dt > 0) g.vx = (e.clientX - g.lastX) / dt; // px per ms
+    if (dt > 0) {
+      const inst = (e.clientX - g.lastX) / dt; // px/ms, this sample
+      g.vx = g.vx * 0.65 + inst * 0.35; // smoothed — one noisy sample can't kill the flick
+    }
     g.lastX = e.clientX;
     g.lastT = e.timeStamp;
     deck.setPos(g.startPos - dx / stride);
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
     const g = gesture.current;
     if (!g.active) return;
     g.active = false;
     if (!g.moved) return; // tap handled by the card's onClick
-    const projected = deck.getPos() - (g.vx * FLICK) / stride;
-    deck.settleTo(Math.round(projected));
+    // Drop momentum if the finger rested before lifting — a pause means "place
+    // it here", not "fling". Otherwise hand the smoothed velocity to the spring.
+    const vx = e.timeStamp - g.lastT > 60 ? 0 : g.vx; // px/ms, + = finger moving right
+    deck.release(-vx / stride); // finger-right → deck moves toward a lower index
   };
 
   const onCardTap = (i: number) => {
@@ -710,6 +1014,7 @@ export default function MobileView() {
   const shuffle = useCallback(() => {
     let next = active;
     while (next === active && N > 1) next = Math.floor(Math.random() * N);
+    setSpin((s) => s + 1); // tumble the glyph
     deck.settleTo(next);
   }, [active, deck]);
 
@@ -720,8 +1025,9 @@ export default function MobileView() {
       className="relative flex flex-col bg-white overflow-hidden"
       style={{
         height: "100dvh",
-        fontFamily: "var(--font-inter), system-ui, sans-serif",
+        fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
         color: INK,
+        overscrollBehavior: "none",
       }}
     >
       {/* Header */}
@@ -735,10 +1041,12 @@ export default function MobileView() {
         <button
           onClick={shuffle}
           aria-label="Shuffle"
-          className="flex items-center justify-center"
-          style={{ width: 38, height: 38, borderRadius: 999, background: SURFACE }}
+          className="mv-tap flex items-center justify-center"
+          style={{ ...CHIP, width: 38, height: 38, borderRadius: 999 }}
         >
-          <ShuffleGlyph />
+          <span key={spin} style={{ display: "inline-flex", animation: spin ? `mv-tumble 520ms ${EASE_OUT}` : undefined }}>
+            <ShuffleGlyph />
+          </span>
         </button>
       </header>
 
@@ -746,7 +1054,7 @@ export default function MobileView() {
       <div
         ref={deckRef}
         className="relative flex-1 overflow-hidden select-none"
-        style={{ touchAction: "pan-y", minHeight: 0, isolation: "isolate" }}
+        style={{ touchAction: "none", minHeight: 0, isolation: "isolate", perspective: PERSPECTIVE, perspectiveOrigin: "50% 50%" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -774,43 +1082,36 @@ export default function MobileView() {
           ))}
       </div>
 
+      {/* Scrub bar — drag to fly across the whole index */}
+      {dims.w > 0 && (
+        <div className="flex-shrink-0" style={{ padding: "10px 26px 0" }}>
+          <ScrubBar deck={deck} />
+        </div>
+      )}
+
       {/* Footer — the centered robot */}
       <footer
         className="flex-shrink-0"
         style={{ padding: "14px 24px calc(env(safe-area-inset-bottom) + 20px)" }}
       >
         {current && (
-          <div key={current.id} style={{ animation: `mv-copy-in 260ms ${EASE_OUT} both` }}>
-            <div className="flex items-baseline gap-2">
-              <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: INK }}>
-                {current.name}
-              </h1>
-              {current.year && (
-                <span style={{ fontSize: 15, color: INK_MUTED, fontWeight: 400 }}>
-                  {current.year}
-                </span>
+          <div>
+            <h1 style={{ ...TYPE.title, color: INK }}>{current.name}</h1>
+
+            {/* Label chips — one consistent text style for all metadata */}
+            <div className="flex flex-wrap gap-2" style={{ marginTop: 10 }}>
+              <Chip>{current.manufacturer}</Chip>
+              {current.useCase && <Chip>{current.useCase}</Chip>}
+              {current.status && (
+                <Chip dot={statusColor(current.status)} pulse={current.status === "In Production"}>
+                  {current.status}
+                </Chip>
               )}
-            </div>
-            <div className="flex items-center gap-2" style={{ marginTop: 3 }}>
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: 999,
-                  background: statusColor(current.status),
-                }}
-              />
-              <span style={{ fontSize: 14, color: INK_BODY }}>{current.manufacturer}</span>
-              {current.useCase && (
-                <>
-                  <span style={{ color: INK_MUTED }}>·</span>
-                  <span style={{ fontSize: 14, color: INK_BODY }}>{current.useCase}</span>
-                </>
-              )}
+              {current.year && <Chip>{String(current.year)}</Chip>}
             </div>
 
-            {/* Compact stat strip */}
-            <div className="flex gap-5" style={{ marginTop: 14 }}>
+            {/* Stat strip */}
+            <div className="flex gap-6" style={{ marginTop: 16 }}>
               <Stat label="Height" value={current.height ? `${current.height} cm` : "—"} />
               <Stat label="Weight" value={current.weight ? `${current.weight} kg` : "—"} />
               <Stat
@@ -823,23 +1124,23 @@ export default function MobileView() {
             <div className="flex gap-2.5" style={{ marginTop: 18 }}>
               <button
                 onClick={() => setDetail(current)}
-                className="flex-1 flex items-center justify-center"
+                className="mv-tap flex-1 flex items-center justify-center"
                 style={{ height: 48, borderRadius: 14, background: INK, color: "white", fontSize: 15, fontWeight: 500 }}
               >
                 Details
               </button>
               <button
-                onClick={() => setCompare(current)}
-                className="flex-1 flex items-center justify-center"
-                style={{ height: 48, borderRadius: 14, background: SURFACE, color: INK, fontSize: 15, fontWeight: 500 }}
+                onClick={() => setCompare({ primary: current })}
+                className="mv-tap flex-1 flex items-center justify-center"
+                style={{ ...CHIP, height: 48, borderRadius: 14, color: INK, fontSize: 15, fontWeight: 500 }}
               >
                 Compare
               </button>
               <button
                 onClick={() => shareRobot(current)}
                 aria-label="Share"
-                className="flex items-center justify-center"
-                style={{ width: 48, height: 48, borderRadius: 14, background: SURFACE }}
+                className="mv-tap flex items-center justify-center"
+                style={{ ...CHIP, width: 48, height: 48, borderRadius: 14 }}
               >
                 <ShareGlyph />
               </button>
@@ -849,13 +1150,16 @@ export default function MobileView() {
       </footer>
 
       {detail && <DetailSheet h={detail} onClose={() => setDetail(null)} />}
-      {compare && <CompareSheet primary={compare} onClose={() => setCompare(null)} />}
+      {compare && (
+        <CompareSheet
+          primary={compare.primary}
+          initialSecondaryId={compare.secondaryId}
+          onClose={() => setCompare(null)}
+        />
+      )}
+      {!introDone && <Intro onDone={() => setIntroDone(true)} />}
 
       <style jsx global>{`
-        @keyframes mv-copy-in {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
         @keyframes mv-sheet-in {
           from { transform: translateY(100%); }
           to { transform: translateY(0); }
@@ -864,6 +1168,28 @@ export default function MobileView() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes mv-ping {
+          0% { transform: scale(1); opacity: 0.5; }
+          80%, 100% { transform: scale(2.4); opacity: 0; }
+        }
+        @keyframes mv-tumble {
+          0% { transform: rotate(0deg) scale(1); }
+          35% { transform: rotate(-150deg) scale(1.08); }
+          70% { transform: rotate(-330deg) scale(1); }
+          100% { transform: rotate(-360deg) scale(1); }
+        }
+        @keyframes mv-ring { to { stroke-dashoffset: 0; } }
+        @keyframes mv-intro-mark {
+          from { opacity: 0; transform: scale(0.82); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes mv-intro-word {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes mv-intro-out { to { opacity: 0; } }
+        .mv-tap { transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1); }
+        .mv-tap:active { transform: scale(0.96); }
       `}</style>
     </main>
   );
@@ -872,8 +1198,8 @@ export default function MobileView() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col">
-      <span style={{ fontSize: 11, color: INK_MUTED, letterSpacing: "0.01em" }}>{label}</span>
-      <span style={{ fontSize: 16, fontWeight: 500, color: INK, marginTop: 2 }}>{value}</span>
+      <span style={{ fontSize: 12, color: INK_MUTED }}>{label}</span>
+      <span style={{ ...TYPE.value, color: INK, marginTop: 2 }}>{value}</span>
     </div>
   );
 }
