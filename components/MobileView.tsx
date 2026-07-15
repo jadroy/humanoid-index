@@ -719,6 +719,16 @@ function ShuffleGlyph() {
     </svg>
   );
 }
+function GridGlyph() {
+  return (
+    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke={INK_BODY} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1.6" />
+      <rect x="14" y="3" width="7" height="7" rx="1.6" />
+      <rect x="3" y="14" width="7" height="7" rx="1.6" />
+      <rect x="14" y="14" width="7" height="7" rx="1.6" />
+    </svg>
+  );
+}
 
 // ── Chip ──────────────────────────────────────────────────────
 // One consistent label pill — hairline outline, muted ink, optional status dot.
@@ -738,6 +748,72 @@ function Chip({ children, dot, pulse }: { children: string; dot?: string; pulse?
       )}
       {children}
     </span>
+  );
+}
+
+// ── Grid overlay ──────────────────────────────────────────────
+// Browse-all: a scannable grid of every humanoid. Tap one to drop straight into
+// the Cover Flow at that robot. The "see many" complement to the "focus one" deck
+// (Cosmos.so / Apple Photos, in the site's own language).
+function GridOverlay({
+  activeId,
+  onPick,
+  onClose,
+}: {
+  activeId: string;
+  onPick: (i: number) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 flex flex-col"
+      style={{ zIndex: 210, background: "#fff", animation: `mv-grid-in 300ms ${EASE_OUT} both` }}
+    >
+      <div className="flex items-center justify-between flex-shrink-0" style={{ padding: "16px 20px 10px" }}>
+        <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em", color: INK }}>All humanoids</span>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="mv-tap flex items-center justify-center"
+          style={{ ...CHIP, width: 34, height: 34, borderRadius: 999 }}
+        >
+          <CloseGlyph />
+        </button>
+      </div>
+      <div
+        className="overflow-y-auto"
+        style={{ padding: "4px 16px calc(env(safe-area-inset-bottom) + 20px)", WebkitOverflowScrolling: "touch" }}
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          {humanoids.map((h, i) => (
+            <button key={h.id} onClick={() => onPick(i)} className="mv-tap flex flex-col" style={{ textAlign: "left", minWidth: 0 }}>
+              <div
+                className="relative overflow-hidden w-full"
+                style={{
+                  aspectRatio: "3 / 4",
+                  borderRadius: 14,
+                  background: "#F9F9F9",
+                  boxShadow: h.id === activeId ? `inset 0 0 0 2px ${INK}` : "inset 0 0 0 1px rgba(0,0,0,0.05)",
+                }}
+              >
+                {h.imageUrl && (
+                  <Image
+                    src={h.imageUrl}
+                    alt={h.name}
+                    fill
+                    sizes="130px"
+                    className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
+                    style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : "8%" }}
+                  />
+                )}
+              </div>
+              <span className="truncate w-full" style={{ ...TYPE.value, color: INK, marginTop: 7 }}>{h.name}</span>
+              <span className="truncate w-full" style={{ fontSize: 12, color: INK_MUTED }}>{h.manufacturer}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -874,6 +950,7 @@ export default function MobileView() {
   const [compare, setCompare] = useState<{ primary: Humanoid; secondaryId?: string } | null>(null);
   const [spin, setSpin] = useState(0);
   const [introDone, setIntroDone] = useState(false);
+  const [grid, setGrid] = useState(false);
 
   const deck = useDeck(setActive);
 
@@ -1038,16 +1115,26 @@ export default function MobileView() {
         <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>
           Humanoid Index
         </span>
-        <button
-          onClick={shuffle}
-          aria-label="Shuffle"
-          className="mv-tap flex items-center justify-center"
-          style={{ ...CHIP, width: 38, height: 38, borderRadius: 999 }}
-        >
-          <span key={spin} style={{ display: "inline-flex", animation: spin ? `mv-tumble 520ms ${EASE_OUT}` : undefined }}>
-            <ShuffleGlyph />
-          </span>
-        </button>
+        <div className="flex items-center" style={{ gap: 8 }}>
+          <button
+            onClick={() => setGrid(true)}
+            aria-label="Browse all"
+            className="mv-tap flex items-center justify-center"
+            style={{ ...CHIP, width: 38, height: 38, borderRadius: 999 }}
+          >
+            <GridGlyph />
+          </button>
+          <button
+            onClick={shuffle}
+            aria-label="Shuffle"
+            className="mv-tap flex items-center justify-center"
+            style={{ ...CHIP, width: 38, height: 38, borderRadius: 999 }}
+          >
+            <span key={spin} style={{ display: "inline-flex", animation: spin ? `mv-tumble 520ms ${EASE_OUT}` : undefined }}>
+              <ShuffleGlyph />
+            </span>
+          </button>
+        </div>
       </header>
 
       {/* Deck */}
@@ -1157,6 +1244,17 @@ export default function MobileView() {
           onClose={() => setCompare(null)}
         />
       )}
+      {grid && (
+        <GridOverlay
+          activeId={current?.id ?? ""}
+          onPick={(i) => {
+            deck.snapTo(i);
+            setActive(i);
+            setGrid(false);
+          }}
+          onClose={() => setGrid(false)}
+        />
+      )}
       {!introDone && <Intro onDone={() => setIntroDone(true)} />}
 
       <style jsx global>{`
@@ -1188,6 +1286,10 @@ export default function MobileView() {
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes mv-intro-out { to { opacity: 0; } }
+        @keyframes mv-grid-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         .mv-tap { transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1); }
         .mv-tap:active { transform: scale(0.96); }
       `}</style>
