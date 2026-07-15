@@ -113,6 +113,20 @@ function statusColor(status?: Humanoid["status"]) {
   }
 }
 
+// Units — imperial, matching the site's default presentation.
+function formatHeight(cm: number) {
+  const inches = cm / 2.54;
+  let ft = Math.floor(inches / 12);
+  let rest = Math.round(inches % 12);
+  if (rest === 12) {
+    ft += 1;
+    rest = 0;
+  }
+  return `${ft}'${rest}"`;
+}
+const formatWeight = (kg: number) => `${Math.round(kg * 2.20462)} lb`;
+const formatSpeed = (ms: number) => `${(ms * 2.23694).toFixed(1)} mph`;
+
 function visitTarget(h: Humanoid): { href?: string; label: string } {
   if (h.purchaseUrl) return { href: withUtm(h.purchaseUrl, h.id), label: "Order" };
   const href = withUtm(h.infoUrl || h.manufacturerUrl, h.id);
@@ -272,6 +286,18 @@ function ShareGlyph({ size = 19, color = INK }: { size?: number; color?: string 
     </svg>
   );
 }
+// The HI tile mark — the identity block from HI-logo.svg, standalone.
+function HIMark({ height = 13, color = "#C5CAD1" }: { height?: number; color?: string }) {
+  return (
+    <svg width={(17 / 11) * height} height={height} viewBox="0 0 17 11" fill={color} role="img" aria-label="Humanoid Index">
+      <path d="M1.96698e-07 0.5C1.96698e-07 0.223858 0.223858 0 0.5 0H4.5C4.77614 0 5 0.223858 5 0.5V10.5C5 10.7761 4.77614 11 4.5 11H0.5C0.223858 11 1.96698e-07 10.7761 1.96698e-07 10.5V0.5Z" />
+      <path d="M10.5 3C10.7761 3 11 3.22386 11 3.5V7.5C11 7.77614 10.7761 8 10.5 8L0.5 8C0.223858 8 -1.20706e-08 7.77614 0 7.5L1.74841e-07 3.5C1.86912e-07 3.22386 0.223858 3 0.5 3L10.5 3Z" />
+      <path d="M6 0.5C6 0.223858 6.22386 0 6.5 0H10.5C10.7761 0 11 0.223858 11 0.5V10.5C11 10.7761 10.7761 11 10.5 11H6.5C6.22386 11 6 10.7761 6 10.5V0.5Z" />
+      <path d="M12 0.5C12 0.223858 12.2239 0 12.5 0H16.5C16.7761 0 17 0.223858 17 0.5V10.5C17 10.7761 16.7761 11 16.5 11H12.5C12.2239 11 12 10.7761 12 10.5V0.5Z" />
+    </svg>
+  );
+}
+
 function SearchGlyph({ size = 15, color = INK }: { size?: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
@@ -318,11 +344,12 @@ function StatRow({ label, value }: { label: string; value: string }) {
 
 function statRowsFor(h: Humanoid) {
   const rows: { label: string; value: string }[] = [];
-  if (h.height) rows.push({ label: "Height", value: `${h.height} cm` });
-  if (h.weight) rows.push({ label: "Weight", value: `${h.weight} kg` });
-  if (h.maxSpeed) rows.push({ label: "Top speed", value: `${h.maxSpeed} m/s` });
+  if (h.country) rows.push({ label: "Country", value: h.country });
+  if (h.height) rows.push({ label: "Height", value: formatHeight(h.height) });
+  if (h.weight) rows.push({ label: "Weight", value: formatWeight(h.weight) });
+  if (h.maxSpeed) rows.push({ label: "Top speed", value: formatSpeed(h.maxSpeed) });
   if (h.dof) rows.push({ label: "Degrees of freedom", value: `${h.dof}` });
-  if (h.cost && h.cost !== "N/A") rows.push({ label: "Cost", value: h.cost });
+  if (h.cost && h.cost !== "N/A") rows.push({ label: "Price", value: h.cost });
   if (h.status) rows.push({ label: "Status", value: h.status });
   return rows;
 }
@@ -331,9 +358,9 @@ function statRowsFor(h: Humanoid) {
 function CompareView({ list, onRemove, onClose }: { list: Humanoid[]; onRemove: (id: string) => void; onClose: () => void }) {
   const blurb = list.length === 2 ? getCompareBlurb(list[0], list[1]) : null;
   const rows: { label: string; get: (h: Humanoid) => string }[] = [
-    { label: "Height", get: (h) => (h.height ? `${h.height} cm` : "—") },
-    { label: "Weight", get: (h) => (h.weight ? `${h.weight} kg` : "—") },
-    { label: "Speed", get: (h) => (h.maxSpeed ? `${h.maxSpeed} m/s` : "—") },
+    { label: "Height", get: (h) => (h.height ? formatHeight(h.height) : "—") },
+    { label: "Weight", get: (h) => (h.weight ? formatWeight(h.weight) : "—") },
+    { label: "Speed", get: (h) => (h.maxSpeed ? formatSpeed(h.maxSpeed) : "—") },
     { label: "DOF", get: (h) => (h.dof ? `${h.dof}` : "—") },
     { label: "Price", get: (h) => (h.cost && h.cost !== "N/A" ? h.cost : "—") },
     { label: "Status", get: (h) => h.status ?? "—" },
@@ -854,9 +881,15 @@ function ExpandedView({
 
           {/* Info */}
           <div ref={infoRef} style={{ padding: "20px 24px calc(env(safe-area-inset-bottom) + 40px)" }}>
-            <div className="flex items-baseline" style={{ gap: 9 }}>
+            <div className="flex items-center" style={{ gap: 10 }}>
+              {h.logoUrl && (
+                // Plain <img>: several logos are SVGs, which the optimizer
+                // refuses without dangerouslyAllowSVG — and they need no optimizing.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={h.logoUrl} alt="" draggable={false} className="flex-shrink-0 object-contain" style={{ width: 24, height: 24, borderRadius: 7 }} />
+              )}
               <h2 className="truncate" style={{ fontSize: 27, fontWeight: 600, letterSpacing: "-0.022em", color: INK, lineHeight: 1.08, minWidth: 0 }}>{h.name}</h2>
-              {h.year && <span style={{ fontSize: 15, color: INK_MUTED, flexShrink: 0 }}>{h.year}</span>}
+              {h.year && <span style={{ fontSize: 15, color: INK_MUTED, flexShrink: 0, alignSelf: "flex-end", paddingBottom: 3 }}>{h.year}</span>}
             </div>
             <div className="flex items-center" style={{ gap: 7, marginTop: 6 }}>
               <span className="flex-shrink-0" style={{ width: 7, height: 7, borderRadius: 999, background: statusColor(h.status) }} />
@@ -890,8 +923,11 @@ function ExpandedView({
 
             <div className="flex" style={{ gap: 10, marginTop: 22 }}>
               {visit.href && (
-                <a href={visit.href} target="_blank" rel="noopener noreferrer" className="mv-tap flex-1 flex items-center justify-center" style={{ height: 50, borderRadius: 15, background: INK, color: "#fff", fontSize: 15, fontWeight: 500 }}>
+                <a href={visit.href} target="_blank" rel="noopener noreferrer" className="mv-tap flex-1 flex items-center justify-center" style={{ height: 50, borderRadius: 15, background: INK, color: "#fff", fontSize: 15, fontWeight: 500, gap: 7 }}>
                   {visit.label}
+                  <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 17L17 7M9 7h8v8" />
+                  </svg>
                 </a>
               )}
               <button
@@ -1286,8 +1322,13 @@ export default function MobileView() {
       <div ref={gridDepthRef} className="absolute inset-0 flex flex-col" style={{ willChange: "transform" }}>
         {/* Header — identity left, glass control cluster right. */}
         <header className="flex items-center justify-between flex-shrink-0" style={{ padding: "calc(env(safe-area-inset-top) + 16px) 14px 12px 20px" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/wordmark.svg" alt="Humanoid Index" draggable={false} style={{ height: 10, width: "auto", display: "block" }} />
+          <button
+            onClick={() => gridScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+            aria-label="Back to top"
+            className="mv-tap flex items-center"
+          >
+            <HIMark />
+          </button>
           <div className="flex items-center" style={{ gap: 8 }}>
             <div className="relative flex items-center" style={{ ...CHIP, borderRadius: 999, padding: 3, height: 32 }}>
               <span
