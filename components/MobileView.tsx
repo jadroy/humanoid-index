@@ -49,6 +49,84 @@ const CHIP = {
   boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
 } as const;
 
+// ── Looks ─────────────────────────────────────────────────────
+// A few distinct visual treatments of the same feed, switchable live from the
+// header. Same structure, different feel.
+type Look = {
+  key: string;
+  label: string;
+  bg: string;
+  ink: string;
+  inkBody: string;
+  inkMuted: string;
+  overlay: boolean; // info floats over the image (cinematic) vs sits below (editorial)
+  imagePad: string;
+  nameSize: number;
+  railInk: string;
+  railMuted: string;
+  primaryBg: string;
+  primaryFg: string;
+  chipBg: string;
+  chipFg: string;
+  chipShadow: string;
+};
+const LOOKS: Look[] = [
+  {
+    key: "light",
+    label: "Editorial",
+    bg: "#ffffff",
+    ink: INK,
+    inkBody: INK_BODY,
+    inkMuted: INK_MUTED,
+    overlay: false,
+    imagePad: "6%",
+    nameSize: 22,
+    railInk: INK,
+    railMuted: INK_MUTED,
+    primaryBg: INK,
+    primaryFg: "#ffffff",
+    chipBg: "#ffffff",
+    chipFg: INK,
+    chipShadow: "inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
+  },
+  {
+    key: "dark",
+    label: "Cinematic",
+    bg: "#0b0b0e",
+    ink: "#f5f5f7",
+    inkBody: "#b6b6be",
+    inkMuted: "#70707a",
+    overlay: true,
+    imagePad: "3%",
+    nameSize: 27,
+    railInk: "#f5f5f7",
+    railMuted: "#5c5c66",
+    primaryBg: "#f5f5f7",
+    primaryFg: "#0b0b0e",
+    chipBg: "rgba(255,255,255,0.10)",
+    chipFg: "#f5f5f7",
+    chipShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
+  },
+  {
+    key: "bold",
+    label: "Bold",
+    bg: "#f6f5f2",
+    ink: INK,
+    inkBody: INK_BODY,
+    inkMuted: INK_MUTED,
+    overlay: false,
+    imagePad: "5%",
+    nameSize: 33,
+    railInk: INK,
+    railMuted: INK_MUTED,
+    primaryBg: INK,
+    primaryFg: "#ffffff",
+    chipBg: "#ffffff",
+    chipFg: INK,
+    chipShadow: "inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
+  },
+];
+
 // ── Helpers ───────────────────────────────────────────────────
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -130,16 +208,16 @@ function ShareGlyph({ size = 19 }: { size?: number }) {
     </svg>
   );
 }
-function PlusGlyph() {
+function PlusGlyph({ color = INK }: { color?: string }) {
   return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={2} strokeLinecap="round">
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
       <path d="M12 5v14M5 12h14" />
     </svg>
   );
 }
-function CheckGlyph() {
+function CheckGlyph({ color = "#fff" }: { color?: string }) {
   return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 6L9 17l-5-5" />
     </svg>
   );
@@ -336,19 +414,19 @@ function CompareView({ list, onRemove, onClose }: { list: Humanoid[]; onRemove: 
 }
 
 // ── Compare bar ───────────────────────────────────────────────
-function CompareBar({ count, onOpen, onClear }: { count: number; onOpen: () => void; onClear: () => void }) {
+function CompareBar({ count, onOpen, onClear, look }: { count: number; onOpen: () => void; onClear: () => void; look: Look }) {
   const ready = count >= 2;
   return (
     <div className="fixed flex items-center" style={{ left: 16, right: 16, bottom: "calc(env(safe-area-inset-bottom) + 14px)", zIndex: 120, animation: `mv-bar-in 300ms ${EASE_OUT} both` }}>
       <button
         onClick={() => ready && onOpen()}
         className="mv-tap flex-1 flex items-center justify-center"
-        style={{ height: 50, borderRadius: 16, background: INK, color: "#fff", fontSize: 15, fontWeight: 500, opacity: ready ? 1 : 0.5 }}
+        style={{ height: 50, borderRadius: 16, background: look.primaryBg, color: look.primaryFg, fontSize: 15, fontWeight: 500, opacity: ready ? 1 : 0.5 }}
       >
         {ready ? `Compare · ${count}` : "Compare · 1 · add one more"}
       </button>
-      <button onClick={onClear} aria-label="Clear compare" className="mv-tap flex items-center justify-center" style={{ ...CHIP, marginLeft: 10, width: 50, height: 50, borderRadius: 16 }}>
-        <CloseGlyph />
+      <button onClick={onClear} aria-label="Clear compare" className="mv-tap flex items-center justify-center" style={{ background: look.chipBg, boxShadow: look.chipShadow, marginLeft: 10, width: 50, height: 50, borderRadius: 16 }}>
+        <CloseGlyph color={look.chipFg} />
       </button>
     </div>
   );
@@ -358,7 +436,7 @@ function CompareBar({ count, onOpen, onClear }: { count: number; onOpen: () => v
 // The desktop wheel, distilled: names drift along a gentle arc on the right
 // edge; the active one is clearer/larger. Peripheral and visual — the vertical
 // feed never depends on it.
-function CurvedRail({ subscribe, reduced }: { subscribe: (cb: (p: number) => void) => () => void; reduced: boolean }) {
+function CurvedRail({ subscribe, reduced, look }: { subscribe: (cb: (p: number) => void) => () => void; reduced: boolean; look: Look }) {
   const nameRefs = useRef<(HTMLDivElement | null)[]>([]);
   useEffect(() => {
     return subscribe((p) => {
@@ -377,12 +455,12 @@ function CurvedRail({ subscribe, reduced }: { subscribe: (cb: (p: number) => voi
         const active = d < 0.5;
         node.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         node.style.opacity = (active ? 1 : Math.max(0.14, 0.5 - t * 0.4)).toFixed(3);
-        node.style.color = active ? INK : INK_MUTED;
+        node.style.color = active ? look.railInk : look.railMuted;
         node.style.fontSize = active ? "13.5px" : "11px";
         node.style.fontWeight = active ? "600" : "400";
       }
     });
-  }, [subscribe]);
+  }, [subscribe, look]);
 
   return (
     <div className="absolute" style={{ right: 0, top: 0, bottom: 0, width: 84, zIndex: 20, pointerEvents: "none" }} aria-hidden>
@@ -411,6 +489,7 @@ function FeedItem({
   height,
   reduced,
   selected,
+  look,
   onOpen,
   onToggleCompare,
   subscribe,
@@ -420,6 +499,7 @@ function FeedItem({
   height: number;
   reduced: boolean;
   selected: boolean;
+  look: Look;
   onOpen: () => void;
   onToggleCompare: () => void;
   subscribe: (cb: (p: number) => void) => () => void;
@@ -444,62 +524,81 @@ function FeedItem({
   if (h.maxSpeed) attrs.push({ label: "Speed", value: `${h.maxSpeed} m/s` });
   else if (h.dof) attrs.push({ label: "DOF", value: `${h.dof}` });
 
-  return (
-    <div style={{ height, scrollSnapAlign: "start" }} className="relative flex flex-col">
-      {/* Visual — dominant, tap to open */}
-      <button onClick={onOpen} aria-label={`${h.name} details`} className="relative flex-1 w-full overflow-hidden" style={{ minHeight: 0 }}>
-        <div ref={imgWrap} className="absolute inset-0 flex items-center justify-center" style={{ willChange: reduced ? undefined : "transform, opacity" }}>
-          {h.imageUrl && (
-            <Image
-              src={h.imageUrl}
-              alt={h.name}
-              fill
-              sizes="100vw"
-              priority={index < 2}
-              className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
-              style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : "6%", transform: h.imageScale ? `scale(${h.imageScale})` : undefined }}
-              draggable={false}
-            />
-          )}
-        </div>
-      </button>
+  const image = h.imageUrl ? (
+    <div ref={imgWrap} className="absolute inset-0 flex items-center justify-center" style={{ willChange: reduced ? undefined : "transform, opacity" }}>
+      <Image
+        src={h.imageUrl}
+        alt={h.name}
+        fill
+        sizes="100vw"
+        priority={index < 2}
+        className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
+        style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : look.imagePad, transform: h.imageScale ? `scale(${h.imageScale})` : undefined }}
+        draggable={false}
+      />
+    </div>
+  ) : null;
 
-      {/* Info */}
-      <div className="flex-shrink-0" style={{ padding: "10px 24px 0" }}>
-        <div className="flex items-baseline" style={{ gap: 8, paddingRight: 70 }}>
-          <h2 className="truncate" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", color: INK, minWidth: 0 }}>{h.name}</h2>
-          {h.year && <span style={{ fontSize: 14, color: INK_MUTED, flexShrink: 0 }}>{h.year}</span>}
-        </div>
-        <div className="flex items-center" style={{ gap: 7, marginTop: 5, height: 18, paddingRight: 70 }}>
-          <span className="flex-shrink-0" style={{ width: 7, height: 7, borderRadius: 999, background: statusColor(h.status) }} />
-          <span className="truncate" style={{ fontSize: 13.5, color: INK_BODY, minWidth: 0 }}>
-            {h.manufacturer}
-            {h.useCase ? ` · ${h.useCase}` : ""}
-          </span>
-        </div>
-        <div className="flex" style={{ gap: 22, marginTop: 12 }}>
-          {attrs.slice(0, 3).map((a) => (
-            <div key={a.label} className="flex flex-col">
-              <span style={{ fontSize: 11.5, color: INK_MUTED }}>{a.label}</span>
-              <span style={{ fontSize: 15, fontWeight: 500, color: INK, marginTop: 1 }}>{a.value}</span>
-            </div>
-          ))}
-        </div>
-        <div className="flex" style={{ gap: 10, marginTop: 14 }}>
-          <button onClick={onOpen} className="mv-tap flex-1 flex items-center justify-center" style={{ height: 44, borderRadius: 13, background: INK, color: "#fff", fontSize: 14.5, fontWeight: 500 }}>
-            Details
-          </button>
-          <button
-            onClick={onToggleCompare}
-            aria-pressed={selected}
-            className="mv-tap flex items-center justify-center"
-            style={{ height: 44, paddingInline: 16, borderRadius: 13, background: selected ? INK : CHIP.background, boxShadow: selected ? undefined : CHIP.boxShadow, color: selected ? "#fff" : INK, fontSize: 14.5, fontWeight: 500, gap: 6 }}
-          >
-            {selected ? <CheckGlyph /> : <PlusGlyph />}
-            <span>{selected ? "Added" : "Compare"}</span>
-          </button>
+  const pad = look.overlay ? 0 : 70;
+  const info = (
+    <>
+      <div className="flex items-baseline" style={{ gap: 8, paddingRight: pad }}>
+        <h2 className="truncate" style={{ fontSize: look.nameSize, fontWeight: 600, letterSpacing: "-0.02em", color: look.ink, minWidth: 0, lineHeight: 1.05 }}>{h.name}</h2>
+        {h.year && <span style={{ fontSize: 14, color: look.inkMuted, flexShrink: 0 }}>{h.year}</span>}
+      </div>
+      <div className="flex items-center" style={{ gap: 7, marginTop: 5, height: 18, paddingRight: pad }}>
+        <span className="flex-shrink-0" style={{ width: 7, height: 7, borderRadius: 999, background: statusColor(h.status) }} />
+        <span className="truncate" style={{ fontSize: 13.5, color: look.inkBody, minWidth: 0 }}>
+          {h.manufacturer}
+          {h.useCase ? ` · ${h.useCase}` : ""}
+        </span>
+      </div>
+      <div className="flex" style={{ gap: 22, marginTop: 12 }}>
+        {attrs.slice(0, 3).map((a) => (
+          <div key={a.label} className="flex flex-col">
+            <span style={{ fontSize: 11.5, color: look.inkMuted }}>{a.label}</span>
+            <span style={{ fontSize: 15, fontWeight: 500, color: look.ink, marginTop: 1 }}>{a.value}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex" style={{ gap: 10, marginTop: 14 }}>
+        <button onClick={onOpen} className="mv-tap flex-1 flex items-center justify-center" style={{ height: 44, borderRadius: 13, background: look.primaryBg, color: look.primaryFg, fontSize: 14.5, fontWeight: 500 }}>
+          Details
+        </button>
+        <button
+          onClick={onToggleCompare}
+          aria-pressed={selected}
+          className="mv-tap flex items-center justify-center"
+          style={{ height: 44, paddingInline: 16, borderRadius: 13, background: selected ? look.primaryBg : look.chipBg, boxShadow: selected ? undefined : look.chipShadow, color: selected ? look.primaryFg : look.chipFg, fontSize: 14.5, fontWeight: 500, gap: 6 }}
+        >
+          {selected ? <CheckGlyph color={look.primaryFg} /> : <PlusGlyph color={look.chipFg} />}
+          <span>{selected ? "Added" : "Compare"}</span>
+        </button>
+      </div>
+    </>
+  );
+
+  // Cinematic: image fills the item; info floats over a bottom scrim.
+  if (look.overlay) {
+    return (
+      <div style={{ height, scrollSnapAlign: "start" }} className="relative">
+        <button onClick={onOpen} aria-label={`${h.name} details`} className="absolute inset-0 w-full overflow-hidden">
+          {image}
+        </button>
+        <div className="absolute" style={{ left: 0, right: 0, bottom: 0, padding: "70px 24px 22px", background: `linear-gradient(to top, ${look.bg} 34%, ${look.bg}00 100%)`, pointerEvents: "none" }}>
+          <div style={{ pointerEvents: "auto" }}>{info}</div>
         </div>
       </div>
+    );
+  }
+
+  // Editorial: image on top, info below.
+  return (
+    <div style={{ height, scrollSnapAlign: "start" }} className="relative flex flex-col">
+      <button onClick={onOpen} aria-label={`${h.name} details`} className="relative flex-1 w-full overflow-hidden" style={{ minHeight: 0 }}>
+        {image}
+      </button>
+      <div className="flex-shrink-0" style={{ padding: "10px 24px 0" }}>{info}</div>
     </div>
   );
 }
@@ -515,6 +614,8 @@ export default function MobileView() {
   const [detail, setDetail] = useState<Humanoid | null>(null);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [showCompare, setShowCompare] = useState(false);
+  const [lookIdx, setLookIdx] = useState(0);
+  const look = LOOKS[lookIdx];
   const reduced = usePrefersReducedMotion();
 
   // Scroll position broadcast — one native scroll listener, rAF-throttled, drives
@@ -595,10 +696,19 @@ export default function MobileView() {
   );
 
   return (
-    <main className="relative flex flex-col bg-white overflow-hidden" style={{ height: "100dvh", fontFamily: "var(--font-geist-sans), system-ui, sans-serif", color: INK, overscrollBehavior: "none" }}>
-      {/* Header — minimal chrome */}
-      <header className="flex items-center flex-shrink-0" style={{ padding: "14px 22px 8px" }}>
-        <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>Humanoid Index</span>
+    <main className="relative flex flex-col overflow-hidden" style={{ height: "100dvh", fontFamily: "var(--font-geist-sans), system-ui, sans-serif", color: look.ink, background: look.bg, overscrollBehavior: "none", transition: "background-color 300ms ease, color 300ms ease" }}>
+      {/* Header — minimal chrome + look switcher */}
+      <header className="flex items-center justify-between flex-shrink-0" style={{ padding: "14px 22px 8px" }}>
+        <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", color: look.ink }}>Humanoid Index</span>
+        <button
+          onClick={() => setLookIdx((i) => (i + 1) % LOOKS.length)}
+          aria-label="Change look"
+          className="mv-tap flex items-center justify-center"
+          style={{ height: 30, paddingInline: 13, borderRadius: 999, background: "rgba(127,127,135,0.16)", color: look.ink, fontSize: 12.5, fontWeight: 500, letterSpacing: "-0.01em", gap: 7 }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: 999, background: look.ink, opacity: 0.55 }} />
+          {look.label}
+        </button>
       </header>
 
       {/* Feed + rail */}
@@ -613,6 +723,7 @@ export default function MobileView() {
                 height={itemH}
                 reduced={reduced}
                 selected={compareIds.includes(h.id)}
+                look={look}
                 onOpen={() => setDetail(h)}
                 onToggleCompare={() => toggleCompare(h.id)}
                 subscribe={subscribe}
@@ -622,11 +733,11 @@ export default function MobileView() {
           {itemH > 0 && <div style={{ height: feedH - itemH }} aria-hidden />}
         </div>
 
-        {itemH > 0 && <CurvedRail subscribe={subscribe} reduced={reduced} />}
+        {itemH > 0 && <CurvedRail subscribe={subscribe} reduced={reduced} look={look} />}
       </div>
 
       {compareIds.length > 0 && (
-        <CompareBar count={compareIds.length} onOpen={() => setShowCompare(true)} onClear={() => setCompareIds([])} />
+        <CompareBar count={compareIds.length} onOpen={() => setShowCompare(true)} onClear={() => setCompareIds([])} look={look} />
       )}
 
       {detail && <DetailSheet h={detail} onClose={() => setDetail(null)} />}
