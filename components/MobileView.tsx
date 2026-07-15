@@ -22,6 +22,7 @@
 // `?tune` opens a knob panel for the motion constants.
 
 import {
+  type ComponentProps,
   Fragment,
   useCallback,
   useEffect,
@@ -200,6 +201,28 @@ function createSpring(onFrame: (v: number) => void, onSettle: (target: number) =
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
+// Robot imagery. A dropped request (dev over LAN, flaky wifi) leaves a
+// permanent broken-image box on iOS Safari — it never retries a failed <img>.
+// Remount on error with backoff; final attempt serves the unoptimized
+// original, bypassing the image optimizer entirely.
+function RobotImage(props: ComponentProps<typeof Image>) {
+  const [attempt, setAttempt] = useState(0);
+  const timer = useRef(0);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return (
+    <Image
+      key={attempt}
+      {...props}
+      unoptimized={attempt >= 2}
+      onError={() => {
+        if (attempt < 2) {
+          timer.current = window.setTimeout(() => setAttempt(attempt + 1), 700 * (attempt + 1));
+        }
+      }}
+    />
+  );
+}
+
 // ── Glyphs ────────────────────────────────────────────────────
 function CloseGlyph({ size = 17, color = INK_BODY }: { size?: number; color?: string }) {
   return (
@@ -310,7 +333,7 @@ function CompareView({ list, onRemove, onClose }: { list: Humanoid[]; onRemove: 
                 <div key={h.id} className="flex flex-col items-center" style={{ padding: "4px 8px 0" }}>
                   <div className="relative w-full overflow-hidden" style={{ aspectRatio: "3 / 4", borderRadius: 14, background: TILE }}>
                     {h.imageUrl && (
-                      <Image src={h.imageUrl} alt={h.name} fill sizes="132px" className={h.imageFit === "cover" ? "object-cover" : "object-contain"} style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : "8%" }} />
+                      <RobotImage src={h.imageUrl} alt={h.name} fill sizes="132px" className={h.imageFit === "cover" ? "object-cover" : "object-contain"} style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : "8%" }} />
                     )}
                     <button onClick={() => onRemove(h.id)} aria-label={`Remove ${h.name}`} className="mv-tap absolute flex items-center justify-center" style={{ top: 6, right: 6, width: 22, height: 22, borderRadius: 999, background: "rgba(255,255,255,0.92)", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }}>
                       <CloseGlyph size={12} color={INK} />
@@ -396,7 +419,7 @@ function GridCell({
         }}
       >
         {h.imageUrl && (
-          <Image
+          <RobotImage
             src={h.imageUrl}
             alt={h.name}
             fill
@@ -763,7 +786,7 @@ function ExpandedView({
               }}
             >
               {h.imageUrl && (
-                <Image
+                <RobotImage
                   src={h.imageUrl}
                   alt={h.name}
                   fill
