@@ -41,6 +41,7 @@ import { INK, INK_BODY, INK_MUTED } from "@/lib/design/tokens";
 
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_SHEET = "cubic-bezier(0.32, 0.72, 0, 1)";
+const EASE_THUMB = "cubic-bezier(0.34, 1.3, 0.64, 1)"; // segmented-control thumb — slight overshoot
 const TILE = "#F9F9F9"; // card bg — web parity
 const CELL_ASPECT = 3 / 4; // width / height, shared by cells and the hero so the morph is exact
 const IMG_PAD = "8%"; // inner padding of every image box (shared → morph is exact)
@@ -62,7 +63,9 @@ const DEFAULT_TUNE = {
   infoShift: 16, // px the info block rises during the morph
   gap: 10, // grid gap
   radius: 18, // card radius at 2-col (scaled for other densities)
-  flipMs: 420, // density-reflow duration
+  flipResponse: 0.5, // density-reflow spring response (s)
+  flipDamping: 0.8, // <1 = a touch of liquid overshoot on the reflow
+  flipStagger: 24, // ms of reflow delay per 100px distance from the anchor
 };
 const TUNE: typeof DEFAULT_TUNE = { ...DEFAULT_TUNE };
 const KNOBS: { k: keyof typeof DEFAULT_TUNE; min: number; max: number; step: number; layout?: boolean }[] = [
@@ -76,7 +79,9 @@ const KNOBS: { k: keyof typeof DEFAULT_TUNE; min: number; max: number; step: num
   { k: "infoShift", min: 0, max: 40, step: 1 },
   { k: "gap", min: 4, max: 20, step: 1, layout: true },
   { k: "radius", min: 8, max: 28, step: 1, layout: true },
-  { k: "flipMs", min: 200, max: 700, step: 10 },
+  { k: "flipResponse", min: 0.25, max: 0.8, step: 0.01 },
+  { k: "flipDamping", min: 0.55, max: 1, step: 0.01 },
+  { k: "flipStagger", min: 0, max: 60, step: 2 },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -201,6 +206,27 @@ function createSpring(onFrame: (v: number) => void, onSettle: (target: number) =
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
+// CSS `linear()` sampled from a real spring, so plain CSS transitions settle
+// with spring physics — no rAF loop, and interruptible by re-measuring live
+// rects. Falls back to the signature ease where linear() is unsupported.
+const SUPPORTS_LINEAR =
+  typeof CSS !== "undefined" && CSS.supports?.("transition-timing-function", "linear(0, 1)");
+function springEase(response: number, damping: number): { ease: string; ms: number } {
+  if (!SUPPORTS_LINEAR) return { ease: EASE_OUT, ms: Math.round(response * 1000) };
+  const omega = (2 * Math.PI) / response;
+  const zeta = Math.min(damping, 0.999);
+  const omegaD = omega * Math.sqrt(1 - zeta * zeta);
+  const ms = Math.round(response * 1600);
+  const N = 28;
+  const pts: string[] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = (i / N) * (ms / 1000);
+    const x = Math.exp(-zeta * omega * t) * (Math.cos(omegaD * t) + ((zeta * omega) / omegaD) * Math.sin(omegaD * t));
+    pts.push((i === N ? 1 : 1 - x).toFixed(4));
+  }
+  return { ease: `linear(${pts.join(",")})`, ms };
+}
+
 // Robot imagery. A dropped request (dev over LAN, flaky wifi) leaves a
 // permanent broken-image box on iOS Safari — it never retries a failed <img>.
 // Remount on error with backoff; final attempt serves the unoptimized
@@ -243,6 +269,14 @@ function ShareGlyph({ size = 19, color = INK }: { size?: number; color?: string 
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 15V3M12 3l-4 4M12 3l4 4" />
       <path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7" />
+    </svg>
+  );
+}
+function SearchGlyph({ size = 15, color = INK }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
     </svg>
   );
 }
@@ -408,14 +442,12 @@ function GridCell({
     <button onClick={onTap} className="mv-cell flex flex-col text-left" style={{ minWidth: 0 }} aria-label={h.name}>
       <div
         ref={(el) => registerImg(h.id, el)}
-        className="relative w-full overflow-hidden"
+        className={`relative w-full overflow-hidden${selectMode && selected ? " mv-sel" : ""}`}
         style={{
           aspectRatio: `${CELL_ASPECT}`,
           borderRadius: radius,
           background: TILE,
           visibility: hidden ? "hidden" : undefined,
-          transform: selectMode && selected ? "scale(0.955)" : undefined,
-          transition: `transform 240ms ${EASE_OUT}`,
         }}
       >
         {h.imageUrl && (
@@ -477,6 +509,7 @@ function GridCell({
 function ExpandedView({
   h,
   index,
+  list,
   instant,
   reduced,
   getCellRect,
@@ -487,6 +520,7 @@ function ExpandedView({
 }: {
   h: Humanoid;
   index: number;
+  list: Humanoid[];
   instant: boolean;
   reduced: boolean;
   getCellRect: (id: string) => DOMRect | null;
@@ -511,8 +545,13 @@ function ExpandedView({
   const desc = useMemo(() => getRobotDescription(h), [h]);
   const visit = visitTarget(h);
   const rows = statRowsFor(h);
-  const prev = index > 0 ? humanoids[index - 1] : null;
-  const next = index < humanoids.length - 1 ? humanoids[index + 1] : null;
+  const prev = index > 0 ? list[index - 1] : null;
+  const next = index < list.length - 1 ? list[index + 1] : null;
+
+  // Hero resolution: the cell-res variant is already cached, so it paints
+  // instantly; the full-res copy fades in over it once loaded. No pop, ever.
+  const [hiRes, setHiRes] = useState(false);
+  useEffect(() => setHiRes(false), [h.id]);
 
   // Apply morph progress p (0 = in the cell, 1 = expanded) — pure style writes.
   const apply = useCallback(
@@ -786,16 +825,29 @@ function ExpandedView({
               }}
             >
               {h.imageUrl && (
-                <RobotImage
-                  src={h.imageUrl}
-                  alt={h.name}
-                  fill
-                  sizes={settled ? "100vw" : "50vw"}
-                  priority
-                  className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
-                  style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : IMG_PAD }}
-                  draggable={false}
-                />
+                <>
+                  <RobotImage
+                    src={h.imageUrl}
+                    alt={h.name}
+                    fill
+                    sizes="50vw"
+                    priority
+                    className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
+                    style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : IMG_PAD }}
+                    draggable={false}
+                  />
+                  <RobotImage
+                    src={h.imageUrl}
+                    alt=""
+                    fill
+                    sizes="100vw"
+                    priority
+                    className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
+                    style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : IMG_PAD, opacity: hiRes ? 1 : 0, transition: "opacity 260ms ease" }}
+                    onLoad={() => setHiRes(true)}
+                    draggable={false}
+                  />
+                </>
               )}
             </div>
           </div>
@@ -929,6 +981,8 @@ export default function MobileView() {
   const [selectMode, setSelectMode] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [showCompare, setShowCompare] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [tune, setTune] = useState(false);
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const reduced = usePrefersReducedMotion();
@@ -985,42 +1039,58 @@ export default function MobileView() {
     if (el) el.style.transform = `scale(${(1 - (1 - TUNE.gridDepth) * p).toFixed(4)})`;
   }, []);
 
-  // Density change → transform-only FLIP on visible image boxes, anchored to
-  // the viewport center; labels fade via their keyed CSS animation.
-  const pendingFlip = useRef<{ rects: Map<string, DOMRect>; anchorId: string | null; anchorY: number } | null>(null);
+  // Density change → transform-only FLIP on visible image boxes. Live rects
+  // are captured before the relayout (mid-flight transforms included, so an
+  // interrupting change continues from wherever things visually are), then
+  // every cell springs to identity with a small distance-based stagger.
+  const pendingFlip = useRef<{ rects: Map<string, DOMRect>; anchorId: string | null; anchorY: number; clearScale: boolean } | null>(null);
+  const captureFlip = useCallback((anchorId?: string | null, clearScale = false) => {
+    const vh = window.innerHeight;
+    const rects = new Map<string, DOMRect>();
+    let aId: string | null = null;
+    let aY = 0;
+    let best = Infinity;
+    imgEls.current.forEach((el, id) => {
+      const r = el.getBoundingClientRect();
+      if (r.bottom < -vh * 0.5 || r.top > vh * 1.5) return;
+      rects.set(id, r);
+      if (anchorId) {
+        if (id === anchorId) {
+          aId = id;
+          aY = r.top;
+        }
+      } else {
+        const d = Math.abs(r.top + r.height / 2 - vh / 2);
+        if (d < best) {
+          best = d;
+          aId = id;
+          aY = r.top;
+        }
+      }
+    });
+    pendingFlip.current = { rects, anchorId: aId, anchorY: aY, clearScale };
+  }, []);
+
   const changeDensity = useCallback(
     (next: Density) => {
-      setDensity((cur) => {
-        if (next === cur) return cur;
-        if (!reduced) {
-          const vh = window.innerHeight;
-          const rects = new Map<string, DOMRect>();
-          let anchorId: string | null = null;
-          let anchorY = 0;
-          let best = Infinity;
-          imgEls.current.forEach((el, id) => {
-            const r = el.getBoundingClientRect();
-            if (r.bottom < -vh * 0.5 || r.top > vh * 1.5) return;
-            rects.set(id, r);
-            const d = Math.abs(r.top + r.height / 2 - vh / 2);
-            if (d < best) {
-              best = d;
-              anchorId = id;
-              anchorY = r.top;
-            }
-          });
-          pendingFlip.current = { rects, anchorId, anchorY };
-        }
-        return next;
-      });
+      if (next === density) return;
+      if (!reduced) captureFlip();
+      setDensity(next);
     },
-    [reduced]
+    [density, reduced, captureFlip]
   );
 
   useLayoutEffect(() => {
     const flip = pendingFlip.current;
     if (!flip) return;
     pendingFlip.current = null;
+    // Pinch path: drop the container scale in the same pre-paint pass as the
+    // relayout — the captured (scaled) rects mask the swap, so no flash.
+    if (flip.clearScale && gridContentRef.current) {
+      gridContentRef.current.style.transition = "";
+      gridContentRef.current.style.transform = "";
+      gridContentRef.current.style.transformOrigin = "";
+    }
     const sc = gridScrollRef.current;
     // Keep the anchor cell at its screen position.
     if (flip.anchorId && sc) {
@@ -1030,7 +1100,10 @@ export default function MobileView() {
         sc.scrollTop += r.top - flip.anchorY;
       }
     }
-    const played: HTMLDivElement[] = [];
+    const anchorBefore = flip.anchorId ? flip.rects.get(flip.anchorId) : undefined;
+    const ax = anchorBefore ? anchorBefore.left + anchorBefore.width / 2 : window.innerWidth / 2;
+    const ay = anchorBefore ? anchorBefore.top + anchorBefore.height / 2 : window.innerHeight / 2;
+    const played: { el: HTMLDivElement; delay: number }[] = [];
     flip.rects.forEach((before, id) => {
       const el = imgEls.current.get(id);
       if (!el) return;
@@ -1039,42 +1112,153 @@ export default function MobileView() {
       const dy = before.top - after.top;
       const s = before.width / after.width;
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(s - 1) < 0.01) return;
+      const dist = Math.hypot(before.left + before.width / 2 - ax, before.top + before.height / 2 - ay);
       el.style.transition = "none";
       el.style.transformOrigin = "top left";
       el.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${s.toFixed(4)})`;
-      played.push(el);
+      played.push({ el, delay: Math.min(90, (dist / 100) * TUNE.flipStagger) });
     });
     if (!played.length) return;
-    // Force the inverted frame, then play everything to identity together.
-    void played[0].getBoundingClientRect();
+    const spring = springEase(TUNE.flipResponse, TUNE.flipDamping);
+    // Force the inverted frame, then spring everything home.
+    void played[0].el.getBoundingClientRect();
     requestAnimationFrame(() => {
-      played.forEach((el) => {
-        el.style.transition = `transform ${TUNE.flipMs}ms ${EASE_OUT}`;
+      played.forEach(({ el, delay }) => {
+        el.style.transition = `transform ${spring.ms}ms ${spring.ease} ${delay.toFixed(0)}ms`;
         el.style.transform = "";
       });
     });
     const clear = window.setTimeout(() => {
-      played.forEach((el) => {
+      played.forEach(({ el }) => {
         el.style.transition = "";
         el.style.transformOrigin = "";
       });
-    }, TUNE.flipMs + 60);
+    }, spring.ms + 160);
     return () => window.clearTimeout(clear);
   }, [density]);
 
-  const expandedIndex = expanded ? humanoids.findIndex((x) => x.id === expanded.id) : -1;
-  const expandedH = expandedIndex >= 0 ? humanoids[expandedIndex] : null;
+  // Pinch-to-zoom between densities — the grid content scales live around the
+  // pinch focal point; release snaps to the nearest density via the same FLIP,
+  // anchored to the focal cell. Rubber-bands at the 1-col / 4-col ends.
+  const gridContentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const sc = gridScrollRef.current;
+    const content = gridContentRef.current;
+    if (!sc || !content || reduced) return;
+    let active = false;
+    let d0 = 0;
+    let k = 1;
+    let focalId: string | null = null;
+
+    const cellW = (d: Density) => {
+      const pad = d === 4 ? 6 : 14;
+      const gap = d === 4 ? Math.max(3, TUNE.gap - 6) : TUNE.gap;
+      return (sc.clientWidth - pad * 2 - gap * (d - 1)) / d;
+    };
+
+    const onTS = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      const [a, b] = [e.touches[0], e.touches[1]];
+      d0 = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      k = 1;
+      const fx = (a.clientX + b.clientX) / 2;
+      const fy = (a.clientY + b.clientY) / 2;
+      focalId = null;
+      let best = Infinity;
+      imgEls.current.forEach((el, id) => {
+        const r = el.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > window.innerHeight) return;
+        const d = Math.hypot(r.left + r.width / 2 - fx, r.top + r.height / 2 - fy);
+        if (d < best) {
+          best = d;
+          focalId = id;
+        }
+      });
+      const cr = content.getBoundingClientRect();
+      content.style.transition = "none";
+      content.style.transformOrigin = `${(fx - cr.left).toFixed(1)}px ${(fy - cr.top).toFixed(1)}px`;
+      active = true;
+    };
+    const onTM = (e: TouchEvent) => {
+      if (!active || e.touches.length !== 2) return;
+      e.preventDefault();
+      const [a, b] = [e.touches[0], e.touches[1]];
+      k = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) / d0;
+      if ((density === 1 && k > 1) || (density === 4 && k < 1)) k = 1 + (k - 1) * 0.3;
+      content.style.transform = `scale(${k.toFixed(4)})`;
+    };
+    const onTE = (e: TouchEvent) => {
+      if (!active || e.touches.length >= 2) return;
+      active = false;
+      const visualW = cellW(density) * k;
+      let target = density;
+      let best = Infinity;
+      for (const d of DENSITIES) {
+        const diff = Math.abs(cellW(d) - visualW);
+        if (diff < best) {
+          best = diff;
+          target = d;
+        }
+      }
+      if (target === density) {
+        const spring = springEase(TUNE.flipResponse, TUNE.flipDamping);
+        content.style.transition = `transform ${spring.ms}ms ${spring.ease}`;
+        content.style.transform = "scale(1)";
+        window.setTimeout(() => {
+          content.style.transition = "";
+          content.style.transform = "";
+          content.style.transformOrigin = "";
+        }, spring.ms + 60);
+      } else {
+        captureFlip(focalId, true);
+        setDensity(target);
+      }
+    };
+    const eatGesture = (e: Event) => e.preventDefault();
+
+    sc.addEventListener("touchstart", onTS, { passive: false });
+    sc.addEventListener("touchmove", onTM, { passive: false });
+    sc.addEventListener("touchend", onTE);
+    sc.addEventListener("touchcancel", onTE);
+    // Safari's proprietary gesture events would zoom the page otherwise.
+    sc.addEventListener("gesturestart", eatGesture);
+    sc.addEventListener("gesturechange", eatGesture);
+    return () => {
+      sc.removeEventListener("touchstart", onTS);
+      sc.removeEventListener("touchmove", onTM);
+      sc.removeEventListener("touchend", onTE);
+      sc.removeEventListener("touchcancel", onTE);
+      sc.removeEventListener("gesturestart", eatGesture);
+      sc.removeEventListener("gesturechange", eatGesture);
+    };
+  }, [density, reduced, captureFlip]);
+
+  // Search filters the grid in place — same surface, fewer robots.
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return humanoids;
+    return humanoids.filter((h) => `${h.name} ${h.manufacturer}`.toLowerCase().includes(q));
+  }, [query]);
+
+  const expandedIndex = expanded ? shown.findIndex((x) => x.id === expanded.id) : -1;
+  const expandedH = expanded
+    ? expandedIndex >= 0
+      ? shown[expandedIndex]
+      : humanoids.find((x) => x.id === expanded.id) ?? null
+    : null;
+  const expandedList = expandedIndex >= 0 ? shown : expandedH ? [expandedH] : [];
 
   const onPage = useCallback(
     (dir: 1 | -1) => {
       setExpanded((cur) => {
         if (!cur) return cur;
-        const i = humanoids.findIndex((x) => x.id === cur.id);
-        const n = humanoids[i + dir];
+        const i = shown.findIndex((x) => x.id === cur.id);
+        const n = i >= 0 ? shown[i + dir] : undefined;
         return n ? { id: n.id, instant: true } : cur;
       });
     },
-    []
+    [shown]
   );
 
   const toggleCompare = useCallback((id: string) => {
@@ -1100,11 +1284,12 @@ export default function MobileView() {
       style={{ height: "100dvh", background: "#fff", color: INK, fontFamily: "var(--font-geist-sans), system-ui, sans-serif", ["--mv-radius" as string]: `${radius}px` }}
     >
       <div ref={gridDepthRef} className="absolute inset-0 flex flex-col" style={{ willChange: "transform" }}>
-        {/* Header — wordmark, density, Select. Nothing else. */}
-        <header className="flex items-center justify-between flex-shrink-0" style={{ padding: "calc(env(safe-area-inset-top) + 14px) 18px 10px 22px" }}>
-          <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>Humanoid Index</span>
-          <div className="flex items-center" style={{ gap: 10 }}>
-            <div className="relative flex items-center" style={{ background: "rgba(127,127,135,0.13)", borderRadius: 999, padding: 3 }}>
+        {/* Header — identity left, glass control cluster right. */}
+        <header className="flex items-center justify-between flex-shrink-0" style={{ padding: "calc(env(safe-area-inset-top) + 16px) 14px 12px 20px" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/wordmark.svg" alt="Humanoid Index" draggable={false} style={{ height: 10, width: "auto", display: "block" }} />
+          <div className="flex items-center" style={{ gap: 8 }}>
+            <div className="relative flex items-center" style={{ ...CHIP, borderRadius: 999, padding: 3, height: 32 }}>
               <span
                 aria-hidden
                 className="absolute"
@@ -1112,10 +1297,9 @@ export default function MobileView() {
                   width: 30,
                   height: 26,
                   borderRadius: 999,
-                  background: "#fff",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+                  background: "#EDEDF2",
                   transform: `translateX(${DENSITIES.indexOf(density) * 30}px)`,
-                  transition: `transform 260ms ${EASE_OUT}`,
+                  transition: `transform 320ms ${EASE_THUMB}`,
                   left: 3,
                 }}
               />
@@ -1125,6 +1309,9 @@ export default function MobileView() {
                 </button>
               ))}
             </div>
+            <button onClick={() => setSearchOpen(true)} aria-label="Search" className="mv-tap flex items-center justify-center" style={{ ...CHIP, width: 32, height: 32, borderRadius: 999 }}>
+              <SearchGlyph />
+            </button>
             <button
               onClick={() => {
                 setSelectMode((s) => {
@@ -1132,17 +1319,58 @@ export default function MobileView() {
                   return !s;
                 });
               }}
-              className="mv-tap"
-              style={{ fontSize: 13.5, fontWeight: 500, color: INK, padding: "6px 13px", borderRadius: 999, background: selectMode ? "rgba(127,127,135,0.16)" : "transparent", boxShadow: selectMode ? undefined : "inset 0 0 0 1px rgba(0,0,0,0.1)" }}
+              className="mv-tap flex items-center justify-center"
+              style={{
+                height: 32,
+                paddingInline: 13,
+                borderRadius: 999,
+                fontSize: 13,
+                fontWeight: 500,
+                ...(selectMode ? { background: INK, color: "#fff" } : { ...CHIP, color: INK }),
+              }}
             >
               {selectMode ? "Done" : "Select"}
             </button>
           </div>
         </header>
 
+        {/* Search — filters the grid in place, no separate surface. */}
+        {searchOpen && (
+          <div className="flex items-center flex-shrink-0" style={{ gap: 12, padding: "0 16px 12px", animation: `mv-fade 220ms ${EASE_OUT} both` }}>
+            <div className="flex items-center flex-1" style={{ ...CHIP, height: 40, borderRadius: 13, paddingInline: 12, gap: 8, minWidth: 0 }}>
+              <SearchGlyph color={INK_MUTED} />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search robots and makers"
+                style={{ flex: 1, minWidth: 0, fontSize: 15, background: "transparent", border: "none", outline: "none", color: INK }}
+              />
+              {query && (
+                <button onClick={() => setQuery("")} aria-label="Clear search" className="flex items-center justify-center flex-shrink-0" style={{ width: 20, height: 20, borderRadius: 999, background: "rgba(0,0,0,0.08)" }}>
+                  <CloseGlyph size={11} color={INK_BODY} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setSearchOpen(false);
+                setQuery("");
+              }}
+              style={{ fontSize: 14.5, color: INK_BODY, flexShrink: 0 }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         {/* Grid */}
-        <div ref={gridScrollRef} className="mv-noscrollbar flex-1 overflow-y-auto" style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
+        <div ref={gridScrollRef} className="mv-noscrollbar flex-1 overflow-y-auto" style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}>
+          {!searchOpen && (
+            <p style={{ padding: "2px 22px 12px", fontSize: 13, lineHeight: 1.4, color: INK_MUTED }}>A visual index of humanoid robots.</p>
+          )}
           <div
+            ref={gridContentRef}
             style={{
               display: "grid",
               gridTemplateColumns: `repeat(${density}, minmax(0, 1fr))`,
@@ -1150,7 +1378,7 @@ export default function MobileView() {
               padding: `4px ${density === 4 ? 6 : 14}px calc(env(safe-area-inset-bottom) + ${selectMode ? 92 : 28}px)`,
             }}
           >
-            {humanoids.map((h, i) => (
+            {shown.map((h, i) => (
               <GridCell
                 key={h.id}
                 h={h}
@@ -1165,6 +1393,9 @@ export default function MobileView() {
               />
             ))}
           </div>
+          {shown.length === 0 && (
+            <p style={{ padding: "44px 22px", fontSize: 14.5, color: INK_MUTED, textAlign: "center" }}>No robots match &ldquo;{query.trim()}&rdquo;.</p>
+          )}
         </div>
       </div>
 
@@ -1176,7 +1407,8 @@ export default function MobileView() {
         <ExpandedView
           key="expanded"
           h={expandedH}
-          index={expandedIndex}
+          index={expandedIndex >= 0 ? expandedIndex : 0}
+          list={expandedList}
           instant={!!expanded?.instant}
           reduced={reduced}
           getCellRect={getCellRect}
@@ -1215,7 +1447,9 @@ export default function MobileView() {
         }
         .mv-tap { transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1); }
         .mv-tap:active { transform: scale(0.96); }
-        .mv-cell:active .relative { }
+        .mv-cell { transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1); }
+        .mv-cell:active { transform: scale(0.965); }
+        .mv-sel { transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1); transform: scale(0.955); }
         .mv-noscrollbar { scrollbar-width: none; }
         .mv-noscrollbar::-webkit-scrollbar { display: none; }
       `}</style>
