@@ -426,7 +426,7 @@ function GridCell({
         )}
       </div>
       {density < 4 && (
-        <div key={density} style={{ padding: density === 1 ? "10px 4px 2px" : "7px 2px 2px", animation: `mv-fade 300ms ${EASE_OUT} both`, minWidth: 0, width: "100%" }}>
+        <div key={density} style={{ padding: density === 1 ? "10px 4px 2px" : "7px 2px 2px", animation: `mv-fade 300ms ${EASE_OUT} both`, minWidth: 0, width: "100%", visibility: hidden ? "hidden" : undefined }}>
           <div className="flex items-baseline" style={{ gap: 6 }}>
             <span className="truncate" style={{ fontSize: density === 1 ? 19 : 13, fontWeight: 600, letterSpacing: "-0.015em", color: INK, minWidth: 0 }}>{h.name}</span>
             {h.year && <span style={{ fontSize: density === 1 ? 13 : 11, color: INK_MUTED, flexShrink: 0 }}>{h.year}</span>}
@@ -519,6 +519,7 @@ function ExpandedView({
     spring.current = createSpring(
       (v) => apply(v),
       (target) => {
+        navigator.vibrate?.(4);
         if (target === 0) {
           onClose();
         } else {
@@ -685,6 +686,7 @@ function ExpandedView({
           el.style.opacity = "0";
           window.setTimeout(() => {
             pageDir.current = dir;
+            navigator.vibrate?.(4);
             onPage(dir);
           }, 170);
         } else if (el) {
