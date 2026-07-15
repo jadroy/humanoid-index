@@ -1,22 +1,25 @@
 "use client";
 
-// Mobile experience — a vertical, visual-first index.
+// Mobile experience — the Apple Photos paradigm.
 //
-// The desktop signature is a horizontal, spring-loaded arc of cards. On mobile
-// we translate its *character* — a focused robot front and center, with the
-// index drifting past — into a vertical, thumb-native feed:
-//   • Each humanoid gets a near-full screen: a big, clean visual first, then
-//     name / company / a few headline stats / lightweight tags, and a peek of
-//     the next robot to invite the next scroll.
-//   • A slim curved index rail on the right edge echoes the desktop wheel —
-//     nearby names drift along a gentle arc, the active one clearer. Peripheral,
-//     never required; the plain vertical feed is always obvious and effortless.
-//   • Tap a robot → a native bottom sheet with the full spec, thumb-reachable.
-//   • Compare is a light multi-select: add with "Compare +", a persistent
-//     "Compare · N" bar opens a clean side-by-side view.
+// One idea: overview and object are the same surface at different zooms.
+//   • A clean grid of robot cards at three densities — 4-col (the whole index
+//     at a glance), 2-col (default browse), 1-col (one robot per screen).
+//     Density changes reflow with a transform-only FLIP, anchored to the
+//     viewport center. Almost no chrome: the robots are the interface.
+//   • THE moment: tap a card and its image morphs in place from its grid cell
+//     into a full-screen hero (transform-only, spring-driven, interruptible).
+//     Pull down past the top and the same morph runs in reverse, tracking the
+//     finger back into its exact cell. If this transition is janky the whole
+//     concept fails — everything here favors it.
+//   • Expanded view: hero card + name / description / tags / stats / actions,
+//     native scroll below the fold, horizontal swipe pages between robots.
+//   • Compare = Photos' "Select" pattern: Select → tap cards → Compare bar →
+//     the side-by-side sheet.
 //
-// Native scroll + scroll-snap (no hijacking). Motion is restrained and honors
-// prefers-reduced-motion. Nothing per-frame touches React state.
+// Feel discipline: no per-frame React state. The morph spring, pull tracking,
+// and FLIP all write transforms directly. Honors prefers-reduced-motion.
+// `?tune` opens a knob panel for the motion constants.
 
 import {
   Fragment,
@@ -24,6 +27,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
@@ -32,99 +36,46 @@ import { humanoids, type Humanoid } from "@/data/humanoids";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { withUtm } from "@/lib/outbound";
 import { getRobotDescription } from "@/lib/robotDescription";
-import { INK, INK_BODY, INK_MUTED, SURFACE } from "@/lib/design/tokens";
+import { INK, INK_BODY, INK_MUTED } from "@/lib/design/tokens";
 
-const N = humanoids.length;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_SHEET = "cubic-bezier(0.32, 0.72, 0, 1)";
+const TILE = "#F9F9F9"; // card bg — web parity
+const CELL_ASPECT = 3 / 4; // width / height, shared by cells and the hero so the morph is exact
+const IMG_PAD = "8%"; // inner padding of every image box (shared → morph is exact)
 
-const ITEM_FRAC = 0.9; // feed item height as a fraction of the viewport (rest = next-item peek)
-const RAIL_WINDOW = 4; // names shown each side of the active in the rail
-const RAIL_ROW = 30; // px between rail names
-const RAIL_ARC = 26; // px inward bow at the window edge
+type Density = 1 | 2 | 4;
+const DENSITIES: Density[] = [1, 2, 4];
 
-// Glass-chip material — light fill, hairline, whisper of elevation.
-const CHIP = {
-  background: "#FFFFFF",
-  boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
-} as const;
-
-// ── Looks ─────────────────────────────────────────────────────
-// A few distinct visual treatments of the same feed, switchable live from the
-// header. Same structure, different feel.
-type Look = {
-  key: string;
-  label: string;
-  bg: string;
-  ink: string;
-  inkBody: string;
-  inkMuted: string;
-  overlay: boolean; // info floats over the image (cinematic) vs sits below (editorial)
-  imagePad: string;
-  nameSize: number;
-  railInk: string;
-  railMuted: string;
-  primaryBg: string;
-  primaryFg: string;
-  chipBg: string;
-  chipFg: string;
-  chipShadow: string;
+// ── Tune ──────────────────────────────────────────────────────
+// Live-mutable motion constants. The `?tune` panel writes straight into TUNE;
+// imperative code reads it every frame, layout knobs bump a re-render.
+const DEFAULT_TUNE = {
+  response: 0.4, // spring response (s) — lower = snappier
+  damping: 0.9, // 1 = no overshoot, <1 = slight iOS bounce
+  heroH: 0.56, // hero height as a fraction of the viewport
+  dismissAt: 90, // px of pull that commits a dismiss
+  flickV: 0.55, // px/ms release velocity that commits a dismiss
+  pullRange: 440, // px of pull that maps to a full morph-home
+  gridDepth: 0.965, // grid scale when fully expanded (depth cue)
+  infoShift: 16, // px the info block rises during the morph
+  gap: 10, // grid gap
+  radius: 18, // card radius at 2-col (scaled for other densities)
+  flipMs: 420, // density-reflow duration
 };
-const LOOKS: Look[] = [
-  {
-    key: "light",
-    label: "Editorial",
-    bg: "#ffffff",
-    ink: INK,
-    inkBody: INK_BODY,
-    inkMuted: INK_MUTED,
-    overlay: false,
-    imagePad: "6%",
-    nameSize: 22,
-    railInk: INK,
-    railMuted: INK_MUTED,
-    primaryBg: INK,
-    primaryFg: "#ffffff",
-    chipBg: "#ffffff",
-    chipFg: INK,
-    chipShadow: "inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
-  },
-  {
-    key: "dark",
-    label: "Cinematic",
-    bg: "#0b0b0e",
-    ink: "#f5f5f7",
-    inkBody: "#b6b6be",
-    inkMuted: "#70707a",
-    overlay: true,
-    imagePad: "3%",
-    nameSize: 27,
-    railInk: "#f5f5f7",
-    railMuted: "#5c5c66",
-    primaryBg: "#f5f5f7",
-    primaryFg: "#0b0b0e",
-    chipBg: "rgba(255,255,255,0.10)",
-    chipFg: "#f5f5f7",
-    chipShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
-  },
-  {
-    key: "bold",
-    label: "Bold",
-    bg: "#f6f5f2",
-    ink: INK,
-    inkBody: INK_BODY,
-    inkMuted: INK_MUTED,
-    overlay: false,
-    imagePad: "5%",
-    nameSize: 33,
-    railInk: INK,
-    railMuted: INK_MUTED,
-    primaryBg: INK,
-    primaryFg: "#ffffff",
-    chipBg: "#ffffff",
-    chipFg: INK,
-    chipShadow: "inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
-  },
+const TUNE: typeof DEFAULT_TUNE = { ...DEFAULT_TUNE };
+const KNOBS: { k: keyof typeof DEFAULT_TUNE; min: number; max: number; step: number; layout?: boolean }[] = [
+  { k: "response", min: 0.2, max: 0.75, step: 0.01 },
+  { k: "damping", min: 0.6, max: 1.1, step: 0.01 },
+  { k: "heroH", min: 0.4, max: 0.7, step: 0.01, layout: true },
+  { k: "dismissAt", min: 40, max: 240, step: 5 },
+  { k: "flickV", min: 0.2, max: 1.5, step: 0.05 },
+  { k: "pullRange", min: 240, max: 800, step: 10 },
+  { k: "gridDepth", min: 0.9, max: 1, step: 0.005 },
+  { k: "infoShift", min: 0, max: 40, step: 1 },
+  { k: "gap", min: 4, max: 20, step: 1, layout: true },
+  { k: "radius", min: 8, max: 28, step: 1, layout: true },
+  { k: "flipMs", min: 200, max: 700, step: 10 },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -192,6 +143,63 @@ async function shareCompare(list: Humanoid[]) {
   await doShare(`${list.map((h) => h.name).join(" vs ")} — Humanoid Index`, url.toString());
 }
 
+// Critically-damped-ish spring on a scalar. Drives the morph progress; writes
+// nothing to React — callers apply the value in onFrame.
+function createSpring(onFrame: (v: number) => void, onSettle: (target: number) => void) {
+  let value = 0;
+  let velocity = 0;
+  let target = 0;
+  let raf = 0;
+  let last = 0;
+  const tick = (now: number) => {
+    const dt = Math.min((now - last) / 1000, 1 / 30);
+    last = now;
+    const omega = (2 * Math.PI) / TUNE.response;
+    velocity += (omega * omega * (target - value) - 2 * TUNE.damping * omega * velocity) * dt;
+    value += velocity * dt;
+    if (Math.abs(target - value) < 0.001 && Math.abs(velocity) < 0.01) {
+      value = target;
+      velocity = 0;
+      raf = 0;
+      onFrame(value);
+      onSettle(target);
+      return;
+    }
+    onFrame(value);
+    raf = requestAnimationFrame(tick);
+  };
+  const start = () => {
+    if (!raf) {
+      last = performance.now();
+      raf = requestAnimationFrame(tick);
+    }
+  };
+  return {
+    setTarget(t: number, v?: number) {
+      target = t;
+      if (v !== undefined) velocity = v;
+      start();
+    },
+    snap(v: number) {
+      // Direct set while a finger owns the value — spring paused.
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      value = v;
+      velocity = 0;
+      onFrame(value);
+    },
+    get value() {
+      return value;
+    },
+    stop() {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    },
+  };
+}
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
 // ── Glyphs ────────────────────────────────────────────────────
 function CloseGlyph({ size = 17, color = INK_BODY }: { size?: number; color?: string }) {
   return (
@@ -200,30 +208,48 @@ function CloseGlyph({ size = 17, color = INK_BODY }: { size?: number; color?: st
     </svg>
   );
 }
-function ShareGlyph({ size = 19 }: { size?: number }) {
+function ChevronDownGlyph({ size = 20, color = INK }: { size?: number; color?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 10l6 6 6-6" />
+    </svg>
+  );
+}
+function ShareGlyph({ size = 19, color = INK }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 15V3M12 3l-4 4M12 3l4 4" />
       <path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7" />
     </svg>
   );
 }
-function PlusGlyph({ color = INK }: { color?: string }) {
+function CheckGlyph({ size = 13, color = "#fff" }: { size?: number; color?: string }) {
   return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-function CheckGlyph({ color = "#fff" }: { color?: string }) {
-  return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 6L9 17l-5-5" />
     </svg>
   );
 }
+// Density glyphs — 1 / 2×2 / 4×4 squares, Photos zoom levels.
+function DensityGlyph({ d, color }: { d: Density; color: string }) {
+  const cells = d === 1 ? [[3, 3, 10, 10]] : d === 2 ? [[3, 3, 4.4, 4.4], [8.6, 3, 4.4, 4.4], [3, 8.6, 4.4, 4.4], [8.6, 8.6, 4.4, 4.4]] : [];
+  return (
+    <svg width={15} height={15} viewBox="0 0 16 16" fill={color}>
+      {d === 4
+        ? [0, 1, 2, 3].flatMap((r) =>
+            [0, 1, 2, 3].map((c) => <rect key={`${r}${c}`} x={2.4 + c * 3} y={2.4 + r * 3} width={2.1} height={2.1} rx={0.6} />)
+          )
+        : cells.map((c, i) => <rect key={i} x={c[0]} y={c[1]} width={c[2]} height={c[3]} rx={1.6} />)}
+    </svg>
+  );
+}
 
-// ── Detail sheet ──────────────────────────────────────────────
+// ── Small shared pieces ───────────────────────────────────────
+const CHIP = {
+  background: "#FFFFFF",
+  boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)",
+} as const;
+
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between" style={{ padding: "11px 0", borderTop: "1px solid rgba(0,0,0,0.05)" }}>
@@ -233,12 +259,7 @@ function StatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DetailSheet({ h, onClose }: { h: Humanoid; onClose: () => void }) {
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const drag = useRef({ active: false, startY: 0, dy: 0 });
-  const desc = useMemo(() => getRobotDescription(h), [h]);
-  const visit = visitTarget(h);
-
+function statRowsFor(h: Humanoid) {
   const rows: { label: string; value: string }[] = [];
   if (h.height) rows.push({ label: "Height", value: `${h.height} cm` });
   if (h.weight) rows.push({ label: "Weight", value: `${h.weight} kg` });
@@ -246,101 +267,10 @@ function DetailSheet({ h, onClose }: { h: Humanoid; onClose: () => void }) {
   if (h.dof) rows.push({ label: "Degrees of freedom", value: `${h.dof}` });
   if (h.cost && h.cost !== "N/A") rows.push({ label: "Cost", value: h.cost });
   if (h.status) rows.push({ label: "Status", value: h.status });
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    drag.current = { active: true, startY: e.clientY, dy: 0 };
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current.active) return;
-    const dy = Math.max(0, e.clientY - drag.current.startY);
-    drag.current.dy = dy;
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = "none";
-      sheetRef.current.style.transform = `translateY(${dy}px)`;
-    }
-  };
-  const onPointerUp = () => {
-    if (!drag.current.active) return;
-    const shouldClose = drag.current.dy > 120;
-    drag.current.active = false;
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = `transform 320ms ${EASE_SHEET}`;
-      sheetRef.current.style.transform = shouldClose ? "translateY(100%)" : "translateY(0)";
-    }
-    if (shouldClose) window.setTimeout(onClose, 260);
-  };
-
-  return (
-    <div className="fixed inset-0 flex flex-col justify-end" style={{ zIndex: 200, animation: `mv-backdrop-in 260ms ${EASE_OUT} both` }}>
-      <button aria-label="Close" onClick={onClose} className="absolute inset-0" style={{ background: "rgba(20,20,24,0.28)", backdropFilter: "blur(2px)" }} />
-      <div
-        ref={sheetRef}
-        className="relative bg-white overflow-hidden"
-        style={{ borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "88dvh", animation: `mv-sheet-in 380ms ${EASE_SHEET} both`, boxShadow: "0 -20px 60px rgba(0,0,0,0.16)" }}
-      >
-        <div onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} style={{ padding: "12px 0 4px", touchAction: "none", cursor: "grab" }} className="flex justify-center">
-          <div style={{ width: 38, height: 5, borderRadius: 3, background: "rgba(0,0,0,0.14)" }} />
-        </div>
-        <div className="overflow-y-auto" style={{ padding: "8px 22px 34px", maxHeight: "calc(88dvh - 28px)" }}>
-          <div className="flex items-center gap-3" style={{ marginBottom: 16 }}>
-            {h.logoUrl && (
-              <div className="relative overflow-hidden flex-shrink-0" style={{ width: 34, height: 34, borderRadius: 9 }}>
-                <Image src={h.logoUrl} alt={h.manufacturer} fill sizes="34px" className="object-contain" />
-              </div>
-            )}
-            <div className="min-w-0">
-              <h2 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", color: INK, lineHeight: 1.1 }}>{h.name}</h2>
-              <p style={{ fontSize: 13, color: INK_BODY, marginTop: 2 }}>
-                {h.manufacturer}
-                {h.year ? ` · ${h.year}` : ""}
-              </p>
-            </div>
-          </div>
-
-          {desc.text && (
-            <p style={{ fontSize: 15, lineHeight: 1.5, color: INK_BODY, marginBottom: 18 }}>{desc.long || desc.text}</p>
-          )}
-
-          {h.tags && h.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2" style={{ marginBottom: 18 }}>
-              {h.tags.map((t) => (
-                <span key={t} style={{ fontSize: 12.5, fontWeight: 450, color: INK_BODY, padding: "5px 11px", borderRadius: 999, border: "1px solid rgba(0,0,0,0.09)" }}>
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div style={{ marginBottom: 22 }}>
-            {rows.map((r) => (
-              <StatRow key={r.label} label={r.label} value={r.value} />
-            ))}
-          </div>
-
-          <div className="flex gap-3">
-            {visit.href && (
-              <a href={visit.href} target="_blank" rel="noopener noreferrer" className="mv-tap flex-1 flex items-center justify-center" style={{ height: 50, borderRadius: 15, background: INK, color: "white", fontSize: 15, fontWeight: 500 }}>
-                {visit.label}
-              </a>
-            )}
-            <button
-              onClick={() => shareRobot(h)}
-              className="mv-tap flex items-center justify-center"
-              style={{ width: visit.href ? 50 : undefined, flex: visit.href ? undefined : 1, height: 50, paddingInline: visit.href ? 0 : 20, borderRadius: 15, background: CHIP.background, boxShadow: CHIP.boxShadow, color: INK, fontSize: 15, fontWeight: 500 }}
-            >
-              {visit.href ? <ShareGlyph /> : "Share"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return rows;
 }
 
-// ── Compare view (multi-select, 2..N) ─────────────────────────
-const priceOf = (h: Humanoid) => (h.cost && h.cost !== "N/A" ? h.cost : "—");
-
+// ── Compare view (unchanged organ from the feed era) ──────────
 function CompareView({ list, onRemove, onClose }: { list: Humanoid[]; onRemove: (id: string) => void; onClose: () => void }) {
   const blurb = list.length === 2 ? getCompareBlurb(list[0], list[1]) : null;
   const rows: { label: string; get: (h: Humanoid) => string }[] = [
@@ -348,7 +278,7 @@ function CompareView({ list, onRemove, onClose }: { list: Humanoid[]; onRemove: 
     { label: "Weight", get: (h) => (h.weight ? `${h.weight} kg` : "—") },
     { label: "Speed", get: (h) => (h.maxSpeed ? `${h.maxSpeed} m/s` : "—") },
     { label: "DOF", get: (h) => (h.dof ? `${h.dof}` : "—") },
-    { label: "Price", get: priceOf },
+    { label: "Price", get: (h) => (h.cost && h.cost !== "N/A" ? h.cost : "—") },
     { label: "Status", get: (h) => h.status ?? "—" },
     { label: "Year", get: (h) => (h.year ? `${h.year}` : "—") },
   ];
@@ -357,7 +287,7 @@ function CompareView({ list, onRemove, onClose }: { list: Humanoid[]; onRemove: 
   const labelCell = { position: "sticky" as const, left: 0, background: "#fff", display: "flex", alignItems: "center", fontSize: 12, color: INK_MUTED, padding: "12px 14px 12px 22px", borderTop: "1px solid rgba(0,0,0,0.05)" };
 
   return (
-    <div className="fixed inset-0 flex flex-col justify-end" style={{ zIndex: 200, animation: `mv-backdrop-in 260ms ${EASE_OUT} both` }}>
+    <div className="fixed inset-0 flex flex-col justify-end" style={{ zIndex: 400, animation: `mv-backdrop-in 260ms ${EASE_OUT} both` }}>
       <button aria-label="Close" onClick={onClose} className="absolute inset-0" style={{ background: "rgba(20,20,24,0.28)", backdropFilter: "blur(2px)" }} />
       <div className="relative bg-white overflow-hidden flex flex-col" style={{ borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "92dvh", animation: `mv-sheet-in 380ms ${EASE_SHEET} both`, boxShadow: "0 -20px 60px rgba(0,0,0,0.16)" }}>
         <div className="flex items-center justify-between flex-shrink-0" style={{ padding: "18px 22px 12px" }}>
@@ -375,11 +305,10 @@ function CompareView({ list, onRemove, onClose }: { list: Humanoid[]; onRemove: 
         <div className="overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)" }}>
           <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
             <div style={{ display: "grid", gridTemplateColumns: `104px repeat(${list.length}, 132px)`, width: "max-content", minWidth: "100%" }}>
-              {/* header row — robot minis (kept visible so orientation never lost) */}
               <div style={{ position: "sticky", left: 0, background: "#fff" }} />
               {list.map((h) => (
                 <div key={h.id} className="flex flex-col items-center" style={{ padding: "4px 8px 0" }}>
-                  <div className="relative w-full overflow-hidden" style={{ aspectRatio: "3 / 4", borderRadius: 14, background: SURFACE }}>
+                  <div className="relative w-full overflow-hidden" style={{ aspectRatio: "3 / 4", borderRadius: 14, background: TILE }}>
                     {h.imageUrl && (
                       <Image src={h.imageUrl} alt={h.name} fill sizes="132px" className={h.imageFit === "cover" ? "object-cover" : "object-contain"} style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : "8%" }} />
                     )}
@@ -391,8 +320,6 @@ function CompareView({ list, onRemove, onClose }: { list: Humanoid[]; onRemove: 
                   <span className="truncate w-full text-center" style={{ fontSize: 11.5, color: INK_MUTED }}>{h.manufacturer}</span>
                 </div>
               ))}
-
-              {/* stat rows */}
               {rows.map((r) => (
                 <Fragment key={r.label}>
                   <div style={labelCell}>{r.label}</div>
@@ -403,7 +330,6 @@ function CompareView({ list, onRemove, onClose }: { list: Humanoid[]; onRemove: 
               ))}
             </div>
           </div>
-
           {blurb?.text && (
             <p style={{ fontSize: 14.5, lineHeight: 1.55, color: INK_BODY, padding: "18px 22px 0" }}>{blurb.long || blurb.text}</p>
           )}
@@ -414,336 +340,836 @@ function CompareView({ list, onRemove, onClose }: { list: Humanoid[]; onRemove: 
 }
 
 // ── Compare bar ───────────────────────────────────────────────
-function CompareBar({ count, onOpen, onClear, look }: { count: number; onOpen: () => void; onClear: () => void; look: Look }) {
+function CompareBar({ count, onOpen, onClear }: { count: number; onOpen: () => void; onClear: () => void }) {
   const ready = count >= 2;
   return (
     <div className="fixed flex items-center" style={{ left: 16, right: 16, bottom: "calc(env(safe-area-inset-bottom) + 14px)", zIndex: 120, animation: `mv-bar-in 300ms ${EASE_OUT} both` }}>
       <button
         onClick={() => ready && onOpen()}
         className="mv-tap flex-1 flex items-center justify-center"
-        style={{ height: 50, borderRadius: 16, background: look.primaryBg, color: look.primaryFg, fontSize: 15, fontWeight: 500, opacity: ready ? 1 : 0.5 }}
+        style={{ height: 50, borderRadius: 16, background: INK, color: "#fff", fontSize: 15, fontWeight: 500, opacity: ready ? 1 : 0.5 }}
       >
-        {ready ? `Compare · ${count}` : "Compare · 1 · add one more"}
+        {ready ? `Compare · ${count}` : count === 1 ? "Compare · pick one more" : "Tap robots to compare"}
       </button>
-      <button onClick={onClear} aria-label="Clear compare" className="mv-tap flex items-center justify-center" style={{ background: look.chipBg, boxShadow: look.chipShadow, marginLeft: 10, width: 50, height: 50, borderRadius: 16 }}>
-        <CloseGlyph color={look.chipFg} />
+      <button onClick={onClear} aria-label="Clear compare" className="mv-tap flex items-center justify-center" style={{ ...CHIP, marginLeft: 10, width: 50, height: 50, borderRadius: 16 }}>
+        <CloseGlyph />
       </button>
     </div>
   );
 }
 
-// ── Curved index rail ─────────────────────────────────────────
-// The desktop wheel, distilled: names drift along a gentle arc on the right
-// edge; the active one is clearer/larger. Peripheral and visual — the vertical
-// feed never depends on it.
-function CurvedRail({ subscribe, reduced, look }: { subscribe: (cb: (p: number) => void) => () => void; reduced: boolean; look: Look }) {
-  const nameRefs = useRef<(HTMLDivElement | null)[]>([]);
-  useEffect(() => {
-    return subscribe((p) => {
-      for (let i = 0; i < N; i++) {
-        const node = nameRefs.current[i];
-        if (!node) continue;
-        const o = i - p;
-        const d = Math.abs(o);
-        if (d > RAIL_WINDOW + 0.5) {
-          node.style.opacity = "0";
-          continue;
-        }
-        const t = Math.min(d / RAIL_WINDOW, 1);
-        const y = o * RAIL_ROW;
-        const x = -Math.pow(t, 1.35) * RAIL_ARC;
-        const active = d < 0.5;
-        node.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-        node.style.opacity = (active ? 1 : Math.max(0.14, 0.5 - t * 0.4)).toFixed(3);
-        node.style.color = active ? look.railInk : look.railMuted;
-        node.style.fontSize = active ? "13.5px" : "11px";
-        node.style.fontWeight = active ? "600" : "400";
-      }
-    });
-  }, [subscribe, look]);
-
-  return (
-    <div className="absolute" style={{ right: 0, top: 0, bottom: 0, width: 84, zIndex: 20, pointerEvents: "none" }} aria-hidden>
-      <div className="absolute" style={{ right: 14, top: "50%" }}>
-        {humanoids.map((h, i) => (
-          <div
-            key={h.id}
-            ref={(el) => {
-              nameRefs.current[i] = el;
-            }}
-            className="absolute whitespace-nowrap"
-            style={{ right: 0, top: 0, opacity: 0, transformOrigin: "right center", transition: reduced ? undefined : "font-size 140ms ease, color 140ms ease" }}
-          >
-            {h.name}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Feed item ─────────────────────────────────────────────────
-function FeedItem({
+// ── Grid cell ─────────────────────────────────────────────────
+function GridCell({
   h,
   index,
-  height,
-  reduced,
+  density,
+  radius,
+  hidden,
+  selectMode,
   selected,
-  look,
-  onOpen,
-  onToggleCompare,
-  subscribe,
+  onTap,
+  registerImg,
 }: {
   h: Humanoid;
   index: number;
-  height: number;
-  reduced: boolean;
+  density: Density;
+  radius: number;
+  hidden: boolean;
+  selectMode: boolean;
   selected: boolean;
-  look: Look;
-  onOpen: () => void;
-  onToggleCompare: () => void;
-  subscribe: (cb: (p: number) => void) => () => void;
+  onTap: () => void;
+  registerImg: (id: string, el: HTMLDivElement | null) => void;
 }) {
-  const imgWrap = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (reduced) return;
-    // Subtle focus: the centered item is full, neighbors ease back slightly.
-    return subscribe((p) => {
-      const d = Math.min(Math.abs(index - p), 1.4);
-      const el = imgWrap.current;
-      if (el) {
-        el.style.transform = `scale(${(1 - d * 0.05).toFixed(3)})`;
-        el.style.opacity = (1 - d * 0.42).toFixed(3);
-      }
-    });
-  }, [subscribe, index, reduced]);
-
-  const attrs: { label: string; value: string }[] = [];
-  if (h.height) attrs.push({ label: "Height", value: `${h.height} cm` });
-  if (h.weight) attrs.push({ label: "Weight", value: `${h.weight} kg` });
-  if (h.maxSpeed) attrs.push({ label: "Speed", value: `${h.maxSpeed} m/s` });
-  else if (h.dof) attrs.push({ label: "DOF", value: `${h.dof}` });
-
-  const image = h.imageUrl ? (
-    <div ref={imgWrap} className="absolute inset-0 flex items-center justify-center" style={{ willChange: reduced ? undefined : "transform, opacity" }}>
-      <Image
-        src={h.imageUrl}
-        alt={h.name}
-        fill
-        sizes="100vw"
-        priority={index < 2}
-        className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
-        style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : look.imagePad, transform: h.imageScale ? `scale(${h.imageScale})` : undefined }}
-        draggable={false}
-      />
-    </div>
-  ) : null;
-
-  const pad = look.overlay ? 0 : 70;
-  const info = (
-    <>
-      <div className="flex items-baseline" style={{ gap: 8, paddingRight: pad }}>
-        <h2 className="truncate" style={{ fontSize: look.nameSize, fontWeight: 600, letterSpacing: "-0.02em", color: look.ink, minWidth: 0, lineHeight: 1.05 }}>{h.name}</h2>
-        {h.year && <span style={{ fontSize: 14, color: look.inkMuted, flexShrink: 0 }}>{h.year}</span>}
+  const sizes = density === 1 ? "100vw" : density === 2 ? "50vw" : "25vw";
+  return (
+    <button onClick={onTap} className="mv-cell flex flex-col text-left" style={{ minWidth: 0 }} aria-label={h.name}>
+      <div
+        ref={(el) => registerImg(h.id, el)}
+        className="relative w-full overflow-hidden"
+        style={{
+          aspectRatio: `${CELL_ASPECT}`,
+          borderRadius: radius,
+          background: TILE,
+          visibility: hidden ? "hidden" : undefined,
+          transform: selectMode && selected ? "scale(0.955)" : undefined,
+          transition: `transform 240ms ${EASE_OUT}`,
+        }}
+      >
+        {h.imageUrl && (
+          <Image
+            src={h.imageUrl}
+            alt={h.name}
+            fill
+            sizes={sizes}
+            priority={index < 4}
+            className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
+            style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : IMG_PAD }}
+            draggable={false}
+          />
+        )}
+        {selectMode && (
+          <span
+            className="absolute flex items-center justify-center"
+            style={{
+              right: 8,
+              bottom: 8,
+              width: 22,
+              height: 22,
+              borderRadius: 999,
+              background: selected ? INK : "rgba(255,255,255,0.85)",
+              boxShadow: selected ? "0 1px 4px rgba(0,0,0,0.25)" : "inset 0 0 0 1.5px rgba(0,0,0,0.22)",
+              transition: `background 160ms ease`,
+            }}
+          >
+            {selected && <CheckGlyph />}
+          </span>
+        )}
       </div>
-      <div className="flex items-center" style={{ gap: 7, marginTop: 5, height: 18, paddingRight: pad }}>
-        <span className="flex-shrink-0" style={{ width: 7, height: 7, borderRadius: 999, background: statusColor(h.status) }} />
-        <span className="truncate" style={{ fontSize: 13.5, color: look.inkBody, minWidth: 0 }}>
-          {h.manufacturer}
-          {h.useCase ? ` · ${h.useCase}` : ""}
-        </span>
-      </div>
-      <div className="flex" style={{ gap: 22, marginTop: 12 }}>
-        {attrs.slice(0, 3).map((a) => (
-          <div key={a.label} className="flex flex-col">
-            <span style={{ fontSize: 11.5, color: look.inkMuted }}>{a.label}</span>
-            <span style={{ fontSize: 15, fontWeight: 500, color: look.ink, marginTop: 1 }}>{a.value}</span>
+      {density < 4 && (
+        <div key={density} style={{ padding: density === 1 ? "10px 4px 2px" : "7px 2px 2px", animation: `mv-fade 300ms ${EASE_OUT} both`, minWidth: 0, width: "100%" }}>
+          <div className="flex items-baseline" style={{ gap: 6 }}>
+            <span className="truncate" style={{ fontSize: density === 1 ? 19 : 13, fontWeight: 600, letterSpacing: "-0.015em", color: INK, minWidth: 0 }}>{h.name}</span>
+            {h.year && <span style={{ fontSize: density === 1 ? 13 : 11, color: INK_MUTED, flexShrink: 0 }}>{h.year}</span>}
           </div>
-        ))}
-      </div>
-      <div className="flex" style={{ gap: 10, marginTop: 14 }}>
-        <button onClick={onOpen} className="mv-tap flex-1 flex items-center justify-center" style={{ height: 44, borderRadius: 13, background: look.primaryBg, color: look.primaryFg, fontSize: 14.5, fontWeight: 500 }}>
-          Details
-        </button>
-        <button
-          onClick={onToggleCompare}
-          aria-pressed={selected}
-          className="mv-tap flex items-center justify-center"
-          style={{ height: 44, paddingInline: 16, borderRadius: 13, background: selected ? look.primaryBg : look.chipBg, boxShadow: selected ? undefined : look.chipShadow, color: selected ? look.primaryFg : look.chipFg, fontSize: 14.5, fontWeight: 500, gap: 6 }}
-        >
-          {selected ? <CheckGlyph color={look.primaryFg} /> : <PlusGlyph color={look.chipFg} />}
-          <span>{selected ? "Added" : "Compare"}</span>
-        </button>
-      </div>
-    </>
+          {density === 1 && (
+            <div className="flex items-center" style={{ gap: 6, marginTop: 3 }}>
+              <span className="flex-shrink-0" style={{ width: 6, height: 6, borderRadius: 999, background: statusColor(h.status) }} />
+              <span className="truncate" style={{ fontSize: 12.5, color: INK_BODY, minWidth: 0 }}>
+                {h.manufacturer}
+                {h.useCase ? ` · ${h.useCase}` : ""}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </button>
+  );
+}
+
+// ── Expanded view — the moment ────────────────────────────────
+// Rendered as a full-screen overlay. The hero card lives at its final layout
+// position inside a scroller; during the morph it wears a transform mapping it
+// onto the origin grid cell, spring-driven to identity. Pull-down past the
+// scroll top hands the progress value to the finger; release decides.
+function ExpandedView({
+  h,
+  index,
+  instant,
+  reduced,
+  getCellRect,
+  ensureCellVisible,
+  onProgress,
+  onPage,
+  onClose,
+}: {
+  h: Humanoid;
+  index: number;
+  instant: boolean;
+  reduced: boolean;
+  getCellRect: (id: string) => DOMRect | null;
+  ensureCellVisible: (id: string) => DOMRect | null;
+  onProgress: (p: number) => void;
+  onPage: (dir: 1 | -1) => void;
+  onClose: () => void;
+}) {
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const infoRef = useRef<HTMLDivElement>(null);
+  const chromeRef = useRef<HTMLDivElement>(null);
+  const [settled, setSettled] = useState(instant || reduced);
+  const settledRef = useRef(settled);
+  settledRef.current = settled;
+  const closingRef = useRef(false);
+  const morph = useRef<{ tx: number; ty: number; s: number; cellR: number } | null>(null);
+  const pageDir = useRef<0 | 1 | -1>(0);
+
+  const desc = useMemo(() => getRobotDescription(h), [h]);
+  const visit = visitTarget(h);
+  const rows = statRowsFor(h);
+  const prev = index > 0 ? humanoids[index - 1] : null;
+  const next = index < humanoids.length - 1 ? humanoids[index + 1] : null;
+
+  // Apply morph progress p (0 = in the cell, 1 = expanded) — pure style writes.
+  const apply = useCallback(
+    (p: number) => {
+      const m = morph.current;
+      if (backdropRef.current) backdropRef.current.style.opacity = p.toFixed(4);
+      if (chromeRef.current) chromeRef.current.style.opacity = clamp01((p - 0.55) / 0.45).toFixed(4);
+      if (infoRef.current) {
+        infoRef.current.style.opacity = clamp01((p - 0.3) / 0.7).toFixed(4);
+        infoRef.current.style.transform = `translateY(${((1 - p) * TUNE.infoShift).toFixed(2)}px)`;
+      }
+      if (heroRef.current && m) {
+        const t = 1 - p;
+        const k = 1 - (1 - m.s) * t;
+        heroRef.current.style.transform = `translate(${(m.tx * t).toFixed(2)}px, ${(m.ty * t).toFixed(2)}px) scale(${k.toFixed(4)})`;
+        // Visual radius eases cell-radius → hero-radius despite the scale.
+        const want = m.cellR + (22 - m.cellR) * p;
+        heroRef.current.style.borderRadius = `${(want / k).toFixed(2)}px`;
+      }
+      onProgress(p);
+    },
+    [onProgress]
   );
 
-  // Cinematic: image fills the item; info floats over a bottom scrim.
-  if (look.overlay) {
-    return (
-      <div style={{ height, scrollSnapAlign: "start" }} className="relative">
-        <button onClick={onOpen} aria-label={`${h.name} details`} className="absolute inset-0 w-full overflow-hidden">
-          {image}
-        </button>
-        <div className="absolute" style={{ left: 0, right: 0, bottom: 0, padding: "70px 24px 22px", background: `linear-gradient(to top, ${look.bg} 34%, ${look.bg}00 100%)`, pointerEvents: "none" }}>
-          <div style={{ pointerEvents: "auto" }}>{info}</div>
-        </div>
-      </div>
+  const spring = useRef<ReturnType<typeof createSpring> | null>(null);
+  if (!spring.current) {
+    spring.current = createSpring(
+      (v) => apply(v),
+      (target) => {
+        if (target === 0) {
+          onClose();
+        } else {
+          if (heroRef.current) heroRef.current.style.transform = "";
+          if (!settledRef.current) setSettled(true);
+        }
+      }
     );
   }
 
-  // Editorial: image on top, info below.
+  // Recompute the morph geometry against the CURRENT cell (id can change via paging).
+  const measure = useCallback(
+    (id: string, viaEnsure: boolean) => {
+      const hero = heroRef.current;
+      if (!hero) return false;
+      const cell = viaEnsure ? ensureCellVisible(id) : getCellRect(id);
+      if (!cell) return false;
+      const prevTransform = hero.style.transform;
+      hero.style.transform = "";
+      const hr = hero.getBoundingClientRect();
+      hero.style.transform = prevTransform;
+      morph.current = {
+        tx: cell.left - hr.left,
+        ty: cell.top - hr.top,
+        s: cell.width / hr.width,
+        cellR: parseFloat(getComputedStyle(document.body).getPropertyValue("--mv-radius")) || 18,
+      };
+      return true;
+    },
+    [ensureCellVisible, getCellRect]
+  );
+
+  // Mount: present. Either morph from the cell or (deeplink / reduced motion) appear.
+  useLayoutEffect(() => {
+    const ok = measure(h.id, false);
+    if (instant || reduced || !ok) {
+      spring.current!.snap(1);
+      apply(1);
+      setSettled(true);
+      return;
+    }
+    spring.current!.snap(0);
+    apply(0);
+    spring.current!.setTarget(1);
+    return () => spring.current?.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Paging entrance: when the robot changes mid-expanded, slide new content in.
+  useLayoutEffect(() => {
+    const dir = pageDir.current;
+    if (!dir) return;
+    pageDir.current = 0;
+    const el = pageRef.current;
+    const sc = scrollerRef.current;
+    if (sc) sc.scrollTop = 0;
+    if (el && !reduced) {
+      el.style.transition = "none";
+      el.style.transform = `translateX(${dir * 60}px)`;
+      el.style.opacity = "0";
+      requestAnimationFrame(() => {
+        el.style.transition = `transform 300ms ${EASE_OUT}, opacity 300ms ${EASE_OUT}`;
+        el.style.transform = "translateX(0)";
+        el.style.opacity = "1";
+      });
+    }
+  }, [h.id, reduced]);
+
+  const dismiss = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    if (reduced || !measure(h.id, true)) {
+      onClose();
+      return;
+    }
+    setSettled(false);
+    settledRef.current = false;
+    spring.current!.setTarget(0);
+  }, [h.id, measure, onClose, reduced]);
+
+  // Gestures — native touch (real device) + mouse drag (desktop preview).
+  useEffect(() => {
+    const sc = scrollerRef.current;
+    if (!sc) return;
+    let mode: null | "pull" | "page" = null;
+    let sx = 0;
+    let sy = 0;
+    let lastY = 0;
+    let lastX = 0;
+    let lastT = 0;
+    let vy = 0;
+    let vx = 0;
+
+    const begin = (x: number, y: number) => {
+      mode = null;
+      sx = x;
+      sy = y;
+      lastY = y;
+      lastX = x;
+      lastT = performance.now();
+      vy = 0;
+      vx = 0;
+    };
+    const move = (x: number, y: number, prevent: () => void): boolean => {
+      const now = performance.now();
+      const dt = Math.max(now - lastT, 1);
+      vy = vy * 0.7 + ((y - lastY) / dt) * 0.3;
+      vx = vx * 0.7 + ((x - lastX) / dt) * 0.3;
+      lastY = y;
+      lastX = x;
+      lastT = now;
+      const dx = x - sx;
+      const dy = y - sy;
+      if (!mode) {
+        if (Math.abs(dy) < 7 && Math.abs(dx) < 7) return false;
+        if (Math.abs(dy) >= Math.abs(dx)) {
+          if (dy > 0 && sc.scrollTop <= 0 && !closingRef.current) mode = "pull";
+          else return false; // native scroll owns it
+        } else {
+          mode = "page";
+        }
+      }
+      if (mode === "pull") {
+        prevent();
+        const pull = Math.max(0, y - sy);
+        spring.current!.snap(1 - clamp01(pull / TUNE.pullRange) * 0.92);
+        if (!measureOnceRef.current) {
+          measureOnceRef.current = true;
+          measure(h.id, true);
+        }
+      } else if (mode === "page") {
+        prevent();
+        const el = pageRef.current;
+        if (el) {
+          const noNeighbor = (dx < 0 && !next) || (dx > 0 && !prev);
+          el.style.transition = "none";
+          el.style.transform = `translateX(${(noNeighbor ? dx * 0.3 : dx).toFixed(1)}px)`;
+        }
+      }
+      return true;
+    };
+    const end = () => {
+      if (mode === "pull") {
+        const pull = Math.max(0, lastY - sy);
+        const commit = pull > TUNE.dismissAt || vy > TUNE.flickV;
+        if (commit) {
+          closingRef.current = true;
+          setSettled(false);
+          settledRef.current = false;
+          spring.current!.setTarget(0, (-Math.max(vy, 0) * 1000) / TUNE.pullRange);
+        } else {
+          spring.current!.setTarget(1);
+        }
+      } else if (mode === "page") {
+        const dx = lastX - sx;
+        const el = pageRef.current;
+        const w = sc.clientWidth;
+        const goNext = (dx < -w * 0.28 || vx < -0.5) && next;
+        const goPrev = (dx > w * 0.28 || vx > 0.5) && prev;
+        if (el && (goNext || goPrev)) {
+          const dir: 1 | -1 = goNext ? 1 : -1;
+          el.style.transition = `transform 220ms ${EASE_OUT}, opacity 220ms ${EASE_OUT}`;
+          el.style.transform = `translateX(${-dir * 90}px)`;
+          el.style.opacity = "0";
+          window.setTimeout(() => {
+            pageDir.current = dir;
+            onPage(dir);
+          }, 170);
+        } else if (el) {
+          el.style.transition = `transform 320ms ${EASE_OUT}`;
+          el.style.transform = "translateX(0)";
+          el.style.opacity = "1";
+        }
+      }
+      mode = null;
+      measureOnceRef.current = false;
+    };
+
+    const onTouchStart = (e: TouchEvent) => begin(e.touches[0].clientX, e.touches[0].clientY);
+    const onTouchMove = (e: TouchEvent) => {
+      move(e.touches[0].clientX, e.touches[0].clientY, () => e.preventDefault());
+    };
+    const onTouchEnd = () => end();
+    // Mouse fallback so the interaction is testable in the desktop preview.
+    let mouseDown = false;
+    const onMouseDown = (e: MouseEvent) => {
+      mouseDown = true;
+      begin(e.clientX, e.clientY);
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (mouseDown) move(e.clientX, e.clientY, () => e.preventDefault());
+    };
+    const onMouseUp = () => {
+      if (mouseDown) {
+        mouseDown = false;
+        end();
+      }
+    };
+
+    sc.addEventListener("touchstart", onTouchStart, { passive: true });
+    sc.addEventListener("touchmove", onTouchMove, { passive: false });
+    sc.addEventListener("touchend", onTouchEnd);
+    sc.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      sc.removeEventListener("touchstart", onTouchStart);
+      sc.removeEventListener("touchmove", onTouchMove);
+      sc.removeEventListener("touchend", onTouchEnd);
+      sc.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [h.id, measure, next, prev, onPage]);
+  const measureOnceRef = useRef(false);
+
   return (
-    <div style={{ height, scrollSnapAlign: "start" }} className="relative flex flex-col">
-      <button onClick={onOpen} aria-label={`${h.name} details`} className="relative flex-1 w-full overflow-hidden" style={{ minHeight: 0 }}>
-        {image}
+    <div className="fixed inset-0" style={{ zIndex: 300 }}>
+      <div ref={backdropRef} className="absolute inset-0" style={{ background: "#fff", opacity: 0 }} />
+
+      <div
+        ref={scrollerRef}
+        className="mv-noscrollbar absolute inset-0 overflow-y-auto"
+        style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
+      >
+        <div ref={pageRef}>
+          {/* Hero — same aspect + inner padding as the cell, so the morph is exact. */}
+          <div className="flex items-end justify-center" style={{ height: `calc(${TUNE.heroH} * 100dvh)`, paddingTop: "calc(env(safe-area-inset-top) + 54px)" }}>
+            <div
+              ref={heroRef}
+              className="relative overflow-hidden"
+              style={{
+                height: "100%",
+                aspectRatio: `${CELL_ASPECT}`,
+                maxWidth: "calc(100vw - 24px)",
+                background: TILE,
+                borderRadius: 22,
+                transformOrigin: "top left",
+                willChange: "transform",
+              }}
+            >
+              {h.imageUrl && (
+                <Image
+                  src={h.imageUrl}
+                  alt={h.name}
+                  fill
+                  sizes={settled ? "100vw" : "50vw"}
+                  priority
+                  className={h.imageFit === "cover" ? "object-cover" : "object-contain"}
+                  style={{ objectPosition: h.imagePosition ?? "center", padding: h.imageFit === "cover" ? 0 : IMG_PAD }}
+                  draggable={false}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Info */}
+          <div ref={infoRef} style={{ padding: "20px 24px calc(env(safe-area-inset-bottom) + 40px)" }}>
+            <div className="flex items-baseline" style={{ gap: 9 }}>
+              <h2 className="truncate" style={{ fontSize: 27, fontWeight: 600, letterSpacing: "-0.022em", color: INK, lineHeight: 1.08, minWidth: 0 }}>{h.name}</h2>
+              {h.year && <span style={{ fontSize: 15, color: INK_MUTED, flexShrink: 0 }}>{h.year}</span>}
+            </div>
+            <div className="flex items-center" style={{ gap: 7, marginTop: 6 }}>
+              <span className="flex-shrink-0" style={{ width: 7, height: 7, borderRadius: 999, background: statusColor(h.status) }} />
+              <span className="truncate" style={{ fontSize: 14, color: INK_BODY, minWidth: 0 }}>
+                {h.manufacturer}
+                {h.useCase ? ` · ${h.useCase}` : ""}
+              </span>
+            </div>
+
+            {(desc.long || desc.text) && (
+              <p style={{ fontSize: 15, lineHeight: 1.55, color: INK_BODY, marginTop: 16 }}>{desc.long || desc.text}</p>
+            )}
+
+            {h.tags && h.tags.length > 0 && (
+              <div className="flex flex-wrap" style={{ gap: 8, marginTop: 16 }}>
+                {h.tags.map((t) => (
+                  <span key={t} style={{ fontSize: 12.5, fontWeight: 450, color: INK_BODY, padding: "5px 11px", borderRadius: 999, border: "1px solid rgba(0,0,0,0.09)" }}>
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {rows.length > 0 && (
+              <div style={{ marginTop: 20 }}>
+                {rows.map((r) => (
+                  <StatRow key={r.label} label={r.label} value={r.value} />
+                ))}
+              </div>
+            )}
+
+            <div className="flex" style={{ gap: 10, marginTop: 22 }}>
+              {visit.href && (
+                <a href={visit.href} target="_blank" rel="noopener noreferrer" className="mv-tap flex-1 flex items-center justify-center" style={{ height: 50, borderRadius: 15, background: INK, color: "#fff", fontSize: 15, fontWeight: 500 }}>
+                  {visit.label}
+                </a>
+              )}
+              <button
+                onClick={() => shareRobot(h)}
+                className="mv-tap flex items-center justify-center"
+                style={{ ...CHIP, width: visit.href ? 50 : undefined, flex: visit.href ? undefined : 1, height: 50, borderRadius: 15, color: INK, fontSize: 15, fontWeight: 500 }}
+              >
+                {visit.href ? <ShareGlyph /> : "Share"}
+              </button>
+            </div>
+
+            {(prev || next) && (
+              <p style={{ fontSize: 12.5, color: INK_MUTED, textAlign: "center", marginTop: 26 }}>
+                Swipe for {next ? next.name : prev!.name}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Chrome — dismiss chevron; fades in late so the morph stays clean. */}
+      <div ref={chromeRef} className="absolute" style={{ top: "calc(env(safe-area-inset-top) + 10px)", left: 14, opacity: 0 }}>
+        <button onClick={dismiss} aria-label="Back to grid" className="mv-tap flex items-center justify-center" style={{ ...CHIP, width: 36, height: 36, borderRadius: 999 }}>
+          <ChevronDownGlyph />
+        </button>
+      </div>
+
+      {/* Neighbor image warm-up so paging never pops. */}
+      <div aria-hidden style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }}>
+        {prev?.imageUrl && <Image src={prev.imageUrl} alt="" width={800} height={1067} sizes="100vw" />}
+        {next?.imageUrl && <Image src={next.imageUrl} alt="" width={800} height={1067} sizes="100vw" />}
+      </div>
+    </div>
+  );
+}
+
+// ── Tuner (?tune) ─────────────────────────────────────────────
+function TunerPanel({ bump }: { bump: () => void }) {
+  const [open, setOpen] = useState(true);
+  const [, localBump] = useReducer((x: number) => x + 1, 0);
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="fixed mv-tap" style={{ right: 14, bottom: "calc(env(safe-area-inset-bottom) + 14px)", zIndex: 500, ...CHIP, padding: "9px 15px", borderRadius: 999, fontSize: 13, fontWeight: 500, color: INK }}>
+        Tune
       </button>
-      <div className="flex-shrink-0" style={{ padding: "10px 24px 0" }}>{info}</div>
+    );
+  }
+  return (
+    <div className="fixed" style={{ left: 10, right: 10, bottom: "calc(env(safe-area-inset-bottom) + 10px)", zIndex: 500, background: "rgba(255,255,255,0.94)", backdropFilter: "blur(14px)", borderRadius: 20, boxShadow: "0 12px 40px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(0,0,0,0.06)", padding: "14px 16px 10px", maxHeight: "46dvh", overflowY: "auto" }}>
+      <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: INK }}>Motion</span>
+        <div className="flex" style={{ gap: 14 }}>
+          <button style={{ fontSize: 12.5, color: INK_BODY }} onClick={() => navigator.clipboard.writeText(JSON.stringify(TUNE, null, 2))}>Copy</button>
+          <button style={{ fontSize: 12.5, color: INK_BODY }} onClick={() => { Object.assign(TUNE, DEFAULT_TUNE); localBump(); bump(); }}>Reset</button>
+          <button style={{ fontSize: 12.5, color: INK_BODY }} onClick={() => setOpen(false)}>Hide</button>
+        </div>
+      </div>
+      {KNOBS.map(({ k, min, max, step, layout }) => (
+        <div key={k} style={{ padding: "5px 0" }}>
+          <div className="flex justify-between" style={{ fontSize: 12, color: INK_BODY, marginBottom: 2 }}>
+            <span>{k}</span>
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>{TUNE[k]}</span>
+          </div>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            defaultValue={TUNE[k]}
+            style={{ width: "100%" }}
+            onInput={(e) => {
+              TUNE[k] = parseFloat((e.target as HTMLInputElement).value);
+              localBump();
+              if (layout) bump();
+            }}
+          />
+        </div>
+      ))}
     </div>
   );
 }
 
 // ── Main ──────────────────────────────────────────────────────
 export default function MobileView() {
-  const feedRef = useRef<HTMLDivElement>(null);
-  const [feedH, setFeedH] = useState(0);
-  const itemH = Math.round(feedH * ITEM_FRAC);
-  const itemHRef = useRef(itemH);
-  itemHRef.current = itemH;
-
-  const [detail, setDetail] = useState<Humanoid | null>(null);
+  const [density, setDensity] = useState<Density>(2);
+  const [expanded, setExpanded] = useState<{ id: string; instant?: boolean } | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [showCompare, setShowCompare] = useState(false);
-  const [lookIdx, setLookIdx] = useState(0);
-  const look = LOOKS[lookIdx];
+  const [tune, setTune] = useState(false);
+  const [, bump] = useReducer((x: number) => x + 1, 0);
   const reduced = usePrefersReducedMotion();
 
-  // Scroll position broadcast — one native scroll listener, rAF-throttled, drives
-  // the rail + the per-item focus imperatively (no React state per frame).
-  const subs = useRef<Set<(p: number) => void>>(new Set());
-  const pRef = useRef(0);
-  const subscribe = useCallback((cb: (p: number) => void) => {
-    subs.current.add(cb);
-    cb(pRef.current);
-    return () => {
-      subs.current.delete(cb);
-    };
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+  const gridDepthRef = useRef<HTMLDivElement>(null);
+  const imgEls = useRef(new Map<string, HTMLDivElement>());
+  const registerImg = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) imgEls.current.set(id, el);
+    else imgEls.current.delete(id);
   }, []);
 
-  useLayoutEffect(() => {
-    const el = feedRef.current;
-    if (!el) return;
-    const measure = () => setFeedH(el.clientHeight);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const radius = density === 1 ? TUNE.radius + 4 : density === 2 ? TUNE.radius : Math.max(8, TUNE.radius - 8);
 
+  // Deeplinks — ?h= presents a robot, ?compare= opens the comparison.
   useEffect(() => {
-    const el = feedRef.current;
-    if (!el || !itemH) return;
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      const p = el.scrollTop / itemHRef.current;
-      pRef.current = p;
-      subs.current.forEach((cb) => cb(p));
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    update();
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [itemH]);
-
-  // Deeplink hydration — ?h= scrolls to a robot; ?compare= opens the comparison.
-  const pendingScroll = useRef<string | null>(null);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    if (params.has("tune")) setTune(true);
     const cmp = params.get("compare");
     if (cmp) {
-      const ids = cmp.split(",").filter((id) => humanoids.some((h) => h.id === id));
+      const ids = cmp.split(",").filter((id) => humanoids.some((x) => x.id === id));
       if (ids.length) {
         setCompareIds(ids);
+        setSelectMode(true);
         if (ids.length >= 2) setShowCompare(true);
       }
     }
     const hId = params.get("h");
-    if (hId) pendingScroll.current = hId;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (hId && humanoids.some((x) => x.id === hId)) setExpanded({ id: hId, instant: true });
   }, []);
 
-  useEffect(() => {
-    if (!itemH || !pendingScroll.current) return;
-    const i = humanoids.findIndex((h) => h.id === pendingScroll.current);
-    pendingScroll.current = null;
-    if (i >= 0) feedRef.current?.scrollTo({ top: i * itemH, behavior: "auto" });
-  }, [itemH]);
+  const getCellRect = useCallback((id: string) => {
+    const el = imgEls.current.get(id);
+    return el ? el.getBoundingClientRect() : null;
+  }, []);
+
+  // Make sure a cell is on-screen (instant scroll) before a morph home.
+  const ensureCellVisible = useCallback((id: string) => {
+    const el = imgEls.current.get(id);
+    const sc = gridScrollRef.current;
+    if (!el || !sc) return null;
+    const r = el.getBoundingClientRect();
+    const vh = window.innerHeight;
+    if (r.top < 70 || r.bottom > vh - 20) {
+      sc.scrollTop += r.top + r.height / 2 - vh / 2;
+      return el.getBoundingClientRect();
+    }
+    return r;
+  }, []);
+
+  // Depth cue while a robot is expanded.
+  const onExpandProgress = useCallback((p: number) => {
+    const el = gridDepthRef.current;
+    if (el) el.style.transform = `scale(${(1 - (1 - TUNE.gridDepth) * p).toFixed(4)})`;
+  }, []);
+
+  // Density change → transform-only FLIP on visible image boxes, anchored to
+  // the viewport center; labels fade via their keyed CSS animation.
+  const pendingFlip = useRef<{ rects: Map<string, DOMRect>; anchorId: string | null; anchorY: number } | null>(null);
+  const changeDensity = useCallback(
+    (next: Density) => {
+      setDensity((cur) => {
+        if (next === cur) return cur;
+        if (!reduced) {
+          const vh = window.innerHeight;
+          const rects = new Map<string, DOMRect>();
+          let anchorId: string | null = null;
+          let anchorY = 0;
+          let best = Infinity;
+          imgEls.current.forEach((el, id) => {
+            const r = el.getBoundingClientRect();
+            if (r.bottom < -vh * 0.5 || r.top > vh * 1.5) return;
+            rects.set(id, r);
+            const d = Math.abs(r.top + r.height / 2 - vh / 2);
+            if (d < best) {
+              best = d;
+              anchorId = id;
+              anchorY = r.top;
+            }
+          });
+          pendingFlip.current = { rects, anchorId, anchorY };
+        }
+        return next;
+      });
+    },
+    [reduced]
+  );
+
+  useLayoutEffect(() => {
+    const flip = pendingFlip.current;
+    if (!flip) return;
+    pendingFlip.current = null;
+    const sc = gridScrollRef.current;
+    // Keep the anchor cell at its screen position.
+    if (flip.anchorId && sc) {
+      const el = imgEls.current.get(flip.anchorId);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        sc.scrollTop += r.top - flip.anchorY;
+      }
+    }
+    const played: HTMLDivElement[] = [];
+    flip.rects.forEach((before, id) => {
+      const el = imgEls.current.get(id);
+      if (!el) return;
+      const after = el.getBoundingClientRect();
+      const dx = before.left - after.left;
+      const dy = before.top - after.top;
+      const s = before.width / after.width;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(s - 1) < 0.01) return;
+      el.style.transition = "none";
+      el.style.transformOrigin = "top left";
+      el.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${s.toFixed(4)})`;
+      played.push(el);
+    });
+    if (!played.length) return;
+    // Force the inverted frame, then play everything to identity together.
+    void played[0].getBoundingClientRect();
+    requestAnimationFrame(() => {
+      played.forEach((el) => {
+        el.style.transition = `transform ${TUNE.flipMs}ms ${EASE_OUT}`;
+        el.style.transform = "";
+      });
+    });
+    const clear = window.setTimeout(() => {
+      played.forEach((el) => {
+        el.style.transition = "";
+        el.style.transformOrigin = "";
+      });
+    }, TUNE.flipMs + 60);
+    return () => window.clearTimeout(clear);
+  }, [density]);
+
+  const expandedIndex = expanded ? humanoids.findIndex((x) => x.id === expanded.id) : -1;
+  const expandedH = expandedIndex >= 0 ? humanoids[expandedIndex] : null;
+
+  const onPage = useCallback(
+    (dir: 1 | -1) => {
+      setExpanded((cur) => {
+        if (!cur) return cur;
+        const i = humanoids.findIndex((x) => x.id === cur.id);
+        const n = humanoids[i + dir];
+        return n ? { id: n.id, instant: true } : cur;
+      });
+    },
+    []
+  );
 
   const toggleCompare = useCallback((id: string) => {
     setCompareIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }, []);
 
   const compareList = useMemo(
-    () => compareIds.map((id) => humanoids.find((h) => h.id === id)).filter(Boolean) as Humanoid[],
+    () => compareIds.map((id) => humanoids.find((x) => x.id === id)).filter(Boolean) as Humanoid[],
     [compareIds]
   );
 
-  return (
-    <main className="relative flex flex-col overflow-hidden" style={{ height: "100dvh", fontFamily: "var(--font-geist-sans), system-ui, sans-serif", color: look.ink, background: look.bg, overscrollBehavior: "none", transition: "background-color 300ms ease, color 300ms ease" }}>
-      {/* Header — minimal chrome + look switcher */}
-      <header className="flex items-center justify-between flex-shrink-0" style={{ padding: "14px 22px 8px" }}>
-        <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", color: look.ink }}>Humanoid Index</span>
-        <button
-          onClick={() => setLookIdx((i) => (i + 1) % LOOKS.length)}
-          aria-label="Change look"
-          className="mv-tap flex items-center justify-center"
-          style={{ height: 30, paddingInline: 13, borderRadius: 999, background: "rgba(127,127,135,0.16)", color: look.ink, fontSize: 12.5, fontWeight: 500, letterSpacing: "-0.01em", gap: 7 }}
-        >
-          <span style={{ width: 6, height: 6, borderRadius: 999, background: look.ink, opacity: 0.55 }} />
-          {look.label}
-        </button>
-      </header>
+  const onCellTap = useCallback(
+    (h: Humanoid) => {
+      if (selectMode) toggleCompare(h.id);
+      else setExpanded({ id: h.id });
+    },
+    [selectMode, toggleCompare]
+  );
 
-      {/* Feed + rail */}
-      <div className="relative flex-1" style={{ minHeight: 0 }}>
-        <div ref={feedRef} className="mv-feed absolute inset-0 overflow-y-auto" style={{ scrollSnapType: "y mandatory", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
-          {itemH > 0 &&
-            humanoids.map((h, i) => (
-              <FeedItem
+  return (
+    <main
+      className="relative overflow-hidden"
+      style={{ height: "100dvh", background: "#fff", color: INK, fontFamily: "var(--font-geist-sans), system-ui, sans-serif", ["--mv-radius" as string]: `${radius}px` }}
+    >
+      <div ref={gridDepthRef} className="absolute inset-0 flex flex-col" style={{ willChange: "transform" }}>
+        {/* Header — wordmark, density, Select. Nothing else. */}
+        <header className="flex items-center justify-between flex-shrink-0" style={{ padding: "calc(env(safe-area-inset-top) + 14px) 18px 10px 22px" }}>
+          <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>Humanoid Index</span>
+          <div className="flex items-center" style={{ gap: 10 }}>
+            <div className="relative flex items-center" style={{ background: "rgba(127,127,135,0.13)", borderRadius: 999, padding: 3 }}>
+              <span
+                aria-hidden
+                className="absolute"
+                style={{
+                  width: 30,
+                  height: 26,
+                  borderRadius: 999,
+                  background: "#fff",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+                  transform: `translateX(${DENSITIES.indexOf(density) * 30}px)`,
+                  transition: `transform 260ms ${EASE_OUT}`,
+                  left: 3,
+                }}
+              />
+              {DENSITIES.map((d) => (
+                <button key={d} onClick={() => changeDensity(d)} aria-label={`${d} per row`} className="relative flex items-center justify-center" style={{ width: 30, height: 26 }}>
+                  <DensityGlyph d={d} color={d === density ? INK : INK_MUTED} />
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => {
+                setSelectMode((s) => {
+                  if (s) setCompareIds([]);
+                  return !s;
+                });
+              }}
+              className="mv-tap"
+              style={{ fontSize: 13.5, fontWeight: 500, color: INK, padding: "6px 13px", borderRadius: 999, background: selectMode ? "rgba(127,127,135,0.16)" : "transparent", boxShadow: selectMode ? undefined : "inset 0 0 0 1px rgba(0,0,0,0.1)" }}
+            >
+              {selectMode ? "Done" : "Select"}
+            </button>
+          </div>
+        </header>
+
+        {/* Grid */}
+        <div ref={gridScrollRef} className="mv-noscrollbar flex-1 overflow-y-auto" style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${density}, minmax(0, 1fr))`,
+              gap: density === 4 ? Math.max(3, TUNE.gap - 6) : TUNE.gap,
+              padding: `4px ${density === 4 ? 6 : 14}px calc(env(safe-area-inset-bottom) + ${selectMode ? 92 : 28}px)`,
+            }}
+          >
+            {humanoids.map((h, i) => (
+              <GridCell
                 key={h.id}
                 h={h}
                 index={i}
-                height={itemH}
-                reduced={reduced}
+                density={density}
+                radius={radius}
+                hidden={expanded?.id === h.id}
+                selectMode={selectMode}
                 selected={compareIds.includes(h.id)}
-                look={look}
-                onOpen={() => setDetail(h)}
-                onToggleCompare={() => toggleCompare(h.id)}
-                subscribe={subscribe}
+                onTap={() => onCellTap(h)}
+                registerImg={registerImg}
               />
             ))}
-          {/* spacer so the last item can snap to the top with a peek above it */}
-          {itemH > 0 && <div style={{ height: feedH - itemH }} aria-hidden />}
+          </div>
         </div>
-
-        {itemH > 0 && <CurvedRail subscribe={subscribe} reduced={reduced} look={look} />}
       </div>
 
-      {compareIds.length > 0 && (
-        <CompareBar count={compareIds.length} onOpen={() => setShowCompare(true)} onClear={() => setCompareIds([])} look={look} />
+      {selectMode && compareIds.length > 0 && (
+        <CompareBar count={compareIds.length} onOpen={() => setShowCompare(true)} onClear={() => setCompareIds([])} />
       )}
 
-      {detail && <DetailSheet h={detail} onClose={() => setDetail(null)} />}
+      {expandedH && (
+        <ExpandedView
+          key="expanded"
+          h={expandedH}
+          index={expandedIndex}
+          instant={!!expanded?.instant}
+          reduced={reduced}
+          getCellRect={getCellRect}
+          ensureCellVisible={ensureCellVisible}
+          onProgress={onExpandProgress}
+          onPage={onPage}
+          onClose={() => {
+            setExpanded(null);
+            onExpandProgress(0);
+          }}
+        />
+      )}
+
       {showCompare && compareList.length >= 2 && (
         <CompareView list={compareList} onRemove={(id) => setCompareIds((prev) => prev.filter((x) => x !== id))} onClose={() => setShowCompare(false)} />
       )}
+
+      {tune && <TunerPanel bump={bump} />}
 
       <style jsx global>{`
         @keyframes mv-sheet-in {
@@ -758,9 +1184,15 @@ export default function MobileView() {
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes mv-fade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
         .mv-tap { transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1); }
         .mv-tap:active { transform: scale(0.96); }
-        .mv-feed::-webkit-scrollbar { display: none; }
+        .mv-cell:active .relative { }
+        .mv-noscrollbar { scrollbar-width: none; }
+        .mv-noscrollbar::-webkit-scrollbar { display: none; }
       `}</style>
     </main>
   );
