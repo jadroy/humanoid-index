@@ -1,5 +1,6 @@
 import type { Humanoid } from "@/data/humanoids";
 import type { CollectionItem, CollectionConfig, HoverMedia } from "./Collection";
+import type { DetailItem } from "./CollectionDetail";
 
 /* ===========================================================================
    Humanoid adapter — maps the robot data onto the generic Collection shape.
@@ -55,12 +56,51 @@ export function humanoidsToItems(robots: Humanoid[]): CollectionItem[] {
         price: displayCost(r.cost),
         badge: r.availability,
         meta: meta || undefined,
-        href: `/?h=${r.id}`,
+        href: `/v3/${r.id}`,
         hover: spin ? undefined : hoverFor(r),
         size: r.height,
         spin,
       };
     });
+}
+
+export function humanoidToDetail(r: Humanoid): DetailItem {
+  const spec = (label: string, value: unknown): { label: string; value: string } | null =>
+    value == null || value === "" ? null : { label, value: String(value) };
+  const specs = [
+    spec("Year", r.year),
+    spec("Height", r.height ? `${r.height} cm` : undefined),
+    spec("Weight", r.weight ? `${r.weight} kg` : undefined),
+    spec("Degrees of freedom", r.dof),
+    spec("Max speed", r.maxSpeed ? `${r.maxSpeed} m/s` : undefined),
+    spec("Country", r.country),
+    spec("Use case", r.useCase),
+    spec("Drive", r.drive),
+    spec("Status", r.status),
+    spec("Cost", displayCost(r.cost)),
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  const links: { label: string; href: string }[] = [];
+  if (r.purchaseUrl) links.push({ label: "Buy", href: r.purchaseUrl });
+  if (r.infoUrl) links.push({ label: "Learn more", href: r.infoUrl });
+  if (r.manufacturerUrl) links.push({ label: "Website", href: r.manufacturerUrl });
+
+  return {
+    id: r.id,
+    title: r.name,
+    subtitle: r.manufacturer,
+    image: r.imageUrl ?? "",
+    imageFit: r.imageFit,
+    imagePosition: r.imagePosition,
+    imageScale: r.imageScale,
+    price: displayCost(r.cost),
+    badge: r.availability,
+    size: r.height,
+    description: r.description,
+    specs,
+    links,
+    gallery: (r.media ?? []).filter((m) => m.type === "image" && m.url).map((m) => m.url),
+  };
 }
 
 export const humanoidConfig: CollectionConfig = {

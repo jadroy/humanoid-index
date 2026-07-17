@@ -60,7 +60,7 @@ const ASPECT_OPTIONS = ["4 / 5", "1 / 1", "5 / 6", "3 / 4", "2 / 3", "5 / 7", "4
 /* Sizing + placement for an image layer. Contain renders get a fixed height so
    items read at a consistent scale; they ground low with headroom, unless the
    position flag says "bottom" (flush) or "center". Cover photos fill the tile. */
-function layerStyle(fit: "contain" | "cover", position: string, scale = 1): React.CSSProperties {
+export function layerStyle(fit: "contain" | "cover", position: string, scale = 1): React.CSSProperties {
   if (fit === "cover") {
     return { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: position };
   }
@@ -95,6 +95,7 @@ export default function Collection({ items, config }: { items: CollectionItem[];
 
   const [trueToSize, setTrueToSize] = useState(false);
   const [carousel, setCarousel] = useState(false);
+  const [centered, setCentered] = useState(false);
   const [cols, setCols] = useState<number | null>(null);
   const [tileIdx, setTileIdx] = useState(0);
   const [aspectIdx, setAspectIdx] = useState(0);
@@ -140,6 +141,9 @@ export default function Collection({ items, config }: { items: CollectionItem[];
             <button onClick={() => setCarousel((v) => !v)} title="Horizontal swipe carousel" style={pillStyle(carousel)}>
               Carousel
             </button>
+            <button onClick={() => setCentered((v) => !v)} title="Center items in the tile instead of grounding them" style={pillStyle(centered)}>
+              Centered
+            </button>
             {canSize && (
               <button onClick={() => setTrueToSize((v) => !v)} title="Scale each item to its real relative size" style={pillStyle(trueToSize)}>
                 {config.sizeLabel}
@@ -164,14 +168,14 @@ export default function Collection({ items, config }: { items: CollectionItem[];
           >
             {items.map((it) => (
               <div key={it.id} className="v3-snap" style={{ width: "min(400px, 74vw)" }}>
-                <Card item={it} trueToSize={trueToSize} refSize={refSize} />
+                <Card item={it} trueToSize={trueToSize} refSize={refSize} centered={centered} />
               </div>
             ))}
           </div>
         ) : (
           <div className="v3-grid" style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}>
             {items.map((it) => (
-              <Card key={it.id} item={it} trueToSize={trueToSize} refSize={refSize} />
+              <Card key={it.id} item={it} trueToSize={trueToSize} refSize={refSize} centered={centered} />
             ))}
           </div>
         )}
@@ -197,17 +201,19 @@ export default function Collection({ items, config }: { items: CollectionItem[];
 
 /* ------------------------------------------------------------------- Card -- */
 
-function Card({ item, trueToSize, refSize }: { item: CollectionItem; trueToSize: boolean; refSize: number }) {
+function Card({ item, trueToSize, refSize, centered }: { item: CollectionItem; trueToSize: boolean; refSize: number; centered: boolean }) {
   const spin = item.spin;
   const hover = spin ? null : item.hover;
   const scale = trueToSize && item.size ? item.size / refSize : item.imageScale ?? 1;
   const spinScale = trueToSize && item.size ? (item.size / refSize) * (spin?.scale ?? 1) : spin?.scale;
+  // Ground by default; center when toggled — but respect explicit positions (e.g. "bottom" crops).
+  const pos = item.imagePosition ?? (centered ? "center" : "ground");
 
   return (
     <a href={item.href ?? "#"} className={`v3-card block group${hover ? " v3-card--swap" : ""}`}>
       <div className="v3-grid-tile" style={{ position: "relative", aspectRatio: "var(--tile-aspect, 4 / 5)", overflow: "hidden" }}>
         {spin ? (
-          <SpinTile path={spin.path} frames={spin.frames} name={item.title} scale={spinScale} />
+          <SpinTile path={spin.path} frames={spin.frames} name={item.title} scale={spinScale} centered={centered} />
         ) : (
           <>
             {item.image && (
@@ -217,7 +223,7 @@ function Card({ item, trueToSize, refSize }: { item: CollectionItem; trueToSize:
                 src={item.image}
                 alt={item.title}
                 loading="lazy"
-                style={layerStyle(item.imageFit ?? "contain", item.imagePosition ?? "ground", scale)}
+                style={layerStyle(item.imageFit ?? "contain", pos, scale)}
               />
             )}
             {hover && (
@@ -253,7 +259,7 @@ function Card({ item, trueToSize, refSize }: { item: CollectionItem; trueToSize:
 }
 
 /* Turntable tile — front frame at rest, auto-rotates through frames on hover. */
-function SpinTile({ path, frames, name, scale }: { path: string; frames: number; name: string; scale?: number }) {
+function SpinTile({ path, frames, name, scale, centered }: { path: string; frames: number; name: string; scale?: number; centered?: boolean }) {
   const [frame, setFrame] = useState(0);
   const hovered = useRef(false);
   const rafRef = useRef(0);
@@ -300,8 +306,9 @@ function SpinTile({ path, frames, name, scale }: { path: string; frames: number;
         style={{
           position: "absolute",
           left: "50%",
-          bottom: "-3%",
-          transform: "translateX(-50%)",
+          ...(centered
+            ? { top: "50%", transform: "translate(-50%, -50%)" }
+            : { bottom: "-3%", transform: "translateX(-50%)" }),
           height: `${Math.round(82 * (scale ?? 1))}%`,
           width: "auto",
           maxWidth: "94%",

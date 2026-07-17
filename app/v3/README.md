@@ -67,5 +67,25 @@ Done — full experience, same as `/v3`.
 | `spin` | `{ path, frames, scale? }` — turntable frames in `/public/...` |
 | `imageFit` / `imagePosition` / `imageScale` | per-item framing overrides. `imagePosition`: `"ground"` (default) · `"center"` · `"bottom"` (flush) |
 
+## Detail (product) pages
+
+`CollectionDetail.tsx` renders a Thuma-style product page (image gallery left,
+title / price / description / specs / links right) from a `DetailItem`
+(`CollectionItem` + `description`, `specs[]`, `links[]`, `gallery[]`).
+
+Wire it the same way — an adapter `toDetail(x): DetailItem` + a dynamic route:
+
+```tsx
+// app/drones/[id]/page.tsx
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const drone = drones.find((d) => d.id === id) ?? notFound();
+  return <CollectionDetail item={droneToDetail(drone)} config={droneConfig} />;
+}
+```
+
+Point the card's `href` at `/drones/${id}` in the list adapter and the two
+views connect.
+
 See `humanoidCollection.ts` for a full worked adapter (role-based hover scenes,
-spin, spec formatting).
+spin, spec formatting, `humanoidToDetail`).
