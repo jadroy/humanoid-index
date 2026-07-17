@@ -65,20 +65,25 @@ body:has(.v3-root) {
 }
 
 /* Product grid — 4-up on desktop, calmly stepping down on smaller widths. */
-.v3-grid {
+/* Shared column system — cards AND nav align to the same columns.
+   minmax(0,1fr) so wide content (e.g. the nav blurb) can't stretch a column. */
+.v3-cols {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: var(--gap);
-  row-gap: 32px;
 }
 @media (min-width: 640px) {
-  .v3-grid { grid-template-columns: repeat(3, 1fr); }
+  .v3-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (min-width: 960px) {
-  .v3-grid { grid-template-columns: repeat(4, 1fr); }
+  .v3-cols { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (min-width: 1280px) {
-  .v3-grid { grid-template-columns: repeat(5, 1fr); }
+  .v3-cols { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+.v3-grid {
+  row-gap: 32px;
 }
 
 /* Hover-swap media (e-commerce alt-image flash). Two stacked layers inside
@@ -120,6 +125,14 @@ body:has(.v3-root) {
   background: var(--grid-tile, var(--tile-grid));
   border-radius: var(--tile-radius);
 }
+
+/* Entry deal — cards pile at viewport center, then spread to the grid.
+   The measured transforms live in Collection.tsx; these classes only handle
+   (a) hiding server HTML until the pile transforms are applied and
+   (b) hiding card labels while piled, fading them back as cards land. */
+.v3-deal-pending > .v3-card { visibility: hidden; }
+.v3-grid > .v3-card > :not(:first-child) { transition: opacity 0.55s ease 0.7s; }
+.v3-dealing > .v3-card > :not(:first-child) { opacity: 0; transition: none; }
 
 /* Thin underline link that grows on hover — the recessive Thuma link. */
 .v3-underline {

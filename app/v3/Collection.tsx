@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 /* ===========================================================================
    Collection — a reusable "grey card collection" layout.
@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
    CollectionItem shape, plus a small config, and you get the whole experience:
    calm grey rounded tiles, responsive grid, sticky grid-aligned nav, hover-swap
    media, optional 360° spin, true-to-size toggle, carousel view, and the
-   c / C / a / 1–8 tuning shortcuts.
+   c / C / a / 1–8 tuning shortcuts (d replays the entry deal).
 
    To make a new collection: write an adapter (yourData -> CollectionItem[]) and
    a CollectionConfig, then <Collection items={...} config={...} />.
@@ -56,6 +56,17 @@ const TILE_OPTIONS: { name: string; bg: string }[] = (() => {
   return opts; // ~104 greys, no shadow
 })();
 const ASPECT_OPTIONS = ["4 / 5", "1 / 1", "5 / 6", "3 / 4", "2 / 3", "5 / 7", "4 / 3", "3 / 2"];
+
+/* ---- entry animation: centered stack → deal into formation ---------------
+   FLIP-style: cards render in their final grid slots, each is measured and
+   pre-transformed to a loose pile at viewport center, then released with a
+   stagger. Works at any column count / viewport. Press "d" to replay. */
+const DEAL_MS = 700;          // per-card flight time
+const DEAL_HOLD = 350;        // beat on the stack before the first card leaves
+const DEAL_EASE = "cubic-bezier(0.3, 1.18, 0.36, 1)"; // slight overshoot settle
+const DEAL_SCALE = 0.88;      // stack is a touch smaller, cards "pop" as they land
+const dealTilt = (i: number) => ((i * 137.5) % 14) - 7;               // deterministic ±7°
+const dealJitter = (i: number, k: number) => (((i + 1) * k) % 11) - 5; // px pile offset
 
 /* Sizing + placement for an image layer. Contain renders get a fixed height so
    items read at a consistent scale; they ground low with headroom, unless the
@@ -105,6 +116,7 @@ export default function Collection({ items, config }: { items: CollectionItem[];
       if (e.key === "c") { setTileIdx((i) => (i + 1) % TILE_OPTIONS.length); return; }
       if (e.key === "C") { setTileIdx((i) => (i - 1 + TILE_OPTIONS.length) % TILE_OPTIONS.length); return; }
       if (e.key === "a" || e.key === "A") { setAspectIdx((i) => (i + 1) % ASPECT_OPTIONS.length); return; }
+      if (e.key === "d") { setDealKey((k) => k + 1); return; }
       const n = parseInt(e.key, 10);
       if (n >= 1 && n <= 8) setCols(n);
     };
@@ -114,15 +126,73 @@ export default function Collection({ items, config }: { items: CollectionItem[];
   const tile = TILE_OPTIONS[tileIdx];
   const aspect = ASPECT_OPTIONS[aspectIdx];
 
+  /* Entry deal. useLayoutEffect so the stack transforms land before first
+     paint — the grid never flashes in its final formation. The grid ships with
+     .v3-deal-pending (cards hidden) so pre-hydration HTML doesn't flash either. */
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [dealKey, setDealKey] = useState(0);
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return; // carousel view — no grid mounted
+    const cards = Array.from(grid.children) as HTMLElement[];
+    const reveal = () => grid.classList.remove("v3-deal-pending");
+    if (!cards.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      reveal();
+      return;
+    }
+    window.scrollTo(0, 0); // the deal reads from the top of the page
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    cards.forEach((el, i) => {
+      const tileEl = el.querySelector<HTMLElement>(".v3-grid-tile");
+      const r = (tileEl ?? el).getBoundingClientRect();
+      el.style.transition = "none";
+      el.style.transform =
+        `translate(${cx - (r.left + r.width / 2) + dealJitter(i, 53)}px, ` +
+        `${cy - (r.top + r.height / 2) + dealJitter(i, 29)}px) ` +
+        `rotate(${dealTilt(i)}deg) scale(${DEAL_SCALE})`;
+      el.style.zIndex = String(cards.length - i); // first card on top of the pile
+      el.style.willChange = "transform";
+    });
+    grid.classList.add("v3-dealing"); // hides labels while piled
+    reveal();
+    void grid.offsetHeight; // flush: commits the pile as the transitions' "from" state (no rAF — fires even in occluded tabs)
+
+    const stagger = Math.min(45, 900 / cards.length); // total spread capped ~0.9s
+    grid.classList.remove("v3-dealing"); // labels fade back in (CSS delay)
+    cards.forEach((el, i) => {
+      el.style.transition = `transform ${DEAL_MS}ms ${DEAL_EASE} ${Math.round(DEAL_HOLD + i * stagger)}ms`;
+      el.style.transform = "none";
+    });
+    const done = window.setTimeout(() => {
+      cards.forEach((el) => {
+        el.style.transition = "";
+        el.style.transform = "";
+        el.style.zIndex = "";
+        el.style.willChange = "";
+      });
+    }, DEAL_HOLD + cards.length * stagger + DEAL_MS + 100);
+    return () => {
+      clearTimeout(done);
+      grid.classList.remove("v3-dealing");
+    };
+  }, [dealKey, carousel]);
+
   return (
     <main className="v3-root" style={{ ["--grid-tile"]: tile.bg, ["--tile-aspect"]: aspect } as React.CSSProperties}>
       {/* ---------------------------------------------------------------- Nav */}
       <header className="sticky top-0 z-30" style={{ background: "rgba(255,255,255,0.86)", backdropFilter: "blur(8px)" }}>
         <div
-          className="flex items-center justify-between"
-          style={{ position: "relative", paddingLeft: "var(--page-x)", paddingRight: "var(--page-x)", height: 52 }}
+          className="v3-cols items-center"
+          style={{
+            paddingLeft: "var(--page-x)",
+            paddingRight: "var(--page-x)",
+            height: 52,
+            // Mirror the card grid's column override so nav stays aligned at any count.
+            ...(cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : null),
+          }}
         >
-          <a href={config.href ?? "#"} aria-label={config.title ?? "Home"} className="flex items-center">
+          <a href={config.href ?? "#"} aria-label={config.title ?? "Home"} className="flex items-center" style={{ gridColumn: "1", gridRow: "1", justifySelf: "start" }}>
             {config.logo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={config.logo} alt={config.title ?? ""} style={{ height: 15, width: "auto" }} />
@@ -132,12 +202,12 @@ export default function Collection({ items, config }: { items: CollectionItem[];
           </a>
           {config.blurb && (
             <span
-              style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", color: "var(--ink-soft)", fontSize: 12, whiteSpace: "nowrap" }}
+              style={{ gridColumn: "2", gridRow: "1", justifySelf: "start", color: "var(--ink-soft)", fontSize: 12, whiteSpace: "nowrap" }}
             >
               {config.blurb}
             </span>
           )}
-          <div className="flex items-center" style={{ gap: 8 }}>
+          <div className="flex items-center" style={{ gap: 8, gridColumn: "1 / -1", gridRow: "1", justifySelf: "end" }}>
             <button onClick={() => setCarousel((v) => !v)} title="Horizontal swipe carousel" style={pillStyle(carousel)}>
               Carousel
             </button>
@@ -174,7 +244,7 @@ export default function Collection({ items, config }: { items: CollectionItem[];
             ))}
           </div>
         ) : (
-          <div className="v3-grid" style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}>
+          <div ref={gridRef} className="v3-grid v3-cols v3-deal-pending" style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}>
             {items.map((it) => (
               <Card key={it.id} item={it} trueToSize={trueToSize} refSize={refSize} centered={centered} />
             ))}
@@ -193,7 +263,7 @@ export default function Collection({ items, config }: { items: CollectionItem[];
           }}
         >
           <div>{cols ?? "auto"} col · {aspect} · {tile.name}</div>
-          <div style={{ opacity: 0.55, marginTop: 2 }}>grey {tileIdx + 1}/{TILE_OPTIONS.length} · 1–8, c/C, a</div>
+          <div style={{ opacity: 0.55, marginTop: 2 }}>grey {tileIdx + 1}/{TILE_OPTIONS.length} · 1–8, c/C, a, d</div>
         </div>
       )}
     </main>
