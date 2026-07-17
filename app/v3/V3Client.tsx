@@ -101,6 +101,19 @@ function layerStyle(
   return { ...base, bottom: "3%", transform: "translateX(-50%)" };
 }
 
+// Shared nav toggle pill style (True to size / Carousel).
+const pillStyle = (active: boolean): React.CSSProperties => ({
+  fontSize: 12,
+  whiteSpace: "nowrap",
+  color: active ? "var(--ink)" : "var(--ink-soft)",
+  border: "1px solid var(--hairline)",
+  borderRadius: 9999,
+  padding: "4px 12px",
+  background: active ? "var(--tile)" : "transparent",
+  cursor: "pointer",
+  transition: "color 0.15s ease, background 0.15s ease",
+});
+
 export default function V3Client({ robots }: { robots: Humanoid[] }) {
   const grid = useMemo(() => robots.filter((r) => r.imageUrl), [robots]);
 
@@ -108,6 +121,7 @@ export default function V3Client({ robots }: { robots: Humanoid[] }) {
   // so a 90cm Domo reads visibly shorter than a 190cm Atlas on a shared floor.
   const refHeight = useMemo(() => Math.max(1, ...grid.map((r) => r.height ?? 0)), [grid]);
   const [trueToSize, setTrueToSize] = useState(false);
+  const [carousel, setCarousel] = useState(false);
 
   // Experiment shortcuts (reset on reload):
   //   1–8 → grid column count      c / C → next / prev card grey
@@ -157,23 +171,14 @@ export default function V3Client({ robots }: { robots: Humanoid[] }) {
           >
             A visual index of humanoid robots
           </span>
-          <button
-            onClick={() => setTrueToSize((v) => !v)}
-            title="Scale each robot to its real relative height"
-            style={{
-              fontSize: 12,
-              whiteSpace: "nowrap",
-              color: trueToSize ? "var(--ink)" : "var(--ink-soft)",
-              border: "1px solid var(--hairline)",
-              borderRadius: 9999,
-              padding: "4px 12px",
-              background: trueToSize ? "var(--tile)" : "transparent",
-              cursor: "pointer",
-              transition: "color 0.15s ease, background 0.15s ease",
-            }}
-          >
-            True to size
-          </button>
+          <div className="flex items-center" style={{ gap: 8 }}>
+            <button onClick={() => setCarousel((v) => !v)} title="Horizontal swipe carousel" style={pillStyle(carousel)}>
+              Carousel
+            </button>
+            <button onClick={() => setTrueToSize((v) => !v)} title="Scale each robot to its real relative height" style={pillStyle(trueToSize)}>
+              True to size
+            </button>
+          </div>
         </div>
       </header>
 
@@ -186,14 +191,33 @@ export default function V3Client({ robots }: { robots: Humanoid[] }) {
           paddingBottom: 96,
         }}
       >
-        <div
-          className="v3-grid"
-          style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}
-        >
-          {grid.map((r) => (
-            <RobotCard key={r.id} r={r} trueToSize={trueToSize} refHeight={refHeight} />
-          ))}
-        </div>
+        {carousel ? (
+          <div
+            className="v3-scroller"
+            style={{
+              marginLeft: "calc(var(--page-x) * -1)",
+              marginRight: "calc(var(--page-x) * -1)",
+              paddingLeft: "var(--page-x)",
+              paddingRight: "var(--page-x)",
+              paddingBottom: 12,
+            }}
+          >
+            {grid.map((r) => (
+              <div key={r.id} className="v3-snap" style={{ width: "min(400px, 74vw)" }}>
+                <RobotCard r={r} trueToSize={trueToSize} refHeight={refHeight} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="v3-grid"
+            style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}
+          >
+            {grid.map((r) => (
+              <RobotCard key={r.id} r={r} trueToSize={trueToSize} refHeight={refHeight} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Experiment indicator — appears once you use a shortcut. */}
