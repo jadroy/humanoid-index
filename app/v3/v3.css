@@ -1,0 +1,170 @@
+/* ---------------------------------------------------------------------------
+   Humanoid Index v3 — "Thuma calm" design tokens
+   Everything the look depends on lives here. Tune from one place.
+   --------------------------------------------------------------------------- */
+
+/* The main app locks `html, body { overflow: hidden }` globally for its
+   spring-scroll UI. /v3 wants normal document scrolling — re-enable it only
+   when the v3 shell is on the page. */
+html:has(.v3-root),
+body:has(.v3-root) {
+  overflow: auto !important;
+  overscroll-behavior: auto !important;
+  height: auto !important;
+}
+
+.v3-root {
+  /* — Color: monochrome by design. The robot renders are the only color. — */
+  --canvas: #ffffff;        /* page background */
+  --tile: #f2f2f2;          /* category card tile (Thuma's grey carousel) */
+  --tile-grid: #f6f5f3;     /* product grid tile — lighter/warmer, near-white */
+  --tile-hover: #efeeec;    /* tile on hover */
+  --ink: #4a4a50;           /* all text — light, greyed off black */
+  --ink-soft: #86868c;      /* secondary text (manufacturer, meta) */
+  --ink-faint: #b0b0b6;     /* tertiary / disabled */
+  --hairline: #e3e3e3;      /* dividers, borders */
+
+  /* — Type — */
+  --font-sans: var(--font-inter), var(--v3-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--v3-serif), Georgia, "Times New Roman", serif;
+  /* THE SERIF TOGGLE. Set to var(--font-serif) to A/B Yrsa on all headings. */
+  --font-display: var(--font-sans);
+
+  /* — Rhythm (tight + consistent, Benji-Taylor restraint) — */
+  --page-x: clamp(20px, 4vw, 64px);   /* horizontal page margin */
+  --gap: 20px;                         /* grid gutter */
+
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+/* Display headings — swap serif/sans via --font-display only. */
+.v3-display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+
+/* The letter-spaced small-caps label ("EXPLORE", wordmark, section eyebrows). */
+.v3-eyebrow {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+/* Product grid — 4-up on desktop, calmly stepping down on smaller widths. */
+.v3-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: var(--gap);
+  row-gap: 40px;
+}
+@media (min-width: 720px) {
+  .v3-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 1080px) {
+  .v3-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Hover-swap media (e-commerce alt-image flash). Two stacked layers inside
+   the tile cross-dissolve when the card is hovered. Only rendered when a
+   robot actually has a second image. */
+/* Positioning (center vs bottom-anchor) is set inline per-robot by layerStyle,
+   keyed off each robot's imagePosition so only flagged renders sit on the floor. */
+.v3-media {
+  position: absolute;
+}
+/* Instant switch on hover — no fade, snaps like a product-image toggle.
+   Scoped to .v3-card--swap so cards WITHOUT a second image never blank out. */
+.v3-media--primary { transition: none; }
+.v3-media--secondary { opacity: 0; transition: none; }
+.v3-card--swap:hover .v3-media--secondary { opacity: 1; }
+.v3-card--swap:hover .v3-media--primary { opacity: 0; }
+
+/* 360° turntable badge (cards with spin frames). */
+.v3-spin-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1px solid var(--hairline);
+  border-radius: 9999px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+
+/* Product grid tile — near-white with a soft floor shadow so the robot is
+   grounded rather than floating (Thuma's studio-shadow trick). */
+.v3-grid-tile {
+  background:
+    radial-gradient(52% 8% at 50% 95%, rgba(40, 40, 41, 0.13), rgba(40, 40, 41, 0) 70%),
+    var(--tile-grid);
+}
+
+/* Thin underline link that grows on hover — the recessive Thuma link. */
+.v3-underline {
+  position: relative;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--ink);
+  transition: opacity 0.2s ease;
+}
+.v3-underline:hover { opacity: 0.55; }
+
+/* Nav item — quiet until hover. */
+.v3-nav-link {
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  transition: opacity 0.2s ease;
+}
+.v3-nav-link:hover { opacity: 0.5; }
+
+/* Horizontal carousel: native scroll-snap, hidden scrollbar for calm. */
+.v3-scroller {
+  display: flex;
+  gap: var(--gap);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.v3-scroller::-webkit-scrollbar { display: none; }
+.v3-snap { scroll-snap-align: start; flex: 0 0 auto; }
+
+/* Robot/category tile. */
+.v3-tile {
+  background: var(--tile);
+}
+
+/* Ghost circular carousel arrow. */
+.v3-arrow {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+.v3-arrow:hover { background: #ffffff; }
+.v3-arrow:disabled { opacity: 0.25; pointer-events: none; }
