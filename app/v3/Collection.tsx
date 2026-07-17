@@ -125,7 +125,7 @@ export default function Collection({ items, config }: { items: CollectionItem[];
           <a href={config.href ?? "#"} aria-label={config.title ?? "Home"} className="flex items-center">
             {config.logo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={config.logo} alt={config.title ?? ""} style={{ height: 20, width: "auto" }} />
+              <img src={config.logo} alt={config.title ?? ""} style={{ height: 15, width: "auto" }} />
             ) : (
               <span className="v3-eyebrow" style={{ color: "var(--ink-soft)" }}>{config.title}</span>
             )}
@@ -163,6 +163,7 @@ export default function Collection({ items, config }: { items: CollectionItem[];
               marginRight: "calc(var(--page-x) * -1)",
               paddingLeft: "var(--page-x)",
               paddingRight: "var(--page-x)",
+              scrollPaddingLeft: "var(--page-x)", // snap respects the page margin (keeps 1st card aligned with logo)
               paddingBottom: 12,
             }}
           >
