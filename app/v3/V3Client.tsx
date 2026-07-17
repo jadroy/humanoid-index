@@ -6,8 +6,25 @@ import type { Humanoid } from "@/data/humanoids";
 /* Robots that have a turntable frame sequence in /public/spin/<name>.
    Keyed by humanoid id. Add entries here as you render more turntables. */
 const SPIN: Record<string, { path: string; frames: number; scale?: number }> = {
-  "3": { path: "/spin/memo", frames: 30, scale: 1.2 }, // Memo (frames are shorter → scale up)
+  "3": { path: "/spin/memo", frames: 30, scale: 1.05 }, // Memo (frames padded → tuned to match others)
 };
+
+// Card tile options — flat greys, NO shadow. A big spread: near-white → light
+// grey across warm→cool tints. Press "c" to step forward, "C" (shift) back.
+const hx = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+const TILE_OPTIONS: { name: string; bg: string }[] = (() => {
+  const opts: { name: string; bg: string }[] = [];
+  for (let l = 249; l >= 225; l -= 2) {            // lightness: near-white → light grey
+    for (const t of [1, 0, 3, -2, 5, -4, 7, 10]) { // tint: + cool/blue, - warm
+      const hex = `#${hx(l - t * 0.5)}${hx(l)}${hx(l + t * 0.7)}`;
+      opts.push({ name: hex, bg: hex });
+    }
+  }
+  return opts; // ~104 greys
+})();
+
+// Tile aspect-ratio options — press "a" to cycle.
+const ASPECT_OPTIONS = ["4 / 5", "1 / 1", "5 / 6", "3 / 4", "2 / 3", "5 / 7", "4 / 3", "3 / 2"];
 
 /* Cost is only shown when it's a real, displayable number. */
 function displayCost(c?: string) {
@@ -27,7 +44,7 @@ function secondaryLayer(r: Humanoid): Layer | null {
     return {
       url: alt.url,
       fit: alt.fit ?? "contain",
-      position: alt.position ?? r.imagePosition ?? "center",
+      position: alt.position ?? r.imagePosition ?? "ground",
     };
   }
   if (r.sceneUrl) {
@@ -51,35 +68,45 @@ function layerStyle(
   }
   const base: React.CSSProperties = {
     position: "absolute",
-    height: `${Math.round(84 * scale)}%`,
+    height: `${Math.round(82 * scale)}%`,
     width: "auto",
     maxWidth: "94%",
     objectFit: "contain",
     left: "50%",
   };
-  return position.includes("bottom")
-    ? { ...base, bottom: 0, transform: "translateX(-50%)" }
-    : { ...base, top: "50%", transform: "translate(-50%, -50%)" };
+  // Crops flush to the floor; Memo (padded turntable frames) stays centered;
+  // everything else grounds low with headroom above (Adidas/Nike-style).
+  if (position.includes("bottom")) return { ...base, bottom: 0, transform: "translateX(-50%)" };
+  if (position === "center") return { ...base, top: "50%", transform: "translate(-50%, -50%)" };
+  return { ...base, bottom: "3%", transform: "translateX(-50%)" };
 }
 
 export default function V3Client({ robots }: { robots: Humanoid[] }) {
   const grid = useMemo(() => robots.filter((r) => r.imageUrl), [robots]);
 
-  // Column experiment: press a number key (1–8) to override the grid columns;
-  // null = responsive default. Resets on reload.
+  // Experiment shortcuts (reset on reload):
+  //   1–8 → grid column count      c / C → next / prev card grey
+  //   a   → cycle tile aspect ratio
   const [cols, setCols] = useState<number | null>(null);
+  const [tileIdx, setTileIdx] = useState(0);
+  const [aspectIdx, setAspectIdx] = useState(0);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "c") { setTileIdx((i) => (i + 1) % TILE_OPTIONS.length); return; }
+      if (e.key === "C") { setTileIdx((i) => (i - 1 + TILE_OPTIONS.length) % TILE_OPTIONS.length); return; }
+      if (e.key === "a" || e.key === "A") { setAspectIdx((i) => (i + 1) % ASPECT_OPTIONS.length); return; }
       const n = parseInt(e.key, 10);
       if (n >= 1 && n <= 8) setCols(n);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  const tile = TILE_OPTIONS[tileIdx];
+  const aspect = ASPECT_OPTIONS[aspectIdx];
 
   return (
-    <main className="v3-root">
+    <main className="v3-root" style={{ ["--grid-tile"]: tile.bg, ["--tile-aspect"]: aspect } as React.CSSProperties}>
       {/* ---------------------------------------------------------------- Nav */}
       <header
         className="sticky top-0 z-30"
@@ -127,8 +154,8 @@ export default function V3Client({ robots }: { robots: Humanoid[] }) {
         </div>
       </section>
 
-      {/* Column-experiment indicator — only visible once you press a number. */}
-      {cols !== null && (
+      {/* Experiment indicator — appears once you use a shortcut. */}
+      {(cols !== null || tileIdx !== 0 || aspectIdx !== 0) && (
         <div
           className="v3-eyebrow"
           style={{
@@ -137,15 +164,20 @@ export default function V3Client({ robots }: { robots: Humanoid[] }) {
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 40,
+            textAlign: "center",
+            lineHeight: 1.5,
             color: "var(--ink-soft)",
             background: "rgba(255,255,255,0.9)",
             backdropFilter: "blur(6px)",
             border: "1px solid var(--hairline)",
-            borderRadius: 9999,
-            padding: "5px 12px",
+            borderRadius: 14,
+            padding: "6px 14px",
           }}
         >
-          {cols} {cols === 1 ? "column" : "columns"} · 1–8
+          <div>{cols ?? 3} col · {aspect} · {tile.name}</div>
+          <div style={{ opacity: 0.55, marginTop: 2 }}>
+            grey {tileIdx + 1}/{TILE_OPTIONS.length} · 1–8, c/C, a
+          </div>
         </div>
       )}
     </main>
@@ -169,7 +201,7 @@ function RobotCard({ r }: { r: Humanoid }) {
     >
       <div
         className="v3-grid-tile"
-        style={{ position: "relative", aspectRatio: "4 / 5", overflow: "hidden" }}
+        style={{ position: "relative", aspectRatio: "var(--tile-aspect, 4 / 5)", overflow: "hidden" }}
       >
         {spin ? (
           <SpinTile path={spin.path} frames={spin.frames} name={r.name} scale={spin.scale} />
@@ -182,7 +214,7 @@ function RobotCard({ r }: { r: Humanoid }) {
                 src={r.imageUrl}
                 alt={r.name}
                 loading="lazy"
-                style={layerStyle(r.imageFit ?? "contain", r.imagePosition ?? "center", r.imageScale)}
+                style={layerStyle(r.imageFit ?? "contain", r.imagePosition ?? "ground", r.imageScale)}
               />
             )}
             {secondary && (
@@ -265,7 +297,21 @@ function SpinTile({ path, frames, name, scale }: { path: string; frames: number;
   return (
     <div onMouseEnter={start} onMouseLeave={stop} style={{ position: "absolute", inset: 0 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="v3-media" src={src(frame)} alt={name} style={layerStyle("contain", "center", scale)} />
+      <img
+        className="v3-media"
+        src={src(frame)}
+        alt={name}
+        style={{
+          position: "absolute",
+          left: "50%",
+          bottom: "-3%", // negative offset cancels the frames' bottom padding → base lands on the floor line
+          transform: "translateX(-50%)",
+          height: `${Math.round(82 * (scale ?? 1))}%`,
+          width: "auto",
+          maxWidth: "94%",
+          objectFit: "contain",
+        }}
+      />
       <span className="v3-spin-badge">360°</span>
     </div>
   );

@@ -74,7 +74,7 @@ body:has(.v3-root) {
   .v3-grid { grid-template-columns: repeat(3, 1fr); }
 }
 @media (min-width: 1080px) {
-  .v3-grid { grid-template-columns: repeat(4, 1fr); }
+  .v3-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* Hover-swap media (e-commerce alt-image flash). Two stacked layers inside
@@ -113,9 +113,7 @@ body:has(.v3-root) {
 /* Product grid tile — near-white with a soft floor shadow so the robot is
    grounded rather than floating (Thuma's studio-shadow trick). */
 .v3-grid-tile {
-  background:
-    radial-gradient(52% 8% at 50% 95%, rgba(40, 40, 41, 0.13), rgba(40, 40, 41, 0) 70%),
-    var(--tile-grid);
+  background: var(--grid-tile, var(--tile-grid));
 }
 
 /* Thin underline link that grows on hover — the recessive Thuma link. */
