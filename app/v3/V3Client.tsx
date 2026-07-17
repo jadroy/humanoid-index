@@ -65,6 +65,19 @@ function layerStyle(
 export default function V3Client({ robots }: { robots: Humanoid[] }) {
   const grid = useMemo(() => robots.filter((r) => r.imageUrl), [robots]);
 
+  // Column experiment: press a number key (1–8) to override the grid columns;
+  // null = responsive default. Resets on reload.
+  const [cols, setCols] = useState<number | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= 8) setCols(n);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <main className="v3-root">
       {/* ---------------------------------------------------------------- Nav */}
@@ -73,39 +86,68 @@ export default function V3Client({ robots }: { robots: Humanoid[] }) {
         style={{ background: "rgba(255,255,255,0.86)", backdropFilter: "blur(8px)" }}
       >
         <div
-          className="flex items-center justify-between"
-          style={{ paddingLeft: "var(--page-x)", paddingRight: "var(--page-x)", height: 52 }}
+          className="flex items-center"
+          style={{ position: "relative", paddingLeft: "var(--page-x)", paddingRight: "var(--page-x)", height: 52 }}
         >
           <a href="/v3" aria-label="Humanoid Index" className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/HI-logo.svg" alt="Humanoid Index" style={{ height: 12, width: "auto", opacity: 0.5 }} />
           </a>
-          <span className="v3-eyebrow" style={{ color: "var(--ink-faint)" }}>
-            {grid.length} models
+          <span
+            style={{
+              position: "absolute",
+              left: "50%",
+              transform: "translateX(-50%)",
+              color: "var(--ink-soft)",
+              fontSize: 12,
+              whiteSpace: "nowrap",
+            }}
+          >
+            A visual index of humanoid robots
           </span>
         </div>
       </header>
 
-      {/* ------------------------------------------------- Intro + robot grid */}
+      {/* ---------------------------------------------------------- Robot grid */}
       <section
         style={{
           paddingLeft: "var(--page-x)",
           paddingRight: "var(--page-x)",
-          paddingTop: 40,
+          paddingTop: 44,
           paddingBottom: 96,
         }}
       >
-        <p style={{ maxWidth: 340, color: "var(--ink-soft)", fontSize: 12.5, marginBottom: 40 }}>
-          A calm, visual index of the humanoid robots being built today — every
-          machine, shot the same way.
-        </p>
-
-        <div className="v3-grid">
+        <div
+          className="v3-grid"
+          style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}
+        >
           {grid.map((r) => (
             <RobotCard key={r.id} r={r} />
           ))}
         </div>
       </section>
+
+      {/* Column-experiment indicator — only visible once you press a number. */}
+      {cols !== null && (
+        <div
+          className="v3-eyebrow"
+          style={{
+            position: "fixed",
+            bottom: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 40,
+            color: "var(--ink-soft)",
+            background: "rgba(255,255,255,0.9)",
+            backdropFilter: "blur(6px)",
+            border: "1px solid var(--hairline)",
+            borderRadius: 9999,
+            padding: "5px 12px",
+          }}
+        >
+          {cols} {cols === 1 ? "column" : "columns"} · 1–8
+        </div>
+      )}
     </main>
   );
 }
