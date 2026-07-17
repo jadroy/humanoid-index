@@ -33,6 +33,7 @@ body:has(.v3-root) {
   /* — Rhythm (tight + consistent, Benji-Taylor restraint) — */
   --page-x: clamp(20px, 4vw, 64px);   /* horizontal page margin */
   --gap: 20px;                         /* grid gutter */
+  --tile-radius: 14px;                 /* rounded "collection tile" corners */
 
   background: var(--canvas);
   color: var(--ink);
@@ -68,13 +69,16 @@ body:has(.v3-root) {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   column-gap: var(--gap);
-  row-gap: 40px;
+  row-gap: 32px;
 }
-@media (min-width: 720px) {
+@media (min-width: 640px) {
   .v3-grid { grid-template-columns: repeat(3, 1fr); }
 }
-@media (min-width: 1080px) {
-  .v3-grid { grid-template-columns: repeat(3, 1fr); }
+@media (min-width: 960px) {
+  .v3-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1280px) {
+  .v3-grid { grid-template-columns: repeat(5, 1fr); }
 }
 
 /* Hover-swap media (e-commerce alt-image flash). Two stacked layers inside
@@ -114,6 +118,7 @@ body:has(.v3-root) {
    grounded rather than floating (Thuma's studio-shadow trick). */
 .v3-grid-tile {
   background: var(--grid-tile, var(--tile-grid));
+  border-radius: var(--tile-radius);
 }
 
 /* Thin underline link that grows on hover — the recessive Thuma link. */
