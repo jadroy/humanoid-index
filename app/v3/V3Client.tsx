@@ -26,6 +26,20 @@ const TILE_OPTIONS: { name: string; bg: string }[] = (() => {
 // Tile aspect-ratio options — press "a" to cycle.
 const ASPECT_OPTIONS = ["4 / 5", "1 / 1", "5 / 6", "3 / 4", "2 / 3", "5 / 7", "4 / 3", "3 / 2"];
 
+// Environment photos (Unsplash, free license) flashed on hover for robots that
+// don't already ship their own media[]/sceneUrl. Keyed by useCase; a robot
+// picks one from its role's pool by id, so same-role robots vary.
+const u = (id: string) => `https://images.unsplash.com/photo-${id}?w=1100&q=80&auto=format&fit=crop`;
+const ROLE_SCENES: Record<string, string[]> = {
+  Research: ["1532186773960-85649e5cb70b", "1778546978267-b93e8c6ea099", "1784203572351-1a1125b874a6"].map(u),
+  Industrial: ["1717386255773-1e3037c81788", "1647427060118-4911c9821b82", "1610891015188-5369212db097"].map(u),
+  Logistics: ["1587293852726-70cdb56c2866", "1586528116311-ad8dd3c8310d"].map(u),
+  Home: ["1583847268964-b28dc8f51f92", "1631679706909-1844bbd07221"].map(u),
+  Showcase: ["1592758080692-b6a5dbe9c725", "1762968274962-20c12e6e8ecd"].map(u),
+  Service: ["1497366811353-6870744d04b2", "1497366754035-f200968a6e72"].map(u),
+  Security: ["1587702068694-a909ef4aa346", "1623177623442-979c1e42c255"].map(u),
+};
+
 /* Cost is only shown when it's a real, displayable number. */
 function displayCost(c?: string) {
   if (!c || c === "N/A" || c === "—") return null;
@@ -49,6 +63,12 @@ function secondaryLayer(r: Humanoid): Layer | null {
   }
   if (r.sceneUrl) {
     return { url: r.sceneUrl, fit: "cover", position: "center" };
+  }
+  // Fall back to a role/environment photo (leaves media[]/sceneUrl robots alone).
+  const pool = r.useCase ? ROLE_SCENES[r.useCase] : undefined;
+  if (pool && pool.length) {
+    const idx = Math.abs(parseInt(r.id, 10) || 0) % pool.length;
+    return { url: pool[idx], fit: "cover", position: "center" };
   }
   return null;
 }
