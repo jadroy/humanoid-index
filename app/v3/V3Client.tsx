@@ -104,6 +104,11 @@ function layerStyle(
 export default function V3Client({ robots }: { robots: Humanoid[] }) {
   const grid = useMemo(() => robots.filter((r) => r.imageUrl), [robots]);
 
+  // True-to-size: scale each robot by its real height against the tallest one,
+  // so a 90cm Domo reads visibly shorter than a 190cm Atlas on a shared floor.
+  const refHeight = useMemo(() => Math.max(1, ...grid.map((r) => r.height ?? 0)), [grid]);
+  const [trueToSize, setTrueToSize] = useState(false);
+
   // Experiment shortcuts (reset on reload):
   //   1–8 → grid column count      c / C → next / prev card grey
   //   a   → cycle tile aspect ratio
@@ -133,7 +138,7 @@ export default function V3Client({ robots }: { robots: Humanoid[] }) {
         style={{ background: "rgba(255,255,255,0.86)", backdropFilter: "blur(8px)" }}
       >
         <div
-          className="flex items-center"
+          className="flex items-center justify-between"
           style={{ position: "relative", paddingLeft: "var(--page-x)", paddingRight: "var(--page-x)", height: 52 }}
         >
           <a href="/v3" aria-label="Humanoid Index" className="flex items-center">
@@ -152,6 +157,23 @@ export default function V3Client({ robots }: { robots: Humanoid[] }) {
           >
             A visual index of humanoid robots
           </span>
+          <button
+            onClick={() => setTrueToSize((v) => !v)}
+            title="Scale each robot to its real relative height"
+            style={{
+              fontSize: 12,
+              whiteSpace: "nowrap",
+              color: trueToSize ? "var(--ink)" : "var(--ink-soft)",
+              border: "1px solid var(--hairline)",
+              borderRadius: 9999,
+              padding: "4px 12px",
+              background: trueToSize ? "var(--tile)" : "transparent",
+              cursor: "pointer",
+              transition: "color 0.15s ease, background 0.15s ease",
+            }}
+          >
+            True to size
+          </button>
         </div>
       </header>
 
@@ -169,7 +191,7 @@ export default function V3Client({ robots }: { robots: Humanoid[] }) {
           style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}
         >
           {grid.map((r) => (
-            <RobotCard key={r.id} r={r} />
+            <RobotCard key={r.id} r={r} trueToSize={trueToSize} refHeight={refHeight} />
           ))}
         </div>
       </section>
@@ -206,10 +228,14 @@ export default function V3Client({ robots }: { robots: Humanoid[] }) {
 
 /* ---------------------------------------------------------------- Robot card */
 
-function RobotCard({ r }: { r: Humanoid }) {
+function RobotCard({ r, trueToSize, refHeight }: { r: Humanoid; trueToSize: boolean; refHeight: number }) {
   const cost = displayCost(r.cost);
   const spin = SPIN[r.id];
   const secondary = spin ? null : secondaryLayer(r);
+  // Real-height scale when true-to-size is on; otherwise the data's imageScale.
+  const heightScale = r.height ? r.height / refHeight : 1;
+  const sizeScale = trueToSize ? heightScale : r.imageScale ?? 1;
+  const spinScale = trueToSize ? heightScale * (spin?.scale ?? 1) : spin?.scale;
   const meta = [r.year, r.height ? `${r.height}cm` : null, r.dof ? `${r.dof} DOF` : null]
     .filter(Boolean)
     .join("  ·  ");
@@ -224,7 +250,7 @@ function RobotCard({ r }: { r: Humanoid }) {
         style={{ position: "relative", aspectRatio: "var(--tile-aspect, 4 / 5)", overflow: "hidden" }}
       >
         {spin ? (
-          <SpinTile path={spin.path} frames={spin.frames} name={r.name} scale={spin.scale} />
+          <SpinTile path={spin.path} frames={spin.frames} name={r.name} scale={spinScale} />
         ) : (
           <>
             {r.imageUrl && (
@@ -234,7 +260,7 @@ function RobotCard({ r }: { r: Humanoid }) {
                 src={r.imageUrl}
                 alt={r.name}
                 loading="lazy"
-                style={layerStyle(r.imageFit ?? "contain", r.imagePosition ?? "ground", r.imageScale)}
+                style={layerStyle(r.imageFit ?? "contain", r.imagePosition ?? "ground", sizeScale)}
               />
             )}
             {secondary && (
