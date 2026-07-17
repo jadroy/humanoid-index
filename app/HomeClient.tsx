@@ -1516,7 +1516,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     return new URLSearchParams(window.location.search).has("record");
   });
   const RECORDING_SHUFFLE_EXCLUDE_IDS = ["23", "25"]; // Armar-6, Roboy
-  const [statsCollapsed, setStatsCollapsed] = useState(recordingMode);
+  // Default to collapsed — the detail/stats column opens on demand, not on load.
+  // (recordingMode also wants it closed for the first frame, so `true` covers both.)
+  const [statsCollapsed, setStatsCollapsed] = useState(true);
   const [statsHover, setStatsHover] = useState(false);
   // Engineer-mode is the only mode while the basic/engineer toggle is hidden.
   // localStorage hydration intentionally skipped so returning users who'd
