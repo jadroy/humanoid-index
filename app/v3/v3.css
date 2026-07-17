@@ -14,21 +14,31 @@ body:has(.v3-root) {
 }
 
 .v3-root {
-  /* — Color: monochrome by design. The robot renders are the only color. — */
+  /* — Color: monochrome by design. The robot renders are the only color.
+     Cool greys — harryjatkins' neutral hierarchy (#292929 / #999 / #c4c4c4)
+     nudged blue. Hierarchy is COLOR only; size and weight never change. — */
   --canvas: #ffffff;        /* page background */
-  --tile: #f2f2f2;          /* category card tile (Thuma's grey carousel) */
-  --tile-grid: #f6f5f3;     /* product grid tile — lighter/warmer, near-white */
-  --tile-hover: #efeeec;    /* tile on hover */
-  --ink: #4a4a50;           /* all text — light, greyed off black */
-  --ink-soft: #86868c;      /* secondary text (manufacturer, meta) */
-  --ink-faint: #b0b0b6;     /* tertiary / disabled */
-  --hairline: #e3e3e3;      /* dividers, borders */
+  --tile: #f1f2f3;          /* category card tile (Thuma's grey carousel) */
+  --tile-grid: #f5f6f7;     /* product grid tile — cool near-white */
+  --tile-hover: #eceef0;    /* tile on hover */
+  --ink: #2a2c31;           /* primary text — cool near-black */
+  --ink-soft: #8d8f97;      /* secondary text (maker, category, labels) */
+  --ink-faint: #bcbec6;     /* tertiary text (meta, numbers, disabled) */
+  --hairline: #e7e8ea;      /* dividers, borders */
 
-  /* — Type — */
-  --font-sans: var(--font-inter), var(--v3-sans), ui-sans-serif, system-ui, sans-serif;
+  /* — Type: ONE font, ONE weight, ONE size (nearly everywhere). — */
+  /* THE FONT TOGGLE. Söhne-alike default; A/B by swapping this one line.
+     Alts: var(--font-inter) · var(--font-mona-sans) · var(--v3-sans) (Saira) */
+  --v3-font: var(--font-geist-sans);
+  --font-sans: var(--v3-font), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--v3-serif), Georgia, "Times New Roman", serif;
   /* THE SERIF TOGGLE. Set to var(--font-serif) to A/B Yrsa on all headings. */
   --font-display: var(--font-sans);
+
+  --fs: 13px;               /* THE size — used nearly everywhere */
+  --fs-lg: 26px;            /* the single larger size (page / detail titles) */
+  --fw: 450;                /* THE weight — "book", slightly above regular */
+  --tracking: -0.02em;      /* uniform tight tracking */
 
   /* — Rhythm (tight + consistent, Benji-Taylor restraint) — */
   --page-x: clamp(20px, 4vw, 64px);   /* horizontal page margin */
@@ -38,30 +48,47 @@ body:has(.v3-root) {
   background: var(--canvas);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 13.5px;
-  line-height: 1.55;
+  font-size: var(--fs);
+  font-weight: var(--fw);
+  letter-spacing: var(--tracking);
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   min-height: 100vh;
 }
 
-/* Display headings — swap serif/sans via --font-display only. */
+/* THE LABEL. One size, one weight, tight tracking — the whole site's text.
+   Differentiate ONLY by color: default (primary), --soft, --faint. */
+.v3-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs);
+  font-weight: var(--fw);
+  letter-spacing: var(--tracking);
+  line-height: 1.3;
+  color: var(--ink);
+}
+.v3-label--soft { color: var(--ink-soft); }
+.v3-label--faint { color: var(--ink-faint); }
+
+/* Display headings (page / detail titles) — the ONE larger size. */
 .v3-display {
   font-family: var(--font-display);
+  font-size: var(--fs-lg);
   font-weight: 500;
-  letter-spacing: -0.01em;
-  line-height: 1.05;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
   color: var(--ink);
 }
 
-/* The letter-spaced small-caps label ("EXPLORE", wordmark, section eyebrows). */
+/* Small-caps micro-label — reserved for functional chrome only
+   (360° badge, tuning HUD). Not for content; content uses .v3-label. */
 .v3-eyebrow {
   font-family: var(--font-sans);
-  font-weight: 500;
+  font-weight: var(--fw);
   font-size: 10px;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--ink);
+  color: var(--ink-soft);
 }
 
 /* Product grid — 4-up on desktop, calmly stepping down on smaller widths. */
@@ -131,7 +158,7 @@ body:has(.v3-root) {
    (a) hiding server HTML until the pile transforms are applied and
    (b) hiding card labels while piled, fading them back as cards land. */
 .v3-deal-pending > .v3-card { visibility: hidden; }
-.v3-grid > .v3-card > :not(:first-child) { transition: opacity 0.55s ease 0.7s; }
+.v3-grid > .v3-card > :not(:first-child) { transition: opacity 0.55s ease 0.5s; }
 .v3-dealing > .v3-card > :not(:first-child) { opacity: 0; transition: none; }
 
 /* Thin underline link that grows on hover — the recessive Thuma link. */
@@ -146,7 +173,7 @@ body:has(.v3-root) {
 /* Nav item — quiet until hover. */
 .v3-nav-link {
   color: var(--ink);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking);
   transition: opacity 0.2s ease;
 }
 .v3-nav-link:hover { opacity: 0.5; }

@@ -37,11 +37,11 @@ export default function CollectionDetail({ item, config }: { item: DetailItem; c
             )}
           </a>
           {config.blurb && (
-            <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", color: "var(--ink-soft)", fontSize: 12, whiteSpace: "nowrap" }}>
+            <span className="v3-label v3-label--soft" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
               {config.blurb}
             </span>
           )}
-          <a href={config.href ?? "#"} className="v3-nav-link" style={{ fontSize: 12 }}>← All</a>
+          <a href={config.href ?? "#"} className="v3-label v3-nav-link">← All</a>
         </div>
       </header>
 
@@ -82,23 +82,21 @@ export default function CollectionDetail({ item, config }: { item: DetailItem; c
 
           {/* RIGHT — info */}
           <div style={{ flex: "1 1 40%", minWidth: 0, maxWidth: 460 }}>
-            <h1 className="v3-display" style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-              {item.title}
-            </h1>
-            {item.subtitle && <div style={{ color: "var(--ink-soft)", fontSize: 14, marginTop: 5 }}>{item.subtitle}</div>}
+            <h1 className="v3-display">{item.title}</h1>
+            {item.subtitle && <div className="v3-label v3-label--soft" style={{ marginTop: 6 }}>{item.subtitle}</div>}
             {(item.price || item.badge) && (
-              <div style={{ fontSize: 15, marginTop: 16, color: "var(--ink)" }}>{item.price ?? item.badge}</div>
+              <div className="v3-label" style={{ marginTop: 16 }}>{item.price ?? item.badge}</div>
             )}
             {item.description && (
-              <p style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.65, marginTop: 20 }}>{item.description}</p>
+              <p className="v3-label v3-label--soft" style={{ lineHeight: 1.65, marginTop: 20 }}>{item.description}</p>
             )}
 
             {item.specs?.length ? (
               <dl style={{ marginTop: 28, borderTop: "1px solid var(--hairline)" }}>
                 {item.specs.map((s) => (
                   <div key={s.label} className="flex items-center justify-between" style={{ padding: "11px 0", borderBottom: "1px solid var(--hairline)" }}>
-                    <dt style={{ color: "var(--ink-soft)", fontSize: 12.5 }}>{s.label}</dt>
-                    <dd style={{ color: "var(--ink)", fontSize: 12.5 }}>{s.value}</dd>
+                    <dt className="v3-label v3-label--soft">{s.label}</dt>
+                    <dd className="v3-label">{s.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -112,7 +110,8 @@ export default function CollectionDetail({ item, config }: { item: DetailItem; c
                     href={l.href}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ fontSize: 12.5, border: "1px solid var(--ink)", borderRadius: 9999, padding: "8px 16px", color: "var(--ink)", whiteSpace: "nowrap" }}
+                    className="v3-label"
+                    style={{ border: "1px solid var(--ink)", borderRadius: 9999, padding: "8px 16px", whiteSpace: "nowrap" }}
                   >
                     {l.label} ↗
                   </a>
