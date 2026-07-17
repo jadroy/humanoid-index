@@ -104,7 +104,7 @@ export function humanoidToDetail(r: Humanoid): DetailItem {
 }
 
 export const humanoidConfig: CollectionConfig = {
-  logo: "/HI-logo.svg",
+  logo: "/HI-mark.svg",
   title: "Humanoid Index",
   href: "/v3",
   blurb: "A visual index of humanoid robots",

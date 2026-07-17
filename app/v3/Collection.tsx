@@ -125,7 +125,7 @@ export default function Collection({ items, config }: { items: CollectionItem[];
           <a href={config.href ?? "#"} aria-label={config.title ?? "Home"} className="flex items-center">
             {config.logo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={config.logo} alt={config.title ?? ""} style={{ height: 12, width: "auto", opacity: 0.5 }} />
+              <img src={config.logo} alt={config.title ?? ""} style={{ height: 20, width: "auto" }} />
             ) : (
               <span className="v3-eyebrow" style={{ color: "var(--ink-soft)" }}>{config.title}</span>
             )}
