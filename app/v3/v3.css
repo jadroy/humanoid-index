@@ -5,10 +5,17 @@
 
 /* The main app locks `html, body { overflow: hidden }` globally for its
    spring-scroll UI. /v3 wants normal document scrolling — re-enable it only
-   when the v3 shell is on the page. */
-html:has(.v3-root),
-body:has(.v3-root) {
+   when the v3 shell is on the page.
+   html scrolls; body must be `visible`, NOT `auto` — overflow:auto would make
+   body its own (never-scrolling) scroll container, and every position:sticky
+   inside would pin to it instead of the viewport, i.e. never stick. */
+html:has(.v3-root) {
   overflow: auto !important;
+  overscroll-behavior: auto !important;
+  height: auto !important;
+}
+body:has(.v3-root) {
+  overflow: visible !important;
   overscroll-behavior: auto !important;
   height: auto !important;
 }
@@ -158,6 +165,7 @@ body:has(.v3-root) {
    (a) hiding server HTML until the pile transforms are applied and
    (b) hiding card labels while piled, fading them back as cards land. */
 .v3-deal-pending > .v3-card { visibility: hidden; }
+.v3-nav-pending > div > * { visibility: hidden; } /* nav items join the intro */
 .v3-grid > .v3-card > :not(:first-child) { transition: opacity 0.55s ease 0.5s; }
 .v3-dealing > .v3-card > :not(:first-child) { opacity: 0; transition: none; }
 
@@ -177,6 +185,126 @@ body:has(.v3-root) {
   transition: opacity 0.2s ease;
 }
 .v3-nav-link:hover { opacity: 0.5; }
+
+/* ---------------------------------------------------------------------------
+   Inline detail panel — click a card, a calm side column opens on the LEFT of
+   the grid (recent.design-style) instead of navigating to the full page. The
+   grid drops one column and FLIP-glides right (Collection.tsx); nothing dims,
+   so browsing stays live.
+   --------------------------------------------------------------------------- */
+.v3-stage {
+  display: flex;
+  align-items: flex-start;
+}
+.v3-stage--open { gap: 40px; }
+
+/* The panel column — sticky so it stays in view as the grid scrolls past. */
+.v3-panel-wrap {
+  flex: 0 0 clamp(320px, 26vw, 384px);
+  position: sticky;
+  top: 92px; /* clears the sticky nav, which grows with extra blurb lines */
+  align-self: flex-start;
+  animation: v3-panel-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes v3-panel-in {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Stepping ←/→ swaps content inside the open panel — a quiet crossfade,
+   no frame re-slide. */
+.v3-panel-content { animation: v3-panel-content-in 0.22s ease both; }
+@keyframes v3-panel-content-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.v3-panel-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.v3-panel-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+.v3-panel-btn:hover { color: var(--ink); background: #ffffff; }
+.v3-panel-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+/* Selected card — a quiet ring so it's clear which tile the panel belongs to. */
+.v3-card { transition: opacity 0.2s ease; }
+.v3-card--selected .v3-grid-tile {
+  outline: 1.5px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Ghost "+" card — an empty slot at the end of the grid inviting a suggestion.
+   Dashed hairline instead of a filled tile; quiet until hover. */
+.v3-suggest-tile {
+  background: transparent;
+  border: 1px dashed var(--hairline);
+  display: grid;
+  place-items: center;
+  color: var(--ink-faint);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.v3-suggest:hover .v3-suggest-tile {
+  color: var(--ink-soft);
+  border-color: var(--ink-faint);
+}
+
+/* Suggest form — one field, v3-quiet. */
+.v3-suggest-field {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: var(--font-sans);
+  font-size: var(--fs);
+  font-weight: var(--fw);
+  letter-spacing: var(--tracking);
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--tile-grid);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  outline: none;
+  resize: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.v3-suggest-field::placeholder { color: var(--ink-faint); }
+.v3-suggest-field:focus { background: #ffffff; border-color: var(--ink-faint); }
+.v3-suggest-send {
+  border: 1px solid var(--ink);
+  border-radius: 9999px;
+  padding: 7px 14px;
+  white-space: nowrap;
+  background: transparent;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.v3-suggest-send:hover { opacity: 0.55; }
+.v3-suggest-send:disabled { border-color: var(--hairline); color: var(--ink-faint); cursor: default; opacity: 1; }
+
+/* On narrow screens the panel stacks above the grid (no room for a column) —
+   it's already first in the DOM, so the column layout just falls out. */
+@media (max-width: 767px) {
+  .v3-stage--open { flex-direction: column; gap: 24px; }
+  .v3-panel-wrap {
+    position: static;
+    flex: 1 1 auto;
+    width: 100%;
+  }
+}
 
 /* Horizontal carousel: native scroll-snap, hidden scrollbar for calm. */
 .v3-scroller {

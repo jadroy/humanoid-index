@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import DetailPanel from "./DetailPanel";
+import SuggestPanel, { type SuggestConfig } from "./SuggestPanel";
+import type { DetailItem } from "./CollectionDetail";
 
 /* ===========================================================================
    Collection — a reusable "grey card collection" layout.
@@ -40,8 +43,9 @@ export type CollectionConfig = {
   logo?: string;        // logo image URL (left of nav)
   title?: string;       // text label if no logo / used for aria + link
   href?: string;        // logo link
-  blurb?: string;       // centered nav blurb
+  blurb?: string | string[]; // centered nav blurb — an array renders as stacked lines (first soft, rest faint)
   sizeLabel?: string;   // true-to-size button text; omit to hide the toggle
+  suggest?: SuggestConfig; // ghost "+" card at the end of the grid; omit to hide
 };
 
 /* ---- tuning pools (universal, cycled by keyboard) ------------------------ */
@@ -59,6 +63,9 @@ const TILE_OPTIONS: { name: string; bg: string }[] = (() => {
 })();
 const ASPECT_OPTIONS = ["4 / 5", "1 / 1", "5 / 6", "3 / 4", "2 / 3", "5 / 7", "4 / 3", "3 / 2"];
 
+// Selection sentinel for the ghost "+" card — never collides with item ids.
+const SUGGEST_ID = "__suggest__";
+
 /* ---- entry intros: variants of "cards find their formation" --------------
    FLIP-style: cards render in their final grid slots, each is measured, given
    a starting transform, then released into place via CSS transitions. Each
@@ -70,7 +77,7 @@ const ASPECT_OPTIONS = ["4 / 5", "1 / 1", "5 / 6", "3 / 4", "2 / 3", "5 / 7", "4
 type IntroCtx = {
   i: number; n: number;       // card index / total count
   dx: number; dy: number;     // vector from this tile's center to viewport center
-  dist: number; maxDist: number;
+  dist: number; maxDist: number; // maxDist = largest dist among on-screen cards
   r: DOMRect; vw: number; vh: number;
 };
 /* An intro = a START POSE × a LANDING ORDER — two independent axes.
@@ -120,7 +127,7 @@ const INTRO_STARTS: IntroStart[] = [
 ];
 
 const INTRO_ORDERS: IntroOrder[] = [
-  { name: "ripple", delay: ({ dist, maxDist }) => (dist / maxDist) * 480 },            // outward from center (default)
+  { name: "ripple", delay: ({ dist, maxDist }) => Math.min(dist / maxDist, 1) * 480 }, // outward from center (default)
   { name: "wave", delay: ({ i, n }) => i * Math.min(35, 700 / n) },                    // grid order
   { name: "sweep", delay: ({ r, vw }) => ((r.left + r.width / 2) / vw) * 400 },        // columns, left → right
   { name: "shuffle", delay: ({ i, n }) => (((i * 137.5) % n) / n) * 520 },             // scrambled — a gentle boil
@@ -161,7 +168,7 @@ const pillStyle = (active: boolean): React.CSSProperties => ({
   transition: "color 0.15s ease, background 0.15s ease",
 });
 
-export default function Collection({ items, config }: { items: CollectionItem[]; config: CollectionConfig }) {
+export default function Collection({ items, config, details }: { items: CollectionItem[]; config: CollectionConfig; details?: Record<string, DetailItem> }) {
   const refSize = useMemo(() => Math.max(1, ...items.map((i) => i.size ?? 0)), [items]);
   const canSize = !!config.sizeLabel && items.some((i) => i.size != null);
 
@@ -171,9 +178,59 @@ export default function Collection({ items, config }: { items: CollectionItem[];
   const [cols, setCols] = useState<number | null>(null);
   const [tileIdx, setTileIdx] = useState(0);
   const [aspectIdx, setAspectIdx] = useState(0);
+
+  /* Inline detail panel — clicking a card opens a sticky side column instead of
+     navigating away. Grid drops one column to make room; the grid stays alive. */
+  const [sel, setSel] = useState<string | null>(null);
+  const [baseCols, setBaseCols] = useState(5);
+  useEffect(() => {
+    const compute = () => {
+      const w = window.innerWidth;
+      setBaseCols(w >= 1280 ? 5 : w >= 960 ? 4 : w >= 640 ? 3 : 2);
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+  const canPanel = !!details && !carousel;
+  const selIdx = sel != null ? items.findIndex((i) => i.id === sel) : -1;
+  const selDetail = selIdx >= 0 ? details?.[sel!] : undefined;
+  // The ghost "+" card selects a sentinel id and opens the suggest form in the
+  // same side column — one interaction, two kinds of content.
+  const suggestOpen = canPanel && sel === SUGGEST_ID && !!config.suggest;
+  const panelOpen = (canPanel && !!selDetail) || suggestOpen;
+  /* Every selection change goes through changeSel, which snapshots card
+     positions first — the FLIP effect below then glides the grid between
+     column counts instead of letting it snap. */
+  const flipRects = useRef<Map<string, DOMRect> | null>(null);
+  const changeSel = (next: string | null) => {
+    const grid = gridRef.current;
+    if (grid) {
+      const m = new Map<string, DOMRect>();
+      Array.from(grid.children).forEach((el, i) => m.set(items[i]?.id ?? String(i), el.getBoundingClientRect()));
+      flipRects.current = m;
+    }
+    setSel(next);
+  };
+  const stepSel = (d: number) => {
+    if (selIdx < 0) return;
+    changeSel(items[(selIdx + d + items.length) % items.length].id);
+  };
+  // Close the panel if we switch into a view that can't host it (carousel).
+  useEffect(() => { if (carousel) setSel(null); }, [carousel]);
+  // Columns while the panel is open: one fewer than the current base, so tiles
+  // keep roughly their size and the freed slot becomes the panel's column.
+  const gridColsStyle = panelOpen
+    ? { gridTemplateColumns: `repeat(${Math.max(2, (cols ?? baseCols) - 1)}, minmax(0, 1fr))` }
+    : cols
+      ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }
+      : undefined;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Never hijack typing (e.g. the suggest form's field).
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
       if (e.key === "c") { setTileIdx((i) => (i + 1) % TILE_OPTIONS.length); return; }
       if (e.key === "C") { setTileIdx((i) => (i - 1 + TILE_OPTIONS.length) % TILE_OPTIONS.length); return; }
       if (e.key === "a" || e.key === "A") { setAspectIdx((i) => (i + 1) % ASPECT_OPTIONS.length); return; }
@@ -188,11 +245,13 @@ export default function Collection({ items, config }: { items: CollectionItem[];
   }, []);
   const tile = TILE_OPTIONS[tileIdx];
   const aspect = ASPECT_OPTIONS[aspectIdx];
+  const blurbLines = config.blurb ? (Array.isArray(config.blurb) ? config.blurb : [config.blurb]) : [];
 
   /* Entry intro. useLayoutEffect so the starting transforms land before first
      paint — the grid never flashes in its final formation. The grid ships with
      .v3-deal-pending (cards hidden) so pre-hydration HTML doesn't flash either. */
   const gridRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
   const [dealKey, setDealKey] = useState(0);
   const [startIdx, setStartIdx] = useState(0);
   const [orderIdx, setOrderIdx] = useState(0);
@@ -200,14 +259,18 @@ export default function Collection({ items, config }: { items: CollectionItem[];
     const grid = gridRef.current;
     if (!grid) return; // carousel view — no grid mounted
     const cards = Array.from(grid.children) as HTMLElement[];
-    const reveal = () => grid.classList.remove("v3-deal-pending");
+    const header = headerRef.current;
+    const reveal = () => {
+      grid.classList.remove("v3-deal-pending");
+      header?.classList.remove("v3-nav-pending");
+    };
     if (!cards.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       reveal();
       return;
     }
     const intro = INTRO_STARTS[startIdx];
     const order = INTRO_ORDERS[orderIdx];
-    window.scrollTo(0, 0); // intros read from the top of the page
+    // No scrolling — the intro plays around whatever viewport you're looking at.
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const n = cards.length;
@@ -220,7 +283,12 @@ export default function Collection({ items, config }: { items: CollectionItem[];
       const dy = vh / 2 - (r.top + r.height / 2);
       return { i, n, dx, dy, dist: Math.hypot(dx, dy), maxDist: 1, r, vw, vh };
     });
-    const maxDist = Math.max(1, ...ctxs.map((c) => c.dist));
+    // Normalize distance against ON-SCREEN cards only. Otherwise far below-fold
+    // cards dominate the scale and the visible choreography compresses into the
+    // first fraction of the timeline — the intro seems to "land down the page".
+    // Offscreen cards clamp to the max delay and settle together, unseen.
+    const visible = ctxs.filter((c) => c.r.bottom > 0 && c.r.top < vh);
+    const maxDist = Math.max(1, ...(visible.length ? visible : ctxs).map((c) => c.dist));
     ctxs.forEach((c) => (c.maxDist = maxDist));
 
     cards.forEach((el, i) => {
@@ -231,11 +299,26 @@ export default function Collection({ items, config }: { items: CollectionItem[];
       el.style.zIndex = intro.stackZ ? String(n - i) : "";
       el.style.willChange = "transform";
     });
+    // Nav settles alongside: logo → blurb → pills fade down in a small stagger
+    // while the cards hold, so the frame is in place as the content arrives.
+    const navEls = header
+      ? (Array.from(header.querySelectorAll(":scope > div > *")) as HTMLElement[])
+      : [];
+    navEls.forEach((el) => {
+      el.style.transition = "none";
+      el.style.opacity = "0";
+      el.style.transform = "translateY(-8px)";
+    });
     grid.classList.add("v3-dealing"); // hides labels during the intro
     reveal();
     void grid.offsetHeight; // flush: commits the start pose as the transitions' "from" state (no rAF — fires even in occluded tabs)
 
     grid.classList.remove("v3-dealing"); // labels fade back in (CSS delay)
+    navEls.forEach((el, i) => {
+      el.style.transition = `opacity 450ms ease ${i * 70}ms, transform 450ms ${intro.ease} ${i * 70}ms`;
+      el.style.opacity = "1";
+      el.style.transform = "none";
+    });
     let lastLanding = 0;
     cards.forEach((el, i) => {
       const delay = Math.round(intro.hold + order.delay(ctxs[i]));
@@ -247,7 +330,7 @@ export default function Collection({ items, config }: { items: CollectionItem[];
       el.style.opacity = "1";
     });
     const done = window.setTimeout(() => {
-      cards.forEach((el) => {
+      [...cards, ...navEls].forEach((el) => {
         el.style.transition = "";
         el.style.transform = "";
         el.style.opacity = "";
@@ -261,16 +344,61 @@ export default function Collection({ items, config }: { items: CollectionItem[];
     };
   }, [dealKey, startIdx, orderIdx, carousel]);
 
+  /* Panel reflow — same measure→invert→release skeleton as the intro. When the
+     panel opens/closes the column count changes; each card starts at its old
+     slot (snapshotted in changeSel) and glides to the new one. Stepping ←/→
+     doesn't reflow, so the loop finds nothing to move and no-ops. */
+  const flipTimer = useRef(0);
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    const prev = flipRects.current;
+    flipRects.current = null;
+    if (!grid || !prev || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const moved: HTMLElement[] = [];
+    (Array.from(grid.children) as HTMLElement[]).forEach((el, i) => {
+      const old = prev.get(items[i]?.id ?? String(i));
+      if (!old) return;
+      const now = el.getBoundingClientRect();
+      const dx = old.left - now.left;
+      const dy = old.top - now.top;
+      const s = old.width / now.width;
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(s - 1) < 0.005) return;
+      el.style.transition = "none";
+      el.style.transformOrigin = "top left";
+      el.style.transform = `translate(${dx}px, ${dy}px) scale(${s})`;
+      moved.push(el);
+    });
+    if (!moved.length) return;
+    void grid.offsetHeight; // flush — commit start positions before releasing
+    moved.forEach((el) => {
+      el.style.transition = "transform 340ms cubic-bezier(0.22, 1, 0.36, 1)";
+      el.style.transform = "none";
+    });
+    clearTimeout(flipTimer.current);
+    flipTimer.current = window.setTimeout(() => {
+      moved.forEach((el) => {
+        el.style.transition = "";
+        el.style.transform = "";
+        el.style.transformOrigin = "";
+      });
+    }, 360);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel]);
+
   return (
     <main className="v3-root" style={{ ["--grid-tile"]: tile.bg, ["--tile-aspect"]: aspect } as React.CSSProperties}>
       {/* ---------------------------------------------------------------- Nav */}
-      <header className="sticky top-0 z-30" style={{ background: "rgba(255,255,255,0.86)", backdropFilter: "blur(8px)" }}>
+      <header ref={headerRef} className="sticky top-0 z-30 v3-nav-pending" style={{ background: "rgba(255,255,255,0.86)", backdropFilter: "blur(8px)" }}>
         <div
-          className="v3-cols items-center"
+          className="v3-cols items-start"
           style={{
             paddingLeft: "var(--page-x)",
             paddingRight: "var(--page-x)",
-            height: 52,
+            // Top-aligned: logo, blurb block, and pills all hang from the same
+            // top line; extra blurb lines grow the bar downward past min-height.
+            minHeight: 52,
+            paddingTop: 12,
+            paddingBottom: 12,
             // Mirror the card grid's column override so nav stays aligned at any count.
             ...(cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : null),
           }}
@@ -283,13 +411,12 @@ export default function Collection({ items, config }: { items: CollectionItem[];
               <span className="v3-eyebrow" style={{ color: "var(--ink-soft)" }}>{config.title}</span>
             )}
           </a>
-          {config.blurb && (
-            <span
-              className="v3-label v3-label--soft"
-              style={{ gridColumn: "2", gridRow: "1", justifySelf: "start", whiteSpace: "nowrap" }}
-            >
-              {config.blurb}
-            </span>
+          {blurbLines.length > 0 && (
+            <div className="v3-label" style={{ gridColumn: "2", gridRow: "1", justifySelf: "start", whiteSpace: "nowrap" }}>
+              {blurbLines.map((line, i) => (
+                <div key={i} className={i === 0 ? "v3-label--soft" : "v3-label--faint"}>{line}</div>
+              ))}
+            </div>
           )}
           <div className="flex items-center" style={{ gap: 8, gridColumn: "1 / -1", gridRow: "1", justifySelf: "end" }}>
             <button onClick={() => setCarousel((v) => !v)} title="Horizontal swipe carousel" style={pillStyle(carousel)}>
@@ -326,12 +453,54 @@ export default function Collection({ items, config }: { items: CollectionItem[];
                 <Card item={it} trueToSize={trueToSize} refSize={refSize} centered={centered} />
               </div>
             ))}
+            {config.suggest && (
+              <div className="v3-snap" style={{ width: "min(400px, 74vw)" }}>
+                {/* No panel in carousel view — the card falls back to its mailto href. */}
+                <SuggestCard cfg={config.suggest} />
+              </div>
+            )}
           </div>
         ) : (
-          <div ref={gridRef} className="v3-grid v3-cols v3-deal-pending" style={cols ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}>
-            {items.map((it) => (
-              <Card key={it.id} item={it} trueToSize={trueToSize} refSize={refSize} centered={centered} />
-            ))}
+          <div className={`v3-stage${panelOpen ? " v3-stage--open" : ""}`}>
+            {panelOpen && (
+              <div className="v3-panel-wrap">
+                {suggestOpen && config.suggest ? (
+                  <SuggestPanel cfg={config.suggest} onClose={() => changeSel(null)} />
+                ) : selDetail ? (
+                  <DetailPanel
+                    item={selDetail}
+                    config={config}
+                    index={selIdx}
+                    total={items.length}
+                    onClose={() => changeSel(null)}
+                    onPrev={() => stepSel(-1)}
+                    onNext={() => stepSel(1)}
+                  />
+                ) : null}
+              </div>
+            )}
+            <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+              <div ref={gridRef} className="v3-grid v3-cols v3-deal-pending" style={gridColsStyle}>
+                {items.map((it) => (
+                  <Card
+                    key={it.id}
+                    item={it}
+                    trueToSize={trueToSize}
+                    refSize={refSize}
+                    centered={centered}
+                    selected={panelOpen && sel === it.id}
+                    onOpen={canPanel ? () => changeSel(it.id) : undefined}
+                  />
+                ))}
+                {config.suggest && (
+                  <SuggestCard
+                    cfg={config.suggest}
+                    selected={suggestOpen}
+                    onOpen={canPanel ? () => changeSel(SUGGEST_ID) : undefined}
+                  />
+                )}
+              </div>
+            </div>
           </div>
         )}
       </section>
@@ -354,9 +523,43 @@ export default function Collection({ items, config }: { items: CollectionItem[];
   );
 }
 
+/* ---------------------------------------------------------------- Suggest -- */
+
+/* Ghost "+" card at the end of the grid — an empty slot inviting a suggestion.
+   Plain click opens the suggest panel; modifier-click / carousel view fall
+   back to the mailto href, same interception pattern as Card. */
+function SuggestCard({ cfg, selected, onOpen }: { cfg: SuggestConfig; selected?: boolean; onOpen?: () => void }) {
+  const href = `mailto:${cfg.email}?subject=${encodeURIComponent(cfg.subject ?? cfg.label)}`;
+  const handleClick = onOpen
+    ? (e: React.MouseEvent) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        onOpen();
+      }
+    : undefined;
+
+  return (
+    <a
+      href={href}
+      onClick={handleClick}
+      aria-current={selected ? "true" : undefined}
+      className={`v3-card v3-suggest block${selected ? " v3-card--selected" : ""}`}
+    >
+      <div className="v3-grid-tile v3-suggest-tile" style={{ aspectRatio: "var(--tile-aspect, 4 / 5)" }}>
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M10 3.5v13M3.5 10h13" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+        </svg>
+      </div>
+      <div className="flex items-baseline justify-between" style={{ marginTop: 12, gap: 12 }}>
+        <span className="v3-label v3-label--soft">{cfg.label}</span>
+      </div>
+    </a>
+  );
+}
+
 /* ------------------------------------------------------------------- Card -- */
 
-function Card({ item, trueToSize, refSize, centered }: { item: CollectionItem; trueToSize: boolean; refSize: number; centered: boolean }) {
+function Card({ item, trueToSize, refSize, centered, selected, onOpen }: { item: CollectionItem; trueToSize: boolean; refSize: number; centered: boolean; selected?: boolean; onOpen?: () => void }) {
   const spin = item.spin;
   const hover = spin ? null : item.hover;
   const scale = trueToSize && item.size ? item.size / refSize : item.imageScale ?? 1;
@@ -364,8 +567,23 @@ function Card({ item, trueToSize, refSize, centered }: { item: CollectionItem; t
   // Ground by default; center when toggled — but respect explicit positions (e.g. "bottom" crops).
   const pos = item.imagePosition ?? (centered ? "center" : "ground");
 
+  // Plain click opens the inline panel; modifier/middle click keeps the href
+  // so the full /v3/[id] page still opens in a new tab.
+  const handleClick = onOpen
+    ? (e: React.MouseEvent) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        onOpen();
+      }
+    : undefined;
+
   return (
-    <a href={item.href ?? "#"} className={`v3-card block group${hover ? " v3-card--swap" : ""}`}>
+    <a
+      href={item.href ?? "#"}
+      onClick={handleClick}
+      aria-current={selected ? "true" : undefined}
+      className={`v3-card block group${hover ? " v3-card--swap" : ""}${selected ? " v3-card--selected" : ""}`}
+    >
       <div className="v3-grid-tile" style={{ position: "relative", aspectRatio: "var(--tile-aspect, 4 / 5)", overflow: "hidden" }}>
         {spin ? (
           <SpinTile path={spin.path} frames={spin.frames} name={item.title} scale={spinScale} centered={centered} />
