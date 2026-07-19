@@ -42,14 +42,16 @@ export default function DetailPanel({
 
   return (
     <aside className="v3-panel" aria-label={`${item.title} details`}>
-      {/* controls — close + step through the collection */}
+      {/* controls — stepping on the left, ✕ on the right so it sits nearest
+          the grid (the panel lives at the screen's left edge — this is the
+          fast-to-reach side). */}
       <div className="v3-panel-controls">
-        <button className="v3-panel-btn" onClick={onClose} aria-label="Close" title="Close (Esc)">✕</button>
         <div className="flex items-center" style={{ gap: 6 }}>
-          <span className="v3-label v3-label--faint" style={{ marginRight: 4 }}>{index + 1} / {total}</span>
           <button className="v3-panel-btn" onClick={onPrev} aria-label="Previous" title="Previous (←)" disabled={total <= 1}>←</button>
           <button className="v3-panel-btn" onClick={onNext} aria-label="Next" title="Next (→)" disabled={total <= 1}>→</button>
+          <span className="v3-label v3-label--faint" style={{ marginLeft: 4 }}>{index + 1} / {total}</span>
         </div>
+        <button className="v3-panel-btn" onClick={onClose} aria-label="Close" title="Close (Esc)">✕</button>
       </div>
 
       {/* Content is keyed by item so stepping ←/→ crossfades it in place —

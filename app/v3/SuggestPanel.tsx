@@ -41,7 +41,8 @@ export default function SuggestPanel({ cfg, onClose }: { cfg: SuggestConfig; onC
 
   return (
     <aside className="v3-panel" aria-label={cfg.label}>
-      <div className="v3-panel-controls">
+      {/* ✕ on the right, matching the detail panel's close position. */}
+      <div className="v3-panel-controls" style={{ justifyContent: "flex-end" }}>
         <button className="v3-panel-btn" onClick={onClose} aria-label="Close" title="Close (Esc)">✕</button>
       </div>
 

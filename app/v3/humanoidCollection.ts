@@ -9,20 +9,29 @@ import type { DetailItem } from "./CollectionDetail";
    =========================================================================== */
 
 // Robots with a turntable frame sequence in /public/spin/<name>.
+// memo-v3 = the same frames with 45px of top padding cropped so Memo sits
+// level with the other v3 cards; the ORIGINAL /spin/memo frames stay untouched
+// for the scroll view's front card, which is framed for the uncropped aspect.
 const SPIN: Record<string, { path: string; frames: number; scale?: number }> = {
-  "3": { path: "/spin/memo", frames: 30, scale: 1.05 }, // Memo
+  "3": { path: "/spin/memo-v3", frames: 30, scale: 1.05 }, // Memo
 };
 
 function displayCost(c?: string) {
   return !c || c === "N/A" || c === "—" ? undefined : c;
 }
 
+// Robots whose alt-angle render beats their generated scene as the hover.
+const PREFER_ALT_HOVER = new Set(["20"]); // Ameca — her side angle > gen scene
+
 // Image flashed on hover: own scene (generated or real), else own alt render.
 function hoverFor(r: Humanoid): HoverMedia | undefined {
-  if (r.sceneUrl) return { url: r.sceneUrl, fit: "cover", position: r.scenePosition ?? "center" };
   const alt = (r.media ?? []).find((m) => m.type === "image" && m.url && m.url !== r.imageUrl);
-  if (alt) return { url: alt.url, fit: alt.fit ?? "contain", position: alt.position ?? r.imagePosition ?? "ground" };
-  return undefined;
+  const altMedia: HoverMedia | undefined = alt
+    ? { url: alt.url, fit: alt.fit ?? "contain", position: alt.position ?? r.imagePosition ?? "ground" }
+    : undefined;
+  if (altMedia && PREFER_ALT_HOVER.has(r.id)) return altMedia;
+  if (r.sceneUrl) return { url: r.sceneUrl, fit: "cover", position: r.scenePosition ?? "center" };
+  return altMedia;
 }
 
 export function humanoidsToItems(robots: Humanoid[]): CollectionItem[] {
@@ -95,6 +104,7 @@ export const humanoidConfig: CollectionConfig = {
   href: "/v3",
   blurb: ["A visual index of humanoid robots", "Made by Jad", "2000 → today"],
   sizeLabel: "True to size",
+  navLink: { label: "Scroll view", href: "/" },
   suggest: {
     label: "Suggest a robot",
     email: "jadroy77@gmail.com", // same address the main app's ContactSheet uses

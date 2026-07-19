@@ -46,7 +46,13 @@ export type CollectionConfig = {
   blurb?: string | string[]; // centered nav blurb — an array renders as stacked lines (first soft, rest faint)
   sizeLabel?: string;   // true-to-size button text; omit to hide the toggle
   suggest?: SuggestConfig; // ghost "+" card at the end of the grid; omit to hide
+  navLink?: { label: string; href: string }; // always-visible nav pill (e.g. link back to the classic view)
 };
+
+/* The tuning surface (carousel / centered / true-to-size pills, c/C/a/d/D/o/1–8
+   shortcuts, the indicator) is a dev tool, not part of the visitor experience —
+   production ships the one calm non-configurable layout. */
+const TUNING = process.env.NODE_ENV === "development";
 
 /* ---- tuning pools (universal, cycled by keyboard) ------------------------ */
 
@@ -168,7 +174,7 @@ const pillStyle = (active: boolean): React.CSSProperties => ({
   transition: "color 0.15s ease, background 0.15s ease",
 });
 
-export default function Collection({ items, config, details }: { items: CollectionItem[]; config: CollectionConfig; details?: Record<string, DetailItem> }) {
+export default function Collection({ items, config, details, initialSel }: { items: CollectionItem[]; config: CollectionConfig; details?: Record<string, DetailItem>; initialSel?: string }) {
   const refSize = useMemo(() => Math.max(1, ...items.map((i) => i.size ?? 0)), [items]);
   const canSize = !!config.sizeLabel && items.some((i) => i.size != null);
 
@@ -181,7 +187,7 @@ export default function Collection({ items, config, details }: { items: Collecti
 
   /* Inline detail panel — clicking a card opens a sticky side column instead of
      navigating away. Grid drops one column to make room; the grid stays alive. */
-  const [sel, setSel] = useState<string | null>(null);
+  const [sel, setSel] = useState<string | null>(initialSel ?? null);
   const [baseCols, setBaseCols] = useState(5);
   useEffect(() => {
     const compute = () => {
@@ -201,14 +207,24 @@ export default function Collection({ items, config, details }: { items: Collecti
   const panelOpen = (canPanel && !!selDetail) || suggestOpen;
   /* Every selection change goes through changeSel, which snapshots card
      positions first — the FLIP effect below then glides the grid between
-     column counts instead of letting it snap. */
-  const flipRects = useRef<Map<string, DOMRect> | null>(null);
+     column counts instead of letting it snap.
+     Measured via offsetLeft/Top/Width (LAYOUT positions), not
+     getBoundingClientRect: client rects include any in-flight transform
+     (entry intro, a previous FLIP release), so a snapshot taken mid-animation
+     would invent deltas for cards that hadn't moved.
+     Keyed by child INDEX, never by item id — children order is stable across
+     a selection change, and an id-based map once collided with the suggest
+     card's index fallback (String(28) === Domo's id "28"), teleporting Domo's
+     snapshot to the suggest card's slot on every step. */
+  const flipRects = useRef<{ arr: { l: number; t: number; w: number }[]; sx: number; sy: number } | null>(null);
   const changeSel = (next: string | null) => {
     const grid = gridRef.current;
     if (grid) {
-      const m = new Map<string, DOMRect>();
-      Array.from(grid.children).forEach((el, i) => m.set(items[i]?.id ?? String(i), el.getBoundingClientRect()));
-      flipRects.current = m;
+      flipRects.current = {
+        arr: (Array.from(grid.children) as HTMLElement[]).map((el) => ({ l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth })),
+        sx: window.scrollX,
+        sy: window.scrollY,
+      };
     }
     setSel(next);
   };
@@ -218,6 +234,15 @@ export default function Collection({ items, config, details }: { items: Collecti
   };
   // Close the panel if we switch into a view that can't host it (carousel).
   useEffect(() => { if (carousel) setSel(null); }, [carousel]);
+  /* Deeplink sync — ?h=<id> mirrors the open panel so the current view is
+     shareable straight from the address bar; closing the panel cleans the URL,
+     so "share the site" stays possible (the lesson from the main page). */
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (sel && sel !== SUGGEST_ID) url.searchParams.set("h", sel);
+    else url.searchParams.delete("h");
+    window.history.replaceState(null, "", url);
+  }, [sel]);
   // Columns while the panel is open: one fewer than the current base, so tiles
   // keep roughly their size and the freed slot becomes the panel's column.
   const gridColsStyle = panelOpen
@@ -226,6 +251,7 @@ export default function Collection({ items, config, details }: { items: Collecti
       ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }
       : undefined;
   useEffect(() => {
+    if (!TUNING) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // Never hijack typing (e.g. the suggest form's field).
@@ -344,44 +370,43 @@ export default function Collection({ items, config, details }: { items: Collecti
     };
   }, [dealKey, startIdx, orderIdx, carousel]);
 
-  /* Panel reflow — same measure→invert→release skeleton as the intro. When the
-     panel opens/closes the column count changes; each card starts at its old
-     slot (snapshotted in changeSel) and glides to the new one. Stepping ←/→
-     doesn't reflow, so the loop finds nothing to move and no-ops. */
-  const flipTimer = useRef(0);
+  /* Panel reflow — measure→invert→play. When the panel opens/closes the column
+     count changes; each card starts at its old slot (snapshotted in changeSel)
+     and glides to the new one. Stepping ←/→ doesn't reflow, so every delta is
+     zero and nothing plays.
+     Uses the Web Animations API rather than the intro's inline-style/transition
+     dance: animate() owns the whole lifecycle (no forced flush, no cleanup
+     timer, nothing for a later style write to clobber) and leaves no inline
+     styles behind. */
   useLayoutEffect(() => {
     const grid = gridRef.current;
-    const prev = flipRects.current;
+    const snap = flipRects.current;
     flipRects.current = null;
-    if (!grid || !prev || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const moved: HTMLElement[] = [];
-    (Array.from(grid.children) as HTMLElement[]).forEach((el, i) => {
-      const old = prev.get(items[i]?.id ?? String(i));
+    if (!grid || !snap || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Scroll can shift between snapshot and release (scroll anchoring follows
+    // the clicked card through the reflow) — compensate so deltas stay
+    // viewport-true and cards glide from where you actually saw them.
+    const dsx = snap.sx - window.scrollX;
+    const dsy = snap.sy - window.scrollY;
+    const children = Array.from(grid.children) as HTMLElement[];
+    if (children.length !== snap.arr.length) return; // children changed — indexes don't line up, skip
+    children.forEach((el, i) => {
+      const old = snap.arr[i];
       if (!old) return;
-      const now = el.getBoundingClientRect();
-      const dx = old.left - now.left;
-      const dy = old.top - now.top;
-      const s = old.width / now.width;
-      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(s - 1) < 0.005) return;
-      el.style.transition = "none";
-      el.style.transformOrigin = "top left";
-      el.style.transform = `translate(${dx}px, ${dy}px) scale(${s})`;
-      moved.push(el);
+      const dx = old.l - el.offsetLeft + dsx;
+      const dy = old.t - el.offsetTop + dsy;
+      const s = old.w / (el.offsetWidth || 1);
+      // 1.5px floor swallows offsetLeft/Top integer rounding noise.
+      if (Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5 && Math.abs(s - 1) < 0.005) return;
+      el.getAnimations().forEach((a) => { if (a.id === "v3-flip") a.cancel(); }); // rapid re-toggle: restart cleanly
+      el.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px) scale(${s})`, transformOrigin: "top left" },
+          { transform: "none", transformOrigin: "top left" },
+        ],
+        { id: "v3-flip", duration: 340, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+      );
     });
-    if (!moved.length) return;
-    void grid.offsetHeight; // flush — commit start positions before releasing
-    moved.forEach((el) => {
-      el.style.transition = "transform 340ms cubic-bezier(0.22, 1, 0.36, 1)";
-      el.style.transform = "none";
-    });
-    clearTimeout(flipTimer.current);
-    flipTimer.current = window.setTimeout(() => {
-      moved.forEach((el) => {
-        el.style.transition = "";
-        el.style.transform = "";
-        el.style.transformOrigin = "";
-      });
-    }, 360);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sel]);
 
@@ -419,16 +444,23 @@ export default function Collection({ items, config, details }: { items: Collecti
             </div>
           )}
           <div className="flex items-center" style={{ gap: 8, gridColumn: "1 / -1", gridRow: "1", justifySelf: "end" }}>
-            <button onClick={() => setCarousel((v) => !v)} title="Horizontal swipe carousel" style={pillStyle(carousel)}>
-              Carousel
-            </button>
-            <button onClick={() => setCentered((v) => !v)} title="Center items in the tile instead of grounding them" style={pillStyle(centered)}>
-              Centered
-            </button>
-            {canSize && (
-              <button onClick={() => setTrueToSize((v) => !v)} title="Scale each item to its real relative size" style={pillStyle(trueToSize)}>
-                {config.sizeLabel}
-              </button>
+            {TUNING && (
+              <>
+                <button onClick={() => setCarousel((v) => !v)} title="Horizontal swipe carousel" style={pillStyle(carousel)}>
+                  Carousel
+                </button>
+                <button onClick={() => setCentered((v) => !v)} title="Center items in the tile instead of grounding them" style={pillStyle(centered)}>
+                  Centered
+                </button>
+                {canSize && (
+                  <button onClick={() => setTrueToSize((v) => !v)} title="Scale each item to its real relative size" style={pillStyle(trueToSize)}>
+                    {config.sizeLabel}
+                  </button>
+                )}
+              </>
+            )}
+            {config.navLink && (
+              <a href={config.navLink.href} style={pillStyle(false)}>{config.navLink.label}</a>
             )}
           </div>
         </div>
@@ -506,7 +538,7 @@ export default function Collection({ items, config, details }: { items: Collecti
       </section>
 
       {/* Tuning indicator — appears once you use a shortcut. */}
-      {(cols !== null || tileIdx !== 0 || aspectIdx !== 0 || startIdx !== 0 || orderIdx !== 0) && (
+      {TUNING && (cols !== null || tileIdx !== 0 || aspectIdx !== 0 || startIdx !== 0 || orderIdx !== 0) && (
         <div
           className="v3-eyebrow"
           style={{
@@ -612,6 +644,7 @@ function Card({ item, trueToSize, refSize, centered, selected, onOpen }: { item:
             )}
           </>
         )}
+        {onOpen && <span className="v3-detail-hint">Details</span>}
       </div>
 
       <div className="flex items-baseline justify-between" style={{ marginTop: 12, gap: 12 }}>

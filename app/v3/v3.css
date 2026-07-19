@@ -204,8 +204,16 @@ body:has(.v3-root) {
   position: sticky;
   top: 92px; /* clears the sticky nav, which grows with extra blurb lines */
   align-self: flex-start;
+  /* Tall content (specs + links) can outgrow the viewport; a sticky column
+     never scrolls with the page, so it scrolls itself — quiet, no scrollbar.
+     The 140px clears the nav plus the grid's top padding, so the box fits the
+     viewport even before it sticks (page at top), not only once stuck. */
+  max-height: calc(100vh - 140px);
+  overflow-y: auto; /* chains to the page when exhausted — no overscroll trap */
+  scrollbar-width: none;
   animation: v3-panel-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+.v3-panel-wrap::-webkit-scrollbar { display: none; }
 @keyframes v3-panel-in {
   from { opacity: 0; transform: translateX(-18px); }
   to   { opacity: 1; transform: none; }
@@ -242,26 +250,54 @@ body:has(.v3-root) {
 .v3-panel-btn:hover { color: var(--ink); background: #ffffff; }
 .v3-panel-btn:disabled { opacity: 0.3; pointer-events: none; }
 
-/* Selected card — a quiet ring so it's clear which tile the panel belongs to. */
-.v3-card { transition: opacity 0.2s ease; }
-.v3-card--selected .v3-grid-tile {
-  outline: 1.5px solid var(--ink);
-  outline-offset: 2px;
+/* Hover hint — a quiet "Details" tag in the tile corner, spin-badge language.
+   Nothing starts open anymore, so this is how you learn cards open the panel.
+   Hidden on the selected card (its panel is already the answer). */
+.v3-detail-hint {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1px solid var(--hairline);
+  border-radius: 9999px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
+.v3-card:hover .v3-detail-hint {
+  opacity: 1;
+  transform: none;
+}
+.v3-card--selected .v3-detail-hint { display: none; }
+
+/* Selected card — no ring, no chrome. While the panel is open the other cards
+   recede a touch; the selected one stays at full strength. Hovering a dimmed
+   card brings it back, so browsing for the next pick still feels live. */
+.v3-card { transition: opacity 0.25s ease; }
+.v3-stage--open .v3-card:not(.v3-card--selected) { opacity: 0.55; }
+.v3-stage--open .v3-card:not(.v3-card--selected):hover { opacity: 1; }
 
 /* Ghost "+" card — an empty slot at the end of the grid inviting a suggestion.
-   Dashed hairline instead of a filled tile; quiet until hover. */
+   Same grey tile as the product cards (tracks the c-key tuning var); only the
+   lone "+" marks it as empty. Quiet until hover. */
 .v3-suggest-tile {
-  background: transparent;
-  border: 1px dashed var(--hairline);
+  background: var(--grid-tile, var(--tile-grid));
   display: grid;
   place-items: center;
   color: var(--ink-faint);
-  transition: color 0.2s ease, border-color 0.2s ease;
+  transition: color 0.2s ease, background 0.2s ease;
 }
 .v3-suggest:hover .v3-suggest-tile {
   color: var(--ink-soft);
-  border-color: var(--ink-faint);
+  background: var(--tile-hover);
 }
 
 /* Suggest form — one field, v3-quiet. */
@@ -295,15 +331,34 @@ body:has(.v3-root) {
 .v3-suggest-send:hover { opacity: 0.55; }
 .v3-suggest-send:disabled { border-color: var(--hairline); color: var(--ink-faint); cursor: default; opacity: 1; }
 
-/* On narrow screens the panel stacks above the grid (no room for a column) —
-   it's already first in the DOM, so the column layout just falls out. */
+/* On narrow screens the panel becomes a bottom drawer (no room for a side
+   column) — the grid keeps its full width underneath, and tapping another
+   card just swaps the drawer's content. ✕ or Esc closes. */
 @media (max-width: 767px) {
-  .v3-stage--open { flex-direction: column; gap: 24px; }
+  .v3-stage--open { gap: 0; }
   .v3-panel-wrap {
-    position: static;
-    flex: 1 1 auto;
-    width: 100%;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    z-index: 60;
+    flex: none;
+    max-height: 72dvh;
+    padding: 14px 20px calc(20px + env(safe-area-inset-bottom));
+    background: #ffffff;
+    border-top: 1px solid var(--hairline);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -16px 48px rgba(30, 34, 40, 0.1);
+    animation: v3-drawer-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
+  /* The drawer covers the lower grid — keep the fade for what's visible. */
+  @keyframes v3-drawer-in {
+    from { transform: translateY(48px); opacity: 0; }
+    to   { transform: none; opacity: 1; }
+  }
+  /* Smaller render in the drawer — the specs are the point on mobile. */
+  .v3-panel-content > .v3-grid-tile { aspect-ratio: 16 / 10; }
 }
 
 /* Horizontal carousel: native scroll-snap, hidden scrollbar for calm. */

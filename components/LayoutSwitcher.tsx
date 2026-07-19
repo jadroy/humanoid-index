@@ -1249,7 +1249,7 @@ export function LayoutSwitcher({
         style={{ top: "var(--corner-y, 8px)", background: "transparent" }}
       >
         <div
-          className="flex items-center justify-center"
+          className="relative flex items-center justify-center"
           style={{ minHeight: 26 }}
         >
           <button
@@ -1274,6 +1274,20 @@ export function LayoutSwitcher({
               <rect x="28.5859" y="12.9392" width="8.69168" height="19.1217" rx="0.5" fill="currentColor" />
             </svg>
           </button>
+          {/* Quiet door to the /v3 grid — same muted grey as the mark, with a
+              fainter "Beta" tag so it reads as a destination, not a label. */}
+          <a
+            href="/v3"
+            className="pointer-events-auto"
+            style={{
+              ...trioLabelStyle,
+              position: "absolute",
+              right: "var(--nav-edge, 24px)",
+              textDecoration: "none",
+            }}
+          >
+            Grid view <span style={{ opacity: 0.55 }}>Beta</span>
+          </a>
         </div>
       </nav>
     );
