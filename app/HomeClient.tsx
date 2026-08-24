@@ -1518,7 +1518,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const RECORDING_SHUFFLE_EXCLUDE_IDS = ["23", "25"]; // Armar-6, Roboy
   // Default to collapsed — the detail/stats column opens on demand, not on load.
   // (recordingMode also wants it closed for the first frame, so `true` covers both.)
-  const [statsCollapsed, setStatsCollapsed] = useState(true);
+  const [statsCollapsed, setStatsCollapsed] = useState(false);
   const [statsHover, setStatsHover] = useState(false);
   // Engineer-mode is the only mode while the basic/engineer toggle is hidden.
   // localStorage hydration intentionally skipped so returning users who'd
@@ -1595,7 +1595,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
   const [pillsLayout, setPillsLayout] = useState<"stack" | "grouped">("stack");
-  const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill" | "chip">("off");
+  const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill" | "chip">("after-name");
   const [groupedFill, setGroupedFill] = useState<string>("#F9F9F9");
   const [groupedDivider, setGroupedDivider] = useState<"full" | "inset" | "none">("full");
   const [groupedRing, setGroupedRing] = useState<boolean>(true);
@@ -1743,7 +1743,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [stackedInfo, setStackedInfo] = useState(true);
   // Apple-style stats card variant: hairline between every row, no group break,
   // no inline cm/in toggle (it would break the rhythm).
-  const [denseDividers, setDenseDividers] = useState(true);
+  const [denseDividers, setDenseDividers] = useState(false);
   const [denseFullWidth, setDenseFullWidth] = useState(true);
   const [denseRowGap, setDenseRowGap] = useState(11); // px gap between rows
   const [statsTopOffset, setStatsTopOffset] = useState(0); // px leading space above the stats column
@@ -2171,6 +2171,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
   // Adaptive arc positioning
   const [windowWidth, setWindowWidth] = useState(1920);
+  const [windowHeight, setWindowHeight] = useState(1080);
   const [autoArcInset, setAutoArcInset] = useState(true);
 
   // Arc text font: family / weight / letter-spacing / italic
@@ -2181,11 +2182,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
   useEffect(() => {
     setWindowWidth(window.innerWidth);
+    setWindowHeight(window.innerHeight);
     let raf: number;
     let resizeIdleTimer: ReturnType<typeof setTimeout> | null = null;
     const onResize = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setWindowWidth(window.innerWidth));
+      raf = requestAnimationFrame(() => {
+        setWindowWidth(window.innerWidth);
+        setWindowHeight(window.innerHeight);
+      });
       // Suppress the SVG container's collapse-transition while the user is
       // actively resizing — otherwise wheelR / inset updates chain a stack of
       // 0.5s slides and the wheel feels like it has momentum.
@@ -2210,7 +2215,24 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Default single-view stats column tracks the card width but with an inset,
   // since the card's robot image is letterboxed inside its 400px frame — matching
   // the frame exactly makes the pill column read as visually wider than the robot.
-  const baseCardPx = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
+  // Card geometry is driven by ONE ratio, not by independent vw/vh budgets.
+  // Width was capped in px (robotMaxW) while height stayed a raw vh, so the two
+  // axes drifted apart on tall viewports and at browser zoom — the card kept
+  // growing vertically against a pinned width. Now width is the min of its vw
+  // budget, its px cap, and what the vh budget allows at CARD_ASPECT; height is
+  // always derived from that width, so the frame is identical at any size.
+  const CARD_ASPECT = 0.75; // width / height — the May-13 proportion
+  const cardPxFor = (wVw: number, hVh: number, maxPx: number) =>
+    Math.min(
+      wVw * windowWidth / 100,
+      maxPx,
+      (hVh * windowHeight / 100) * CARD_ASPECT,
+    );
+  const cardW = comparing
+    ? cardPxFor(robotW - 8, robotH - 10, robotMaxW - 100)
+    : cardPxFor(robotW, robotH, robotMaxW);
+  const cardH = cardW / CARD_ASPECT;
+  const baseCardPx = windowWidth ? cardPxFor(robotW, robotH, robotMaxW) : robotMaxW;
   const singleStatsW = Math.round(baseCardPx * statsColScale);
   // When info is hidden, the stats slot fully collapses to 0 so the card lands
   // at viewport center. The "i" toggle lives inside the card label, so no rail
@@ -2224,9 +2246,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const effectiveStatsW = statsCollapsed ? collapsedRailW : expandedStatsW;
 
   const centerHalfWidth = (() => {
-    const cardPx = comparing
-      ? Math.min((robotW - 14) * windowWidth / 100, robotMaxW)
-      : Math.min(robotW * windowWidth / 100, robotMaxW);
+    const cardPx = cardW;
     const gap = statsGap;
     if (comparing) {
       // Compare-mode middle column is a fixed statsW (see line ~3705) and is
@@ -2301,14 +2321,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       document.documentElement.style.setProperty("--nav-x", `${navX}px`);
       return;
     }
-    const cardPxStable = windowWidth ? Math.min(robotW * windowWidth / 100, robotMaxW) : robotMaxW;
+    const cardPxStable = windowWidth ? cardPxFor(robotW, robotH, robotMaxW) : robotMaxW;
     // Use the expanded stats width regardless of `statsCollapsed` so the nav
     // and footer (driven off `--nav-x`) stay anchored when the i toggle fires.
     const statsColStable = stackedInfo ? Math.round(cardPxStable * statsColScale) : statsW;
     const contentW = cardPxStable + statsGap + statsColStable;
     const x = Math.max(16, Math.round((windowWidth - contentW) / 2));
     document.documentElement.style.setProperty("--nav-x", `${x}px`);
-  }, [autoNavX, navX, windowWidth, robotW, robotMaxW, statsW, statsGap, stackedInfo, statsColScale]);
+  }, [autoNavX, navX, windowWidth, windowHeight, robotW, robotH, robotMaxW, statsW, statsGap, stackedInfo, statsColScale]);
 
   // Publish nav top offset as a CSS variable
   useEffect(() => {
@@ -3854,14 +3874,17 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // label, price/availability in the below-card CTA. Notes is purely descriptors.
             const priceChipText = purchaseSection?.price;
             const showPriceChip = !!priceChipText;
-            const hasDescriptorTags = !!(h.tags && h.tags.length > 0);
+            const descriptorChips = Array.from(
+              new Set([h.country, h.useCase, h.drive, ...(h.tags ?? [])].filter(Boolean) as string[])
+            );
+            const hasDescriptorTags = descriptorChips.length > 0;
             const notesCard = hasDescriptorTags || showStatusChip || showYearChip ? (
               <div style={cardBase}>
                 {showSectionEyebrows && hasDescriptorTags && <p style={headerStyle}>Notes</p>}
                 <div className="flex flex-wrap" style={{ gap: 7, marginTop: showSectionEyebrows && hasDescriptorTags ? sectionContentMarginTop : 0 }}>
-                  {showYearChip && <span className="ui-frost" style={chipStyle}>{h.year}</span>}
-                  {h.tags?.map((tag) => (
-                    <span key={tag} className="ui-frost" style={chipStyle}>{tag}</span>
+                  {showYearChip && <span style={chipStyle}>{h.year}</span>}
+                  {descriptorChips.map((tag) => (
+                    <span key={tag} style={chipStyle}>{tag}</span>
                   ))}
                 </div>
               </div>
@@ -4150,9 +4173,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             // the scroll mask so essential info lives in a fixed slot.
             const specsCard = renderRowsAsCard(denseScrollableRows, { fill: true, padding: "18px 18px", pinned: densePinnedRows });
             const statsCard = (
-              <div className="ui-frost" style={{ ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
-                <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
-                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, paddingLeft: 18, paddingRight: 18 }}>
+              <div className={denseDividers ? "ui-frost" : undefined} style={denseDividers ? { ...cardBase, borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: 1, display: "flex", flexDirection: "column", gap: denseRowGap, minHeight: 0 } : { ...cardBase, display: "flex", flexDirection: "column", gap: 0, minHeight: 0 }}>
+                <StatsScrollArea flex={denseDividers ? 1 : undefined} style={denseDividers ? { marginLeft: -18, marginRight: -18 } : undefined}>
+                  <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : sectionContentGap, paddingLeft: denseDividers ? 18 : 0, paddingRight: denseDividers ? 18 : 0 }}>
                     {denseDividers ? (
                       denseScrollableRows.filter(Boolean).map((row, i) => (
                         <Fragment key={i}>
@@ -4162,19 +4185,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       ))
                     ) : (
                       <>
-                        {renderStatRow("Company", h.manufacturer ?? null, (v) => `${v}`)}
-                        {renderStatRow("Year", h.year ?? null, (v) => `${v}`)}
-                        {renderStatRow("Country", h.country ?? null, (v) => `${v}`)}
-                        {unitsDivider}
                         {renderStatRow("Height", h.height, fmt.height)}
                         {renderStatRow("Weight", h.weight, fmt.weight)}
                         {renderStatRow("DOF", h.dof, (v) => `${v}`)}
                         {renderStatRow("Speed", h.maxSpeed, fmt.speed)}
-                        <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
-                        {renderStatRow("Use", h.useCase ?? null, (v) => `${v}`)}
-                        {renderStatRow("Drive", h.drive ?? null, (v) => `${v}`)}
-                        {renderStatRow("Price", priceChipText ?? null, (v) => `${v}`)}
-                        {statusRow}
+                        {priceChipText ? renderStatRow("Price", priceChipText, (v) => `${v}`) : null}
                       </>
                     )}
                   </div>
@@ -4572,13 +4587,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)" }} />
           );
           const compareRowHeight = Math.round(fz * 1.55);
+          // May-13 layout: values flank a centered label column, so the two
+          // robots read as a mirrored pair rather than two columns of a table.
           const compareRowGridStyle: React.CSSProperties = {
             display: "grid",
-            gridTemplateColumns: "91px minmax(0, 1fr) minmax(0, 1fr)",
+            gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
             alignItems: "baseline",
             columnGap: 14,
             lineHeight: 1.55,
-            justifyItems: "end",
             minHeight: compareRowHeight,
             height: compareRowHeight,
           };
@@ -4588,9 +4604,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const sparkKey = SPARK_KEY_BY_LABEL[label];
             const showSpark =
               sparkMode !== "off" && sparkMode !== "hero" && !!sparkKey && (!!valL || !!valR);
-            const wrapValue = (val: string | null, robotId: string | undefined) => {
+            const wrapValue = (val: string | null, robotId: string | undefined, align: "left" | "right" = "right") => {
               const node = (
-                <MarqueeValue align="right" style={{ ...(val ? valueStyle : missingValueStyle), whiteSpace: "nowrap" }}>
+                <MarqueeValue align={align} style={{ ...(val ? valueStyle : missingValueStyle), whiteSpace: "nowrap", textAlign: align }}>
                   <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>{val || "—"}</span>
                 </MarqueeValue>
               );
@@ -4621,9 +4637,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             };
             return (
               <div style={compareRowGridStyle}>
-                <span style={{ ...dimmed, whiteSpace: "nowrap" }}>{label}</span>
-                {wrapValue(valL, hL?.id)}
-                {wrapValue(valR, hR?.id)}
+                {wrapValue(valL, hL?.id, "left")}
+                <span style={{ ...dimmed, whiteSpace: "nowrap", textAlign: "center" }}>{label}</span>
+                {wrapValue(valR, hR?.id, "right")}
               </div>
             );
           };
@@ -4830,9 +4846,9 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           return (
             <div className="flex flex-col h-full pointer-events-auto" style={{ width: compareStatsW, minWidth: compareStatsW, position: "relative", zIndex: 11 }}>
               <div className="flex flex-col" style={{ flex: 1, justifyContent: denseDividers ? "stretch" : "center", minHeight: 0 }}>
-                <div className="ui-frost" style={{ borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: denseDividers ? 1 : undefined, display: "flex", flexDirection: "column", gap: denseDividers ? denseRowGap : 0, minHeight: 0 }}>
-                  <StatsScrollArea flex={denseDividers ? 1 : undefined} style={{ marginLeft: -18, marginRight: -18 }}>
-                    <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, paddingLeft: 18, paddingRight: 18 }}>
+                <div className={denseDividers ? "ui-frost" : undefined} style={denseDividers ? { borderRadius: cardRadius, background: bubble.bg, boxShadow: bubbleShadow, backdropFilter: bubble.backdropFilter, WebkitBackdropFilter: bubble.backdropFilter, padding: "18px 18px", flex: 1, display: "flex", flexDirection: "column", gap: denseRowGap, minHeight: 0 } : { display: "flex", flexDirection: "column", gap: 0, minHeight: 0 }}>
+                  <StatsScrollArea flex={denseDividers ? 1 : undefined} style={denseDividers ? { marginLeft: -18, marginRight: -18 } : undefined}>
+                    <div className="flex flex-col" style={{ gap: denseDividers ? denseRowGap : compareRowGap, paddingLeft: denseDividers ? 18 : 0, paddingRight: denseDividers ? 18 : 0 }}>
                       {denseDividers ? (
                         denseScrollableCompareRows.filter(Boolean).map((row, i) => (
                           <Fragment key={i}>
@@ -4842,18 +4858,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         ))
                       ) : (
                         <>
-                          {compareRow("Company", hL.manufacturer ?? null, hR.manufacturer ?? null)}
-                          {compareRow("Year", hL.year ? `${hL.year}` : null, hR.year ? `${hR.year}` : null)}
-                          {compareRow("Country", hL.country ?? null, hR.country ?? null)}
-                          {unitsDivider}
                           {compareRow("Height", heightL ? fmt.height(heightL) : null, heightR ? fmt.height(heightR) : null)}
                           {compareRow("Weight", weightL ? fmt.weight(weightL) : null, weightR ? fmt.weight(weightR) : null)}
                           {compareRow("DOF", dofL ? `${dofL}` : null, dofR ? `${dofR}` : null)}
                           {compareRow("Speed", speedL ? fmt.speed(speedL) : null, speedR ? fmt.speed(speedR) : null)}
-                          <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "6px 0" }} />
-                          {compareRow("Use", hL.useCase ?? null, hR.useCase ?? null)}
-                          {compareRow("Drive", hL.drive ?? null, hR.drive ?? null)}
                           {compareRow("Price", priceL, priceR)}
+                          <div aria-hidden style={{ height: 1, background: "rgba(0,0,0,0.05)", margin: "10px 0" }} />
                           {statusRow}
                         </>
                       )}
@@ -4973,7 +4983,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       isCover={isCover}
                       isBottom={isBottom}
                       imageStyle={imageStyle}
-                      sizes={comparing ? `${robotW - 14}vw` : `${robotW}vw`}
+                      sizes={comparing ? `${robotW - 8}vw` : `${robotW}vw`}
                       priority={markPriority && i === 0}
                       bottomFadeH={bottomFadeH}
                       bottomFadeOpacity={bottomFadeOpacity}
@@ -5300,15 +5310,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 </button>
               );
             })()}
+            {labelPosition === "above" && <div className="mb-2">{cardLabel}</div>}
             {/* Inner card */}
             <div
               ref={isFirst ? leftCardRef : rightCardRef}
               className="relative flex flex-col overflow-hidden"
               onClick={isFirst && !comparing && chipLayout === "corners" && cornersCloseMode === "click-card" && !statsCollapsed ? () => setStatsCollapsed(true) : undefined}
               style={{
-                width: comparing ? `${robotW - 14}vw` : `${robotW}vw`,
-                height: comparing ? `${robotH - 4}vh` : `${robotH}vh`,
-                maxWidth: robotMaxW,
+                width: cardW,
+                height: cardH,
                 borderRadius: cardRadius,
                 background: "#F9F9F9",
                 pointerEvents: "auto",
@@ -6182,7 +6192,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                                   minWidth: 0,
                                 }}
                               >
-                                <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: Math.round(cardIconSize * 0.36), fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Copy view</span>
+                                <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: Math.round(cardIconSize * 0.36), fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{comparing ? "Copy comparison" : "Copy view"}</span>
                                 <span style={{ display: "inline-flex", alignItems: "center", flexShrink: 0, opacity: 0.85 }}>
                                   <Share size={arrowSize} strokeWidth={1.6} />
                                 </span>
@@ -6245,8 +6255,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 // violent; the fade carries most of the entrance weight.
                 transform: `translateX(${comparing ? 0 : (splitHover ? 60 : 80)}px) scale(${comparing ? 1 : 0.98})`,
                 transformOrigin: "left center",
-                width: comparing ? `${robotW - 14}vw` : 0,
-                maxWidth: robotMaxW,
+                width: comparing ? cardW : 0,
                 marginLeft: comparing ? effectiveGap : 0,
                 overflow: "visible",
                 transition: "opacity var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease), width var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease)",
@@ -6402,7 +6411,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                               padding: `0 ${Math.round(cardIconSize * 0.42)}px`,
                             }}
                           >
-                            <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: Math.round(cardIconSize * 0.36), fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1 }}>Copy view</span>
+                            <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: Math.round(cardIconSize * 0.36), fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1 }}>{comparing ? "Copy comparison" : "Copy view"}</span>
                             <span style={{ display: "inline-flex", alignItems: "center", opacity: 0.85 }}>
                               <Share size={arrowSize} strokeWidth={1.6} />
                             </span>

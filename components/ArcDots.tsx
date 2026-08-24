@@ -7,6 +7,7 @@ import type { SpringSubscribe } from "@/hooks/useSpring";
 // Session memory: once an arc logo has decoded in this tab, future swaps to
 // the same URL skip the swipe-up reveal so the active logo doesn't re-animate
 // every time the user scrolls past it again.
+const SHOW_ARC_LOGO = false;
 const loadedArcLogos = new Set<string>();
 const ARC_LOGO_CLOSED = "inset(100% 0 0 0)";
 const ARC_LOGO_OPEN = "inset(0)";
@@ -315,7 +316,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
           activeCy = cy;
           activeTangentDeg = tangentDeg;
         }
-        const t = Math.min(dist / 5, 1);
+        const t = Math.min(dist / 10, 1);
 
         if (item.ghost) {
           const ghostEl = ghostRefs.current[idx];
@@ -331,11 +332,10 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         const nameEl = nameRefs.current[idx];
         if (!el || !nameEl) continue;
         const isAct = dist < 0.5;
-        // Smooth bell curve: aFsMax at the center, easing down to aFsMin
-        // over ~5 items for a gentle spotlight, not a sharp pop.
-        const prox = Math.max(0, 1 - dist / 5);
-        const eased = prox * prox * (3 - 2 * prox);
-        const fs = aFsMin + (aFsMax - aFsMin) * eased;
+        // Long-wheel falloff: the active name is full size, everything else
+        // steps down gradually so the wheel reads as a long rail of names
+        // rather than a spotlight on five.
+        const fs = isAct ? aFsMax : Math.max(aFsMin, aFsMax - 4 - dist * 1.2);
         const fw = isAct ? 500 : 400;
         const baseOp = Math.max(0.08, 1 - t * 0.9);
         const op = isAct ? baseOp : baseOp * aInactiveOp;
@@ -362,7 +362,9 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
       // Logo on the active item only — anchored just left of the first letter of
       // the name (in reading order), rotated with the text's tangent. Hidden when
       // the active humanoid has no logoUrl or no item is in range.
-      const groupEl = logoGroupRef.current;
+      // Off since the header placard above the card carries the maker logo;
+      // showing it twice reads as redundant. Flip to re-enable.
+      const groupEl = SHOW_ARC_LOGO ? logoGroupRef.current : null;
       const imgEl = logoImgRef.current;
       if (groupEl && imgEl) {
         const activeItem = activeIdx >= 0 ? items[activeIdx] : null;
@@ -557,6 +559,7 @@ function ArcNamesWheel({ index, subscribe, mirrored, onClickItem, aInset, aWheel
         </defs>
         <g
           ref={logoGroupRef}
+          display={SHOW_ARC_LOGO ? undefined : "none"}
           clipPath={`url(#${arcLogoClipId})`}
           style={{
             pointerEvents: "none",
