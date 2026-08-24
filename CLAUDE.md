@@ -1,6 +1,8 @@
 # humanoid-index.com
 
-A visual index of humanoid robots. Next.js App Router, deployed on Vercel. Working branch: `v2`.
+A visual index of humanoid robots. Next.js App Router, deployed on Vercel. Live branch: `v2`.
+
+> **You are on the `collection` branch.** It restores the May-13-2026 design on top of live. See "The collection branch" at the bottom before changing layout, card geometry, or the arc.
 
 ## Working agreements
 
@@ -85,3 +87,47 @@ When adding sharing features, keep zero-upkeep — no maintenance burden.
 - **Streaming compare blurb.** Plan to replace static `compare-blurbs.json` with `app/api/compare-blurb/route.ts` (Haiku, ~$0.0005/req, validates IDs against humanoids list, streams tokens). React side types in progressively, keeps an in-session `useRef` cache keyed by sorted pair, falls back to JSON on error. Not built yet.
 - **Mobile.** `MobileView.tsx` is a "coming soon" placeholder. Deferred — codebase doesn't transfer cleanly to mobile yet.
 - **Distribution.** Robot-of-the-day cron + HN launch pending. Pretty URL slugs (`?h=atlas-2013` vs `?h=3`) low priority.
+
+## The collection branch
+
+Forked from `v2` (live) on 2026-08-24 to bring back the **May 13 2026** presentation — the version Roy screen-records on royjad.com — while keeping every fix, data correction and motion improvement since launch. Live is unchanged; tag `live-checkpoint-2026-08-21` marks it.
+
+**Why:** live had been simplified past the "Iron Man / collection of items" feel Roy wanted. Each robot had become a database row (bounded stat card, uniform rows, em-dashes for missing values) instead of an object in a collection (placard header, floating stats, taxonomy chips). Roy traces this to absorbing too much of a design-studio friend's taste — a gallery edit applied to a catalog.
+
+**Reference checkout of the original:** `/Users/royjad/CODE/humanoid-index-throwback`, detached at `5adb855`. Run it side by side rather than guessing at what May looked like.
+
+### Before assuming code was deleted — check the knobs
+
+Most of the May design was still present, switched off. The three defaults that hid it:
+
+| knob | live | collection |
+|---|---|---|
+| `statsCollapsed` | `true` | `false` |
+| `denseDividers` | `true` | `false` — `denseDividers ? null : notesCard` is the line the descriptor chips died on |
+| `yearPlacement` | `"off"` | `"after-name"` |
+
+Same for the placard: `cardLabel` was never deleted, just orphaned when the name moved into the arc. Grep before rewriting.
+
+### Card geometry — one ratio, four call sites
+
+Width used to be capped in px while height stayed a raw `vh`, so the two axes drifted apart on tall viewports and at browser zoom (cards stretched vertically against a pinned width). Now:
+
+```js
+const SINGLE_ASPECT = 0.88;  // single view — hero shot
+const CARD_ASPECT   = 0.75;  // compare — matched pair
+cardW = min(vw budget, px cap, vh budget × aspect);  cardH = cardW / aspect;
+```
+
+**Every dimension derives from `cardPxFor`.** Four places independently carried this math and silently disagreed: the card box, `centerHalfWidth` (arc positioning), the right-card slot, and `cardPxStable` (drives `--nav-x`, so nav and footer alignment). Change one, change all four, or the arcs slide over the cards. Verified 0.750 at 1600×727, 1100×727 and 1600×337.
+
+### Arc
+
+`ArcDots.tsx` falloff is deliberately the *long-wheel* version: opacity ramps over 10 items, size steps down linearly. The `dist / 5` smooth bell curve that replaced it ("a gentle spotlight, not a sharp pop") collapsed the wheel to ~5 visible names and killed the sense of a long rail. Don't reintroduce it. The arc logo is off via `SHOW_ARC_LOGO` — redundant with the placard, which carries the same clip-path swipe-reveal.
+
+### Chips
+
+Flat, deliberately — one visual rank, no grouping by axis. Rebuilt from `country + useCase + drive + tags` (deduped), since those facets migrated out of `tags` into structured fields after May.
+
+### Heads-up
+
+Another Claude session has been committing data work (2025-wave humanoids) into this same worktree. Check `git log` and `git status` before committing, and never `git add -u` blind — it has already swept up one of their uncommitted lines.
