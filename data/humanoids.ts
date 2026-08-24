@@ -89,11 +89,9 @@ const allHumanoids: Humanoid[] = [
   { id: "34", name: "Yao-Guang", manufacturer: "Ti5 Robot", year: 2025, status: "Prototype" },
   { id: "35", name: "T1 Pro", manufacturer: "TLIBOT", year: 2025, status: "Prototype" },
   { id: "36", name: "T-HR3", manufacturer: "Toyota", year: 2017, status: "Prototype" },
-  { id: "37", name: "Walker S2", manufacturer: "UBTech", year: 2025, status: "Prototype" },
   { id: "38", name: "UCR-01", manufacturer: "Under Control Robotics", year: 2025, status: "Prototype" },
   { id: "39", name: "uME", manufacturer: "United Robotics Group", year: 2025, status: "Prototype" },
   { id: "40", name: "H2", manufacturer: "Unitree", year: 2025, status: "Prototype" },
-  { id: "41", name: "R1", manufacturer: "Unitree", year: 2025, status: "In Production" },
   { id: "42", name: "Martian", manufacturer: "UniX AI", year: 2025, status: "Prototype" },
   { id: "43", name: "Motion 1", manufacturer: "Vinmotion", year: 2025, status: "Prototype" },
   { id: "44", name: "VR-M2", manufacturer: "VinRobotics", year: 2025, status: "Prototype" },
@@ -103,7 +101,6 @@ const allHumanoids: Humanoid[] = [
   { id: "48", name: "THEMIS", manufacturer: "Westwood Robotics", year: 2025, status: "Prototype" },
   { id: "49", name: "Cyborg-R01", manufacturer: "Xborg Robotics", year: 2025, status: "Prototype" },
   { id: "50", name: "CyberOne", manufacturer: "Xiaomi", year: 2022, status: "Prototype" },
-  { id: "51", name: "Iron", manufacturer: "Xpeng", year: 2024, status: "Prototype" },
   { id: "52", name: "NAVIAI I2", manufacturer: "Zhejiang Lab", year: 2025, status: "Prototype" },
   { id: "53", name: "TR5", manufacturer: "Zhicheng AI", year: 2025, status: "Prototype" },
   // batch 2 (A–E)
@@ -113,7 +110,6 @@ const allHumanoids: Humanoid[] = [
   { id: "57", name: "Alice 3", manufacturer: "AeiROBOT", year: 2024, status: "Prototype" },
   { id: "58", name: "Raise A1", manufacturer: "AgiBot", year: 2025, status: "Prototype" },
   { id: "59", name: "A2 Max", manufacturer: "AgiBot", year: 2025, status: "Prototype" },
-  { id: "60", name: "Yuanzheng A2", manufacturer: "AgiBot", year: 2025, status: "Prototype" },
   { id: "61", name: "Cloud X2-N", manufacturer: "AgiBot", year: 2025, status: "Prototype" },
   { id: "62", name: "AgileONE", manufacturer: "Agile Robots", year: 2025, status: "Prototype" },
   { id: "63", name: "AIDOL", manufacturer: "AIDOL", year: 2025, status: "Prototype" },
@@ -138,7 +134,6 @@ const allHumanoids: Humanoid[] = [
   { id: "82", name: "SE01", manufacturer: "EngineAI", year: 2025, status: "Prototype" },
   // batch 3 (E–L)
   { id: "83", name: "Codroid", manufacturer: "Estun", year: 2025, status: "Prototype" },
-  { id: "84", name: "Figure 03", manufacturer: "Figure AI", year: 2025, status: "Prototype" },
   { id: "85", name: "FF Futurist", manufacturer: "Faraday Future", year: 2025, status: "Prototype" },
   { id: "86", name: "FF Master", manufacturer: "Faraday Future", year: 2025, status: "Prototype" },
   { id: "87", name: "Sprout", manufacturer: "Fauna Robotics", year: 2025, status: "Prototype" },
@@ -859,8 +854,131 @@ const allHumanoids: Humanoid[] = [
   },
 ];
 
+// ── Pending images (added 2026-08-24) ──────────────────────────────────────────
+// Full data entries for the 2025 wave. Held out of the live list until robot
+// images land in public/robots/ — `imageUrl` renders conditionally with no
+// fallback, so shipping these without art means empty tiles.
+//
+// To go live: drop the images in, add `imageUrl` to each entry, flip this to true.
+// Assets still needed:
+//   figure-03.png · unitree-r1.png · xpeng-iron.png · agibot-a2.png · walker-s2.png
+//   Xpeng-logo.svg · AgiBot-logo.svg   (Figure / Unitree / UBTech logos already exist)
+const SHOW_PENDING_IMAGE_ENTRIES = false;
+
+const pendingImageHumanoids: Humanoid[] = [
+  {
+    // VERIFY before launch: height, weight, dof, battery capacity.
+    id: "136",
+    name: "Figure 03",
+    manufacturer: "Figure AI",
+    country: "USA",
+    useCase: "Home",
+    drive: "Electric",
+    logoUrl: "/robots/Figure-ai.svg",
+    manufacturerUrl: "https://www.figure.ai",
+    infoUrl: "https://www.figure.ai/news/figure-03",
+    year: 2025,
+    addedAt: "2026-08-24",
+    cost: "N/A",
+    status: "Prototype",
+    availability: "prototype",
+    description: "Figure's third humanoid, built for the home. Softer, lighter, and designed to be manufactured at scale.",
+    tags: ["Home", "Helix AI", "Wireless charging", "Built for volume"],
+    engineering: {
+      software: "Helix",
+      teleop: true,
+    },
+  },
+  {
+    // VERIFY before launch: dof, runtime, peak torque.
+    id: "137",
+    name: "R1",
+    manufacturer: "Unitree",
+    country: "China",
+    useCase: "Research",
+    drive: "Electric",
+    logoUrl: "/robots/Unitree-logo.svg",
+    manufacturerUrl: "https://www.unitree.com",
+    infoUrl: "https://www.unitree.com/R1",
+    year: 2025,
+    addedAt: "2026-08-24",
+    cost: "$5.9K",
+    status: "In Production",
+    availability: "consumer",
+    height: 121,
+    weight: 25,
+    description: "The R1 cut the price of a walking humanoid to $5,900. Small, quick, and actually buyable.",
+    tags: ["$5.9K affordable", "Undercuts G1", "Consumer available"],
+    engineering: {
+      actuators: "BLDC",
+      imu: "9-axis",
+      teleop: true,
+    },
+  },
+  {
+    // VERIFY before launch: height, weight, dof, battery chemistry claims.
+    id: "138",
+    name: "IRON",
+    manufacturer: "Xpeng",
+    country: "China",
+    useCase: "Service",
+    drive: "Electric",
+    manufacturerUrl: "https://www.xpeng.com",
+    year: 2025,
+    addedAt: "2026-08-24",
+    cost: "N/A",
+    status: "Prototype",
+    availability: "prototype",
+    description: "Xpeng built IRON to walk like a person. The gait was convincing enough that they cut one open on stage to prove it.",
+    tags: ["Viral on social", "Human-like gait", "Automaker-backed"],
+  },
+  {
+    // VERIFY before launch: height, weight, dof, and the long-walk record claim.
+    id: "139",
+    name: "Yuanzheng A2",
+    manufacturer: "AgiBot",
+    country: "China",
+    useCase: "Service",
+    drive: "Electric",
+    manufacturerUrl: "https://www.agibot.com",
+    year: 2025,
+    addedAt: "2026-08-24",
+    cost: "N/A",
+    status: "Prototype",
+    availability: "enterprise",
+    description: "AgiBot's service humanoid, built to work in front of people. One of China's most-funded robot programs.",
+    tags: ["Service", "Interactive", "Major China player"],
+  },
+  {
+    // VERIFY before launch: height, weight, dof, swap time, shift duration.
+    id: "140",
+    name: "Walker S2",
+    manufacturer: "UBTech",
+    country: "China",
+    useCase: "Industrial",
+    drive: "Electric",
+    logoUrl: "/robots/Ubtech.png",
+    manufacturerUrl: "https://www.ubtrobot.com",
+    year: 2025,
+    addedAt: "2026-08-24",
+    cost: "N/A",
+    status: "In Production",
+    availability: "enterprise",
+    description: "The first humanoid that swaps its own battery. Walker S2 works a full shift without stopping to charge.",
+    tags: ["Industrial", "Self-swapping battery", "Automaker pilots", "Widely deployed"],
+    engineering: {
+      swappableBattery: true,
+      teleop: true,
+    },
+  },
+];
+
 const EXPERIMENT_STUB_IDS = new Set(Array.from({ length: 106 }, (_, i) => String(30 + i)));
 
-export const humanoids: Humanoid[] = SHOW_EXPERIMENT_STUBS
+const visibleHumanoids: Humanoid[] = SHOW_EXPERIMENT_STUBS
   ? allHumanoids
   : allHumanoids.filter((h) => !EXPERIMENT_STUB_IDS.has(h.id));
+
+export const humanoids: Humanoid[] = SHOW_PENDING_IMAGE_ENTRIES
+  ? [...pendingImageHumanoids, ...visibleHumanoids]
+  : visibleHumanoids;
