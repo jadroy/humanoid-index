@@ -1718,9 +1718,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // Compare-mode middle column width. Stats need ~150-180px; the rest is
   // breathing room (and blurb width when the AI overview is on).
   const [statsW, setStatsW] = useState(180);       // px
-  // Compare mode needs more room to render long manufacturer names like
-  // "Sunday Robotics" / "LimX Dynamics" without truncating.
-  const compareStatsW = statsW + 200;
   // Side of the visual element (flag, status dot) relative to its text label
   // inside a value cell. "left" = visual-then-text (default), "right" = text-then-visual.
   const [valueVisualSide, setValueVisualSide] = useState<"left" | "right">("left");
@@ -2221,18 +2218,27 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // growing vertically against a pinned width. Now width is the min of its vw
   // budget, its px cap, and what the vh budget allows at CARD_ASPECT; height is
   // always derived from that width, so the frame is identical at any size.
-  const CARD_ASPECT = 0.75; // width / height — the May-13 proportion
-  const cardPxFor = (wVw: number, hVh: number, maxPx: number) =>
+  const CARD_ASPECT = 0.75; // width / height — the May-13 compare proportion
+  // Single view is the hero shot rather than one of a matched pair, so it gets
+  // a squarer frame; compare stays tighter since the eye is measuring two
+  // cards against each other there.
+  const SINGLE_ASPECT = 0.88;
+  const cardPxFor = (wVw: number, hVh: number, maxPx: number, aspect: number) =>
     Math.min(
       wVw * windowWidth / 100,
       maxPx,
-      (hVh * windowHeight / 100) * CARD_ASPECT,
+      (hVh * windowHeight / 100) * aspect,
     );
+  const cardAspect = comparing ? CARD_ASPECT : SINGLE_ASPECT;
   const cardW = comparing
-    ? cardPxFor(robotW - 8, robotH - 10, robotMaxW - 100)
-    : cardPxFor(robotW, robotH, robotMaxW);
-  const cardH = cardW / CARD_ASPECT;
-  const baseCardPx = windowWidth ? cardPxFor(robotW, robotH, robotMaxW) : robotMaxW;
+    ? cardPxFor(robotW - 8, robotH - 10, robotMaxW - 100, CARD_ASPECT)
+    : cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT);
+  const cardH = cardW / cardAspect;
+  // Compare middle column tracks the card rather than sitting at a fixed px
+  // width — it used to carry +200px to fit long manufacturer names in the
+  // Company row, which now lives in the placard above the card instead.
+  const compareStatsW = Math.round(cardW * 0.75);
+  const baseCardPx = windowWidth ? cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT) : robotMaxW;
   const singleStatsW = Math.round(baseCardPx * statsColScale);
   // When info is hidden, the stats slot fully collapses to 0 so the card lands
   // at viewport center. The "i" toggle lives inside the card label, so no rail
@@ -2321,7 +2327,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       document.documentElement.style.setProperty("--nav-x", `${navX}px`);
       return;
     }
-    const cardPxStable = windowWidth ? cardPxFor(robotW, robotH, robotMaxW) : robotMaxW;
+    const cardPxStable = windowWidth ? cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT) : robotMaxW;
     // Use the expanded stats width regardless of `statsCollapsed` so the nav
     // and footer (driven off `--nav-x`) stay anchored when the i toggle fires.
     const statsColStable = stackedInfo ? Math.round(cardPxStable * statsColScale) : statsW;
@@ -4689,8 +4695,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             <div aria-hidden style={{ height: 2, background: `rgba(0,0,0,${(denseOpacity / 100).toFixed(3)})`, marginLeft: denseFullWidth ? -18 : 64, marginRight: denseFullWidth ? -18 : 64 }} />
           );
           const statusRow = (
-            <div style={{ ...compareRowGridStyle, gridTemplateColumns: "91px 1fr 1fr", alignItems: "center" }}>
-              <span style={{ ...dimmed, whiteSpace: "nowrap" }}>Status</span>
+            <div style={{ ...compareRowGridStyle, alignItems: "center" }}>
               <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
                 {hL.status ? (
                   valueVisualSide === "left" ? (
@@ -4706,19 +4711,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   )
                 ) : <span style={missingValueStyle}>—</span>}
               </span>
-              <span style={{ display: "inline-flex", justifyContent: "flex-start", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
+              <span aria-hidden />
+              <span style={{ display: "inline-flex", justifyContent: "flex-end", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
                 {hR.status ? (
-                  valueVisualSide === "left" ? (
-                    <>
-                      <StatusDot color={statusColor(hR.status)} size={9} />
-                      <span style={valueStyle}>{hR.status}</span>
-                    </>
-                  ) : (
                     <>
                       <span style={valueStyle}>{hR.status}</span>
                       <StatusDot color={statusColor(hR.status)} size={9} />
                     </>
-                  )
                 ) : <span style={missingValueStyle}>—</span>}
               </span>
             </div>
