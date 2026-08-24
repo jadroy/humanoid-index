@@ -863,7 +863,7 @@ const allHumanoids: Humanoid[] = [
 // Assets still needed:
 //   figure-03.png · unitree-r1.png · xpeng-iron.png · agibot-a2.png · walker-s2.png
 //   Xpeng-logo.svg · AgiBot-logo.svg   (Figure / Unitree / UBTech logos already exist)
-const SHOW_PENDING_IMAGE_ENTRIES = true;
+const SHOW_PENDING_IMAGE_ENTRIES = false;
 
 const pendingImageHumanoids: Humanoid[] = [
   {
