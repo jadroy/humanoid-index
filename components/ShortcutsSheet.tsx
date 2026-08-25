@@ -10,6 +10,7 @@ const ROWS: Row[] = [
   { label: "Switch side in compare", keys: [["Tab"]] },
   { label: "Exit / close", keys: [["Esc"]] },
   { label: "Random robot", keys: [["⇧", "R"]] },
+  { label: "Save this robot", keys: [["⇧", "S"]] },
   { label: "Toggle this sheet", keys: [["/"], ["?"]] },
 ];
 

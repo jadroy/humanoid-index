@@ -5,10 +5,11 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
-import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus, Dices } from "lucide-react";
+import { ArrowUp, Search, Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus, Dices, Bookmark, LayoutGrid } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, type Humanoid } from "@/data/humanoids";
-import { FORM_FILTERS, COMPARE_LIST, formOf, listFor, countFor, indexOfId, idAt, seat, resolveDeeplink, type FormFilter } from "@/lib/wheelLanes";
+import { FORM_FILTERS, listFor, listForSaved, countFor, indexOfId, idAt, seat, globalIndexOf, resolveComparePair, resolveDeeplink, type FormFilter } from "@/lib/wheelLanes";
+import { SavedTray, SavedShelf } from "@/components/SavedSurfaces";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
@@ -60,7 +61,9 @@ import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import ContactSheet from "@/components/ContactSheet";
 
 const FOOTER_CONTACT_EMAIL = "jadroy77@gmail.com";
-import { LogoMark, PlaceholderLogo } from "@/components/LogoMark";
+import { LogoMark, PlaceholderLogo, SiteMark } from "@/components/LogoMark";
+import { SEARCH_OPEN_EVENT, SEARCH_SELECT_EVENT } from "@/components/SearchModal";
+import { FormGlyph } from "@/components/FormGlyph";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { getRobotDescription } from "@/lib/robotDescription";
 import { SURFACE } from "@/lib/surface";
@@ -277,6 +280,89 @@ function glassChromeFor({ tint, alpha, blur, ink, outline, sheen }: { tint: stri
     ["--c-ink-muted"]: inkMuted,
   };
 }
+
+// Every row in the floating sidebar is the same object: a 40px borderless
+// segment, glyph left, collapsing label right. Mark, lanes and actions all use
+// it, which is what lets three unrelated things read as one control column.
+const SIDEBAR_ROW: React.CSSProperties = {
+  fontFamily: "var(--font-geist-sans)",
+  fontSize: 14,
+  fontWeight: 500,
+  lineHeight: 1,
+  letterSpacing: "normal",
+  height: 40,
+  padding: "0 10px",
+  borderRadius: 20,
+  border: "none",
+  background: "transparent",
+  whiteSpace: "nowrap",
+  display: "flex",
+  alignItems: "center",
+  position: "relative",
+  zIndex: 1,
+};
+
+// The label column is the widest label — "Humanoid" at 14/500 (62.9) with a
+// subpixel of slack. The counts keep their own column beside it rather than
+// sharing the box: it collapses to zero at rest and opens on hover, so the
+// width change is a real one (the sidebar grows by the counts) while the
+// labels stay put and 26 / 7 / 6 still line up on their last digit.
+const SIDEBAR_LABEL_W = 64;
+const SIDEBAR_COUNT_W = 26;
+
+const sidebarLabel = (comparing: boolean): React.CSSProperties => ({
+  display: "flex",
+  alignItems: "baseline",
+  overflow: "hidden",
+  width: comparing ? 0 : SIDEBAR_LABEL_W,
+  marginLeft: comparing ? 0 : 10,
+  opacity: comparing ? 0 : 1,
+  transition: "width 320ms cubic-bezier(0.33, 1, 0.68, 1), margin-left 320ms cubic-bezier(0.33, 1, 0.68, 1), opacity 200ms ease",
+});
+
+// Right-aligned in its own column so 26 / 7 / 6 stack on their last digit.
+const sidebarCount = (open: boolean): React.CSSProperties => ({
+  display: "flex",
+  justifyContent: "flex-end",
+  overflow: "hidden",
+  width: open ? SIDEBAR_COUNT_W : 0,
+  opacity: open ? 0.45 : 0,
+  fontVariantNumeric: "tabular-nums",
+  transition: "width 320ms cubic-bezier(0.33, 1, 0.68, 1), opacity 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+});
+
+const SIDEBAR_GROUP_GAP = 16;
+
+// One glyph column for every row — mark, lanes, actions. It was three
+// different measurements before (a fixed 18 on two of them, intrinsic width on
+// the lanes), which is exactly the kind of drift that puts icons a fraction of
+// a pixel out of line down a column.
+const SIDEBAR_GLYPH_SLOT: React.CSSProperties = {
+  display: "flex",
+  width: 18,
+  justifyContent: "center",
+};
+
+// Two ink steps for glyphs and three for text, used by every piece of chrome
+// on the page — the sidebar column and the chat panel. Anything that needs a
+// fourth step is a sign it does not belong in the chrome layer.
+const SIDEBAR_GLYPH_OP = { on: 1, off: 0.62 };
+// The two pieces of prose in the column — the blurb and the credit. One size,
+// one leading. 11px was small enough to be unreadable against a white page at
+// these ink levels, which is the wrong kind of quiet: it should recede, not
+// disappear.
+const SIDEBAR_SMALL: React.CSSProperties = { fontSize: 12, lineHeight: 1.35 };
+
+// One width for both. 92 was the row content (18 glyph + 10 gutter + 64 label),
+// which fit the prose at 11px and clipped "Roy Jad © 2026" to "© 202" at 12.
+// The credit sets the floor here, so the blurb follows it rather than the rows.
+const SIDEBAR_PROSE_W = 104;
+
+const CHROME_INK = {
+  on: "rgba(95, 96, 89, 0.95)",
+  hover: "rgba(95, 96, 89, 0.75)",
+  off: "rgba(95, 96, 89, 0.55)",
+};
 
 // Footer chips reuse the same liquid-glass chrome as the in-card icon
 // buttons + the compare minus button. Static because the footer lives
@@ -1021,12 +1107,17 @@ function MediaImageSlide({
   );
 }
 
-function parseShareParams(): { leftId: string | null; compareIds: string[] } {
-  if (typeof window === "undefined") return { leftId: null, compareIds: [] };
+function parseShareParams(): { leftId: string | null; compareIds: string[]; pickIds: string[] } {
+  if (typeof window === "undefined") return { leftId: null, compareIds: [], pickIds: [] };
   const p = new URLSearchParams(window.location.search);
   const compareRaw = p.get("compare");
   const compareIds = compareRaw ? compareRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
-  return { leftId: p.get("h"), compareIds };
+  // `?picks=` is a shared shelf. It seeds the visitor's own saved set rather
+  // than opening a read-only view of someone else's — a collection you can
+  // take away and edit is worth more than one you can only look at.
+  const picksRaw = p.get("picks");
+  const pickIds = picksRaw ? picksRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  return { leftId: p.get("h"), compareIds, pickIds };
 }
 
 // Shelved — pending relative-size revisit. ScaleToggle is not currently
@@ -1110,6 +1201,8 @@ function StatusDot({ color, size = 10 }: { color: string; size?: number }) {
 }
 
 // "What's new" toast card — minimal: hairline frame, tiny shared image, single line.
+// Caps at three thumbnails and three names so a big drop still reads as one line.
+const TOAST_MAX_NAMES = 3;
 function AnnouncementToast({
   humanoids: items,
   onView,
@@ -1118,6 +1211,10 @@ function AnnouncementToast({
   onView: () => void;
   onDismiss: () => void;
 }) {
+  const thumbs = items.filter((h) => h.imageUrl).slice(0, TOAST_MAX_NAMES);
+  const shown = items.slice(0, TOAST_MAX_NAMES);
+  const extra = items.length - shown.length;
+  const names = shown.map((h) => h.name).join(", ") + (extra > 0 ? ` +${extra} more` : "");
   return (
     <div
       onClick={onView}
@@ -1125,6 +1222,7 @@ function AnnouncementToast({
       tabIndex={0}
       style={{
         display: "inline-flex", alignItems: "center", gap: 10,
+        maxWidth: "min(440px, 90vw)",
         background: "#ffffff",
         border: "1px solid rgba(0,0,0,0.07)",
         borderRadius: 10,
@@ -1136,27 +1234,31 @@ function AnnouncementToast({
       <div
         style={{
           display: "flex", alignItems: "flex-end", justifyContent: "center",
-          width: 48, height: 32,
+          gap: 2,
+          height: 32,
           overflow: "hidden",
           flexShrink: 0,
         }}
       >
-        {items.map((h) => (
-          h.imageUrl ? (
-            <Image
-              key={h.id}
-              src={h.imageUrl}
-              alt={h.name}
-              width={22}
-              height={28}
-              style={{ objectFit: "contain", objectPosition: "center bottom", height: "100%", width: "auto" }}
-            />
-          ) : null
+        {thumbs.map((h) => (
+          <Image
+            key={h.id}
+            src={h.imageUrl!}
+            alt={h.name}
+            width={22}
+            height={28}
+            style={{ objectFit: "contain", objectPosition: "center bottom", height: "100%", width: "auto", maxWidth: 22 }}
+          />
         ))}
       </div>
-      <span style={{ fontSize: 12.5, color: "var(--c-ink-body)", letterSpacing: "-0.005em" }}>
+      <span
+        style={{
+          fontSize: 12.5, color: "var(--c-ink-body)", letterSpacing: "-0.005em",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0,
+        }}
+      >
         <span style={{ color: "var(--c-ink-subtle)" }}>New&nbsp;—&nbsp;</span>
-        <span style={{ fontWeight: 600 }}>{items.map((h) => h.name).join(" + ")}</span>
+        <span style={{ fontWeight: 600 }}>{names}</span>
       </span>
     </div>
   );
@@ -1526,7 +1628,7 @@ function StatusLegendModal({ children, style }: { children: React.ReactNode; sty
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onRandomHumanoid, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange }: { goToId?: string | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onRandomHumanoid?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void }) {
+function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onRandomHumanoid, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, onHome, onShareSite, onFeedback, onToggleChat, chatActive = false, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange }: { goToId?: string | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onRandomHumanoid?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; onHome?: () => void; onShareSite?: () => void; onFeedback?: () => void; onToggleChat?: () => void; chatActive?: boolean; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
 
   const [customStiffness, setCustomStiffness] = useState(0.10);
@@ -1580,6 +1682,19 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       if (Array.isArray(arr)) setFavoriteIds(new Set(arr.filter((s) => typeof s === "string")));
     } catch {}
   }, []);
+  // A shared shelf merges into what's already saved instead of replacing it.
+  // Opening a link should never cost the visitor their own collection.
+  useEffect(() => {
+    const { pickIds } = parseShareParams();
+    const valid = pickIds.filter((id) => humanoids.some((h) => h.id === id));
+    if (valid.length === 0) return;
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      valid.forEach((id) => next.add(id));
+      try { localStorage.setItem("humanoid-index:favorites", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, []);
   const toggleFavorite = (id: string) => {
     setFavoriteIds((prev) => {
       const next = new Set(prev);
@@ -1599,13 +1714,77 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [hideUnbuyable, setHideUnbuyable] = useState(false);
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
+  const [railHover, setRailHover] = useState<FormFilter | null>(null);
+  // Whole-capsule hover, separate from per-segment hover: the counts belong to
+  // the rail, not to the row under the cursor, so they arrive together.
+  const [railOpen, setRailOpen] = useState(false);
+  // A swipe-driven lane change happens with the cursor nowhere near the rail,
+  // so the only readout would be a small grey pill sliding in the periphery.
+  // The flash opens the labels and counts for a beat — the same open state
+  // hover produces, arrived at from across the page. OR'd with hover rather
+  // than sharing one flag, so an expiring flash can't close a rail the cursor
+  // is still resting on.
+  const [railFlash, setRailFlash] = useState(false);
+  const railFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashRail = useCallback(() => {
+    if (railFlashTimer.current) clearTimeout(railFlashTimer.current);
+    setRailFlash(true);
+    railFlashTimer.current = setTimeout(() => setRailFlash(false), 900);
+  }, []);
+  useEffect(() => () => { if (railFlashTimer.current) clearTimeout(railFlashTimer.current); }, []);
+  // Hover reveals the counts. They are the secondary half of each lane row —
+  // useful when you are choosing, noise when you are reading a robot — so they
+  // arrive with the cursor and leave with it. `railFlash` reaches the same
+  // state from a swipe, where the cursor is nowhere near the column and the
+  // sliding indicator alone is easy to miss.
+  const railExpanded = railOpen || railFlash;
   // ── Form filter ────────────────────────────────────────────────────────────
-  // See lib/wheelLanes.ts for the index model. `lane` is the list the left
-  // spring is currently indexing; it swaps wholesale when the filter changes or
-  // when compare opens, and the lane-change effect below re-seats by id.
+  // See lib/wheelLanes.ts for the index model. `lane` is the list BOTH springs
+  // index — compare stays inside the open category, so opening it no longer
+  // swaps the list. The lane swaps only when the filter changes, and the
+  // lane-change effect below re-seats both springs by id.
   const [formFilter, setFormFilter] = useState<FormFilter>("humanoid");
-  const browseList = listFor(formFilter);
-  const lane = comparing ? COMPARE_LIST : browseList;
+  // ── Saved ──────────────────────────────────────────────────────────────────
+  // Three surfaces over one set (see components/SavedSurfaces.tsx). The toggle
+  // on the card, the sidebar row and the localStorage set are shared; only
+  // where the set is *shown* changes.
+  //   lane  — the wheel switches to the saved list. The collection is a place.
+  //   tray  — a standing total in the corner. The collection is a purchase.
+  //   shelf — a full-screen layout of the objects. The collection is on show.
+  const [savedSurface, setSavedSurface] = useState<"lane" | "tray" | "shelf">("lane");
+  const [savedLaneOn, setSavedLaneOn] = useState(false);
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [shelfOpen, setShelfOpen] = useState(false);
+  const savedLane = listForSaved(favoriteIds);
+  // The saved lane is only ever the live list while it has members. Everything
+  // downstream — seat clamps, arc, compare — assumes `lane[0]` exists, which is
+  // why wheelLanes keeps saved out of FORM_FILTERS: the guard belongs here, at
+  // the one place that decides which list is live, rather than at every read.
+  const savedLaneLive = savedSurface === "lane" && savedLaneOn && savedLane.length > 0;
+  const lane = savedLaneLive ? savedLane : listFor(formFilter);
+  // Unsaving the last robot while standing in the saved lane drops you back
+  // into the form lane you came from, rather than onto an empty wheel.
+  useEffect(() => {
+    if (savedLaneOn && savedLane.length === 0) setSavedLaneOn(false);
+  }, [savedLaneOn, savedLane.length]);
+  // Switching surfaces closes whatever the previous one had open, so the dev
+  // tuner never leaves two of them on screen at once.
+  useEffect(() => {
+    setSavedLaneOn(false);
+    setTrayOpen(false);
+    setShelfOpen(false);
+  }, [savedSurface]);
+  const savedItems = savedLane;
+  // "The saved surface is showing" — whichever surface that is. Drives the
+  // sidebar row's lit state, so the row reports one thing across all three.
+  const savedSurfaceOn = savedSurface === "lane" ? savedLaneLive : savedSurface === "shelf" ? shelfOpen : trayOpen;
+  // ── Grid ───────────────────────────────────────────────────────────────────
+  // The grid is a second way of looking at the SAME lane, not a second page —
+  // so it opens over the scroll view with the column still standing, and the
+  // lane rows keep filtering it. Leaving it lands you back on the wheel where
+  // you left it, unless you left by picking a robot, which seats the wheel on
+  // that robot instead.
+  const [gridOpen, setGridOpen] = useState(false);
   const spinViewerRef = useRef<SpinViewerHandle>(null);
   const spinViewerRightRef = useRef<SpinViewerHandle>(null);
   const spinLoopRef = useRef(false);
@@ -1962,6 +2141,14 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     () => glassChromeFor({ tint: glassTint, alpha: glassAlpha, blur: glassBlur, ink: glassInk, outline: glassOutline, sheen: glassSheen }),
     [glassTint, glassAlpha, glassBlur, glassInk, glassOutline, glassSheen]
   );
+  // In portal/bleed mode the in-card chips stop being opaque paint and become
+  // real glass — there is finally a busy backdrop for them to refract. Higher
+  // saturate than the Liquid preset so the chip picks up the room's colour
+  // instead of staying neutral grey.
+  const scenePortalChipChrome = useMemo(
+    () => glassChromeFor({ tint: "#ffffff", alpha: 0.34, blur: 24, ink: "auto", outline: 0.24, sheen: 0.38 }),
+    []
+  );
   const applyGlassPreset = (p: GlassPreset) => {
     setGlassTint(p.tint);
     setGlassAlpha(p.alpha);
@@ -2148,7 +2335,17 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [sceneInteracted, setSceneInteracted] = useState(false);
   // Scene variant — "viewport" paints the bloom across the whole page;
   // "card" contains it inside the focused robot card as a portal.
-  const [sceneVariant, setSceneVariant] = useState<"viewport" | "card">("card");
+  const [sceneVariant, setSceneVariant] = useState<"viewport" | "card" | "portal" | "bleed">("card");
+  // Portal / bleed knobs. "portal" fills the card with the scene at full
+  // strength behind the cutout robot and turns every chip over it into real
+  // glass; "bleed" does that and also washes the viewport so the page chrome
+  // frosts over the same environment.
+  const [scenePortalDim, setScenePortalDim] = useState(22);      // % of a top/bottom scrim over the scene
+  const [scenePortalGlass, setScenePortalGlass] = useState(true); // swap in-card chips to liquid glass
+  const [sceneBleedWash, setSceneBleedWash] = useState(10);      // % viewport wash in bleed mode
+  const [sceneGlow, setSceneGlow] = useState(34);   // % — scene light spilling onto the page around the card
+  const [sceneParallax, setSceneParallax] = useState(true);
+  const [sceneParallaxAmt, setSceneParallaxAmt] = useState(56);  // px of counter-drift per index of spring travel
   const [sceneCardScale, setSceneCardScale] = useState(100);
   const [sceneCardVignette, setSceneCardVignette] = useState(80);
   const [sceneCardSaturation, setSceneCardSaturation] = useState(100);
@@ -2272,23 +2469,34 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // a per-robot aspect would slide the nav, footer and arcs every time you
   // scrolled between two body plans. A lane change already animates, and the
   // chips make it an explicit move, so resizing there reads as intent.
-  // Compare is deliberately excluded — a matched pair needs one shared
-  // proportion regardless of what the two robots are.
+  // Compare carries the lane's proportion too, tightened by the same step
+  // single→compare takes on the humanoid lane (0.88 → 0.75). It used to be
+  // pinned at one shared 0.75 because compare spanned every body plan and a
+  // biped could land beside a vacuum. Compare stays inside a lane now, so both
+  // cards are always the same body plan and the pair can keep the frame that
+  // suits it — the Other lane no longer letterboxes a landscape product shot
+  // the moment you open compare.
   const SINGLE_ASPECT_BY_FORM: Record<FormFilter, number> = {
     humanoid: 0.88,
     semi: 0.88,
     other: 1.0,
   };
+  const COMPARE_ASPECT_BY_FORM: Record<FormFilter, number> = {
+    humanoid: CARD_ASPECT,
+    semi: CARD_ASPECT,
+    other: 0.85,
+  };
   const SINGLE_ASPECT = SINGLE_ASPECT_BY_FORM[formFilter];
+  const COMPARE_ASPECT = COMPARE_ASPECT_BY_FORM[formFilter];
   const cardPxFor = (wVw: number, hVh: number, maxPx: number, aspect: number) =>
     Math.min(
       wVw * windowWidth / 100,
       maxPx,
       (hVh * windowHeight / 100) * aspect,
     );
-  const cardAspect = comparing ? CARD_ASPECT : SINGLE_ASPECT;
+  const cardAspect = comparing ? COMPARE_ASPECT : SINGLE_ASPECT;
   const cardW = comparing
-    ? cardPxFor(robotW - 8, robotH - 10, robotMaxW - 100, CARD_ASPECT)
+    ? cardPxFor(robotW - 8, robotH - 10, robotMaxW - 100, COMPARE_ASPECT)
     : cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT);
   const cardH = cardW / cardAspect;
   // Compare middle column tracks the card rather than sitting at a fixed px
@@ -2321,6 +2529,13 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     // Collapsed: drop the gap too so the arc rebalances around the card alone.
     return (cardPx + (statsCollapsed ? 0 : gap + effectiveStatsW)) / 2;
   })();
+
+  // Distance from the right edge of the content block (card + gap + stats) to
+  // the compare slot. Wider than `statsGap`, deliberately — the stats column is
+  // part of the card, the compare slot is a separate object and needs to read
+  // as one.
+  const COMPARE_SLOT_GAP = 44;
+  const compareSlotLeft = Math.round(windowWidth / 2 + centerHalfWidth + COMPARE_SLOT_GAP);
 
   const availableSpace = (windowWidth / 2) - centerHalfWidth;
   const adaptiveDrumXOffset = Math.round(Math.min(300, Math.max(40, availableSpace * 0.5)));
@@ -2411,18 +2626,44 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // correct it. One ref, so claim and clamp cannot disagree.
   const laneRef = useRef(lane);
   const springL = useSpring(stiffness, damping, useCallback(() => laneRef.current.length, []));
-  const springR = useSpring(stiffness, damping, useCallback(() => COMPARE_LIST.length, []));
+  const springR = useSpring(stiffness, damping, useCallback(() => laneRef.current.length, []));
   // The ONLY place an index crosses from one list to another. Whenever the lane
-  // swaps (filter changed, or compare opened/closed) the spring's integer index
-  // stops meaning what it meant, so re-seat it on the same robot by id. Falls to
-  // the top of the new lane when that robot isn't in it.
+  // swaps (the filter changed) the springs' integer indices stop meaning what
+  // they meant, so re-seat each on the same robot by id. Falls to the top of the
+  // new lane when that robot isn't in it. Both springs, because compare rides
+  // the same lane and a stale right index would point into the old list.
   useEffect(() => {
     const prev = laneRef.current;
     if (prev === lane) return;
-    const keepId = idAt(prev, springL.index);
+    const keepL = idAt(prev, springL.index);
+    const keepR = idAt(prev, springR.index);
     laneRef.current = lane;
-    springL.snapTo(seat(indexOfId(lane, keepId)));
+    springL.snapTo(seat(indexOfId(lane, keepL)));
+    springR.snapTo(seat(indexOfId(lane, keepR)));
   }, [lane]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Picking a robot in the grid is the same gesture as picking one in the arc:
+  // it seats the left spring and hands you back the wheel. `jumpTo`, not
+  // `snapTo` — the wheel is already on screen behind the grid, so it should be
+  // caught mid-travel rather than found already arrived.
+  const openFromGrid = useCallback((id: string) => {
+    const i = indexOfId(lane, id);
+    if (i >= 0) springL.jumpTo(i);
+    setGridOpen(false);
+  }, [lane, springL]);
+
+  // Escape closes the grid before anything else on the page sees it — the grid
+  // is the topmost thing open whenever it is open.
+  useEffect(() => {
+    if (!gridOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      setGridOpen(false);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [gridOpen]);
 
   // The lane can change during a render that still holds the previous index
   // (chip click), so clamp here rather than trusting the re-seat effect to have
@@ -2431,7 +2672,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // about which robot is selected on that frame.
   const seatL = Math.max(0, Math.min(springL.index, lane.length - 1));
   const hL = lane[seatL];
-  const hR = COMPARE_LIST[springR.index];
+  // Same clamp for the right spring: it indexes the same lane, so a lane change
+  // can leave its raw index past the end for a frame.
+  const seatR = Math.max(0, Math.min(springR.index, lane.length - 1));
+  const hR = lane[seatR];
 
   const activeGo = comparing ? (activeSide === "left" ? springL.go : springR.go) : springL.go;
 
@@ -2496,6 +2740,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     tiltAmt: giveTiltAmt,
     tiltDepth: giveTiltDepth,
   };
+  const sceneParallaxRef = useRef(0);
+  sceneParallaxRef.current = sceneParallax && sceneEnabled && sceneVariant !== "viewport" ? sceneParallaxAmt : 0;
   const giveSettingsRef = useRef(giveSettings);
   giveSettingsRef.current = giveSettings;
   const giveStyleRef = useRef(effectiveGive);
@@ -2509,6 +2755,16 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       const el = ref.current;
       if (!el) return;
       applyGive(el, giveStyleRef.current, pos, getVel(), giveSettingsRef.current);
+      // Scene parallax — the fractional part of the spring position is how far
+      // the wheel is between two seats, so the room drifts counter to the
+      // travel and lands back at zero when the card settles.
+      const amt = sceneParallaxRef.current;
+      if (amt) {
+        const frac = pos - Math.round(pos);
+        el.style.setProperty("--scene-x", `${(-frac * amt).toFixed(2)}px`);
+      } else if (el.style.getPropertyValue("--scene-x")) {
+        el.style.removeProperty("--scene-x");
+      }
     };
     const unsubL = springL.subscribe(make(leftCardRef, springL.getVel));
     const unsubR = springR.subscribe(make(rightCardRef, springR.getVel));
@@ -2535,13 +2791,30 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // to its own lane and seat there, same contract as a ?h= deeplink.
   useEffect(() => {
     const target = resolveDeeplink(goToId);
-    // While comparing, the lane is COMPARE_LIST and setFormFilter wouldn't move
-    // it — claiming a browse list here would desync the seat from what's shown.
+    // Ignored while comparing: moving the lane out from under an open pair would
+    // strand the right card on a robot from another category.
     if (!target || comparing) return;
+    // An external jump always lands in the robot's own form lane. Staying in
+    // the saved lane would mean seating on an index that list doesn't have.
+    setSavedLaneOn(false);
     setFormFilter(target.filter);
     laneRef.current = listFor(target.filter);
     springL.snapTo(target.index);
   }, [goToId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Picking a robot out of the tray or the shelf. Inside the saved lane it is
+  // ordinary movement — the robot is already in the list under the spring, so
+  // it animates there. From anywhere else it is a lane change, which snaps.
+  const seatOnId = useCallback((id: string) => {
+    const local = indexOfId(laneRef.current, id);
+    if (savedLaneLive && local >= 0) { springL.jumpTo(local); return; }
+    const target = resolveDeeplink(id);
+    if (!target) return;
+    setSavedLaneOn(false);
+    setFormFilter(target.filter);
+    laneRef.current = listFor(target.filter);
+    springL.snapTo(target.index);
+  }, [savedLaneLive, springL]);
 
   // Wheel accumulators for each side
   const accL = useRef(0);
@@ -2568,6 +2841,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // Global wheel — velocity-aware stepping + elastic pre-threshold feedback
   const activeSideRef = useRef(activeSide); activeSideRef.current = activeSide;
   const comparingRef = useRef(comparing); comparingRef.current = comparing;
+  // Filled in below, once `compareInLane` exists. The wheel effect is
+  // subscribed once and must not re-subscribe when the lane changes, so it
+  // reaches the stepper through a ref rather than closing over it.
+  const stepLaneRef = useRef<(dir: 1 | -1) => void>(() => {});
   const mouseXRef = useRef<number | null>(null);
   useEffect(() => {
     const onMove = (e: MouseEvent) => { mouseXRef.current = e.clientX; };
@@ -2610,6 +2887,15 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     let lastWheelTime = 0;
     const recent: { dx: number; dy: number; t: number }[] = [];
     const AGG_WINDOW_MS = 100;
+    // Horizontal accumulator, and a latch so one continuous swipe steps one
+    // lane. A lane change swaps the entire list under the cursor, so
+    // repeat-firing mid-gesture would take you from 26 robots to 6 in a flick.
+    let accX = 0;
+    let laneLatched = false;
+    // Still above the vertical threshold (10–40 across the presets) — changing
+    // lane is less reversible than moving within one — but only about double,
+    // not the wall 120 turned out to be. A trackpad flick clears this.
+    const LANE_THRESHOLD = 80;
 
     const route = (delta: number, nudgeAmt?: number) => {
       if (!comparingRef.current) {
@@ -2624,7 +2910,13 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       // Tuners only exist in dev; skip the DOM walk in production.
       if (isDev && (e.target as HTMLElement)?.closest?.("[data-tuner]")) return;
       const wheelNow = performance.now();
-      if (wheelNow - lastWheelTime > 150) recent.length = 0;
+      if (wheelNow - lastWheelTime > 150) {
+        recent.length = 0;
+        // Same idle gap that ends a vertical gesture ends a horizontal one:
+        // the latch releases and the next swipe starts from zero.
+        accX = 0;
+        laneLatched = false;
+      }
       lastWheelTime = wheelNow;
 
       recent.push({ dx: Math.abs(e.deltaX), dy: Math.abs(e.deltaY), t: wheelNow });
@@ -2636,6 +2928,29 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       // cursor (the cursor never "moves" so events don't fire).
       const overGallery = !!(e.target as Element | null)?.closest?.("[data-gallery]");
       if (overGallery && sx > sy) return;
+      // ── Horizontal steps the lane rail ──────────────────────────────────
+      // Vertical moves within the open lane; horizontal moves between lanes.
+      // The gallery keeps its own horizontal scroll (bailed out just above),
+      // so the axis is free everywhere else on the page.
+      //
+      // `sx > sy * 1.6`, not the gallery's plain `sx > sy`: a diagonal flick
+      // down the wheel is a common gesture and must never cross a lane. The
+      // margin only has to outvote drift, and the 100ms window has already
+      // smoothed the per-frame noise it is guarding against.
+      if (sx > sy * 1.6) {
+        e.preventDefault();
+        // Whatever vertical had accumulated belongs to the gesture that just
+        // resolved as horizontal. Drop it so it can't leak into the next step.
+        acc = 0;
+        velocity = 0;
+        if (laneLatched) return;
+        accX += e.deltaX;
+        if (Math.abs(accX) < LANE_THRESHOLD) return;
+        laneLatched = true;
+        stepLaneRef.current(accX > 0 ? 1 : -1);
+        accX = 0;
+        return;
+      }
       // Scroll zones are rectangles bounded by the card edges. Single view:
       // anything past the card's right edge (stats column) is dead. Compare:
       // the gutter between the two cards (middle stats column) is dead.
@@ -2725,7 +3040,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         const spring = comparing && x != null
           ? (x < window.innerWidth / 2 ? springL : springR)
           : (comparing && activeSide === "right" ? springR : springL);
-        spring.jumpTo(isJumpStart ? 0 : (spring === springR ? COMPARE_LIST : lane).length - 1);
+        spring.jumpTo(isJumpStart ? 0 : lane.length - 1);
         return;
       }
       const isDown = e.key === "ArrowDown" || e.key === "ArrowRight";
@@ -2766,6 +3081,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         case "c": case "C":
           onShareView?.();
           return;
+        // Shift+S, following Shift+R for Random. Plain "s" and "f" are both
+        // taken by dev cyclers (arc style, font), and those listeners are
+        // separate from this one — a shared key would fire both on one press.
+        case "S":
+          if (currentId) toggleFavorite(currentId);
+          return;
         case "3":
           if (!comparing && currentId && THREEDEE_ROBOTS[currentId]) setShow3D((v) => !v);
           return;
@@ -2779,35 +3100,52 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [comparing, springL, useImperial, onUseImperialChange, onShareView, toggleSpin, lane]);
+  }, [comparing, springL, useImperial, onUseImperialChange, onShareView, toggleSpin, lane]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
-  // Compare spans every body plan, so entering it swaps the lane out from under
-  // the left spring. Seat both springs against COMPARE_LIST here and claim the
-  // lane, so the lane-change effect has nothing left to correct.
+  // Compare runs inside the open lane, so entering it doesn't move the list at
+  // all — the left card stays exactly where it was and the right one opens on
+  // its neighbour. A one-robot lane wraps to the same robot rather than seating
+  // out of range.
   const enterCompare = () => {
-    const li = seat(indexOfId(COMPARE_LIST, idAt(lane, springL.index)));
-    laneRef.current = COMPARE_LIST;
-    springL.snapTo(li);
-    springR.jumpTo(li < COMPARE_LIST.length - 1 ? li + 1 : 0);
+    springR.jumpTo(seatL < lane.length - 1 ? seatL + 1 : 0);
     setComparing(true);
     setActiveSide("right");
   };
-  // Leaving compare drops back into a single lane — pick the one that contains
-  // the robot you were looking at, so exiting never loses your place.
+  // Leaving compare keeps the lane and the left seat — there is nothing to
+  // restore, since compare never left the category you were browsing.
   const exitCompare = () => {
-    const h = COMPARE_LIST[springL.index];
-    if (h) {
-      const f = formOf(h);
-      setFormFilter(f);
-      const next = listFor(f);
-      laneRef.current = next;
-      springL.snapTo(seat(indexOfId(next, h.id)));
-    }
     setComparing(false);
     setActiveSide("left");
     setSplitHover(false);
+  };
+
+  // Picking a lane from the rail while comparing switches which category the
+  // pair is drawn from instead of closing compare. Seat by id where the robots
+  // carry over (they usually don't — a lane change means a new body plan), and
+  // keep the two sides off the same seat.
+  const compareInLane = (f: FormFilter) => {
+    if (f === formFilter) return;
+    setFormFilter(f);
+    const next = listFor(f);
+    laneRef.current = next;
+    const l = seat(indexOfId(next, hL?.id));
+    const r = seat(indexOfId(next, hR?.id));
+    springL.snapTo(l);
+    springR.snapTo(r === l ? (l < next.length - 1 ? l + 1 : 0) : r);
+  };
+
+  // Horizontal swipe → one lane along the rail. Clamped, not wrapped: the rail
+  // is a visible finite list of three, and a swipe that jumped from the bottom
+  // back to the top would read as a glitch rather than as a cycle.
+  stepLaneRef.current = (dir) => {
+    const i = Math.max(0, FORM_FILTERS.findIndex((f) => f.key === formFilter));
+    const next = FORM_FILTERS[Math.min(FORM_FILTERS.length - 1, Math.max(0, i + dir))];
+    if (!next || next.key === formFilter) return;
+    if (comparing) compareInLane(next.key);
+    else setFormFilter(next.key);
+    flashRail();
   };
 
   useEffect(() => {
@@ -2820,30 +3158,31 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   }, [homeNonce]);
 
   // ── Hydrate spring positions from share URL on mount ──
-  // Compare links seat against COMPARE_LIST (compare spans everything). A single
-  // ?h= link resolves to the lane that actually contains that robot, so a link
-  // to a non-humanoid opens in its own lane instead of missing.
+  // A compare link only opens as a pair when both robots share a lane — that is
+  // the only pair compare can seat now. A single ?h= link resolves to the lane
+  // that actually contains that robot, so a link to a non-humanoid opens in its
+  // own lane instead of missing.
   useEffect(() => {
     const { leftId, compareIds } = parseShareParams();
     if (compareIds.length >= 2) {
-      const l = indexOfId(COMPARE_LIST, compareIds[0]);
-      const r = indexOfId(COMPARE_LIST, compareIds[1]);
-      if (l >= 0 && r >= 0) {
-        laneRef.current = COMPARE_LIST;
-        springL.snapTo(l);
-        springR.snapTo(r);
+      const pair = resolveComparePair(compareIds[0], compareIds[1]);
+      if (pair) {
+        setFormFilter(pair.filter);
+        laneRef.current = listFor(pair.filter);
+        springL.snapTo(pair.left);
+        springR.snapTo(pair.right);
         setComparing(true);
         setActiveSide("right");
         return;
       }
-      // Only the left id resolved — open on it rather than dropping the link on
-      // the floor. app/page.tsx already renders a solo title/OG for this case.
-      if (l >= 0) {
-        const h = COMPARE_LIST[l];
-        const f = formOf(h);
-        setFormFilter(f);
-        laneRef.current = listFor(f);
-        springL.snapTo(seat(indexOfId(listFor(f), h.id)));
+      // Mismatched lanes, or only the left id resolved — open on the left robot
+      // rather than dropping the link on the floor. app/page.tsx already renders
+      // a solo title/OG for the partial case.
+      const solo = resolveDeeplink(compareIds[0]);
+      if (solo) {
+        setFormFilter(solo.filter);
+        laneRef.current = listFor(solo.filter);
+        springL.snapTo(solo.index);
         return;
       }
     }
@@ -2967,6 +3306,18 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const focusedH = !comparing ? lane[seatL] : undefined;
   const sceneAvailable = !!focusedH?.sceneUrl;
   const sceneActive = sceneEnabled && sceneAvailable;
+  // Variants that paint inside the card. "card" is the original low-opacity
+  // wash; "portal" and "bleed" run the scene at full strength so the glass
+  // above it has something to refract.
+  const sceneInCard = sceneVariant === "card" || sceneVariant === "portal" || sceneVariant === "bleed";
+  const scenePortalMode = sceneVariant === "portal" || sceneVariant === "bleed";
+  const scenePortalOn = sceneEnabled && scenePortalMode;
+  // Chips over a live scene switch to the glass chrome; everywhere else they
+  // keep whatever the glass tuner is set to.
+  const cardChipChrome = scenePortalOn && scenePortalGlass ? scenePortalChipChrome : glassChipChrome;
+  // Which card edges have chrome sitting on the scene — see the scrim below.
+  const scrimTop = labelPosition === "stack" || statusPlacement === "corner";
+  const scrimBottom = chipLayout === "floating" || chipLayout === "corners" || chipLayout === "unified";
   const sceneBackgroundImage = focusedH?.sceneUrl ? `url(${focusedH.sceneUrl})` : undefined;
 
   const sceneMask = useMemo(() => {
@@ -3002,7 +3353,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   );
 
   return (
-    <div className="h-screen overflow-hidden select-none relative" data-scene={sceneActive && sceneVariant === "viewport" ? "on" : "off"} style={{ background: pageBg, ["--action-hover-tint" as string]: actionHoverColor, ["--action-hover-pct" as string]: actionHoverPct, ["--action-active-pct" as string]: actionActivePct }}>
+    <div className="h-screen overflow-hidden select-none relative" data-scene={sceneActive && (sceneVariant === "viewport" || sceneVariant === "bleed") ? "on" : "off"} style={{ background: pageBg, ["--action-hover-tint" as string]: actionHoverColor, ["--action-hover-pct" as string]: actionHoverPct, ["--action-active-pct" as string]: actionActivePct }}>
       {sceneVariant === "viewport" && (
         <div
           aria-hidden
@@ -3031,6 +3382,27 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           }}
         />
       )}
+      {/* Bleed wash — the same scene behind the whole page at low strength and
+          heavy blur, so nav, pills, arc and footer frost over the robot's own
+          environment instead of over flat white. The card still runs the scene
+          at full strength, and the card edge is where the two meet. */}
+      {sceneVariant === "bleed" && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: -60,
+            zIndex: 0,
+            backgroundImage: sceneAvailable ? sceneBackgroundImage : undefined,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: sceneActive ? sceneBleedWash / 100 : 0,
+            filter: "blur(60px) saturate(150%)",
+            transition: "opacity 900ms cubic-bezier(0.32, 0.72, 0, 1)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
       {/* Neighbor-image preloader — off-screen Next/Image tags matching the
           card's sizes, so the optimized variants are cached before crossings. */}
       <div aria-hidden style={{ position: "absolute", left: -99999, top: 0, width: `${robotW}vw`, height: `${robotH}vh`, maxWidth: robotMaxW, pointerEvents: "none", opacity: 0 }}>
@@ -3045,46 +3417,289 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         })}
       </div>
 
-      {/* Form filter chips — sit under the layout switcher, centred on the card.
-          Hidden in compare so the two-card layout keeps its breathing room. */}
+      {/* Grid — the whole open lane at once, over the wheel rather than instead
+          of it. Same stage, so the column, the toasts and the search modal all
+          keep working; the wheel is still seated behind it, and picking a robot
+          here is what hands it back. Padded clear of the column on the left so
+          the first tile never starts under the rail. */}
+      {gridOpen && (
+        <div
+          className="absolute inset-0"
+          style={{
+            zIndex: 20,
+            background: pageBg,
+            paddingLeft: "calc(var(--nav-edge, 24px) + 128px)",
+          }}
+        >
+          <GridView humanoids={lane} onSelect={openFromGrid} />
+        </div>
+      )}
+
+      {/* Floating sidebar — the site's entire chrome as one object.
+          It used to be three: a mark alone in the top-left corner, this rail in
+          the middle, and a credit capsule with a plus at the foot. Three glass
+          pills on one edge, identical chrome, so a wordmark and a copyright
+          line ranked equal to the only control on the page. Folding them into
+          one column makes rank a matter of position instead — identity at the
+          top, navigation in the middle, actions at the bottom — and the plus,
+          which existed only to open a pill that no longer exists, is gone.
+
+          Still vertically centred on the focused name and sharing a side with
+          the name arc on purpose: the column stays anchored while the names
+          sweep past it. In compare it narrows to glyphs — two cards leave no
+          room for labels — but the lane indicator stays lit, because compare
+          runs inside the open lane and that lane is still the filter in force. */}
       <div
-        className="fixed left-1/2 -translate-x-1/2 z-[4] flex items-center gap-1"
+        className="fixed top-1/2 -translate-y-1/2 flex flex-col"
         style={{
-          top: 68,
-          opacity: comparing ? 0 : 1,
-          visibility: comparing ? "hidden" : "visible",
-          transition: "opacity 260ms ease, visibility 260ms ease",
-          pointerEvents: comparing ? "none" : "auto",
+          // Normally z-4, above the stage and below nothing. The grid opens at
+          // 20 to clear the card layer (which reaches 12 inside this same
+          // stacking context), so the column steps over it rather than being
+          // buried by the view its own row opened.
+          zIndex: gridOpen ? 21 : 4,
+          left: "var(--nav-edge, 24px)",
+          // No capsule, in either state. Nothing else on this page sits in a
+          // container — not the card, not the arc — and glass that faded in and
+          // out under the cursor was the fussiest of the three options. The
+          // column is page furniture; the sliding indicator is the only fill it
+          // needs, and it says the one thing containment would have said.
+          // The rows carry their own 10px inset, so this only has to keep the
+          // lane indicator's fill off the column's edge.
+          padding: 4,
         }}
+        onMouseEnter={() => setRailOpen(true)}
+        onMouseLeave={() => { setRailOpen(false); setRailHover(null); }}
       >
-        {FORM_FILTERS.map(({ key, label }) => {
-          const active = formFilter === key;
-          const count = countFor(key);
-          return (
-            <button
-              key={key}
-              onClick={() => setFormFilter(key)}
-              aria-pressed={active}
-              className="cursor-pointer"
-              style={{
-                fontFamily: "var(--font-geist-sans)",
-                fontSize: 12,
-                lineHeight: 1,
-                letterSpacing: "0.01em",
-                padding: "7px 12px",
-                borderRadius: 999,
-                border: "1px solid transparent",
-                background: active ? "rgba(0,0,0,0.05)" : "transparent",
-                color: active ? "rgba(0,0,0,0.72)" : "rgba(0,0,0,0.38)",
-                transition: "background 200ms ease, color 200ms ease",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {label}
-              <span style={{ marginLeft: 6, opacity: 0.45, fontVariantNumeric: "tabular-nums" }}>{count}</span>
-            </button>
-          );
-        })}
+        {/* Identity. Glyph only — the mark is the label. It still uses the
+            shared row and glyph slot, so it lines up with everything under it
+            without spelling the site's name out beside itself. */}
+        <button
+          type="button"
+          onClick={onHome}
+          aria-label="Humanoid Index"
+          className="site-mark-btn cursor-pointer"
+          style={{ ...SIDEBAR_ROW, color: CHROME_INK.off }}
+        >
+          <span style={SIDEBAR_GLYPH_SLOT}>
+            {/* Sized to the glyph column rather than overhanging it. The mark
+                is 1.55:1, so 18 wide lands it at the same optical weight as the
+                18px form glyphs beneath it. */}
+            <SiteMark size={18} color="#5F6059" opacity={SIDEBAR_GLYPH_OP.off} />
+          </span>
+        </button>
+
+        {/* The blurb that used to sit here read "A visual index of humanoid
+            robots." — which, one line under a row now labelled "Humanoid
+            Index", was the same sentence twice. The name is the clue. */}
+        <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
+
+        {/* Lanes. Their own positioning context so the sliding indicator keeps
+            indexing from 0 — putting it in the outer column would have made its
+            offset depend on the height of everything stacked above it. */}
+        <div style={{ position: "relative" }}>
+          {/* One shared indicator that slides between segments. The selection
+              travels down the rail instead of blinking off one row and on at
+              another — same trick the footer capsule used to play horizontally. */}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              height: 40,
+              borderRadius: 20,
+              background: "rgba(95, 96, 89, 0.07)",
+              transform: `translateY(${Math.max(0, FORM_FILTERS.findIndex((f) => f.key === formFilter)) * 40}px)`,
+              opacity: 1,
+              // 320ms / cubic-bezier(0.33, 1, 0.68, 1) is the site's motion. No
+              // overshoot: nothing else on the page bounces, and a sidebar that
+              // did would read as the one decorated control.
+              transition: "transform 320ms cubic-bezier(0.33, 1, 0.68, 1), opacity 200ms ease",
+              pointerEvents: "none",
+            }}
+          />
+          {FORM_FILTERS.map(({ key, label }) => {
+            const active = formFilter === key;
+            const hovered = railHover === key;
+            const count = countFor(key);
+            return (
+              <button
+                key={key}
+                onClick={() => {
+                  if (comparing) { compareInLane(key); return; }
+                  setFormFilter(key);
+                }}
+                onMouseEnter={() => setRailHover(key)}
+                onMouseLeave={() => setRailHover((h) => (h === key ? null : h))}
+                aria-pressed={active}
+                aria-label={label}
+                className="lane-row cursor-pointer"
+                style={{
+                  ...SIDEBAR_ROW,
+                  color: active ? CHROME_INK.on : hovered ? CHROME_INK.hover : CHROME_INK.off,
+                  transition: "color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+                }}
+              >
+                {/* The glyph is solid ink at 18px, which out-weighs the label it
+                    sits next to. Held back a step unless the lane is active. */}
+                <span
+                  style={{
+                    ...SIDEBAR_GLYPH_SLOT,
+                    opacity: active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off,
+                    transition: "opacity 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+                  }}
+                >
+                  {/* Remount on activation so the glyph's one-shot replays;
+                      hover is handled in CSS off `.lane-row`. */}
+                  <FormGlyph key={active ? "on" : "off"} form={key} size={18} active={active} />
+                </span>
+                {/* Label and count are separate columns now — the label is
+                    fixed, the count is what opens. */}
+                <span aria-hidden={comparing} style={sidebarLabel(comparing)}>
+                  <span>{label}</span>
+                </span>
+                <span aria-hidden={comparing} style={sidebarCount(railExpanded && !comparing)}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
+
+        {/* View. Its own group between the lanes and the actions, because that
+            is what it is: not a filter (it doesn't change which robots you are
+            looking at) and not an action (nothing leaves the page). It sits
+            under the lanes since it reads as the second half of the same
+            sentence — this lane, seen this way. */}
+        <button
+          type="button"
+          onClick={() => setGridOpen((v) => !v)}
+          aria-label="Grid"
+          aria-pressed={gridOpen}
+          onMouseEnter={() => setRailHover(null)}
+          className="sidebar-action cursor-pointer"
+          style={{ ...SIDEBAR_ROW, color: gridOpen ? CHROME_INK.on : CHROME_INK.off }}
+        >
+          <span style={{ ...SIDEBAR_GLYPH_SLOT, opacity: gridOpen ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off, transition: "opacity 200ms ease" }}>
+            <LayoutGrid size={16} strokeWidth={1.75} />
+          </span>
+          <span aria-hidden={comparing} style={sidebarLabel(comparing)}>
+            <span>Grid</span>
+          </span>
+          {/* Keeps the trailing column so the row's width tracks the lanes and
+              the actions as the counts open — an empty slot, not a missing one. */}
+          <span aria-hidden style={{ ...sidebarCount(railExpanded && !comparing), fontSize: 12 }} />
+        </button>
+
+        <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
+
+        {/* Actions. Same row, so they read as more of the column rather than as
+            a menu that opened inside it — which is what the plus was for. */}
+        {[
+          // Ask leads the group: it is the only one that does something to the
+          // collection rather than to the page, and it is the row a visitor who
+          // does not know what to look for actually needs.
+          // Search leads: it is the fastest way to a specific robot, and the
+          // one row a visitor who already knows what they want will reach for.
+          // Saved leads the group. It is the only row that reads the visitor's
+          // own state back to them, and its count is the one number in the
+          // column that they put there. Hidden until there is something in it —
+          // an empty row here would be chrome advertising a feature.
+          ...(savedItems.length > 0 ? [{
+            key: "saved",
+            label: "Saved",
+            icon: <Bookmark size={16} strokeWidth={1.75} fill={savedSurfaceOn ? "currentColor" : "none"} />,
+            onClick: () => {
+              if (savedSurface === "lane") { if (comparing) return; setSavedLaneOn((v) => !v); return; }
+              if (savedSurface === "shelf") { setShelfOpen((v) => !v); return; }
+              setTrayOpen((v) => !v);
+            },
+            active: savedSurfaceOn,
+            hint: String(savedItems.length),
+          }] : []),
+          { key: "search", label: "Search", icon: <Search size={16} strokeWidth={1.75} />, onClick: () => window.dispatchEvent(new Event(SEARCH_OPEN_EVENT)), active: false, hint: "\u2318K" },
+          { key: "ask", label: "Ask", icon: <Sparkles size={16} strokeWidth={1.75} />, onClick: onToggleChat, active: chatActive, hint: undefined },
+          { key: "share", label: "Share", icon: <Share size={16} strokeWidth={1.75} />, onClick: onShareSite, active: false, hint: undefined },
+          { key: "feedback", label: "Feedback", icon: <MessageCircle size={16} strokeWidth={1.75} />, onClick: onFeedback, active: false, hint: undefined },
+        ].map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={item.onClick}
+            aria-label={item.label}
+            onMouseEnter={() => setRailHover(null)}
+            aria-pressed={item.active || undefined}
+            className="sidebar-action cursor-pointer"
+            style={{
+              ...SIDEBAR_ROW,
+              // Open chat reads like an open lane — same ink step — but without
+              // the sliding pill, which belongs to the lanes and would imply
+              // Ask is a fourth category.
+              color: item.active ? CHROME_INK.on : CHROME_INK.off,
+            }}
+          >
+            <span style={{ ...SIDEBAR_GLYPH_SLOT, opacity: item.active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off, transition: "opacity 200ms ease" }}>
+              {item.icon}
+            </span>
+            <span aria-hidden={comparing} style={sidebarLabel(comparing)}>
+              <span>{item.label}</span>
+            </span>
+            {/* Same trailing column the lane counts open into — a shortcut is
+                the action row's equivalent of a count, so it reveals with the
+                same gesture instead of inventing a second one. */}
+            <span aria-hidden style={{ ...sidebarCount(railExpanded && !comparing), fontSize: 12 }}>
+              {item.hint}
+            </span>
+          </button>
+        ))}
+
+        {/* The credit is its own group and needs the group gap above it — it was
+            butted straight against Feedback, so the one break in the column
+            without space read as an orphaned line rather than a footer. Gated
+            on compare so it collapses with the credit it spaces. */}
+        <div aria-hidden style={{ height: comparing ? 0 : SIDEBAR_GROUP_GAP, transition: "height 320ms cubic-bezier(0.33, 1, 0.68, 1)" }} />
+
+        {/* Always on. Revealing it with the counts meant a copyright line
+            animated every time the cursor crossed the column — motion on the
+            one element in here that never changes, which reads as a twitch
+            rather than as information arriving. Static, at the column's lowest
+            ink, it costs nothing and stops moving. Still collapses in compare,
+            where the whole column narrows to glyphs. */}
+        <div
+          aria-hidden
+          style={{
+            overflow: "hidden",
+            height: comparing ? 0 : 24,
+            // Width has to collapse with the height. It is the widest thing in
+            // the column, so at width:auto it kept setting the column's width
+            // even at height 0 — invisible, but it held the whole rail ~52px
+            // wider than its rows in compare, which the lane indicator then
+            // drew as a bar hanging off the glyphs. 92 matches the blurb.
+            width: comparing ? 0 : SIDEBAR_PROSE_W,
+            opacity: comparing ? 0 : 1,
+            transition: "height 320ms cubic-bezier(0.33, 1, 0.68, 1), width 320ms cubic-bezier(0.33, 1, 0.68, 1), opacity 200ms ease",
+            display: "flex",
+            alignItems: "center",
+            // 10 is the rows' own horizontal inset, so the credit starts on the
+            // same vertical as the glyph column above it. 12 was off by two
+            // against every other thing in the sidebar.
+            paddingLeft: comparing ? 0 : 10,
+            fontFamily: "var(--font-geist-sans)",
+            // On the same ink step as the row labels rather than a fainter one
+            // of its own — 0.45 at 12px was legible in theory and invisible in
+            // practice against white.
+            fontSize: 13,
+            lineHeight: 1.35,
+            fontWeight: 450,
+            color: CHROME_INK.off,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Roy Jad © 2026
+        </div>
       </div>
 
       {/* Left arc nav */}
@@ -3145,6 +3760,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         }}
       >
         <ArcDots
+            list={lane}
             index={springR.index}
             subscribe={springR.subscribe}
             mirrored
@@ -3195,7 +3811,13 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         return (
           <div
             className="absolute flex items-center justify-center cursor-pointer"
-            style={{ width: 110, height: 100, top: "50%", transform: "translateY(-50%)", right: "calc(19% - 67px)", zIndex: 12 }}
+            // Anchored to the content block, not to the viewport. This used to
+            // be `right: calc(19% - 67px)` — a percentage of window width set
+            // against a card whose right edge comes from `centerHalfWidth`, so
+            // the gap between the two drifted every time the window changed
+            // size (72px at 1494 wide, growing from there). Now it sits a fixed
+            // COMPARE_SLOT_GAP right of where the card + stats actually end.
+            style={{ width: 110, height: 100, top: "50%", transform: "translateY(-50%)", left: compareSlotLeft, zIndex: 12 }}
             onClick={() => { setAddHover(false); enterCompare(); }}
             onMouseEnter={() => setAddHover(true)}
             onMouseLeave={() => setAddHover(false)}
@@ -5065,7 +5687,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   <div
                     className="absolute z-20 pointer-events-none"
                     style={{
-                      ...glassChipChrome,
+                      ...cardChipChrome,
                       bottom: bottomPx,
                       left: "50%",
                       transform: blurbVisible ? "translateX(-50%) translateY(0)" : "translateX(-50%) translateY(6px)",
@@ -5312,7 +5934,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             const hasShare = !!onShareView;
             const hasPanel = collapseVariant === "info-icon";
             const hasScene = process.env.NODE_ENV === "development" && !!h.sceneUrl;
-            if (!hasShare && !hasPanel && !hasInfo && !hasThreeD && !hasSpin && !hasScene) return null;
+            // No early return on an otherwise featureless robot: every entry can
+            // be saved, so the cluster always has at least one button in it.
             const ico = cardIconRender();
             const innerBtnStyle: React.CSSProperties = {
               width: cardIconSize,
@@ -5334,6 +5957,29 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 </button>
               </Tooltip>
             ) : null;
+            // Save. Filled when saved, outline when not — the same read as a
+            // bookmark anywhere else, so it needs no label. Sits with the other
+            // card actions rather than on the image: saving is something you do
+            // to the entry, not to the photograph.
+            const saved = favoriteIds.has(h.id);
+            const saveButton = (
+              <Tooltip label={saved ? "Remove from saved" : "Save"} shortcut="⇧S">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleFavorite(h.id); }}
+                  aria-pressed={saved}
+                  aria-label={saved ? "Remove from saved" : "Save"}
+                  style={innerBtnStyle}
+                >
+                  <Bookmark
+                    size={ico.iconBoxPx}
+                    strokeWidth={ico.iconStrokeWidth}
+                    fill={saved ? "currentColor" : "none"}
+                    style={{ transition: `fill ${dur} ${ease}` }}
+                  />
+                </button>
+              </Tooltip>
+            );
             const shuffleButton = onRandomHumanoid ? (
               <Tooltip label="Shuffle" shortcut="?">
                 <button type="button" onClick={(e) => { e.stopPropagation(); onRandomHumanoid(); }} aria-label="Shuffle to a random humanoid" style={innerBtnStyle}>
@@ -5460,12 +6106,39 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             // circle in the label row already toggles the stats column, and two
             // controls for one action made the bottom bar read as clutter. It
             // stays exported for the split / image-corner groupings.
-            const buttons = (<>{shuffleButton}{shareButton}{otherButtons}</>);
-            return { buttons, shareButton, shuffleButton, otherButtons, infoSlot, mediaSlots, hasMediaPill, panelButton, infoButton, mediaButtons, hasMedia };
+            const buttons = (<>{saveButton}{shuffleButton}{shareButton}{otherButtons}</>);
+            return { buttons, saveButton, shareButton, shuffleButton, otherButtons, infoSlot, mediaSlots, hasMediaPill, panelButton, infoButton, mediaButtons, hasMedia };
           })() : null;
 
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
+            {/* Light spill — the scene again, blurred past recognition and bled
+                past the card edge, so the room throws colour onto the white
+                page instead of stopping dead at the corner radius. This is what
+                ties the stats column to the card without putting anything
+                behind the text. Sits under the card (which is zIndex 2). */}
+            {scenePortalMode && h.sceneUrl && sceneGlow > 0 && (
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  inset: -72,
+                  zIndex: 0,
+                  backgroundImage: `url(${h.sceneUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  filter: "blur(64px) saturate(200%)",
+                  opacity: sceneEnabled ? sceneGlow / 100 : 0,
+                  transition: "opacity 900ms cubic-bezier(0.32, 0.72, 0, 1)",
+                  pointerEvents: "none",
+                  // Without this the blur still ends on a rectangle — a soft
+                  // rectangle, but a visible one. The radial fade is what makes
+                  // it read as light instead of a second card.
+                  WebkitMaskImage: "radial-gradient(ellipse 62% 58% at 50% 50%, #000 0%, rgba(0,0,0,0.55) 55%, transparent 88%)",
+                  maskImage: "radial-gradient(ellipse 62% 58% at 50% 50%, #000 0%, rgba(0,0,0,0.55) 55%, transparent 88%)",
+                }}
+              />
+            )}
             {/* Card-edge toggle — sticks out the right edge of the LEFT card
                 when chipLayout=corners + cornersCloseMode=card-edge-tab.
                 Acts as both expand and collapse. */}
@@ -5505,6 +6178,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             {/* Inner card */}
             <div
               ref={isFirst ? leftCardRef : rightCardRef}
+              data-scene-portal={scenePortalOn && h.sceneUrl ? "on" : "off"}
               className="relative flex flex-col overflow-hidden"
               onClick={isFirst && !comparing && chipLayout === "corners" && cornersCloseMode === "click-card" && !statsCollapsed ? () => setStatsCollapsed(true) : undefined}
               style={{
@@ -5533,35 +6207,70 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               {/* Card-local scene — fades in inside the card's rounded rectangle
                   when scene mode is on, so the environment reads as a portal
                   rather than a full-viewport wash. */}
-              {sceneVariant === "card" && h.sceneUrl && (() => {
+              {sceneInCard && h.sceneUrl && (() => {
                 const filterParts: string[] = [];
                 if (sceneBlur > 0) filterParts.push(`blur(${sceneBlur}px)`);
                 if (sceneCardSaturation !== 100) filterParts.push(`saturate(${sceneCardSaturation}%)`);
+                // Portal/bleed run the scene at full strength — the whole point
+                // is that the glass above it has a real backdrop. "card" keeps
+                // the original low-opacity wash.
+                const layerOpacity = scenePortalMode ? 1 : sceneOpacity / 100;
                 const cardVignetteMask = sceneCardVignette > 0
                   ? `radial-gradient(ellipse at center, #000 ${Math.max(0, 100 - sceneCardVignette)}%, transparent 100%)`
                   : undefined;
+                // Parallax rides a CSS var the spring writes each frame (see the
+                // give subscription), so the room drifts behind the fixed glass
+                // without a single React re-render.
+                const shift = sceneParallax ? "translate3d(var(--scene-x, 0px), 0, 0)" : "";
+                const zoom = sceneCardScale !== 100 ? ` scale(${sceneCardScale / 100})` : "";
+                const transform = (shift + zoom).trim() || undefined;
                 return (
-                  <div
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      zIndex: 0,
-                      backgroundImage: `url(${h.sceneUrl})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                      opacity: sceneEnabled ? sceneOpacity / 100 : 0,
-                      filter: filterParts.length ? filterParts.join(" ") : undefined,
-                      transform: sceneCardScale !== 100 ? `scale(${sceneCardScale / 100})` : undefined,
-                      transformOrigin: "center center",
-                      transition: "opacity 700ms cubic-bezier(0.32, 0.72, 0, 1), transform 400ms cubic-bezier(0.32, 0.72, 0, 1)",
-                      pointerEvents: "none",
-                      WebkitMaskImage: cardVignetteMask,
-                      maskImage: cardVignetteMask,
-                      WebkitMaskRepeat: "no-repeat",
-                      maskRepeat: "no-repeat",
-                    }}
-                  />
+                  <>
+                    <div
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        zIndex: 0,
+                        backgroundImage: `url(${h.sceneUrl})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                        opacity: sceneEnabled ? layerOpacity : 0,
+                        filter: filterParts.length ? filterParts.join(" ") : undefined,
+                        transform,
+                        transformOrigin: "center center",
+                        transition: "opacity 700ms cubic-bezier(0.32, 0.72, 0, 1)",
+                        pointerEvents: "none",
+                        WebkitMaskImage: cardVignetteMask,
+                        maskImage: cardVignetteMask,
+                        WebkitMaskRepeat: "no-repeat",
+                        maskRepeat: "no-repeat",
+                      }}
+                    />
+                    {/* Scrim — only where chrome actually sits on top of the
+                        scene. In the default layout the placard is above the
+                        card and the pill row is below it, so nothing overlaps
+                        and the scrim would be pure dimming; it renders no bands
+                        at all. Turn on a floating/corners chip layout or a
+                        stacked placard and the matching band appears. */}
+                    {scenePortalMode && scenePortalDim > 0 && (scrimTop || scrimBottom) && (
+                      <div
+                        aria-hidden
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          zIndex: 0,
+                          pointerEvents: "none",
+                          opacity: sceneEnabled ? 1 : 0,
+                          transition: "opacity 700ms cubic-bezier(0.32, 0.72, 0, 1)",
+                          background: [
+                            scrimTop ? `linear-gradient(to bottom, rgba(0,0,0,${scenePortalDim / 100}) 0%, rgba(0,0,0,0) 30%)` : null,
+                            scrimBottom ? `linear-gradient(to top, rgba(0,0,0,${scenePortalDim / 100}) 0%, rgba(0,0,0,0) 30%)` : null,
+                          ].filter(Boolean).join(", "),
+                        }}
+                      />
+                    )}
+                  </>
                 );
               })()}
               {/* Media area */}
@@ -5635,7 +6344,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     <div
                       className={`absolute z-30 pointer-events-auto ${fadeClass}`}
                       style={{
-                        ...glassChipChrome,
+                        ...cardChipChrome,
                         bottom: cardIconInset,
                         left: "50%",
                         transform: "translateX(-50%)",
@@ -5668,7 +6377,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     <div
                       className="inline-flex items-center"
                       style={{
-                        ...glassChipChrome,
+                        ...cardChipChrome,
                         height: cardIconSize,
                         borderRadius: cardIconSize / 2,
                         opacity: chipCtx.hasMediaPill ? 1 : 0,
@@ -5742,7 +6451,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     <div
                       className="absolute z-20 pointer-events-none"
                       style={{
-                        ...glassChipChrome,
+                        ...cardChipChrome,
                         // Sits above the bottom cluster only when chips float
                         // over the image (floating/corners). Panel/below modes
                         // move the chip row out of the media area entirely, so
@@ -5806,7 +6515,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     inset={cardIconInset}
                     iconBoxPx={ico.iconBoxPx}
                     iconStrokeWidth={ico.iconStrokeWidth}
-                    glassChipChrome={glassChipChrome}
+                    glassChipChrome={cardChipChrome}
                   />
                 );
               })()}
@@ -5840,7 +6549,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   <div
                     className="inline-flex items-center"
                     style={{
-                      ...glassChipChrome,
+                      ...cardChipChrome,
                       height: cardIconSize,
                       borderRadius: cardIconSize / 2,
                     }}
@@ -5864,7 +6573,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       <div
                         className="inline-flex items-center"
                         style={{
-                          ...glassChipChrome,
+                          ...cardChipChrome,
                           height: cardIconSize,
                           borderRadius: cardIconSize / 2,
                           opacity: chipCtx.hasMediaPill ? 1 : 0,
@@ -5984,7 +6693,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   transition: `transform ${dur} ${ease}`,
                 }}
               >
-                {renderRobot(hL, distL, indexOfId(COMPARE_LIST, hL?.id), true)}
+                {renderRobot(hL, distL, globalIndexOf(hL?.id), true)}
               </div>
 
               {/* Stats slot — crossfade single ↔ merged */}
@@ -6009,7 +6718,22 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   marginBottom: 0,
                   overflowX: "visible", overflowY: "visible",
                   width: comparing ? compareStatsW : effectiveStatsW,
-                  height: comparing ? `${robotH - 4}vh` : `${robotH}vh`,
+                  // Single view: match the grey card exactly, not a raw vh and
+                  // not the card *wrapper*. Card height derives from
+                  // `cardPxFor` (width- or height-capped, per-lane aspect), so
+                  // a vh slot ran taller than the card whenever the card was
+                  // width-capped — the "other" lane at aspect 1.0 left the
+                  // stats floating ~32px above everything. Aligning to the
+                  // wrapper was still wrong: the wrapper includes the placard,
+                  // which floats *above* the card, so the first stat row lined
+                  // up with the "i" instead of the card's top edge. The row is
+                  // items-end and the wrapper bottom is the card bottom, so a
+                  // height of exactly cardH lands both edges on the card.
+                  // Compare needs the same treatment: the vh slot ran ~8px
+                  // taller than the card wrapper, so it — not the cards — set
+                  // the row height, and the centred row pushed both cards
+                  // further below the focused arc name than single view does.
+                  height: cardH,
                   transform: !comparing && addHover && addCtaMode !== "always" ? "translateX(-16px)" : "translateX(0)",
                   transition: "width var(--collapse-dur) var(--collapse-ease), height var(--collapse-dur) var(--collapse-ease), opacity var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease)",
                 }}
@@ -6337,7 +7061,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                             onClick={(e) => { e.stopPropagation(); onRandomHumanoid(); }}
                             aria-label="Shuffle to a random humanoid"
                             className={actionIco.className}
-                            style={{ ...actionIco.style, ...glassChipChrome, flexShrink: 0 }}
+                            style={{ ...actionIco.style, ...cardChipChrome, flexShrink: 0 }}
                           >
                             <Dices size={actionIco.iconBoxPx} strokeWidth={actionIco.iconStrokeWidth} />
                           </button>
@@ -6351,7 +7075,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                             aria-pressed={blurbVisible}
                             aria-label={blurbVisible ? "Hide overview" : "Show overview"}
                             className={actionIco.className}
-                            style={{ ...actionIco.style, ...glassChipChrome, flexShrink: 0 }}
+                            style={{ ...actionIco.style, ...cardChipChrome, flexShrink: 0 }}
                           >
                             <Info size={actionIco.iconBoxPx} strokeWidth={actionIco.iconStrokeWidth} />
                           </button>
@@ -6370,7 +7094,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                                 aria-label="Copy view link"
                                 className="pointer-events-auto cursor-pointer"
                                 style={{
-                                  ...glassChipChrome,
+                                  ...cardChipChrome,
                                   border: "1px solid transparent",
                                   maxWidth: "100%",
                                   height: cardIconSize,
@@ -6402,7 +7126,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                             {...tagProps}
                             className="pointer-events-auto cursor-pointer"
                             style={{
-                              ...glassChipChrome,
+                              ...cardChipChrome,
                               border: "1px solid transparent",
                               maxWidth: "100%",
                               height: cardIconSize,
@@ -6478,7 +7202,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       aria-label="Remove from compare"
                       className="absolute z-30 cursor-pointer"
                       style={{
-                        ...(compareBtnStyle === "flat" ? flatStyle : { ...glassChipChrome, border: "none" }),
+                        ...(compareBtnStyle === "flat" ? flatStyle : { ...cardChipChrome, border: "none" }),
                         width: closeSize,
                         height: closeSize,
                         borderRadius: closeSize / 2,
@@ -6501,7 +7225,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     </button>
                   );
                 })()}
-                {renderRobot(hR, distR, indexOfId(COMPARE_LIST, hR?.id), false)}
+                {renderRobot(hR, distR, globalIndexOf(hR?.id), false)}
               </div>
             </div>
             {/* Unified chip bar — one centered row that morphs between
@@ -6551,7 +7275,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               })();
               return (
                 <div className="pointer-events-auto" style={{ marginTop: 12, display: "flex", alignItems: "center", gap: cardIconGap }}>
-                  <div className="inline-flex items-center" style={{ ...glassChipChrome, height: cardIconSize, borderRadius: cardIconSize / 2, gap: cardIconGap, padding: `0 ${Math.round(cardIconSize * 0.15)}px` }}>
+                  <div className="inline-flex items-center" style={{ ...cardChipChrome, height: cardIconSize, borderRadius: cardIconSize / 2, gap: cardIconGap, padding: `0 ${Math.round(cardIconSize * 0.15)}px` }}>
                     {hasShare && (
                       <Tooltip label="Share this view" shortcut="S">
                         <button type="button" onClick={(e) => { e.stopPropagation(); onShareView?.(); }} aria-label="Share this view" style={innerBtnStyle}>
@@ -6599,7 +7323,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                             aria-label="Copy view link"
                             className="pointer-events-auto cursor-pointer"
                             style={{
-                              ...glassChipChrome,
+                              ...cardChipChrome,
                               border: "1px solid transparent",
                               height: cardIconSize,
                               display: "inline-flex",
@@ -6628,7 +7352,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                         {...tagProps}
                         className="pointer-events-auto cursor-pointer"
                         style={{
-                          ...glassChipChrome,
+                          ...cardChipChrome,
                           border: "1px solid transparent",
                           height: cardIconSize,
                           display: "inline-flex",
@@ -6939,7 +7663,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           <div>
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Variant</p>
             <div className="flex gap-1.5">
-              {(["card", "viewport"] as const).map((v) => (
+              {(["portal", "bleed", "card", "viewport"] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setSceneVariant(v)}
@@ -6985,7 +7709,43 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 </div>
               </>
             )}
-            {sceneVariant === "card" && (
+            {scenePortalMode && (
+              <>
+                <div className="space-y-1">
+                  <label className="text-[12px] text-neutral-500 flex justify-between">Scrim <span className="tabular-nums text-neutral-400">{scenePortalDim}%</span></label>
+                  <input type="range" min={0} max={70} value={scenePortalDim} onChange={(e) => setScenePortalDim(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                </div>
+                {sceneVariant === "bleed" && (
+                  <div className="space-y-1">
+                    <label className="text-[12px] text-neutral-500 flex justify-between">Page wash <span className="tabular-nums text-neutral-400">{sceneBleedWash}%</span></label>
+                    <input type="range" min={0} max={40} value={sceneBleedWash} onChange={(e) => setSceneBleedWash(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <label className="text-[12px] text-neutral-500 flex justify-between">Spill <span className="tabular-nums text-neutral-400">{sceneGlow}%</span></label>
+                  <input type="range" min={0} max={80} value={sceneGlow} onChange={(e) => setSceneGlow(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                </div>
+                <label className="flex items-center justify-between text-[12px] text-neutral-500 cursor-pointer">
+                  Glass chips
+                  <input type="checkbox" checked={scenePortalGlass} onChange={(e) => setScenePortalGlass(e.target.checked)} className="accent-neutral-900" />
+                </label>
+              </>
+            )}
+            {sceneVariant !== "viewport" && (
+              <>
+                <label className="flex items-center justify-between text-[12px] text-neutral-500 cursor-pointer">
+                  Parallax
+                  <input type="checkbox" checked={sceneParallax} onChange={(e) => setSceneParallax(e.target.checked)} className="accent-neutral-900" />
+                </label>
+                {sceneParallax && (
+                  <div className="space-y-1">
+                    <label className="text-[12px] text-neutral-500 flex justify-between">Drift <span className="tabular-nums text-neutral-400">{sceneParallaxAmt}px</span></label>
+                    <input type="range" min={0} max={160} value={sceneParallaxAmt} onChange={(e) => setSceneParallaxAmt(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
+                  </div>
+                )}
+              </>
+            )}
+            {sceneVariant !== "viewport" && (
               <>
                 <div>
                   <label className="text-[12px] text-neutral-500 flex justify-between">Scale <span className="tabular-nums text-neutral-400">{sceneCardScale}%</span></label>
@@ -7288,6 +8048,33 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             <p className="text-[10px] text-neutral-400 leading-relaxed">
               Apple-style hairline between every stat row. Hides the inline cm/in toggle.
             </p>
+          </div>
+          <div className="pt-2 border-t border-neutral-100">
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Saved</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(["lane", "tray", "shelf"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setSavedSurface(v)}
+                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${savedSurface === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-neutral-400 leading-relaxed mt-1.5">
+              Bookmark on the card saves (⇧S). Lane puts the saved list on the wheel,
+              Tray totals it in the corner, Shelf lays it out full-screen.
+              {savedItems.length > 0 ? ` ${savedItems.length} saved.` : " Nothing saved yet."}
+            </p>
+            {savedItems.length > 0 && (
+              <button
+                onClick={() => setFavoriteIds(() => { try { localStorage.removeItem("humanoid-index:favorites"); } catch {} return new Set(); })}
+                className="mt-1.5 text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer"
+              >
+                Clear saved
+              </button>
+            )}
           </div>
           <div className="pt-2 border-t border-neutral-100">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Buy</p>
@@ -8091,6 +8878,32 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         </div>
       )}
 
+      {/* Saved surfaces. Both read the same set the wheel's saved lane does —
+          the surface is the only thing the switch changes. */}
+      {savedSurface === "tray" && !comparing && (
+        <SavedTray
+          items={savedItems}
+          open={trayOpen}
+          onOpenChange={setTrayOpen}
+          onSelect={seatOnId}
+          onRemove={toggleFavorite}
+        />
+      )}
+      {savedSurface === "shelf" && (
+        <SavedShelf
+          items={savedItems}
+          open={shelfOpen}
+          onClose={() => setShelfOpen(false)}
+          onSelect={(id) => { setShelfOpen(false); seatOnId(id); }}
+          onRemove={toggleFavorite}
+          onShare={() => {
+            const url = `${window.location.origin}${window.location.pathname}?picks=${savedItems.map((h) => h.id).join(",")}`;
+            navigator.clipboard?.writeText(url);
+            toast("Shelf link copied");
+          }}
+        />
+      )}
+
     </div>
   );
 }
@@ -8192,10 +9005,18 @@ function parseChat(raw: string): { reply: string; results: typeof humanoids; com
   return { reply, results, compare: wantsCompare && results.length >= 2 };
 }
 
+// Geist at 400 goes wispy on a white glass panel at these sizes — the panel
+// was the only place on the site running default body weight, which is what
+// made it look like a different product's component. 450 sits between the
+// site's body text and its 500 labels.
+const CHAT_WEIGHT = 450;
+
 function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; config: ChatConfig }) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<{ role: "user" | "guide"; text: string; suggestions?: typeof humanoids }[]>([
-    { role: "guide", text: "What kind of humanoid are you looking for? I can help you narrow it down." },
+    // The placeholder already shows what a query looks like, so the greeting
+    // does not need to teach it. One question, no preamble.
+    { role: "guide", text: "What are you looking for?" },
   ]);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -8213,10 +9034,10 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
   };
 
   const userBubbleStyle = (): React.CSSProperties => {
-    const base: React.CSSProperties = { fontSize: config.fontSize, maxWidth: "80%", lineHeight: 1.5 };
+    const base: React.CSSProperties = { fontSize: config.fontSize, fontWeight: CHAT_WEIGHT, maxWidth: "80%", lineHeight: 1.5 };
     if (config.userStyle === "dark") return { ...base, background: "var(--c-ink)", color: "white" };
-    if (config.userStyle === "outline") return { ...base, background: "transparent", border: "1px solid rgba(0,0,0,0.14)", color: "#1d1d1f" };
-    return { ...base, background: "rgba(0,0,0,0.07)", color: "#1d1d1f" };
+    if (config.userStyle === "outline") return { ...base, background: "transparent", boxShadow: "inset 0 0 0 1px rgba(95, 96, 89, 0.18)", color: CHROME_INK.on };
+    return { ...base, background: "rgba(95, 96, 89, 0.08)", color: CHROME_INK.on };
   };
 
   return (
@@ -8229,8 +9050,12 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
           background: `rgba(255,255,255,${config.bgOpacity / 100})`,
           backdropFilter: `blur(${config.blur}px) saturate(1.4)`,
           WebkitBackdropFilter: `blur(${config.blur}px) saturate(1.4)`,
-          border: "1px solid rgba(0,0,0,0.06)",
-          boxShadow: `0 24px 64px rgba(0,0,0,${config.shadowOp / 100}), 0 4px 16px rgba(0,0,0,${config.shadowOp / 200})`,
+          // The site's glass edge — an inset sheen over an inset hairline —
+          // instead of a flat 1px border. Every other floating surface here
+          // (card icon buttons, the compare minus, the old footer capsule) is
+          // built this way, and the plain border was the tell that this panel
+          // came from somewhere else.
+          boxShadow: `inset 0 1px 0 rgba(178,178,178,0.10), inset 0 0 0 1px rgba(140,140,140,0.18), 0 24px 64px rgba(0,0,0,${config.shadowOp / 100}), 0 4px 16px rgba(0,0,0,${config.shadowOp / 200})`,
           animation: "chat-rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both",
         }}
       >
@@ -8240,15 +9065,15 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
             <div key={i}>
               {m.role === "guide" ? (
                 config.guideStyle === "bubble" ? (
-                  <div style={{ display: "inline-block", background: "rgba(0,0,0,0.05)", borderRadius: 14, padding: "8px 12px", fontSize: config.fontSize, color: "#555", lineHeight: 1.5 }}>
+                  <div style={{ display: "inline-block", background: "rgba(95, 96, 89, 0.06)", borderRadius: 18, padding: "8px 12px", fontSize: config.fontSize, fontWeight: CHAT_WEIGHT, color: CHROME_INK.on, lineHeight: 1.5 }}>
                     {m.text}
                   </div>
                 ) : (
-                  <p style={{ fontSize: config.fontSize, color: "#737373", lineHeight: 1.6 }}>{m.text}</p>
+                  <p style={{ fontSize: config.fontSize, fontWeight: CHAT_WEIGHT, color: CHROME_INK.on, lineHeight: 1.6 }}>{m.text}</p>
                 )
               ) : (
                 <div className="flex justify-end">
-                  <p className="px-3.5 py-2 rounded-2xl" style={userBubbleStyle()}>{m.text}</p>
+                  <p className="px-3.5 py-2" style={{ ...userBubbleStyle(), borderRadius: 18 }}>{m.text}</p>
                 </div>
               )}
               {m.suggestions && (
@@ -8258,15 +9083,28 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
                       <button
                         key={h.id}
                         onClick={() => onSelect(h.id)}
-                        className="flex items-center gap-2 px-3 py-2 rounded-2xl cursor-pointer transition-all hover:scale-[1.03]"
-                        style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}
+                        // No hover scale. Nothing else on this site grows under
+                        // the cursor — the rail, the chips and the card buttons
+                        // all answer with ink and fill, so a chip that jumped
+                        // 3% read as an imported component.
+                        className="chat-suggestion flex items-center gap-2.5 px-3 py-2 cursor-pointer"
+                        style={{
+                          borderRadius: 18,
+                          background: "rgba(95, 96, 89, 0.05)",
+                          border: "none",
+                          transition: "background 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+                        }}
                       >
                         <div className="relative w-5 h-7 flex-shrink-0">
                           {h.imageUrl ? <Image src={h.imageUrl} alt={h.name} fill className="object-contain" sizes="20px" /> : <PlaceholderLogo />}
                         </div>
                         <div className="text-left">
-                          <p style={{ fontSize: config.fontSize - 2, fontWeight: 500, color: "#1d1d1f" }}>{h.name}</p>
-                          <p style={{ fontSize: config.fontSize - 3, color: "var(--c-ink-muted)" }}>{h.manufacturer}</p>
+                          {/* Explicit steps, not arithmetic off config.fontSize.
+                              `fontSize - 3` put the manufacturer at 10px when
+                              the tuner went low, which is below the size the
+                              rest of the page will render. */}
+                          <p style={{ fontSize: 14, fontWeight: 500, color: CHROME_INK.on, lineHeight: 1.3 }}>{h.name}</p>
+                          <p style={{ fontSize: 12, fontWeight: CHAT_WEIGHT, color: CHROME_INK.off, lineHeight: 1.3 }}>{h.manufacturer}</p>
                         </div>
                       </button>
                     );
@@ -8278,31 +9116,36 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
         </div>
 
         {/* Input */}
-        <div className="flex items-center gap-3 px-5 py-4" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+        <div className="flex items-center gap-3 px-5 py-4" style={{ borderTop: "1px solid rgba(95, 96, 89, 0.08)" }}>
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             placeholder="fastest, cheapest, for home…"
-            className="flex-1 outline-none bg-transparent"
-            style={{ fontSize: config.fontSize, color: "#1d1d1f" }}
+            className="chat-input flex-1 outline-none bg-transparent"
+            style={{ fontSize: config.fontSize, fontWeight: CHAT_WEIGHT, color: CHROME_INK.on }}
           />
           <button
             onClick={handleSubmit}
-            className="flex-shrink-0 flex items-center justify-center w-7 h-7 cursor-pointer"
+            disabled={!query.trim()}
+            className="flex-shrink-0 flex items-center justify-center cursor-pointer"
             style={{
+              // 28px to match the card's icon buttons, and the same fill the
+              // lane indicator uses when it is armed. Disabled rather than
+              // merely faded, so an empty Enter and an empty click agree.
+              width: 28,
+              height: 28,
               borderRadius: config.inputRadius,
-              background: query.trim() ? "rgba(0,0,0,0.08)" : "transparent",
-              color: query.trim() ? "#555" : "#c8c8c8",
-              transition: "background 200ms, color 200ms",
+              border: "none",
+              background: query.trim() ? "rgba(95, 96, 89, 0.09)" : "transparent",
+              color: query.trim() ? CHROME_INK.on : "rgba(95, 96, 89, 0.3)",
+              cursor: query.trim() ? "pointer" : "default",
+              transition: "background 200ms cubic-bezier(0.33, 1, 0.68, 1), color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
             }}
             aria-label="Send"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="19" x2="12" y2="5" />
-              <polyline points="5 12 12 5 19 12" />
-            </svg>
+            <ArrowUp size={15} strokeWidth={1.75} />
           </button>
         </div>
       </div>
@@ -8409,6 +9252,16 @@ export default function HomeClient() {
   }, [palette]);
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
   const [chatOpen, setChatOpen] = useState(false);
+  // The panel has no close control of its own — it was only ever opened from a
+  // trigger that has since been removed, so nothing needed to dismiss it. The
+  // Ask row toggles, and Escape closes, which is what every other overlay here
+  // does. Bound only while open so it can't swallow Escape from compare.
+  useEffect(() => {
+    if (!chatOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setChatOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [chatOpen]);
   const [showChatTuner, setShowChatTuner] = useState(false);
   const [chatConfig, setChatConfig] = useState({
     bgOpacity: 92,
@@ -8418,7 +9271,7 @@ export default function HomeClient() {
     shadowOp: 10,
     guideStyle: "plain" as "plain" | "bubble",
     userStyle: "tint" as "dark" | "tint" | "outline",
-    fontSize: 13,
+    fontSize: 14,
     inputRadius: 99,
   });
   const [goToId, setGoToId] = useState<string | null>(null);
@@ -8426,6 +9279,9 @@ export default function HomeClient() {
   const [comparing, setComparing] = useState(false);
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // Footer capsule menu — "Share site" and "Feedback" used to be two visible
+  // segments; they collapse into one trigger so the capsule reads as credit
+  // plus one affordance rather than a row of links.
   const [toScale, setToScale] = useState(false);
   const [useImperial, setUseImperial] = useState(true);
   // Default to metric for non-US locales. Runs post-hydration so SSR + first
@@ -8570,6 +9426,19 @@ export default function HomeClient() {
     setTimeout(() => setGoToId(null), 100);
   }, []);
 
+  // The search modal renders from `layout.tsx`, outside this tree, so a picked
+  // result arrives as an event rather than a callback. It lands on the same
+  // handler the chat and the what's-new toast use, so all three navigate the
+  // wheel the same way.
+  useEffect(() => {
+    const onPick = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id;
+      if (id) handleSelectHumanoid(id);
+    };
+    window.addEventListener(SEARCH_SELECT_EVENT, onPick);
+    return () => window.removeEventListener(SEARCH_SELECT_EVENT, onPick);
+  }, [handleSelectHumanoid]);
+
   // "What's new" toast — fires once on mount, after the intro overlay clears.
   const newHumanoids = useMemo(() => {
     const cutoff = Date.now() - NEW_WINDOW_DAYS * 86_400_000;
@@ -8709,7 +9578,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToId={goToId} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} onRandomHumanoid={onRandomHumanoid} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} />}
+        {layout === "E" && <Browse goToId={goToId} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} onRandomHumanoid={onRandomHumanoid} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} onHome={goHome} onShareSite={() => { const origin = typeof window !== "undefined" ? window.location.origin : ""; copyUrl(origin, "Site link copied", `${origin}/og-default.png`); }} onFeedback={() => setFeedbackOpen(true)} onToggleChat={() => setChatOpen((v) => !v)} chatActive={chatOpen} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -8799,67 +9668,15 @@ export default function HomeClient() {
         </div>
       )}
 
-      {/* Launch: chat trigger hidden, replaced with credit link.
-          To bring chat back, swap this for the <OptionsMenu .../> block. */}
-      {introDone && (() => {
-        // One capsule, matching the card action row's chrome — the site's
-        // chrome idiom is a single glass pill of borderless segments, not
-        // free-floating pills. Credit is a muted, non-interactive segment
-        // so the footer reads as one object instead of three.
-        const footerChipHeight = 40;
-        const labelStyle: React.CSSProperties = {
-          fontSize: 14,
-          fontWeight: 500,
-          letterSpacing: "normal",
-        };
-        const segmentStyle: React.CSSProperties = {
-          ...labelStyle,
-          height: footerChipHeight,
-          padding: "0 16px",
-          background: "transparent",
-          borderRadius: footerChipHeight / 2,
-          display: "inline-flex",
-          alignItems: "center",
-        };
-        const creditStyle: React.CSSProperties = {
-          ...segmentStyle,
-          color: "rgba(95, 96, 89, 0.55)",
-          cursor: "default",
-          paddingRight: 4,
-        };
-        return (
-          <div
-            className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none"
-            style={{ bottom: "var(--corner-y, 8px)" }}
-          >
-            <div className="flex items-center justify-center">
-              <div
-                className="pointer-events-auto inline-flex items-center"
-                style={{
-                  ...FOOTER_GLASS_CHROME,
-                  height: footerChipHeight,
-                  borderRadius: footerChipHeight / 2,
-                  padding: "0 4px",
-                }}
-              >
-                <span style={creditStyle}>Roy Jad © 2026</span>
-                <Chip
-                  onClick={() => {
-                    const origin = typeof window !== "undefined" ? window.location.origin : "";
-                    copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
-                  }}
-                  style={segmentStyle}
-                >
-                  Share site
-                </Chip>
-                <Chip onClick={() => setFeedbackOpen(true)} style={segmentStyle}>
-                  Feedback
-                </Chip>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* The top edge is deliberately empty. The mark used to sit up here on
+          its own, which meant the page opened on a small abstract glyph in a
+          corner with nothing to relate it to. It now lives in the footer
+          capsule beside the credit — identity and authorship read as one line,
+          and the eye enters on the robot instead of on chrome. */}
+
+      {/* The credit capsule that used to live here — mark, "Roy Jad © 2026",
+          and a plus that opened Share / Feedback — is now the bottom of the
+          floating sidebar in Browse. The bottom edge is deliberately empty. */}
 
       <Toaster
         position="bottom-center"

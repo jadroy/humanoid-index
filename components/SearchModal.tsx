@@ -1,14 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 import { humanoids } from "@/data/humanoids";
+
+// This component lives in `layout.tsx`, a different tree from HomeClient, so
+// there is no prop path between the sidebar's Search row and this modal, or
+// between a result and the wheel. Two window events bridge them instead of
+// lifting state across the layout/page boundary.
+export const SEARCH_OPEN_EVENT = "humanoid-index:search-open";
+export const SEARCH_SELECT_EVENT = "humanoid-index:search-select";
 
 export default function SearchModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const router = useRouter();
+
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setQuery("");
+    setSelectedIndex(0);
+  }, []);
+
+  // Picking a result drives the wheel; it does not navigate. This used to
+  // `router.push("/robot/<id>")` — a route that does not exist in this app, so
+  // every result 404'd. The site addresses robots by `?h=<id>` on one page, and
+  // the in-app path is HomeClient's `goToId`, which animates the wheel there
+  // instead of reloading.
+  const select = useCallback((id: string) => {
+    window.dispatchEvent(new CustomEvent(SEARCH_SELECT_EVENT, { detail: { id } }));
+    close();
+  }, [close]);
+
+  useEffect(() => {
+    const onOpen = () => setIsOpen(true);
+    window.addEventListener(SEARCH_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(SEARCH_OPEN_EVENT, onOpen);
+  }, []);
 
   const filteredResults = query
     ? humanoids.filter(
@@ -27,11 +54,7 @@ export default function SearchModal() {
       }
 
       // Close with Esc
-      if (e.key === "Escape") {
-        setIsOpen(false);
-        setQuery("");
-        setSelectedIndex(0);
-      }
+      if (e.key === "Escape") close();
 
       // Navigate with arrow keys
       if (isOpen) {
@@ -47,17 +70,14 @@ export default function SearchModal() {
         }
         if (e.key === "Enter" && filteredResults[selectedIndex]) {
           e.preventDefault();
-          router.push(`/robot/${filteredResults[selectedIndex].id}`);
-          setIsOpen(false);
-          setQuery("");
-          setSelectedIndex(0);
+          select(filteredResults[selectedIndex].id);
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, filteredResults, selectedIndex, router]);
+  }, [isOpen, filteredResults, selectedIndex, select, close]);
 
   // Reset selected index when query changes
   useEffect(() => {
@@ -69,11 +89,7 @@ export default function SearchModal() {
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-20 flex items-start justify-center pt-32 z-50"
-      onClick={() => {
-        setIsOpen(false);
-        setQuery("");
-        setSelectedIndex(0);
-      }}
+      onClick={close}
     >
       <div
         className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden"
@@ -106,12 +122,7 @@ export default function SearchModal() {
           {filteredResults.map((humanoid, index) => (
             <button
               key={humanoid.id}
-              onClick={() => {
-                router.push(`/robot/${humanoid.id}`);
-                setIsOpen(false);
-                setQuery("");
-                setSelectedIndex(0);
-              }}
+              onClick={() => select(humanoid.id)}
               className={`w-full px-5 py-3 flex items-center gap-4 text-left transition-colors ${
                 index === selectedIndex ? "bg-neutral-50" : ""
               }`}

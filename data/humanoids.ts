@@ -1022,6 +1022,7 @@ const pendingImageHumanoids: Humanoid[] = [
     form: "other",
     manufacturerUrl: "https://maticrobots.com",
     imageUrl: "/robots/matic.png",
+    logoUrl: "/robots/Matic-robots.png",
     year: 2024,
     addedAt: "2026-08-24",
     status: "In Production",

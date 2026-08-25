@@ -104,3 +104,32 @@ export function LogoMark({
     </div>
   );
 }
+
+// The site wordmark glyph ("HI"). Lives in the footer capsule rather than the
+// top edge — the filter row owns the top now, and two centred elements stacked
+// there read as clutter.
+// `size` is the mark's drawn WIDTH, not its box. The glyphs sit at x 7.7–37.3
+// and y 12.9–32.1 of the original 45×45 artboard, so a square viewBox spent
+// roughly half its height on padding — set beside 18px solid icons the mark
+// came out around 13×8.5 and read as an afterthought. The viewBox is now the
+// ink's own bounds and the height follows from its 1.546 aspect.
+const SITE_MARK_BOX = { x: 7.72, y: 12.94, w: 29.56, h: 19.12 };
+const SITE_MARK_ASPECT = SITE_MARK_BOX.w / SITE_MARK_BOX.h;
+
+export function SiteMark({ size = 22, color = "currentColor", opacity = 1 }: { size?: number; color?: string; opacity?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size / SITE_MARK_ASPECT}
+      viewBox={`${SITE_MARK_BOX.x} ${SITE_MARK_BOX.y} ${SITE_MARK_BOX.w} ${SITE_MARK_BOX.h}`}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ color, opacity, overflow: "visible" }}
+    >
+      <rect x="7.72656" y="12.9392" width="8.69168" height="19.1217" rx="0.5" fill="currentColor" />
+      <rect x="26.8438" y="19.189" width="6.6221" height="19.1217" rx="0.5" transform="rotate(90 26.8438 19.189)" fill="currentColor" />
+      <rect x="18.1562" y="12.9392" width="8.69168" height="19.1217" rx="0.5" fill="currentColor" />
+      <rect x="28.5859" y="12.9392" width="8.69168" height="19.1217" rx="0.5" fill="currentColor" />
+    </svg>
+  );
+}

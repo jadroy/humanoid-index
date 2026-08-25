@@ -1235,48 +1235,11 @@ export function LayoutSwitcher({
   }
 
   // ── Style: trio — Humanoid Index + Dice + Share, bunched centered cluster. ──
+  // ── Style: trio — the mark used to sit centred at the top edge. It now lives
+  // in the footer capsule (see HomeClient), so the filter row can own the top
+  // without two centred elements stacking. Nav renders nothing here.
   else if (navStyle === "trio") {
-    const trioLabelStyle: React.CSSProperties = {
-      fontSize: 13,
-      fontWeight: 500,
-      letterSpacing: "normal",
-      color: "oklch(65% 0.011 222.2)",
-      background: "transparent",
-    };
-    navEl = joined ? <></> : (
-      <nav
-        className="fixed left-0 right-0 z-50 pointer-events-none"
-        style={{ top: "var(--corner-y, 8px)", background: "transparent" }}
-      >
-        <div
-          className="flex items-center justify-center"
-          style={{ minHeight: 26 }}
-        >
-          <button
-            type="button"
-            onClick={() => onGoHome?.()}
-            aria-label="Humanoid Index"
-            className="pointer-events-auto"
-            style={{
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <svg width="36" height="36" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: "oklch(65% 0.011 222.2)", opacity: 0.45 }}>
-              <rect x="7.72656" y="12.9392" width="8.69168" height="19.1217" rx="0.5" fill="currentColor" />
-              <rect x="26.8438" y="19.189" width="6.6221" height="19.1217" rx="0.5" transform="rotate(90 26.8438 19.189)" fill="currentColor" />
-              <rect x="18.1562" y="12.9392" width="8.69168" height="19.1217" rx="0.5" fill="currentColor" />
-              <rect x="28.5859" y="12.9392" width="8.69168" height="19.1217" rx="0.5" fill="currentColor" />
-            </svg>
-          </button>
-        </div>
-      </nav>
-    );
+    navEl = <></>;
   }
 
   // ── Style: centered — bare wordmark text, no chip background (launch candidate) ──

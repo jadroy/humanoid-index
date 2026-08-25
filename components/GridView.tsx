@@ -6,7 +6,8 @@ import type { Humanoid } from "@/data/humanoids";
 
 interface GridViewProps {
   humanoids: Humanoid[];
-  onSelect?: (idOrIdx: string | number) => void;
+  /** Given the tapped robot's id. Tiles are inert (and unfocusable) without it. */
+  onSelect?: (id: string) => void;
 }
 
 const MIN_COLS = 2;
@@ -15,7 +16,7 @@ const HIDE_OFFSET = "-96px";
 const HIDE_ACCUM = 80;
 const SHOW_ACCUM = 24;
 
-export default function GridView({ humanoids }: GridViewProps) {
+export default function GridView({ humanoids, onSelect }: GridViewProps) {
   const cardRadius = 28;
   const [cols, setCols] = useState(3);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -56,7 +57,7 @@ export default function GridView({ humanoids }: GridViewProps) {
   }, []);
 
   return (
-    <div ref={scrollRef} className="w-full h-screen overflow-y-auto bg-white pt-24 pb-16 px-6 md:px-10 lg:px-16 scrollbar-hide">
+    <div ref={scrollRef} className="w-full h-screen overflow-y-auto pt-24 pb-16 px-6 md:px-10 lg:px-16 scrollbar-hide">
       <div
         className="nav-slide fixed z-40 flex items-center gap-2 pointer-events-auto px-3 py-2 rounded-full"
         style={{
@@ -84,7 +85,15 @@ export default function GridView({ humanoids }: GridViewProps) {
         {humanoids.map((h, i) => (
           <div
             key={h.id}
-            className="group block"
+            role={onSelect ? "button" : undefined}
+            tabIndex={onSelect ? 0 : undefined}
+            onClick={onSelect ? () => onSelect(h.id) : undefined}
+            onKeyDown={onSelect ? (e) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              onSelect(h.id);
+            } : undefined}
+            className={`group block${onSelect ? " cursor-pointer" : ""}`}
           >
             <div
               className="relative w-full overflow-hidden flex items-center justify-center"

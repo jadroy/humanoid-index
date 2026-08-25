@@ -1159,6 +1159,22 @@ main {
               0 8px 28px rgba(0, 0, 0, 0.06);
 }
 
+/* Portal scene — a card running a scene at full strength tags itself
+   [data-scene-portal="on"]. Anything frosted inside it drops to a genuinely
+   translucent fill: less white, more blur, and saturation pushed past 100 so
+   the surface tints with the room behind it instead of staying neutral grey.
+   The doubled inset shadow is the trick that sells glass — a bright specular
+   top edge over a dim hairline border. */
+[data-scene-portal="on"] .ui-frost {
+  background-color: rgba(255, 255, 255, 0.42) !important;
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+              0 2px 10px rgba(0, 0, 0, 0.12),
+              0 16px 44px rgba(0, 0, 0, 0.16);
+}
+
 /* Compare minus (−) — slides up from behind the right card on enter, then a
    small lift on hover. The `both` fill keeps the final position after the
    keyframe finishes so the hover transition can take over normally. */
@@ -1192,3 +1208,85 @@ main {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* ═══════════════════════════════════════
+   LANE GLYPHS
+   ═══════════════════════════════════════
+   Each body-plan glyph moves the part that identifies it — legs step, base
+   glides, quadruped trots — once when its lane opens and again on hover.
+   px in an SVG transform is user-space, so 1 = 1/20th of the glyph: at 18px
+   these are sub-pixel moves, which is the point. They read as weight shifting,
+   not as an icon animating.
+
+   transform-box: fill-box so each part rotates/translates about itself rather
+   than the shared viewBox origin. */
+.form-glyph [class^="fg-"] {
+  transform-box: fill-box;
+  transform-origin: center top;
+}
+
+/* Two triggers, two behaviours. Opening a lane plays ONE cycle — it is a
+   confirmation, and it has to end, because a swipe-driven lane change happens
+   with the cursor nowhere near the rail. Replayed by remounting the glyph (its
+   key flips with `active`), since restarting a CSS animation otherwise needs a
+   reflow poke.
+
+   Hover LOOPS: it walks for as long as you point at it and stops when you
+   leave, which is the whole reason to look at a rail of little robots. Bounded
+   by the cursor, so nothing animates perpetually on an idle page.
+
+   Timing is one gait, not the site's UI curve — ease-in-out, because a step
+   accelerates off the ground and decelerates onto it. The 90/110ms offsets are
+   what make two legs read as walking instead of squatting. */
+.form-glyph[data-active] .fg-step-a { animation: fg-step 620ms cubic-bezier(0.33, 1, 0.68, 1); }
+.form-glyph[data-active] .fg-step-b { animation: fg-step 620ms cubic-bezier(0.33, 1, 0.68, 1) 90ms; }
+.form-glyph[data-active] .fg-glide  { animation: fg-glide 620ms cubic-bezier(0.33, 1, 0.68, 1); }
+.form-glyph[data-active] .fg-trot-a { animation: fg-trot 620ms cubic-bezier(0.33, 1, 0.68, 1); }
+.form-glyph[data-active] .fg-trot-b { animation: fg-trot 620ms cubic-bezier(0.33, 1, 0.68, 1) 110ms; }
+
+.lane-row:hover .fg-step-a { animation: fg-step 620ms ease-in-out infinite; }
+.lane-row:hover .fg-step-b { animation: fg-step 620ms ease-in-out 310ms infinite; }
+.lane-row:hover .fg-glide  { animation: fg-glide 760ms ease-in-out infinite; }
+.lane-row:hover .fg-trot-a { animation: fg-trot 560ms ease-in-out infinite; }
+.lane-row:hover .fg-trot-b { animation: fg-trot 560ms ease-in-out 280ms infinite; }
+
+/* A step is a shortening, not a lift — a leg that translated up would detach
+   from the torso at this scale. */
+@keyframes fg-step {
+  0%, 100% { transform: scaleY(1); }
+  45%      { transform: scaleY(0.72); }
+}
+
+@keyframes fg-glide {
+  0%, 100% { transform: translateX(0); }
+  40%      { transform: translateX(-0.9px); }
+}
+
+@keyframes fg-trot {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(0.78); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-glyph [class^="fg-"] { animation: none !important; }
+}
+
+/* No capsule behind the mark or the action rows, so hover has to come from the
+   ink itself — a background wash on these would put a second highlight in the
+   column and compete with the lane indicator. */
+.site-mark-btn svg { transition: opacity 200ms ease; }
+.site-mark-btn:hover svg { opacity: 0.62 !important; }
+.sidebar-action { transition: color 200ms cubic-bezier(0.33, 1, 0.68, 1); }
+/* Same hover step the lane rows use — one scale for the column. */
+.sidebar-action:hover { color: rgba(95, 96, 89, 0.75) !important; }
+
+/* ═══════════════════════════════════════
+   CHAT PANEL
+   ═══════════════════════════════════════ */
+
+/* Answers with fill, like every other hoverable surface here. */
+.chat-suggestion:hover { background: rgba(95, 96, 89, 0.09) !important; }
+
+/* The placeholder was browser-default grey, which is bluer and darker than
+   anything else on the page. */
+.chat-input::placeholder { color: rgba(95, 96, 89, 0.45); font-weight: 450; }
