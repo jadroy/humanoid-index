@@ -50,6 +50,12 @@ Convention:
 ### `addedAt` on new humanoids
 When adding a new humanoid to `data/humanoids.ts`, set `addedAt: "<today's ISO date>"` (e.g. `"2026-05-15"`). The home-page "what's new" toast (`AnnouncementToast` in `HomeClient.tsx`) automatically surfaces any entry whose `addedAt` is within `NEW_WINDOW_DAYS` (currently 14) of today, then stops on its own — no cleanup, no flag flip. Missing `addedAt` means "not new, never toast." Always remind Roy if he adds an entry without it.
 
+## Dev tuner
+
+One panel, `components/Tuner.tsx`, opened with `T` in dev mode (`Ctrl+Shift+D` toggles dev). `\`, `B`, `M` open it on Stats / Scene / Layout; `/` focuses search; Esc closes. The chat panel's `C` tuner is a second instance of the same shell.
+
+The shell reads its sections off the DOM: every direct child of the body is a section, grouped by `data-tuner-group="…"` (or the previous sibling's group). To add a control, drop a block into the `<TunerShell>` in `HomeClient.tsx` with the group attribute — no registration. The old Tailwind control classes are restyled under `.tuner-body` in `globals.css`; keep using them (`rounded-full` pills, `bg-neutral-900` for active, `type="range"` sliders) and they pick up the site's ink.
+
 ## Principles
 
 - Cool web experience first, casually informative second.

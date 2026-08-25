@@ -18,7 +18,8 @@ import { humanoidsToItems, humanoidConfig } from "@/app/v3/humanoidCollection";
 import MobileView from "@/components/MobileView";
 import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
 import { Tooltip } from "@/components/Tooltip";
-import { INK, WEIGHT, GLASS_EDGE } from "@/lib/design/chrome";
+import { INK, WEIGHT, SEAM, GLASS_EDGE } from "@/lib/design/chrome";
+import { TunerShell } from "@/components/Tuner";
 import { CONTACT_EMAIL } from "@/lib/site";
 
 // Lazy-loaded so three.js + URDFLoader stay out of the main bundle.
@@ -336,6 +337,9 @@ const sidebarCount = (open: boolean): React.CSSProperties => ({
 });
 
 const SIDEBAR_GROUP_GAP = 16;
+// How far past its radius a ring-shaped rail reaches when fully open: half a
+// seat, the label gutter, the label column, the count column, and 24 of air.
+const RING_OPEN_REACH = 14 + 10 + SIDEBAR_LABEL_W + SIDEBAR_COUNT_W + 24;
 // ── Live rail ──────────────────────────────────────────────────────────────
 // The collapsed rail's second form. Instead of switching between two states it
 // reads one continuous number — how near/engaged the cursor is — and every
@@ -1686,6 +1690,29 @@ function StatusLegendModal({ children, style }: { children: React.ReactNode; sty
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
+// Rail order in the dev panel; groups it does not name follow in order of appearance.
+const TUNER_GROUPS = ["Stats", "Card", "Compare", "Arc", "Scene", "Layout", "Motion", "Saved"];
+// The old per-panel hotkeys, landing on a group of the one panel.
+const TUNER_HOTKEYS: Record<string, string> = { "\\": "Stats", b: "Scene", m: "Layout" };
+
+// What a robot without a price says in the price slot.
+const availabilityLabel = (h: Humanoid): string | undefined =>
+  h.availability === "enterprise" ? "Enterprise only" :
+  h.availability === "research" ? "Research only" :
+  h.availability === "discontinued" ? "Discontinued" :
+  h.availability === "prototype" ? "Not yet for sale" :
+  undefined;
+
+// Page-bg wash rather than a grey scrim — the card is #F9F9F9 on white, so
+// washing toward white is what "emptying" actually looks like here. Stops
+// short of opaque: the robot stays legible underneath. Shared by the compare
+// veil and the stats-over-card wash.
+const VEIL_WASH = "rgba(255,255,255,0.66)";
+
+// Stats strip over the card: vertical padding and the height of one row.
+// The image scales out of the strip's way by exactly this much (`stripFit`).
+const STRIP_PAD_TOP = 14, STRIP_PAD_BOTTOM = 16, STRIP_ROW = 29;
+
 function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onRandomHumanoid, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, onHome, onShareSite, onFeedback, onToggleChat, chatActive = false, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange }: { goToId?: string | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onRandomHumanoid?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; onHome?: () => void; onShareSite?: () => void; onFeedback?: () => void; onToggleChat?: () => void; chatActive?: boolean; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
 
@@ -1697,6 +1724,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [bottomFadeH, setBottomFadeH] = useState(40);
   const [bottomFadeOpacity, setBottomFadeOpacity] = useState(0.9);
   const [showTuner, setShowTuner] = useState(false);
+  // Which rail group the panel opens on; the old per-panel hotkeys land here.
+  const [tunerGroup, setTunerGroup] = useState<string | null>(null);
   // Sparkbar — distribution-of-fleet visualization tucked into stat rows.
   // Picker lives in the Split tuner (\\). Modes: off / inline / below / hero.
   const [sparkMode, setSparkMode] = useSparkMode();
@@ -1712,7 +1741,17 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const RECORDING_SHUFFLE_EXCLUDE_IDS = ["23", "25"]; // Armar-6, Roboy
   // Default to collapsed — the detail/stats column opens on demand, not on load.
   // (recordingMode also wants it closed for the first frame, so `true` covers both.)
-  const [statsCollapsed, setStatsCollapsed] = useState(false);
+  // Stats over the card. "off" is the column. "strip" raises a glass band
+  // inside the card's bottom edge; "wash" veils the whole image (the compare
+  // veil's wash) and lays the rows on it. Either way the column stays shut and
+  // the D toggle / details button drive the overlay instead.
+  const [statsOverlay, setStatsOverlay] = useState<"off" | "strip" | "wash">("off");
+  const [statsCollapsedRaw, setStatsCollapsed] = useState(false);
+  // Strip only: shrink the image from its top edge so the robot stands on the
+  // strip instead of disappearing behind it.
+  const [stripFit, setStripFit] = useState(true);
+  const statsCollapsed = statsOverlay !== "off" || statsCollapsedRaw;
+  const statsOverCard = statsOverlay !== "off" && !statsCollapsedRaw;
   const [statsHover, setStatsHover] = useState(false);
   // Engineer-mode is the only mode while the basic/engineer toggle is hidden.
   // localStorage hydration intentionally skipped so returning users who'd
@@ -1805,7 +1844,38 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // the moment the feedback stops being useful.
   const [railNearPx, setRailNearPx] = useState(280);
   const [railGrowMs, setRailGrowMs] = useState(120);
+  // Ring rail: the same rows bent into a small wheel around the mark, so the
+  // column is the same kind of object as the name arc beside it — a rail —
+  // rather than the one rectilinear thing on the page. The mark is the hub at
+  // the left edge; the rows sit on an arc to its right. Labels run radially,
+  // like the names on the big wheel, because a horizontal label on a row near
+  // the top of the ring lands on top of its neighbour's.
+  // "concentric" is the ring's second form: instead of a wheel of its own it
+  // borrows the name arc's centre (off-screen left) and steps by the same
+  // angle, so every menu row sits on the same ray as a name — the column bent
+  // onto the wheel's curvature, with the mark on the focused name's ray and
+  // the rows wrapped above and below it.
+  const [railShape, setRailShape] = useState<"column" | "ring" | "concentric">("concentric");
+  const [ringR, setRingR] = useState(84);
+  const [ringSweep, setRingSweep] = useState(170);
+  // How far inside the names' circle the concentric ring sits.
+  const [ringInset, setRingInset] = useState(72);
+  const [autoRingInset, setAutoRingInset] = useState(true);
   const railRef = useRef<HTMLDivElement | null>(null);
+  // Ring hub, read by the pointer listener so a shape or radius change doesn't
+  // re-bind it. Measured here rather than per pointermove: the hub is a fixed,
+  // zero-size point, so its rect only moves on resize.
+  const ringGeomRef = useRef<{ r: number; cx: number; cy: number } | null>(null);
+  useLayoutEffect(() => {
+    if (railShape !== "ring") { ringGeomRef.current = null; return; }
+    const measure = () => {
+      const rect = railRef.current?.getBoundingClientRect();
+      ringGeomRef.current = { r: ringR, cx: rect?.left ?? 0, cy: rect?.top ?? window.innerHeight / 2 };
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [railShape, ringR]);
   // Openness lives in a ref and reaches the DOM as a CSS variable. It changes
   // every frame while the cursor moves, so it must never be React state — see
   // the same rule the spring follows.
@@ -1870,8 +1940,19 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       kick();
     };
     // Unless the mode pins it, openness is just how far into the band you are.
-    const onMove = (e: PointerEvent) =>
-      retarget(railPinRef.current ?? Math.max(0, 1 - e.clientX / railNearPx));
+    const onMove = (e: PointerEvent) => {
+      if (railPinRef.current != null) { retarget(railPinRef.current); return; }
+      const ring = ringGeomRef.current;
+      if (ring) {
+        // Ring: openness is distance from the hub, not from the left edge —
+        // fully open anywhere on the wheel (plus a margin), easing off over
+        // the band beyond it. Self-contained, so it needs no enter/leave.
+        const d = Math.hypot(e.clientX - ring.cx, e.clientY - ring.cy) - (ring.r + 40);
+        retarget(Math.max(0, Math.min(1, 1 - d / railNearPx)));
+        return;
+      }
+      retarget(Math.max(0, 1 - e.clientX / railNearPx));
+    };
     window.addEventListener("pointermove", onMove, { passive: true });
     kick();
     return () => {
@@ -2456,7 +2537,6 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const actionActivePct = actionHoverTint === "none" ? "0%" : "18%";
 
   // Compare-header split tuner
-  const [showSplitTuner, setShowSplitTuner] = useState(false);
   const [splitVariant, setSplitVariant] = useState<"morph" | "push" | "lift" | "shrink" | "swap">("shrink");
   const [splitAmount, setSplitAmount] = useState(44);
   const [splitScale, setSplitScale] = useState(0.97);
@@ -2472,7 +2552,6 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // and the arc inset transitions via CSS vars (`--collapse-dur`,
   // `--collapse-ease`) so the i-toggle and compare add/subtract glide on one
   // shared clock without prop drilling.
-  const [showCollapseTuner, setShowCollapseTuner] = useState(false);
   const [collapseDurMs, setCollapseDurMs] = useState(260);
   const COLLAPSE_EASE_PRESETS = [
     { label: "Standard",  value: "cubic-bezier(0.4, 0, 0.2, 1)" },
@@ -2499,13 +2578,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // Top/bottom inset (`--corner-y`) for chrome anchored to the viewport edges
   // (nav + footer credit row). The side inset shares state with `navX`/`--nav-x`
   // so the same slider can live in either the Corner Margins or Nav tuner.
-  const [showMarginTuner, setShowMarginTuner] = useState(false);
   const [cornerY, setCornerY] = useState(18);
   useEffect(() => {
     document.documentElement.style.setProperty("--corner-y", `${cornerY}px`);
   }, [cornerY]);
 
-  const [showSceneTuner, setShowSceneTuner] = useState(false);
   const [sceneShape, setSceneShape] = useState<"radial" | "horizontal" | "vertical" | "top" | "bottom">("radial");
   const [sceneSize, setSceneSize] = useState(72);
   const [sceneSoftness, setSceneSoftness] = useState(62);
@@ -2687,7 +2764,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // Compare middle column tracks the card rather than sitting at a fixed px
   // width — it used to carry +200px to fit long manufacturer names in the
   // Company row, which now lives in the placard above the card instead.
-  const compareStatsW = Math.round(cardW * 0.75);
+  // With stats over the card, compare has no middle: each card carries its
+  // own rows, and the pair closes up to a gap.
+  const compareStatsW = statsOverlay !== "off" ? 0 : Math.round(cardW * 0.75);
   const baseCardPx = windowWidth ? cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT) : robotMaxW;
   const singleStatsW = Math.round(baseCardPx * statsColScale);
   // When info is hidden, the stats slot fully collapses to 0 so the card lands
@@ -2767,6 +2846,14 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const effectiveArcWheelR = Math.round(arcWheelR / arcShrinkRatio);
   const adaptiveArcInset = Math.max(48, Math.round(availableSpace - effectiveLongestNamePx - effectiveArcHugBuffer + arcTextGap));
   const effectiveArcInset = autoArcInset ? adaptiveArcInset : arcInset;
+  // The concentric ring sits inside the name arc, so its inset decides how
+  // close the open labels come to the names. Auto: back off by the rail's
+  // full open reach, as far as the left edge allows (the seat on the 0° ray
+  // never goes left of the column's own x). A fixed 72 looked fine at rest
+  // and put "Grid" a word-space from the focused name once open.
+  const effectiveRingInset = autoRingInset
+    ? Math.max(24, Math.min(RING_OPEN_REACH, effectiveArcInset - arcTextGap - 42))
+    : ringInset;
   const effectiveDrumXOffset = autoArcInset ? adaptiveDrumXOffset : drumXOffset;
 
   // Publish the arc's leftmost-label x so the arc text can align to it
@@ -3217,9 +3304,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       if (isDev) {
         if (e.key === "s") { pickArcStyle(ARC_STYLES[(ARC_STYLES.indexOf(arcStyle) + 1) % ARC_STYLES.length]); return; }
         if (e.key === "t") { setShowTuner((v) => !v); return; }
-        if (e.key === "\\") { setShowSplitTuner((v) => !v); return; }
-        if (e.key === "b") { setShowSceneTuner((v) => !v); return; }
-        if (e.key === "m") { setShowMarginTuner((v) => !v); return; }
+        if (e.key in TUNER_HOTKEYS) { setShowTuner(true); setTunerGroup(TUNER_HOTKEYS[e.key]); return; }
       }
       const mod = e.metaKey || e.ctrlKey;
       const isJumpStart =
@@ -3262,7 +3347,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       const currentId = idAt(lane, springL.index);
       switch (e.key) {
         case "d": case "D":
-          if (!comparing) { setStatsCollapsed((v) => !v); }
+          // Compare has no column to collapse — but with stats over the card
+          // the toggle still means something: show or hide both cards' rows.
+          if (!comparing || statsOverlay !== "off") { setStatsCollapsed((v) => !v); }
           return;
         case "i": case "I":
           setBlurbVisible((v) => !v);
@@ -3458,6 +3545,23 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     h.dof && { label: "DOF", value: `${h.dof}` }, h.maxSpeed && { label: "Speed", value: `${h.maxSpeed} m/s` },
   ].filter(Boolean) as { label: string; value: string }[];
   const statsL = getStats(hL);
+  // Rows for the stats-over-card overlay. Single view drops rows it can't
+  // fill. Compare keeps every row and dashes the gaps: the two strips have to
+  // be the same height with each row opposite its twin, or there is nothing
+  // to compare.
+  const overlayRowsFor = (h: typeof humanoids[0]): { label: string; value: string | null }[] => {
+    if (statsOverlay === "off") return [];
+    const f = useImperial ? IMPERIAL_FMT : METRIC_FMT;
+    const price = h.cost && h.cost !== "N/A" ? h.cost : availabilityLabel(h) ?? null;
+    const all = [
+      { label: "Height", value: h.height ? f.height(h.height) : null },
+      { label: "Weight", value: h.weight ? f.weight(h.weight) : null },
+      { label: "DOF", value: h.dof ? String(h.dof) : null },
+      { label: "Speed", value: h.maxSpeed ? f.speed(h.maxSpeed) : null },
+      { label: "Price", value: price },
+    ];
+    return comparing ? all : all.filter((r) => r.value);
+  };
 
   // Transition easing — Material standard: smooth, clean, no overshoot
   const ease = "cubic-bezier(0.4, 0, 0.2, 1)";
@@ -3548,6 +3652,32 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     [cardBlur],
   );
 
+  // One row of the rail, whichever shape it takes. The column and the ring
+  // both render from these, so a row is added or rewired in one place.
+  type RailRow = { key: string; label: string; icon: React.ReactNode; onClick?: () => void; active: boolean; lane?: FormFilter; hint?: string };
+  // The action rows. Saved leads the group: it is the only row that reads the
+  // visitor's own state back to them, and its count is the one number in the
+  // column that they put there. Hidden until there is something in it — an
+  // empty row here would be chrome advertising a feature.
+  const railActions: RailRow[] = [
+    ...(savedItems.length > 0 ? [{
+      key: "saved",
+      label: "Saved",
+      icon: <Bookmark size={16} strokeWidth={1.75} fill={savedSurfaceOn ? "currentColor" : "none"} />,
+      onClick: () => {
+        if (savedSurface === "lane") { if (comparing) return; setSavedLaneOn((v) => !v); return; }
+        if (savedSurface === "shelf") { setShelfOpen((v) => !v); return; }
+        setTrayOpen((v) => !v);
+      },
+      active: savedSurfaceOn,
+      hint: String(savedItems.length),
+    }] : []),
+    { key: "search", label: "Search", icon: <Search size={16} strokeWidth={1.75} />, onClick: () => window.dispatchEvent(new Event(SEARCH_OPEN_EVENT)), active: false, hint: "\u2318K" },
+    { key: "ask", label: "Ask", icon: <Sparkles size={16} strokeWidth={1.75} />, onClick: onToggleChat, active: chatActive },
+    { key: "share", label: "Share", icon: <Share size={16} strokeWidth={1.75} />, onClick: onShareSite, active: false },
+    { key: "feedback", label: "Feedback", icon: <MessageCircle size={16} strokeWidth={1.75} />, onClick: onFeedback, active: false },
+  ];
+
   return (
     <div className="h-screen overflow-hidden select-none relative" data-scene={sceneActive && (sceneVariant === "viewport" || sceneVariant === "bleed") ? "on" : "off"} style={{ background: pageBg, ["--action-hover-tint" as string]: actionHoverColor, ["--action-hover-pct" as string]: actionHoverPct, ["--action-active-pct" as string]: actionActivePct }}>
       {sceneVariant === "viewport" && (
@@ -3624,7 +3754,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           style={{
             zIndex: 20,
             background: pageBg,
-            paddingLeft: "calc(var(--nav-edge, 24px) + 112px)",
+            // Sized for the rail fully open — the cursor is over the tiles
+            // nearest the rail exactly when it is opening, so padding for the
+            // resting glyphs ran the labels and counts under the first column.
+            paddingLeft: railShape === "concentric"
+              ? effectiveArcInset - arcTextGap - effectiveRingInset + RING_OPEN_REACH
+              : `calc(var(--nav-edge, 24px) + ${railShape === "ring" ? 18 + ringR + RING_OPEN_REACH : 112}px)`,
           }}
         >
           {/* The v3 Collection, embedded: no header of its own (the column is
@@ -3654,6 +3789,149 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           sweep past it. In compare it narrows to glyphs — two cards leave no
           room for labels — but the lane indicator stays lit, because compare
           runs inside the open lane and that lane is still the filter in force. */}
+      {railShape !== "column" ? (() => {
+        const concentric = railShape === "concentric";
+        // Every row the column has, in the column's order, as points on an arc.
+        const entries: RailRow[] = [
+          ...FORM_FILTERS.map(({ key, label }) => {
+            const on = formFilter === key && !savedLaneLive;
+            return {
+              key, label, lane: key, active: on,
+              icon: <FormGlyph key={on ? "on" : "off"} form={key} size={18} active={on} />,
+              onClick: () => { if (comparing) { compareInLane(key); return; } setFormFilter(key); },
+              hint: String(countFor(key)),
+            };
+          }),
+          { key: "grid", label: "Grid", icon: <LayoutGrid size={16} strokeWidth={1.75} />, onClick: () => setGridOpen((v) => !v), active: gridOpen },
+          ...railActions,
+        ];
+        // Concentric: the mark is a row on the ring, on top, in the column's
+        // order. The stack keeps the same rays either way — four rows above
+        // the focused name's ray, the rest below.
+        const PIVOT = FORM_FILTERS.length + 1;
+        if (concentric) entries.unshift({ key: "mark", label: "", icon: <SiteMark size={18} color="#5F6059" opacity={SIDEBAR_GLYPH_OP.off} />, onClick: onHome, active: false });
+        const SEAT = 28;
+        const n = entries.length;
+        // The names hang off the rim at wheelR - textGap (right-aligned, they
+        // extend outward from it); the menu ring sits `ringInset` inside the rim.
+        const R = concentric ? effectiveArcWheelR - arcTextGap - effectiveRingInset : ringR;
+        // 0° is due right of the centre. Ring: the sweep is centred on it so
+        // the wheel is symmetric about the focused name's height. Concentric:
+        // one name-step per row, the mark on 0°.
+        const angleAt = (i: number) => concentric
+          ? (i - PIVOT) * effectiveArcStepDeg
+          : -ringSweep / 2 + ringSweep * (i / (n - 1));
+        const activeLane = savedLaneLive ? -1 : FORM_FILTERS.findIndex((f) => f.key === formFilter);
+        // A row on the ring: a seat rotated onto the arc. The glyph is
+        // counter-rotated so it stays upright; the label keeps the rotation and
+        // reads along the ray, the way the names read along the big wheel.
+        const seat = (a: number): React.CSSProperties => ({
+          position: "absolute", left: 0, top: 0, height: SEAT,
+          transformOrigin: "0 50%",
+          transform: `translateY(-50%) rotate(${a}deg) translateX(${R - SEAT / 2}px)`,
+          display: "flex", alignItems: "center",
+        });
+        return (
+          <div
+            ref={railRef}
+            className="fixed top-1/2"
+            style={{
+              zIndex: gridOpen ? 21 : 4,
+              // Ring: the mark's centre is the hub; 18 keeps its left edge on
+              // the same vertical the column's glyphs sit on. Concentric: the
+              // name arc's own centre, off-screen left.
+              left: concentric ? effectiveArcInset - effectiveArcWheelR : "calc(var(--nav-edge, 24px) + 18px)",
+              width: 0, height: 0,
+              transition: concentric ? "left var(--collapse-dur, 0.5s) var(--collapse-ease, cubic-bezier(0.4, 0, 0.2, 1))" : undefined,
+            }}
+            onMouseEnter={() => setRailOpen(true)}
+            onMouseLeave={() => { setRailOpen(false); setRailHover(null); }}
+          >
+            {/* Hover halo: the ring plus enough margin that the cursor can
+                travel between seats without the whole thing closing. */}
+            {!concentric && <div aria-hidden style={{ position: "absolute", left: -32, top: -(ringR + 32), width: ringR + 32 + 120, height: (ringR + 32) * 2, borderRadius: 999 }} />}
+            {/* The wheel itself, drawn only as much as the rail is open — at
+                rest the seats alone imply it. */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute", left: -R, top: -R, width: R * 2, height: R * 2,
+                borderRadius: "50%", border: "1px solid rgba(95, 96, 89, 0.10)",
+                opacity: railLive ? "calc(var(--rail-p, 0) * 0.8)" : comparing ? 0 : 0.8,
+                transition: "opacity 200ms ease",
+                pointerEvents: "none",
+              }}
+            />
+            {!concentric && (
+              <button
+                type="button"
+                onClick={onHome}
+                aria-label="Humanoid Index"
+                className="site-mark-btn cursor-pointer"
+                style={{ position: "absolute", left: -20, top: -20, width: 40, height: 40, borderRadius: 20, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: INK.off, zIndex: 1 }}
+              >
+                <SiteMark size={20} color="#5F6059" opacity={SIDEBAR_GLYPH_OP.off} />
+              </button>
+            )}
+            {/* One indicator that travels along the arc between lanes: a
+                rotation transition interpolates the angle, so it rides the
+                ring instead of cutting the chord. */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute", left: 0, top: 0, width: SEAT, height: SEAT, borderRadius: SEAT / 2,
+                background: "rgba(95, 96, 89, 0.07)",
+                transformOrigin: "0 50%",
+                transform: `translateY(-50%) rotate(${angleAt(Math.max(0, activeLane) + (concentric ? 1 : 0))}deg) translateX(${R - SEAT / 2}px)`,
+                opacity: activeLane < 0 ? 0 : 1,
+                transition: "transform 320ms cubic-bezier(0.33, 1, 0.68, 1), opacity 200ms ease",
+                pointerEvents: "none",
+              }}
+            />
+            {entries.map((item, i) => {
+              const a = angleAt(i);
+              const hovered = item.lane != null && railHover === item.lane;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={item.onClick}
+                  aria-label={item.key === "mark" ? "Humanoid Index" : item.label}
+                  aria-pressed={item.active || undefined}
+                  onMouseEnter={() => setRailHover(item.lane ?? null)}
+                  onMouseLeave={() => { if (item.lane) setRailHover((h) => (h === item.lane ? null : h)); }}
+                  className={`${item.lane ? "lane-row" : item.key === "mark" ? "site-mark-btn" : "sidebar-action"} cursor-pointer`}
+                  style={{
+                    ...seat(a),
+                    padding: 0, border: "none", background: "transparent",
+                    fontFamily: "var(--font-geist-sans)", fontSize: 13, fontWeight: 500, lineHeight: 1,
+                    whiteSpace: "nowrap",
+                    color: item.active ? INK.on : hovered ? INK.hover : INK.off,
+                    zIndex: 1,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: SEAT, height: SEAT, display: "flex", alignItems: "center", justifyContent: "center", flex: "none",
+                      transform: `rotate(${-a}deg)`,
+                    }}
+                  >
+                    <span style={{ ...SIDEBAR_GLYPH_SLOT, ...railGlyphStyle(item.active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off) }}>
+                      {item.icon}
+                    </span>
+                  </span>
+                  <span aria-hidden={comparing} style={{ ...railLabelStyle, marginLeft: railLive ? "calc(var(--rail-p, 0) * 6px)" : comparing ? 0 : 6 }}>
+                    <span>{item.label}</span>
+                  </span>
+                  <span aria-hidden style={{ ...railCountStyle, fontSize: 12 }}>
+                    {item.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })() : (
       <div
         ref={railRef}
         className="fixed top-1/2 -translate-y-1/2 flex flex-col"
@@ -3806,33 +4084,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
 
         {/* Actions. Same row, so they read as more of the column rather than as
             a menu that opened inside it — which is what the plus was for. */}
-        {[
-          // Ask leads the group: it is the only one that does something to the
-          // collection rather than to the page, and it is the row a visitor who
-          // does not know what to look for actually needs.
-          // Search leads: it is the fastest way to a specific robot, and the
-          // one row a visitor who already knows what they want will reach for.
-          // Saved leads the group. It is the only row that reads the visitor's
-          // own state back to them, and its count is the one number in the
-          // column that they put there. Hidden until there is something in it —
-          // an empty row here would be chrome advertising a feature.
-          ...(savedItems.length > 0 ? [{
-            key: "saved",
-            label: "Saved",
-            icon: <Bookmark size={16} strokeWidth={1.75} fill={savedSurfaceOn ? "currentColor" : "none"} />,
-            onClick: () => {
-              if (savedSurface === "lane") { if (comparing) return; setSavedLaneOn((v) => !v); return; }
-              if (savedSurface === "shelf") { setShelfOpen((v) => !v); return; }
-              setTrayOpen((v) => !v);
-            },
-            active: savedSurfaceOn,
-            hint: String(savedItems.length),
-          }] : []),
-          { key: "search", label: "Search", icon: <Search size={16} strokeWidth={1.75} />, onClick: () => window.dispatchEvent(new Event(SEARCH_OPEN_EVENT)), active: false, hint: "\u2318K" },
-          { key: "ask", label: "Ask", icon: <Sparkles size={16} strokeWidth={1.75} />, onClick: onToggleChat, active: chatActive, hint: undefined },
-          { key: "share", label: "Share", icon: <Share size={16} strokeWidth={1.75} />, onClick: onShareSite, active: false, hint: undefined },
-          { key: "feedback", label: "Feedback", icon: <MessageCircle size={16} strokeWidth={1.75} />, onClick: onFeedback, active: false, hint: undefined },
-        ].map((item) => (
+        {railActions.map((item) => (
           <button
             key={item.key}
             type="button"
@@ -3909,6 +4161,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           Roy Jad © 2026
         </div>
       </div>
+      )}
 
       {/* Left arc nav */}
       <div className="fixed top-0 bottom-0 left-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
@@ -4448,20 +4701,14 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               isSundayBeta ? "Apply for Beta" :
               ctaKind === "visit" ? "Visit" :
               isRotaku ? "Reserve" : "Buy";
-            const availabilityLabel: string | undefined = (
-              h.availability === "enterprise" ? "Enterprise only" :
-              h.availability === "research" ? "Research only" :
-              h.availability === "discontinued" ? "Discontinued" :
-              h.availability === "prototype" ? "Not yet for sale" :
-              undefined
-            );
+            const avail = availabilityLabel(h);
             // Left-side text in split mode: price first, then availability label, then nothing.
-            const leftLabel = hasCost ? h.cost! : availabilityLabel;
-            const text = isSundayBeta ? "Apply to the 2026 Beta" : (hasCost ? h.cost! : (availabilityLabel ?? (hasUrl ? ctaText : "Not for sale")));
+            const leftLabel = hasCost ? h.cost! : avail;
+            const text = isSundayBeta ? "Apply to the 2026 Beta" : (hasCost ? h.cost! : (avail ?? (hasUrl ? ctaText : "Not for sale")));
             // Separate cost vs state so the renderer can keep cost on the left
             // and put the availability label inside a non-link chip on the right
             // for URL-less entries — keeps the row rhythm consistent while scrolling.
-            const stateLabel = availabilityLabel ?? (hasUrl ? undefined : "Not for sale");
+            const stateLabel = avail ?? (hasUrl ? undefined : "Not for sale");
             return {
               key: "purchase",
               show: true,
@@ -5613,6 +5860,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         };
 
         const renderMergedStats = () => {
+
+          if (statsOverlay !== "off") return null;
           // Compare middle column. Mirrors the single-view stats aesthetic:
           // chromeless rows, ink-muted labels, ink-body values, a single hairline
           // separating quantitative specs from the status indicator. No accordion.
@@ -6090,6 +6339,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         };
 
         const renderRobot = (h: typeof humanoids[0], _dist: number, hIdx: number, isFirst: boolean) => {
+          const overlayRows = overlayRowsFor(h);
           const gallery = h.media || [];
           const allImages = [h.imageUrl, ...gallery.map((m) => m.url)].filter(Boolean) as string[];
           const allKinds: ("image" | "video")[] = [
@@ -6454,6 +6704,59 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   </span>
                 );
               })()}
+              {/* Stats over the card — see `statsOverlay`. Rows only; the
+                  placard above already carries the name. Missing values are
+                  left out rather than dashed: on a hero shot an em-dash is
+                  just a smudge. */}
+              {overlayRows.length > 0 && (() => {
+                const strip = statsOverlay === "strip";
+                const on = statsOverCard;
+                return (
+                  <div
+                    aria-hidden={!on}
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      top: strip ? undefined : 0,
+                      zIndex: 6,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "flex-end",
+                      padding: strip ? `${STRIP_PAD_TOP}px 22px ${STRIP_PAD_BOTTOM}px` : "0 26px 24px",
+                      background: strip ? "rgba(255,255,255,0.74)" : VEIL_WASH,
+                      // Only blur while showing — a hidden strip would still
+                      // cost a backdrop layer per card.
+                      backdropFilter: strip && on ? "blur(20px) saturate(1.4)" : undefined,
+                      WebkitBackdropFilter: strip && on ? "blur(20px) saturate(1.4)" : undefined,
+                      boxShadow: strip ? "inset 0 1px 0 rgba(255,255,255,0.7)" : undefined,
+                      opacity: on ? 1 : 0,
+                      transform: strip ? (on ? "translateY(0)" : "translateY(100%)") : "none",
+                      pointerEvents: "none",
+                      transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
+                    }}
+                  >
+                    {overlayRows.map((r, i) => (
+                      <div
+                        key={r.label}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "baseline",
+                          padding: "6px 0",
+                          fontSize: 14,
+                          fontWeight: WEIGHT.body,
+                          borderTop: !strip && i > 0 ? `1px solid ${SEAM}` : undefined,
+                        }}
+                      >
+                        <span style={{ color: INK.off }}>{r.label}</span>
+                        <span className="tabular-nums" style={{ color: r.value ? INK.on : INK.faint }}>{r.value ?? "—"}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
               {/* Card-local scene — fades in inside the card's rounded rectangle
                   when scene mode is on, so the environment reads as a portal
                   rather than a full-viewport wash. */}
@@ -6523,8 +6826,23 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   </>
                 );
               })()}
-              {/* Media area */}
-              <div className="relative flex-1 min-h-0 overflow-hidden">
+              {/* Media area. With the strip up and `stripFit` on, it shrinks
+                  from its top edge by exactly the strip's share of the card,
+                  so the robot's feet land on the strip's top edge. */}
+              <div
+                className="relative flex-1 min-h-0 overflow-hidden"
+                // Untouched unless the strip knob is on, so the default card
+                // carries no extra transform.
+                style={statsOverlay === "strip" ? (() => {
+                  const n = stripFit && statsOverCard ? overlayRows.length : 0;
+                  const k = n ? Math.max(0.4, 1 - (STRIP_PAD_TOP + STRIP_PAD_BOTTOM + n * STRIP_ROW) / cardH) : 1;
+                  return {
+                    transform: `scale(${k.toFixed(4)})`,
+                    transformOrigin: "50% 0%",
+                    transition: `transform ${dur} ${ease}`,
+                  };
+                })() : undefined}
+              >
                 {/* Static — hidden when SpinViewer or Robot3D takes over. */}
                 {!SPIN_ROBOTS[h.id] && !(isFirst && show3D && THREEDEE_ROBOTS[h.id]) && (
                   <div className="absolute inset-0">
@@ -6851,15 +7169,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 isSundayBeta ? "Apply for Beta" :
                 !buyHref ? "Visit" :
                 isRotaku ? "Reserve" : "Buy";
-              const availabilityLabel: string | undefined = (
-                h.availability === "enterprise" ? "Enterprise only" :
-                h.availability === "research" ? "Research only" :
-                h.availability === "discontinued" ? "Discontinued" :
-                h.availability === "prototype" ? "Not yet for sale" :
-                undefined
-              );
-              const leftLabel = hasCost ? h.cost! : availabilityLabel;
-              const fallbackText = isSundayBeta ? "Apply to the 2026 Beta" : (hasCost ? h.cost! : (availabilityLabel ?? (href ? ctaText : "Not for sale")));
+              const avail = availabilityLabel(h);
+              const leftLabel = hasCost ? h.cost! : avail;
+              const fallbackText = isSundayBeta ? "Apply to the 2026 Beta" : (hasCost ? h.cost! : (avail ?? (href ? ctaText : "Not for sale")));
               const ctaBg = "rgba(0,0,0,0.06)";
               const ctaColor = "rgba(95, 96, 89, 0.8)";
               const labelText = leftLabel ?? (href ? " " : fallbackText);
@@ -7260,14 +7572,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     const ctaText = isSundayBeta
                       ? "Apply for Beta"
                       : (buyHref ? (isRotaku ? "Reserve" : "Buy") : "Visit");
-                    const availabilityLabel: string | undefined = (
-                      hL.availability === "enterprise" ? "Enterprise only" :
-                      hL.availability === "research" ? "Research only" :
-                      hL.availability === "discontinued" ? "Discontinued" :
-                      hL.availability === "prototype" ? "Not yet for sale" :
-                      undefined
-                    );
-                    const stateLabel = availabilityLabel ?? (href ? undefined : "Not for sale");
+                    const stateLabel = availabilityLabel(hL) ?? (href ? undefined : "Not for sale");
                     return { href, ctaText, stateLabel };
                   })();
                   const arrowSize = Math.round(actionIco.iconBoxPx * 0.7);
@@ -7480,12 +7785,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          // Page-bg wash rather than a grey scrim — the card is
-                          // #F9F9F9 on white, so washing toward white is what
-                          // "emptying" actually looks like here. Stops short of
-                          // opaque: the robot stays legible underneath, so it
-                          // reads as about-to-leave, not already gone.
-                          background: "rgba(255,255,255,0.66)",
+                          // Washed toward the page, not scrimmed — see VEIL_WASH.
+                          // It reads as about-to-leave, not already gone.
+                          background: VEIL_WASH,
                           pointerEvents: comparing ? "auto" : "none",
                           cursor: "pointer",
                           WebkitTapHighlightColor: "transparent",
@@ -7582,14 +7884,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 const ctaText = isSundayBeta
                   ? "Apply for Beta"
                   : (buyHref ? (isRotaku ? "Reserve" : "Buy") : "Visit");
-                const availabilityLabel: string | undefined = (
-                  activeH.availability === "enterprise" ? "Enterprise only" :
-                  activeH.availability === "research" ? "Research only" :
-                  activeH.availability === "discontinued" ? "Discontinued" :
-                  activeH.availability === "prototype" ? "Not yet for sale" :
-                  undefined
-                );
-                const stateLabel = availabilityLabel ?? (href ? undefined : "Not for sale");
+                const stateLabel = availabilityLabel(activeH) ?? (href ? undefined : "Not for sale");
                 return { href, ctaText, stateLabel };
               })();
               return (
@@ -7703,63 +7998,20 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       {/* ── Dev toggle (bottom-right, subtle) ── */}
       {isDev && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-1.5">
-          <button
-            onClick={() => setShowTuner(!showTuner)}
-            className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
-          >
-            T
-          </button>
+          <button onClick={() => setShowTuner((v) => !v)} className="cursor-pointer transition-colors duration-150" style={{ fontSize: 10, color: showTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}>T</button>
           <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
-          <button
-            onClick={() => setShowSplitTuner(!showSplitTuner)}
-            className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showSplitTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
-          >
-            S
-          </button>
-          <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
-          <button
-            onClick={() => setShowSceneTuner(!showSceneTuner)}
-            className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showSceneTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
-          >
-            B
-          </button>
-          <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
-          <button
-            onClick={() => setShowCollapseTuner(!showCollapseTuner)}
-            className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showCollapseTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
-          >
-            I
-          </button>
-          <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
-          <button
-            onClick={() => onToggleChatTuner?.()}
-            className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showChatTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
-          >
-            C
-          </button>
-          <span style={{ fontSize: 10, color: "#e0e0e0" }}>·</span>
-          <button
-            onClick={() => setShowMarginTuner(!showMarginTuner)}
-            className="cursor-pointer transition-colors duration-150"
-            style={{ fontSize: 10, color: showMarginTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}
-          >
-            M
-          </button>
+          <button onClick={() => onToggleChatTuner?.()} className="cursor-pointer transition-colors duration-150" style={{ fontSize: 10, color: showChatTuner ? "#a0a0a0" : "#d4d4d4", letterSpacing: "0.02em" }}>C</button>
         </div>
       )}
-      {showMarginTuner && (
-        <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4">
+      {showTuner && (
+        <TunerShell onClose={() => setShowTuner(false)} group={tunerGroup} onGroupChange={setTunerGroup} order={TUNER_GROUPS}>
+          <div data-tuner-group="Layout" className="space-y-4">
           <p className="text-[11px] tracking-widest uppercase text-neutral-500">Corner Margins</p>
           <div>
             <label className="text-[12px] text-neutral-500 flex justify-between">Top / Bottom <span className="tabular-nums text-neutral-400">{cornerY}px</span></label>
             <input type="range" min={0} max={600} value={cornerY} onChange={(e) => setCornerY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" />
           </div>
-          <div style={{ opacity: autoNavX ? 0.55 : 1 }}>
+          <div style={{ opacity: autoNavX ? 0.5 : 1 }}>
             <label className="text-[12px] text-neutral-500 flex items-center justify-between">
               <span className="flex items-center gap-2">
                 Left / Right
@@ -7783,11 +8035,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               Reset
             </button>
           </div>
-        </div>
-      )}
-      {showSplitTuner && (
-        <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
-          <div>
+          </div>
+          <div data-tuner-group="Stats">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Sparkbar</p>
             <div className="flex flex-wrap gap-1.5">
               {([
@@ -7901,11 +8150,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               Reset
             </button>
           </div>
-        </div>
-      )}
-      {showSceneTuner && (
-        <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[260px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
-          <div className="space-y-3">
+          <div data-tuner-group="Scene" className="space-y-3">
             <p className="text-[11px] tracking-widest uppercase text-neutral-500">Surface</p>
             <div>
               <label className="text-[12px] text-neutral-500 mb-1.5 block">Palette</label>
@@ -7942,7 +8187,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     onClick={() => onSurfaceColorChange(c)}
                     title={title}
                     className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: surfaceColor.toLowerCase() === c.toLowerCase() ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                    style={{ background: c, border: surfaceColor.toLowerCase() === c.toLowerCase() ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)" }}
                   />
                 ))}
                 <input
@@ -7962,7 +8207,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     key={c}
                     onClick={() => onSurfaceHoverChange(c)}
                     className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: surfaceHover.toLowerCase() === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                    style={{ background: c, border: surfaceHover.toLowerCase() === c ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)" }}
                   />
                 ))}
                 <input
@@ -8106,7 +8351,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     key={c}
                     onClick={() => setCardFillColor(c)}
                     className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: cardFillColor === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                    style={{ background: c, border: cardFillColor === c ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)" }}
                   />
                 ))}
                 <input
@@ -8150,20 +8395,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               </button>
             </div>
           </div>
-        </div>
-      )}
-      {showCollapseTuner && (
-        <div data-tuner className="absolute top-40 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[260px] space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto scrollbar-hide">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] tracking-widest uppercase text-neutral-500">Motion</p>
-            <button
-              onClick={() => setShowCollapseTuner(false)}
-              aria-label="Close motion panel"
-              className="text-[10px] text-neutral-400 hover:text-neutral-700 cursor-pointer"
-            >
-              close
-            </button>
-          </div>
+          <p data-tuner-group="Motion" className="text-[11px] tracking-widest uppercase text-neutral-500">Motion</p>
           <div className="space-y-2">
             <p className="text-[10px] tracking-widest uppercase text-neutral-400">Starter</p>
             <div className="flex flex-wrap gap-1.5">
@@ -8213,36 +8445,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             Drives the stats column width transition and the arc inset slide.
             Test by toggling the i icon or entering/exiting compare.
           </p>
-        </div>
-      )}
-      {isDev && !showCollapseTuner && (
-        <button
-          onClick={() => setShowCollapseTuner(true)}
-          aria-label="Open motion panel"
-          className="fixed z-40 cursor-pointer flex items-center justify-center"
-          style={{
-            bottom: 18,
-            right: 18,
-            width: 26,
-            height: 26,
-            borderRadius: 999,
-            background: "rgba(0,0,0,0.06)",
-            color: "rgba(0,0,0,0.55)",
-            border: "1px solid rgba(0,0,0,0.08)",
-            fontSize: 13,
-            fontWeight: 500,
-            letterSpacing: "-0.01em",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            transition: "background 160ms ease, color 160ms ease",
-          }}
-        >
-          ≈
-        </button>
-      )}
-      {showTuner && (
-        <div data-tuner className="absolute top-28 right-5 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-5 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-hide" style={{ overscrollBehavior: "contain" }}>
-          <div className="space-y-2">
+          <div data-tuner-group="Stats" className="space-y-2">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">Chip grouping</p>
             <div className="flex gap-1.5">
               {([["single", "Single"], ["split", "Split"], ["image-corner", "On card"]] as const).map(([m, label]) => (
@@ -8256,7 +8459,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               ))}
             </div>
           </div>
-          <div className="space-y-2">
+          <div data-tuner-group="Stats" className="space-y-2">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">Bottom alignment</p>
             <div className="flex gap-1.5">
               {([["left", "Left"], ["center", "Center"], ["right", "Right"]] as const).map(([m, label]) => (
@@ -8270,7 +8473,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               ))}
             </div>
           </div>
-          <div className="space-y-3">
+          <div data-tuner-group="Stats" className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400">Dense dividers</p>
               <button
@@ -8368,7 +8571,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               Apple-style hairline between every stat row. Hides the inline cm/in toggle.
             </p>
           </div>
-          <div className="pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Saved" className="pt-2 border-t border-neutral-100">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Saved</p>
             <div className="flex flex-wrap gap-1.5">
               {(["lane", "tray", "shelf"] as const).map((v) => (
@@ -8395,7 +8598,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               </button>
             )}
           </div>
-          <div className="pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Card" className="pt-2 border-t border-neutral-100">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Buy</p>
             <div className="flex flex-wrap gap-1.5">
               {(["card", "chip", "below"] as const).map((v) => (
@@ -8433,9 +8636,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               </div>
             )}
           </div>
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => pickArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
+          <div data-tuner-group="Arc" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Arc Style</p><div className="flex flex-wrap gap-1.5">{ARC_STYLES.map((s) => (<button key={s} onClick={() => pickArcStyle(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{arcStyleLabels[s]}</button>))}</div></div>
           {arcStyle === "arc-names" && (
-            <div className="pt-2 border-t border-neutral-100">
+            <div data-tuner-group="Arc" className="pt-2 border-t border-neutral-100">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Arc Marker</p>
               <div className="flex flex-wrap gap-1.5"><button onClick={() => setArcMarkerVariant(0)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcMarkerVariant === 0 ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>None</button>{MARKER_VARIANTS.map((m) => (<button key={m.id} onClick={() => setArcMarkerVariant(m.id)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${arcMarkerVariant === m.id ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{m.label}</button>))}</div>
               {arcMarkerVariant === 22 && (
@@ -8448,9 +8651,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               )}
             </div>
           )}
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div><div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Compare slot</p><div className="flex flex-wrap gap-1.5">{(["silhouette", "plus"] as const).map((v) => (<button key={v} onClick={() => setCompareSlotStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${compareSlotStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div><div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Minus</p><div className="flex flex-wrap gap-1.5">{(["veil", "card-corner"] as const).map((v) => (<button key={v} onClick={() => setMinusPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${minusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "veil" ? "Hover veil" : "Card corner"}</button>))}</div></div>
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill", "chip"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
-          <div className="pt-2 border-t border-neutral-100 space-y-2">
+          <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
+          <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Compare slot</p><div className="flex flex-wrap gap-1.5">{(["silhouette", "plus"] as const).map((v) => (<button key={v} onClick={() => setCompareSlotStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${compareSlotStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div>
+          <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Stats over card</p><div className="flex flex-wrap gap-1.5">{(["off", "strip", "wash"] as const).map((v) => (<button key={v} onClick={() => setStatsOverlay(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${statsOverlay === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "off" ? "Column" : v}</button>))}</div><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Fit image above strip</label><button type="button" onClick={() => setStripFit((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${stripFit ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{stripFit ? "On" : "Off"}</button></div></div>
+          <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Minus</p><div className="flex flex-wrap gap-1.5">{(["veil", "card-corner"] as const).map((v) => (<button key={v} onClick={() => setMinusPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${minusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "veil" ? "Hover veil" : "Card corner"}</button>))}</div></div>
+          <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill", "chip"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
+          <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100 space-y-2">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">Pills layout</p>
             <div className="flex flex-wrap gap-1.5">
               {(["stack", "grouped"] as const).map((v) => (
@@ -8465,7 +8671,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   <label className="text-[12px] text-neutral-500 flex justify-between">Fill <span className="tabular-nums text-neutral-400">{groupedFill}</span></label>
                   <div className="flex gap-1.5 mt-1.5 items-center">
                     {["#F9F9F9", "#F4F4F4", "#FFFFFF", "#FAFAFA"].map((c) => (
-                      <button key={c} onClick={() => setGroupedFill(c)} className="w-6 h-6 rounded cursor-pointer" style={{ background: c, border: groupedFill.toLowerCase() === c.toLowerCase() ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }} />
+                      <button key={c} onClick={() => setGroupedFill(c)} className="w-6 h-6 rounded cursor-pointer" style={{ background: c, border: groupedFill.toLowerCase() === c.toLowerCase() ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)" }} />
                     ))}
                     <input type="color" value={groupedFill} onChange={(e) => setGroupedFill(e.target.value)} className="w-6 h-6 rounded cursor-pointer border border-neutral-200" style={{ padding: 0 }} />
                   </div>
@@ -8487,8 +8693,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               </>
             )}
           </div>
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Card" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
+          <div data-tuner-group="Card" className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400">Card Icons</p>
               <button
@@ -8544,7 +8750,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             <div><label className="text-[12px] text-neutral-500 block mb-1">Corners close</label><div className="flex flex-wrap gap-1 rounded border border-neutral-200 p-0.5">{([["slim-minus", "Slim −"], ["click-card", "Click card"], ["hover-x", "Hover ×"], ["edge-chevron", "Edge ›"], ["card-edge-tab", "Card tab"]] as const).map(([m, label]) => (<button key={m} className={`px-2 py-0.5 text-[12px] rounded cursor-pointer ${cornersCloseMode === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCornersCloseMode(m)}>{label}</button>))}</div></div>
             <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Show &ldquo;3D&rdquo; label</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${cardIcon3DLabel ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setCardIcon3DLabel(!cardIcon3DLabel)}>{cardIcon3DLabel ? "On" : "Off"}</button></div>
           </div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Stats" className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400">Glass chip</p>
               <button
@@ -8584,7 +8790,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     key={c}
                     onClick={() => setGlassTint(c)}
                     className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: glassTint.toLowerCase() === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5" }}
+                    style={{ background: c, border: glassTint.toLowerCase() === c ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)" }}
                   />
                 ))}
                 <input
@@ -8609,7 +8815,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               </div>
             </div>
           </div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Nav</p>
+          <div data-tuner-group="Layout" className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Nav</p>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Chrome</p><div className="flex flex-wrap gap-1.5">{(["split", "joined"] as const).map((s) => (<button key={s} onClick={() => onChromeVariantChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${chromeVariant === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             {navStyle === "underline" && (
@@ -8617,18 +8823,18 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             )}
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Top offset <span className="tabular-nums text-neutral-400">{navTop}px</span></label><input type="range" min={0} max={48} value={navTop} onChange={(e) => setNavTop(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">Auto side inset</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${autoNavX ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoNavX(!autoNavX)}>{autoNavX ? "On" : "Off"}</button></div>
-            <div style={{ opacity: autoNavX ? 0.3 : 1 }}><label className="text-[12px] text-neutral-500 flex justify-between">Side inset <span className="tabular-nums text-neutral-400">{navX}px</span></label><input type="range" min={0} max={200} value={navX} onChange={(e) => { setNavX(Number(e.target.value)); setAutoNavX(false); }} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: autoNavX ? 0.5 : 1 }}><label className="text-[12px] text-neutral-500 flex justify-between">Side inset <span className="tabular-nums text-neutral-400">{navX}px</span></label><input type="range" min={0} max={200} value={navX} onChange={(e) => { setNavX(Number(e.target.value)); setAutoNavX(false); }} className="w-full accent-neutral-900 h-1" /></div>
           </div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Card" className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Card Give</p><button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setGiveVelScale(3); setGivePushAmt(5); setGiveLeanAmt(0.9); setGiveTiltAmt(4); setGiveTiltDepth(800); }}>Reset</button></div>
             <div className="flex flex-wrap gap-1.5">{GIVE_STYLES.map((s) => (<button key={s} onClick={() => setGiveStyle(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${giveStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{giveStyleLabels[s]}</button>))}</div>
-            <div style={{ opacity: (giveStyle === "push" || giveStyle === "lean" || giveStyle === "tilt" || giveStyle === "drag") ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Velocity scale <span className="tabular-nums text-neutral-400">{giveVelScale.toFixed(1)}</span></label><input type="range" min={5} max={80} value={Math.round(giveVelScale * 10)} onChange={(e) => setGiveVelScale(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: (giveStyle === "push" || giveStyle === "drag") ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Push amount <span className="tabular-nums text-neutral-400">{givePushAmt}px</span></label><input type="range" min={0} max={30} value={givePushAmt} onChange={(e) => setGivePushAmt(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: giveStyle === "lean" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Lean amount <span className="tabular-nums text-neutral-400">{giveLeanAmt.toFixed(1)}°</span></label><input type="range" min={0} max={50} value={Math.round(giveLeanAmt * 10)} onChange={(e) => setGiveLeanAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Tilt amount <span className="tabular-nums text-neutral-400">{giveTiltAmt.toFixed(1)}°</span></label><input type="range" min={0} max={200} value={Math.round(giveTiltAmt * 10)} onChange={(e) => setGiveTiltAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Tilt depth <span className="tabular-nums text-neutral-400">{giveTiltDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={giveTiltDepth} onChange={(e) => setGiveTiltDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: (giveStyle === "push" || giveStyle === "lean" || giveStyle === "tilt" || giveStyle === "drag") ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Velocity scale <span className="tabular-nums text-neutral-400">{giveVelScale.toFixed(1)}</span></label><input type="range" min={5} max={80} value={Math.round(giveVelScale * 10)} onChange={(e) => setGiveVelScale(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: (giveStyle === "push" || giveStyle === "drag") ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Push amount <span className="tabular-nums text-neutral-400">{givePushAmt}px</span></label><input type="range" min={0} max={30} value={givePushAmt} onChange={(e) => setGivePushAmt(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: giveStyle === "lean" ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Lean amount <span className="tabular-nums text-neutral-400">{giveLeanAmt.toFixed(1)}°</span></label><input type="range" min={0} max={50} value={Math.round(giveLeanAmt * 10)} onChange={(e) => setGiveLeanAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Tilt amount <span className="tabular-nums text-neutral-400">{giveTiltAmt.toFixed(1)}°</span></label><input type="range" min={0} max={200} value={Math.round(giveTiltAmt * 10)} onChange={(e) => setGiveTiltAmt(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: giveStyle === "tilt" ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Tilt depth <span className="tabular-nums text-neutral-400">{giveTiltDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={giveTiltDepth} onChange={(e) => setGiveTiltDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Card" className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400">Lucky Tap</p>
               <button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setLuckyTapStyle("shake"); setLuckyTapDur(500); setLuckyTapAngle(2.7); setLuckyTapDepth(1400); setLuckyTapOriginY(100); setLuckyShakePx(8); setLuckyShakeCycles(2); }}>Reset</button>
@@ -8639,13 +8845,13 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               ))}
             </div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Duration <span className="tabular-nums text-neutral-400">{luckyTapDur}ms</span></label><input type="range" min={120} max={900} step={10} value={luckyTapDur} onChange={(e) => setLuckyTapDur(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Peak angle <span className="tabular-nums text-neutral-400">{luckyTapAngle.toFixed(1)}°</span></label><input type="range" min={0} max={300} value={Math.round(luckyTapAngle * 10)} onChange={(e) => setLuckyTapAngle(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Depth <span className="tabular-nums text-neutral-400">{luckyTapDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={luckyTapDepth} onChange={(e) => setLuckyTapDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Pivot Y <span className="tabular-nums text-neutral-400">{luckyTapOriginY}%</span></label><input type="range" min={0} max={100} value={luckyTapOriginY} onChange={(e) => setLuckyTapOriginY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Shake amount <span className="tabular-nums text-neutral-400">{luckyShakePx}px</span></label><input type="range" min={0} max={14} value={luckyShakePx} onChange={(e) => setLuckyShakePx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
-            <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.3 }}><label className="text-[12px] text-neutral-500 flex justify-between">Shake cycles <span className="tabular-nums text-neutral-400">{luckyShakeCycles}</span></label><input type="range" min={1} max={8} value={luckyShakeCycles} onChange={(e) => setLuckyShakeCycles(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Peak angle <span className="tabular-nums text-neutral-400">{luckyTapAngle.toFixed(1)}°</span></label><input type="range" min={0} max={300} value={Math.round(luckyTapAngle * 10)} onChange={(e) => setLuckyTapAngle(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Depth <span className="tabular-nums text-neutral-400">{luckyTapDepth}px</span></label><input type="range" min={200} max={2000} step={50} value={luckyTapDepth} onChange={(e) => setLuckyTapDepth(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "tilt" ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Pivot Y <span className="tabular-nums text-neutral-400">{luckyTapOriginY}%</span></label><input type="range" min={0} max={100} value={luckyTapOriginY} onChange={(e) => setLuckyTapOriginY(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Shake amount <span className="tabular-nums text-neutral-400">{luckyShakePx}px</span></label><input type="range" min={0} max={14} value={luckyShakePx} onChange={(e) => setLuckyShakePx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: luckyTapStyle === "shake" ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Shake cycles <span className="tabular-nums text-neutral-400">{luckyShakeCycles}</span></label><input type="range" min={1} max={8} value={luckyShakeCycles} onChange={(e) => setLuckyShakeCycles(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Stats" className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Stat Pills</p><button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setStatPillRadius(40); setStatPillGap(4); setStatPillPadX(16); setStatPillPadY(11); setStatPillBg("#FCFCFC"); setInfoMode("bare"); }}>Reset</button></div>
             <div>
               <p className="text-[12px] text-neutral-500 mb-1.5">Info</p>
@@ -8695,7 +8901,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       }
                     }}
                     className="text-[12px] px-2 py-1 rounded transition-colors"
-                    style={{ background: isLegacy ? "#1a1a1a" : "#f0f0f0", color: isLegacy ? "#fff" : "#666", border: "none", cursor: "pointer" }}
+                    style={{ background: isLegacy ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: isLegacy ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer" }}
                   >
                     {isLegacy ? "ON" : "OFF"}
                   </button>
@@ -8880,7 +9086,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     type="button"
                     onClick={() => setPillLabelFont(value)}
                     className="text-left px-2 py-1 rounded transition-colors"
-                    style={{ background: pillLabelFont === value ? "#1a1a1a" : "#f0f0f0", color: pillLabelFont === value ? "#fff" : "#666", border: "none", cursor: "pointer", fontSize: pillLabelFontSize, fontFamily: value, letterSpacing: "0.06em" }}
+                    style={{ background: pillLabelFont === value ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: pillLabelFont === value ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer", fontSize: pillLabelFontSize, fontFamily: value, letterSpacing: "0.06em" }}
                   >
                     INFO · OVERVIEW · STATUS
                   </button>
@@ -8894,7 +9100,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 {[300, 400, 500, 600, 700, 800].map((w) => (
                   <button key={w} type="button" onClick={() => setPillLabelWeight(w)}
                     className="text-[12px] px-2 py-1 rounded transition-colors tabular-nums"
-                    style={{ background: pillLabelWeight === w ? "#1a1a1a" : "#f0f0f0", color: pillLabelWeight === w ? "#fff" : "#666", border: "none", cursor: "pointer", fontWeight: w }}>
+                    style={{ background: pillLabelWeight === w ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: pillLabelWeight === w ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer", fontWeight: w }}>
                     {w}
                   </button>
                 ))}
@@ -8904,7 +9110,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               <label className="text-[12px] text-neutral-500">Uppercase</label>
               <button type="button" onClick={() => setPillLabelUppercase((v) => !v)}
                 className="text-[12px] px-2 py-1 rounded transition-colors"
-                style={{ background: pillLabelUppercase ? "#1a1a1a" : "#f0f0f0", color: pillLabelUppercase ? "#fff" : "#666", border: "none", cursor: "pointer" }}>
+                style={{ background: pillLabelUppercase ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: pillLabelUppercase ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer" }}>
                 {pillLabelUppercase ? "ON" : "OFF"}
               </button>
             </div>
@@ -8926,7 +9132,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     type="button"
                     onClick={() => setOutlineStyle(s)}
                     className="text-[11px] px-1.5 py-0.5 rounded capitalize cursor-pointer transition-colors"
-                    style={{ background: outlineStyle === s ? "#1a1a1a" : "#f0f0f0", color: outlineStyle === s ? "#fff" : "#666", border: "none" }}
+                    style={{ background: outlineStyle === s ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: outlineStyle === s ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none" }}
                   >
                     {s}
                   </button>
@@ -8947,7 +9153,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       style={{
                         background: b.bg,
                         boxShadow: selected
-                          ? `${b.shadow}, 0 0 0 2px #1a1a1a`
+                          ? `${b.shadow}, 0 0 0 2px rgba(95, 96, 89, 0.95)`
                           : b.shadow,
                         backdropFilter: b.backdropFilter,
                         WebkitBackdropFilter: b.backdropFilter,
@@ -8971,7 +9177,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       style={{
                         background: b.bg,
                         boxShadow: selected
-                          ? `${b.shadow}, 0 0 0 2px #1a1a1a`
+                          ? `${b.shadow}, 0 0 0 2px rgba(95, 96, 89, 0.95)`
                           : b.shadow,
                         backdropFilter: b.backdropFilter,
                         WebkitBackdropFilter: b.backdropFilter,
@@ -8985,7 +9191,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   type="button"
                   onClick={() => setBlurbFloat((v) => !v)}
                   className="text-[12px] px-2 py-1 rounded transition-colors"
-                  style={{ background: blurbFloat ? "#1a1a1a" : "#f0f0f0", color: blurbFloat ? "#fff" : "#666", border: "none", cursor: "pointer" }}
+                  style={{ background: blurbFloat ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: blurbFloat ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer" }}
                 >
                   Float to top
                 </button>
@@ -8993,7 +9199,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   type="button"
                   onClick={() => setSplitBlurb((v) => !v)}
                   className="text-[12px] px-2 py-1 rounded transition-colors ml-1"
-                  style={{ background: splitBlurb ? "#1a1a1a" : "#f0f0f0", color: splitBlurb ? "#fff" : "#666", border: "none", cursor: "pointer" }}
+                  style={{ background: splitBlurb ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: splitBlurb ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer" }}
                 >
                   Split columns
                 </button>
@@ -9013,8 +9219,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     onClick={() => setBlurbExpandIndicator(opt.key)}
                     className="text-[12px] px-2 py-1 rounded transition-colors"
                     style={{
-                      background: blurbExpandIndicator === opt.key ? "#1a1a1a" : "#f0f0f0",
-                      color: blurbExpandIndicator === opt.key ? "#fff" : "#666",
+                      background: blurbExpandIndicator === opt.key ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)",
+                      color: blurbExpandIndicator === opt.key ? "#fff" : "rgba(95, 96, 89, 0.85)",
                       border: "none",
                       cursor: "pointer",
                     }}
@@ -9055,7 +9261,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     className="w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110"
                     style={{
                       background: c === "transparent" ? "repeating-conic-gradient(#e5e5e5 0% 25%, #fff 0% 50%) 50% / 8px 8px" : c,
-                      border: statPillBg === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5",
+                      border: statPillBg === c ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)",
                     }}
                     aria-label={c}
                   />
@@ -9071,12 +9277,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               </div>
             </div>
           </div>
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Card" className="space-y-3 pt-2 border-t border-neutral-100">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">New Badge</p>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Font size <span className="tabular-nums text-neutral-400">{newBadgeFontSize}px</span></label><input type="range" min={8} max={16} value={newBadgeFontSize} onChange={(e) => setNewBadgeFontSize(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           {(arcStyle === "crown" || arcStyle === "arc-timeline" || arcStyle === "arc-names" || arcStyle === "arc-tag") && (
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Arc" className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Crown</p><button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setDrumAngle(18); setDrumRadius(90); setDrumFsMax(16); setDrumFsMin(8); setDrumFwMax(500); setDrumCompression(0.59); setDrumOpPower(4.0); setDrumXOffset(120); setDrumMaskFade(35); setDrumRange(1); setDrumTracking(0.04); setMiniCrownRadius(70); }}>Reset</button></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Angle <span className="tabular-nums text-neutral-400">{drumAngle}°</span></label><input type="range" min={8} max={45} value={drumAngle} onChange={(e) => setDrumAngle(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Radius <span className="tabular-nums text-neutral-400">{drumRadius}px</span></label><input type="range" min={60} max={300} value={drumRadius} onChange={(e) => setDrumRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -9110,7 +9316,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               <div className="flex items-center gap-2"><label className="text-[12px] text-neutral-500 flex-1">Italic</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${arcItalic ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setArcItalic(!arcItalic)}>{arcItalic ? "On" : "Off"}</button></div>
             </div>
             <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">All Caps</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${allCaps ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => onAllCapsChange?.(!allCaps)}>{allCaps ? "On" : "Off"}</button></div>
-            <div style={{ opacity: autoArcInset ? 0.3 : 1 }}><label className="text-[12px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => { setArcInset(Number(e.target.value)); setAutoArcInset(false); }} className="w-full accent-neutral-900 h-1" /></div>
+            <div style={{ opacity: autoArcInset ? 0.5 : 1 }}><label className="text-[12px] text-neutral-500 flex justify-between">Arc inset <span className="tabular-nums text-neutral-400">{arcInset}px</span></label><input type="range" min={30} max={600} value={arcInset} onChange={(e) => { setArcInset(Number(e.target.value)); setAutoArcInset(false); }} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Arc radius <span className="tabular-nums text-neutral-400">{arcWheelR}px</span></label><input type="range" min={80} max={1500} value={arcWheelR} onChange={(e) => setArcWheelR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Step angle <span className="tabular-nums text-neutral-400">{arcStepDeg.toFixed(1)}°</span></label><input type="range" min={10} max={80} value={Math.round(arcStepDeg * 10)} onChange={(e) => setArcStepDeg(Number(e.target.value) / 10)} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Text gap <span className="tabular-nums text-neutral-400">{arcTextGap}px</span></label><input type="range" min={0} max={80} value={arcTextGap} onChange={(e) => setArcTextGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -9131,6 +9337,23 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 <input type="checkbox" checked={railLabelsOnHover} onChange={(e) => setRailLabelsOnHover(e.target.checked)} className="accent-neutral-900" />
               </label>
             </div>
+            <div>
+              <label className="text-[12px] text-neutral-500 mb-1.5 block">Rail shape</label>
+              <div className="flex flex-wrap gap-1.5">
+                {(["column", "ring", "concentric"] as const).map((b) => (
+                  <button key={b} onClick={() => setRailShape(b)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railShape === b ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{b}</button>
+                ))}
+              </div>
+            </div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Ring radius <span className="tabular-nums text-neutral-400">{ringR}px</span></label><input type="range" min={56} max={160} value={ringR} onChange={(e) => setRingR(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div>
+              <label className="text-[12px] text-neutral-500 flex items-center justify-between cursor-pointer">
+                <span>Concentric inset auto <span className="tabular-nums text-neutral-400">{effectiveRingInset}px</span></span>
+                <input type="checkbox" checked={autoRingInset} onChange={(e) => setAutoRingInset(e.target.checked)} className="accent-neutral-900" />
+              </label>
+            </div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Concentric inset <span className="tabular-nums text-neutral-400">{ringInset}px</span></label><input type="range" min={24} max={200} value={ringInset} onChange={(e) => { setAutoRingInset(false); setRingInset(Number(e.target.value)); }} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Ring sweep <span className="tabular-nums text-neutral-400">{ringSweep}°</span></label><input type="range" min={90} max={180} value={ringSweep} onChange={(e) => setRingSweep(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Rail approach band <span className="tabular-nums text-neutral-400">{railNearPx}px</span></label><input type="range" min={60} max={600} value={railNearPx} onChange={(e) => setRailNearPx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Rail follow <span className="tabular-nums text-neutral-400">{railGrowMs}ms</span></label><input type="range" min={17} max={400} value={railGrowMs} onChange={(e) => setRailGrowMs(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
@@ -9157,7 +9380,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     className="w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110"
                     style={{
                       background: c === "transparent" ? "repeating-conic-gradient(#e5e5e5 0% 25%, #fff 0% 50%) 50% / 8px 8px" : c,
-                      border: arcDiskColor === c ? "1.5px solid #1a1a1a" : "1px solid #e5e5e5",
+                      border: arcDiskColor === c ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)",
                     }}
                     aria-label={c}
                   />
@@ -9175,7 +9398,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           </div>
           )}
           {arcStyle === "arc-tag" && (
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Arc" className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Tag</p><button className="text-[12px] text-neutral-300 hover:text-neutral-500 cursor-pointer" onClick={() => { setTagFsMin(11); setTagFsMax(14); setTagOpMin(0.58); setTagOpMax(1); setTagGreyMin(64); setTagGreyMax(213); setTagPillOp(0.03); setTagFalloff(2); setTagPadX(0); setTagPadY(0); setTagRadius(20); setTagMarkerSize(4); setTagMarkerOp(0.32); }}>Reset</button></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Font min <span className="tabular-nums text-neutral-400">{tagFsMin}px</span></label><input type="range" min={8} max={20} value={tagFsMin} onChange={(e) => setTagFsMin(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Font max <span className="tabular-nums text-neutral-400">{tagFsMax}px</span></label><input type="range" min={12} max={32} value={tagFsMax} onChange={(e) => setTagFsMax(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
@@ -9192,7 +9415,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Marker opacity <span className="tabular-nums text-neutral-400">{tagMarkerOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(tagMarkerOp * 100)} onChange={(e) => setTagMarkerOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
           </div>
           )}
-          <div className="pt-2 border-t border-neutral-100">
+          <div data-tuner-group="Arc" className="pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400" style={{ fontFamily: "var(--font-epetri)", letterSpacing: "0.18em" }}>Epetri Font</p>
               <button
@@ -9205,7 +9428,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               </button>
             </div>
           </div>
-        </div>
+        </TunerShell>
       )}
 
       {/* Saved surfaces. Both read the same set the wheel's saved lane does —
@@ -9933,8 +10156,8 @@ export default function HomeClient() {
 
       {/* Chat tuner panel */}
       {isDev && showChatTuner && (
-        <div data-tuner className="fixed bottom-14 right-6 z-50 bg-white rounded-2xl border border-neutral-100 p-5 shadow-lg w-[240px] space-y-4 max-h-[70vh] overflow-y-auto scrollbar-hide">
-          <div>
+        <TunerShell title="Chat" hint="C" onClose={() => setShowChatTuner(false)}>
+          <div data-tuner-group="Chat">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Guide Style</p>
             <div className="flex gap-1.5">
               {(["plain", "bubble"] as const).map((v) => (
@@ -9994,7 +10217,7 @@ export default function HomeClient() {
             className="text-[12px] text-neutral-400 hover:text-neutral-600 cursor-pointer transition-colors">
             Reset
           </button>
-        </div>
+        </TunerShell>
       )}
 
       {/* The top edge is deliberately empty. The mark used to sit up here on

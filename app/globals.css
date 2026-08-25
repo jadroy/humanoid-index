@@ -670,53 +670,6 @@ main {
 }
 
 /* ═══════════════════════════════════════
-   TUNER — custom range inputs
-   ═══════════════════════════════════════ */
-.tuner-range {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 2px;
-  background: #e5e5e5;
-  border-radius: 1px;
-  outline: none;
-  cursor: pointer;
-}
-.tuner-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #1a1a1a;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.12);
-  cursor: grab;
-  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
-}
-.tuner-range::-webkit-slider-thumb:hover {
-  transform: scale(1.25);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.18);
-}
-.tuner-range::-webkit-slider-thumb:active {
-  cursor: grabbing;
-  transform: scale(1.1);
-}
-.tuner-range::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #1a1a1a;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.12);
-  cursor: grab;
-}
-.tuner-range::-moz-range-track {
-  height: 2px;
-  background: #e5e5e5;
-  border-radius: 1px;
-}
-
-/* ═══════════════════════════════════════
    WELCOME MODAL
    ═══════════════════════════════════════ */
 @keyframes welcome-backdrop-in {
@@ -1284,3 +1237,60 @@ main {
 .chat-input::placeholder { color: rgba(95, 96, 89, 0.45); font-weight: 450; }
 
 .search-input::placeholder { color: rgba(95, 96, 89, 0.4); font-weight: 450; }
+
+/* ── Tuner (dev) ─────────────────────────────────────────────────────────────
+   The six old panels' controls, restyled in place. They still wear their
+   Tailwind classes; these rules sit under `.tuner-body` and re-read those
+   classes as the site's ink / fill / seam so nothing inside had to be
+   rewritten. See components/Tuner.tsx. */
+.tuner-body > [hidden] { display: none !important; }
+.tuner-body > :not([hidden]) ~ :not([hidden]) { margin-top: 14px; }
+.tuner-body > [data-tuner-first] { border-top-color: transparent !important; padding-top: 0 !important; }
+.tuner-body > [data-tuner-eyebrow]::before {
+  content: attr(data-tuner-eyebrow); display: block; font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: rgba(95, 96, 89, 0.55); margin-bottom: 6px;
+}
+.tuner-body .uppercase { font-size: 11px !important; letter-spacing: 0.08em; font-weight: 500; color: rgba(95, 96, 89, 0.72) !important; }
+.tuner-body .text-neutral-400 { color: rgba(95, 96, 89, 0.78); }
+.tuner-body .text-neutral-300 { color: rgba(95, 96, 89, 0.55); }
+.tuner-body .text-neutral-500, .tuner-body .text-neutral-600, .tuner-body .text-neutral-700, .tuner-body .text-neutral-800, .tuner-body .text-neutral-900,
+.tuner-body .hover\:text-neutral-600:hover, .tuner-body .hover\:text-neutral-700:hover { color: rgba(95, 96, 89, 0.95); }
+.tuner-body .hover\:text-neutral-500:hover { color: rgba(95, 96, 89, 0.95); }
+/* Swatches: a square with its own fill, never a pill. */
+.tuner-body button.w-6, .tuner-body button.w-5 { padding: 0; }
+.tuner-body .border-t, .tuner-body .border-b, .tuner-body .border { border-color: rgba(95, 96, 89, 0.10); }
+.tuner-body button.rounded-full, .tuner-body button.rounded:not(.w-6):not(.w-5):not(.h-7) {
+  border-radius: 999px; font-size: 12px; line-height: 1; padding: 6px 10px; font-weight: 450;
+  transition: background 200ms cubic-bezier(0.33, 1, 0.68, 1), color 200ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+.tuner-body .bg-neutral-100, .tuner-body .bg-neutral-50, .tuner-body .bg-white { background: rgba(95, 96, 89, 0.07); color: rgba(95, 96, 89, 0.85); }
+.tuner-body button.bg-neutral-100:hover, .tuner-body button.bg-neutral-50:hover { background: rgba(95, 96, 89, 0.09); color: rgba(95, 96, 89, 0.95); }
+.tuner-body .bg-neutral-900, .tuner-body .bg-neutral-800 { background: rgba(95, 96, 89, 0.95); color: #fff; }
+.tuner-body select, .tuner-body input[type="text"], .tuner-body input[type="number"] {
+  background: rgba(95, 96, 89, 0.05); border: none; border-radius: 9px; padding: 6px 9px;
+  font-size: 12.5px; color: rgba(95, 96, 89, 0.95); outline: none;
+}
+.tuner-body input[type="checkbox"] { accent-color: rgba(95, 96, 89, 0.95); }
+.tuner-body input[type="color"] { width: 22px; height: 22px; border: none; border-radius: 11px; padding: 0; background: none; overflow: hidden; cursor: pointer; }
+.tuner-body input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.tuner-body input[type="color"]::-webkit-color-swatch { border: none; border-radius: 11px; box-shadow: inset 0 0 0 1px rgba(95, 96, 89, 0.10); }
+.tuner-body input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 18px !important; margin: 2px 0 0;
+  background: transparent; cursor: pointer;
+}
+.tuner-body input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px; border-radius: 1px;
+  background: linear-gradient(to right, rgba(95, 96, 89, 0.9) var(--p, 0%), rgba(95, 96, 89, 0.2) var(--p, 0%));
+}
+.tuner-body input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px; margin-top: -5px; border-radius: 6px; background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(95, 96, 89, 0.35), 0 1px 3px rgba(0, 0, 0, 0.16); transition: transform 160ms ease;
+}
+.tuner-body input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.15); }
+.tuner-body input[type="range"]::-moz-range-track { height: 2px; background: rgba(95, 96, 89, 0.14); }
+.tuner-body input[type="range"]::-moz-range-progress { height: 2px; background: rgba(95, 96, 89, 0.85); }
+.tuner-body input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border: none; border-radius: 6px; background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(95, 96, 89, 0.22), 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+.tuner-body .text-\[10px\] { font-size: 11px; }
