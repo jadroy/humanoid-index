@@ -918,6 +918,7 @@ function MediaImageSlide({
   priority,
   bottomFadeH,
   bottomFadeOpacity,
+  credit,
 }: {
   src: string;
   alt: string;
@@ -928,6 +929,7 @@ function MediaImageSlide({
   priority: boolean;
   bottomFadeH: number;
   bottomFadeOpacity: number;
+  credit?: { prefix?: string; name: string; href?: string };
 }) {
   const [ready, setReady] = useState(false);
   return (
@@ -979,6 +981,42 @@ function MediaImageSlide({
           />
         )}
       </div>
+      {/* Photo credit. Its twin on VideoSlide sits on video, so it's white;
+          this one sits on the card's own paper and reads as ink instead.
+          Anchored to the slide's padding gutter rather than the image box, so a
+          bottom-aligned robot's feet never land on top of it. Deliberately
+          quiet at rest — it's a licence obligation, not a feature — and comes
+          up to legible on card hover. */}
+      {credit && (
+        <div
+          className="absolute z-[3] pointer-events-auto opacity-25 group-hover/card:opacity-55"
+          style={{
+            bottom: 9,
+            left: 12,
+            fontSize: 10.5,
+            fontWeight: 500,
+            lineHeight: 1,
+            color: "var(--c-ink)",
+            whiteSpace: "nowrap",
+            transition: "opacity 220ms cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
+          {credit.prefix && <span>{credit.prefix} </span>}
+          {credit.href ? (
+            <a
+              href={credit.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="hover:underline underline-offset-2"
+            >
+              {credit.name}
+            </a>
+          ) : (
+            <span>{credit.name}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -5060,7 +5098,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         const renderMedia = (mh: typeof humanoids[0], mIdx: number, markPriority: boolean) => {
           const mGallery = mh.media || [];
           const mItems: { kind: "image" | "video"; src: string; position?: string; fit?: "contain" | "cover"; credit?: { prefix?: string; name: string; href?: string } }[] = [];
-          if (mh.imageUrl) mItems.push({ kind: "image", src: mh.imageUrl, position: mh.imagePosition, fit: mh.imageFit });
+          if (mh.imageUrl) mItems.push({ kind: "image", src: mh.imageUrl, position: mh.imagePosition, fit: mh.imageFit, credit: mh.imageCredit });
           for (const m of mGallery) mItems.push({ kind: m.type, src: m.url, position: m.position ?? mh.imagePosition, fit: m.fit ?? mh.imageFit, credit: m.credit });
           const mHasGallery = mItems.length > 1;
 
@@ -5129,6 +5167,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       priority={markPriority && i === 0}
                       bottomFadeH={bottomFadeH}
                       bottomFadeOpacity={bottomFadeOpacity}
+                      credit={item.credit}
                     />
                   );
                 }) : (

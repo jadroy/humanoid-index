@@ -32,6 +32,10 @@ export interface Humanoid {
   imagePosition?: string; // CSS object-position override (default: "center")
   imageFit?: "contain" | "cover"; // CSS object-fit override (default: "contain")
   imageScale?: number; // Multiplier applied to the rendered image (default: 1). Used for relative-size honesty between same-family variants.
+  // Attribution for the cover image. Same shape MediaItem.credit uses, and it
+  // renders the same way — set it only when the licence obliges us (a CC photo,
+  // someone else's shot). Manufacturer press art carries no credit.
+  imageCredit?: { prefix?: string; name: string; href?: string };
   logoUrl?: string; // Company logo
   manufacturerUrl?: string; // Company website (generic homepage)
   infoUrl?: string; // Specific product/info page — preferred Visit target when not for sale
@@ -996,9 +1000,12 @@ const allHumanoids: Humanoid[] = [
 // Assets still needed:
 //   figure-03.png ✓ · matic.png ✓ · unitree-r1.png ✓ · agibot-a2.png ✓ · walker-s2.png ✓
 //   Xpeng-logo.svg ✓ · AgiBot-logo.png ✓
-//   Still missing: xpeng-iron.png. XPeng publishes no IRON press art on any
-//   reachable site — /robot redirects to the car range, xpengrobotics.com is a
-//   parked domain, and the newsroom has no humanoid coverage.
+//   xpeng-iron.png ✓ (CC BY-SA, credited on the card — XPeng publishes no IRON
+//   press art anywhere reachable, so this is the Commons shot from Auto
+//   Guangzhou 2025.)
+//
+//   Everything in this block now has art. Flip SHOW_PENDING_IMAGE_ENTRIES to
+//   go live whenever the copy has had a last read.
 // Visible on localhost, never in a production build — so these can be reviewed
 // in the browser without any risk of shipping a half-finished entry.
 const SHOW_PENDING_IMAGE_ENTRIES = process.env.NODE_ENV === "development";
@@ -1083,6 +1090,14 @@ const pendingImageHumanoids: Humanoid[] = [
     drive: "Electric",
     logoUrl: "/robots/Xpeng-logo.svg",
     manufacturerUrl: "https://www.xpeng.com",
+    imageUrl: "/robots/xpeng-iron.png",
+    // XPeng publishes no IRON press art, so this is a CC BY-SA shot from Auto
+    // Guangzhou 2025 — hence the only credited image in the index.
+    imageCredit: {
+      prefix: "Photo",
+      name: "Tim Wu / CC BY-SA",
+      href: "https://commons.wikimedia.org/wiki/File:XPeng_Iron_at_Auto_Guangzhou_2025_20251123.jpg",
+    },
     year: 2025,
     addedAt: "2026-08-24",
     cost: "N/A",
