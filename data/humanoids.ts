@@ -994,8 +994,11 @@ const allHumanoids: Humanoid[] = [
 //
 // To go live: drop the images in, add `imageUrl` to each entry, flip this to true.
 // Assets still needed:
-//   figure-03.png ✓ · matic.png ✓ · unitree-r1.png · xpeng-iron.png · agibot-a2.png · walker-s2.png
-//   Xpeng-logo.svg · AgiBot-logo.svg   (Figure / Unitree / UBTech logos already exist)
+//   figure-03.png ✓ · matic.png ✓ · unitree-r1.png ✓ · agibot-a2.png ✓ · walker-s2.png ✓
+//   Xpeng-logo.svg ✓ · AgiBot-logo.png ✓
+//   Still missing: xpeng-iron.png. XPeng publishes no IRON press art on any
+//   reachable site — /robot redirects to the car range, xpengrobotics.com is a
+//   parked domain, and the newsroom has no humanoid coverage.
 // Visible on localhost, never in a production build — so these can be reviewed
 // in the browser without any risk of shipping a half-finished entry.
 const SHOW_PENDING_IMAGE_ENTRIES = process.env.NODE_ENV === "development";
@@ -1054,15 +1057,16 @@ const pendingImageHumanoids: Humanoid[] = [
     logoUrl: "/robots/Unitree-logo.svg",
     manufacturerUrl: "https://www.unitree.com",
     infoUrl: "https://www.unitree.com/R1",
+    imageUrl: "/robots/unitree-r1.png",
     year: 2025,
     addedAt: "2026-08-24",
-    cost: "$5.9K",
+    cost: "$4.9K",
     status: "In Production",
     availability: "consumer",
     height: 121,
     weight: 25,
-    description: "The R1 cut the price of a walking humanoid to $5,900. Small, quick, and actually buyable.",
-    tags: ["$5.9K affordable", "Undercuts G1", "Consumer available"],
+    description: "The R1 cut the price of a walking humanoid to $4,900. Small, quick, and actually buyable.",
+    tags: ["$4.9K affordable", "Undercuts G1", "Consumer available"],
     engineering: {
       actuators: "BLDC",
       imu: "9-axis",
@@ -1077,6 +1081,7 @@ const pendingImageHumanoids: Humanoid[] = [
     country: "China",
     useCase: "Service",
     drive: "Electric",
+    logoUrl: "/robots/Xpeng-logo.svg",
     manufacturerUrl: "https://www.xpeng.com",
     year: 2025,
     addedAt: "2026-08-24",
@@ -1094,7 +1099,9 @@ const pendingImageHumanoids: Humanoid[] = [
     country: "China",
     useCase: "Service",
     drive: "Electric",
+    logoUrl: "/robots/AgiBot-logo.png",
     manufacturerUrl: "https://www.agibot.com",
+    imageUrl: "/robots/agibot-a2.png",
     year: 2025,
     addedAt: "2026-08-24",
     cost: "N/A",
@@ -1113,6 +1120,7 @@ const pendingImageHumanoids: Humanoid[] = [
     drive: "Electric",
     logoUrl: "/robots/Ubtech.png",
     manufacturerUrl: "https://www.ubtrobot.com",
+    imageUrl: "/robots/walker-s2.png",
     year: 2025,
     addedAt: "2026-08-24",
     cost: "N/A",
