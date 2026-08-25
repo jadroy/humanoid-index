@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { humanoids } from "@/data/humanoids";
+import { INK, FILL, SEAM, SCRIM, RADIUS, WEIGHT, EASE, panelStyle } from "@/lib/design/chrome";
+import { Key } from "@/components/Key";
 
 // This component lives in `layout.tsx`, a different tree from HomeClient, so
 // there is no prop path between the sidebar's Search row and this modal, or
@@ -88,34 +90,35 @@ export default function SearchModal() {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-20 flex items-start justify-center pt-32 z-50"
+      // Warm scrim. `bg-black/20` reads blue-grey over this page and turned the
+      // card behind it muddy.
+      className="fixed inset-0 flex items-start justify-center pt-32 z-50"
+      style={{ background: SCRIM, animation: `search-fade 200ms ${EASE} both` }}
       onClick={close}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden"
+        className="w-full max-w-lg overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        style={{ ...panelStyle(), animation: `chat-rise 320ms ${EASE} both` }}
       >
         {/* Search input */}
-        <div className="border-b border-neutral-200">
+        <div style={{ borderBottom: `1px solid ${SEAM}` }}>
           <input
             type="text"
-            placeholder="Search humanoids..."
+            placeholder="Search humanoids"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
-            className="w-full px-5 py-4 text-[13px] focus:outline-none"
-            style={{ color: "#625D5D" }}
+            className="search-input w-full px-5 py-4 focus:outline-none bg-transparent"
+            style={{ fontSize: 14, fontWeight: WEIGHT.body, color: INK.on }}
           />
         </div>
 
         {/* Results */}
-        <div className="max-h-96 overflow-y-auto">
+        <div className="max-h-96 overflow-y-auto scrollbar-hide">
           {query && filteredResults.length === 0 && (
-            <div
-              className="px-5 py-8 text-center text-[13px]"
-              style={{ color: "rgba(98, 93, 93, 0.6)" }}
-            >
-              No results found
+            <div className="px-5 py-8 text-center" style={{ fontSize: 14, fontWeight: WEIGHT.body, color: INK.off }}>
+              No results
             </div>
           )}
 
@@ -123,12 +126,21 @@ export default function SearchModal() {
             <button
               key={humanoid.id}
               onClick={() => select(humanoid.id)}
-              className={`w-full px-5 py-3 flex items-center gap-4 text-left transition-colors ${
-                index === selectedIndex ? "bg-neutral-50" : ""
-              }`}
+              onMouseEnter={() => setSelectedIndex(index)}
+              className="w-full px-3 py-2 flex items-center gap-3 text-left cursor-pointer"
+              style={{
+                // The selected row is a rounded fill inset from the panel edge,
+                // the same shape the lane indicator uses — not a full-bleed
+                // `bg-neutral-50` band running wall to wall.
+                background: index === selectedIndex ? FILL.active : "transparent",
+                borderRadius: RADIUS.row,
+                border: "none",
+                margin: "2px 8px",
+                width: "calc(100% - 16px)",
+                transition: `background ${200}ms ${EASE}`,
+              }}
             >
-              {/* Small thumbnail */}
-              <div className="w-12 h-12 rounded-lg bg-neutral-50 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ borderRadius: 12, background: FILL.rest }}>
                 <img
                   src={humanoid.imageUrl || "/robots/placeholder.png"}
                   alt={humanoid.name}
@@ -136,28 +148,16 @@ export default function SearchModal() {
                 />
               </div>
 
-              {/* Info */}
-              <div className="flex-1">
-                <div className="text-[13px]" style={{ color: "#625D5D" }}>
+              <div className="flex-1 min-w-0">
+                <div style={{ fontSize: 14, fontWeight: WEIGHT.label, color: INK.on, lineHeight: 1.3 }}>
                   {humanoid.name}
                 </div>
-                <div
-                  className="text-[13px]"
-                  style={{ color: "rgba(98, 93, 93, 0.6)" }}
-                >
+                <div style={{ fontSize: 12, fontWeight: WEIGHT.body, color: INK.off, lineHeight: 1.3 }}>
                   {humanoid.manufacturer}
                 </div>
               </div>
 
-              {/* Enter hint for selected */}
-              {index === selectedIndex && (
-                <kbd
-                  className="px-2 py-1 rounded border border-neutral-200 text-[13px]"
-                  style={{ color: "rgba(98, 93, 93, 0.6)" }}
-                >
-                  ↵
-                </kbd>
-              )}
+              {index === selectedIndex && <Key>&#8629;</Key>}
             </button>
           ))}
         </div>
@@ -165,22 +165,12 @@ export default function SearchModal() {
         {/* Footer hint */}
         {query && filteredResults.length > 0 && (
           <div
-            className="px-5 py-2.5 border-t border-neutral-200 flex items-center gap-3 text-[13px]"
-            style={{ color: "rgba(98, 93, 93, 0.5)" }}
+            className="px-5 py-3 flex items-center gap-4"
+            style={{ borderTop: `1px solid ${SEAM}`, fontSize: 12, fontWeight: WEIGHT.body, color: INK.faint }}
           >
-            <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded border border-neutral-200">↑</kbd>
-              <kbd className="px-1 py-0.5 rounded border border-neutral-200">↓</kbd>
-              navigate
-            </span>
-            <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded border border-neutral-200">↵</kbd>
-              select
-            </span>
-            <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded border border-neutral-200">esc</kbd>
-              close
-            </span>
+            <span className="flex items-center gap-1.5"><Key>&#8593;</Key><Key>&#8595;</Key>navigate</span>
+            <span className="flex items-center gap-1.5"><Key>&#8629;</Key>select</span>
+            <span className="flex items-center gap-1.5"><Key>esc</Key>close</span>
           </div>
         )}
       </div>

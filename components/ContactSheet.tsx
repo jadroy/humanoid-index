@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
+import { INK, FILL, SEAM, SCRIM, RADIUS, WEIGHT, EASE, GLASS_EDGE, PANEL_SHADOW } from "@/lib/design/chrome";
 
 type Variant = "feedback" | "suggest";
 
@@ -63,7 +64,9 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
         position: "fixed",
         inset: 0,
         zIndex: 60,
-        background: "rgba(0,0,0,0.32)",
+        // Warm and light, matching the search modal's scrim. 32% black over
+        // this page reads as a different app's dialog.
+        background: SCRIM,
         backdropFilter: "blur(2px)",
         WebkitBackdropFilter: "blur(2px)",
         display: "flex",
@@ -82,13 +85,16 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
         style={{
           width: "100%",
           maxWidth: 380,
-          background: "rgba(38, 38, 38, 0.92)",
-          backdropFilter: "blur(28px) saturate(180%)",
-          WebkitBackdropFilter: "blur(28px) saturate(180%)",
-          border: "1px solid rgba(255,255,255,0.07)",
-          borderRadius: 16,
-          boxShadow: "0 24px 48px rgba(0,0,0,0.32), 0 4px 10px rgba(0,0,0,0.16)",
-          padding: 18,
+          // Was a dark panel — the only one in the app besides the tooltip,
+          // and the reason opening Feedback felt like leaving the site. Same
+          // white glass and inset edge as the search modal and the chat.
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(28px) saturate(1.4)",
+          WebkitBackdropFilter: "blur(28px) saturate(1.4)",
+          border: "none",
+          borderRadius: RADIUS.panel,
+          boxShadow: `${GLASS_EDGE}, ${PANEL_SHADOW}`,
+          padding: 20,
           display: "flex",
           flexDirection: "column",
           gap: 14,
@@ -99,10 +105,10 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
           <h2
             style={{
               margin: 0,
-              fontSize: 13.5,
-              fontWeight: 600,
-              letterSpacing: "-0.01em",
-              color: "rgba(255,255,255,0.95)",
+              fontSize: 14,
+              fontWeight: WEIGHT.label,
+              letterSpacing: "normal",
+              color: INK.on,
             }}
           >
             {COPY[variant].title}
@@ -117,7 +123,7 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
               borderRadius: 999,
               border: "none",
               background: "transparent",
-              color: "rgba(255,255,255,0.5)",
+              color: INK.off,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -145,14 +151,14 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
             type="button"
             onClick={onClose}
             style={{
-              padding: "7px 14px",
-              fontSize: 12.5,
-              fontWeight: 500,
-              letterSpacing: "-0.005em",
-              borderRadius: 8,
+              padding: "8px 14px",
+              fontSize: 13,
+              fontWeight: WEIGHT.label,
+              letterSpacing: "normal",
+              borderRadius: RADIUS.row,
               border: "none",
               background: "transparent",
-              color: "rgba(255,255,255,0.6)",
+              color: INK.off,
               cursor: "pointer",
             }}
           >
@@ -162,16 +168,16 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
             type="submit"
             disabled={!canSubmit}
             style={{
-              padding: "7px 14px",
-              fontSize: 12.5,
-              fontWeight: 500,
-              letterSpacing: "-0.005em",
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: canSubmit ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.18)",
-              color: canSubmit ? "#1a1a1a" : "rgba(255,255,255,0.45)",
-              cursor: canSubmit ? "pointer" : "not-allowed",
-              transition: "background 140ms ease, color 140ms ease",
+              padding: "8px 14px",
+              fontSize: 13,
+              fontWeight: WEIGHT.label,
+              letterSpacing: "normal",
+              borderRadius: RADIUS.row,
+              border: "none",
+              background: canSubmit ? FILL.hover : FILL.rest,
+              color: canSubmit ? INK.on : INK.faint,
+              cursor: canSubmit ? "pointer" : "default",
+              transition: `background 200ms ${EASE}, color 200ms ${EASE}`,
             }}
           >
             {COPY[variant].submit}
@@ -209,18 +215,21 @@ function Field({ placeholder, value, onChange, as = "input", type = "text", rows
   const base: CSSProperties = {
     width: "100%",
     padding: "9px 11px",
-    fontSize: 13,
-    fontWeight: 400,
-    letterSpacing: "-0.005em",
+    fontSize: 14,
+    fontWeight: WEIGHT.body,
+    letterSpacing: "normal",
     lineHeight: 1.45,
     fontFamily: "inherit",
-    color: "rgba(255,255,255,0.95)",
-    background: focus ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.035)",
-    border: `1px solid ${focus ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)"}`,
-    borderRadius: 9,
+    color: INK.on,
+    background: focus ? FILL.hover : FILL.rest,
+    // An inset ring rather than a border, so focus does not shift the field by
+    // a pixel and the edge matches every other surface here.
+    boxShadow: `inset 0 0 0 1px ${focus ? "rgba(95, 96, 89, 0.22)" : SEAM}`,
+    border: "none",
+    borderRadius: 14,
     outline: "none",
     resize: "none",
-    transition: "background 140ms ease, border-color 140ms ease",
+    transition: `background 200ms ${EASE}, box-shadow 200ms ${EASE}`,
   };
   if (as === "textarea") {
     return (

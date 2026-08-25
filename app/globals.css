@@ -1290,3 +1290,6 @@ main {
 /* The placeholder was browser-default grey, which is bluer and darker than
    anything else on the page. */
 .chat-input::placeholder { color: rgba(95, 96, 89, 0.45); font-weight: 450; }
+
+@keyframes search-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
+.search-input::placeholder { color: rgba(95, 96, 89, 0.4); font-weight: 450; }

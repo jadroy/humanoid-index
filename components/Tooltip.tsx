@@ -2,6 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { INVERSE, WEIGHT } from "@/lib/design/chrome";
 
 type TooltipProps = {
   label: string;
@@ -113,20 +114,24 @@ export function Tooltip({ label, shortcut, delay = 350, disabled, children }: To
               gap: 8,
               padding: "6px 10px",
               borderRadius: 8,
-              background: "rgba(28,28,30,0.82)",
-              color: "rgba(255,255,255,0.96)",
+              // Inverted on purpose — see INVERSE in lib/design/chrome. A
+              // tooltip has to read over a robot photo as easily as over the
+              // page, and it is gone in a moment; the dark chip does both jobs
+              // better than white glass does.
+              background: INVERSE.surface,
+              color: INVERSE.ink,
               fontFamily: "var(--font-geist-sans)",
               fontSize: 13,
-              fontWeight: 500,
+              fontWeight: WEIGHT.label,
               lineHeight: 1,
               letterSpacing: "-0.005em",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.16), 0 1px 2px rgba(0,0,0,0.12)",
+              boxShadow: INVERSE.shadow,
               whiteSpace: "nowrap",
             }}
           >
             <span>{label}</span>
             {shortcut && (
-              <span style={{ color: "rgba(255,255,255,0.45)", fontWeight: 500, fontSize: 12, marginLeft: 2 }}>
+              <span style={{ color: INVERSE.inkFaint, fontWeight: WEIGHT.body, fontSize: 12, marginLeft: 2 }}>
                 {shortcut}
               </span>
             )}

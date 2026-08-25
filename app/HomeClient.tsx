@@ -1737,7 +1737,27 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // arrive with the cursor and leave with it. `railFlash` reaches the same
   // state from a swipe, where the cursor is nowhere near the column and the
   // sliding indicator alone is easy to miss.
-  const railExpanded = railOpen || railFlash;
+  // Labels-on-hover: the column rests as a glyph strip and opens to labels when
+  // the cursor comes near it. Off by default — the rail ships with its labels
+  // always on until this is judged in the browser.
+  const [railLabelsOnHover, setRailLabelsOnHover] = useState(false);
+  // "Near", not "on": the column sits 24px off the left edge, so waiting for
+  // the cursor to land on it means the labels arrive after you have already
+  // committed to the reach. A left-edge band opens it on approach instead.
+  const [railNear, setRailNear] = useState(false);
+  const [railNearPx, setRailNearPx] = useState(180);
+  useEffect(() => {
+    if (!railLabelsOnHover) { setRailNear(false); return; }
+    const onMove = (e: PointerEvent) => setRailNear(e.clientX < railNearPx);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  }, [railLabelsOnHover, railNearPx]);
+  const railExpanded = railOpen || railFlash || railNear;
+  // Everything that collapses in compare collapses at rest too when the mode is
+  // on — the label column, the credit, and the gap that spaces it. They share
+  // one flag because they share one width: leaving the credit out held the
+  // column ~92px wider than its glyphs, which is the same bug compare hit.
+  const railNarrow = comparing || (railLabelsOnHover && !railExpanded);
   // ── Form filter ────────────────────────────────────────────────────────────
   // See lib/wheelLanes.ts for the index model. `lane` is the list BOTH springs
   // index — compare stays inside the open category, so opening it no longer
@@ -1813,7 +1833,24 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [videoPaused, setVideoPaused] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
-  const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("always");
+  // Compare is the one interaction on this page nobody arrives knowing about,
+  // and hover-reveal made it invisible to first-time visitors — the feedback
+  // was "couldn't find it". So the ghost is earned, not the default: until you
+  // have opened compare once, ever, the "+" sits at full dim opacity the way it
+  // always did. After that it goes quiet for good. Zero upkeep, no dismissal
+  // UI, and it resolves itself on the one action it is advertising.
+  const [hasCompared, setHasCompared] = useState(true); // assume seen until hydrated — avoids a flash for returning users
+  useEffect(() => {
+    try { setHasCompared(!!localStorage.getItem("humanoid-index:hasCompared")); } catch { setHasCompared(true); }
+  }, []);
+  const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("hover");
+  const [compareSlotStyle, setCompareSlotStyle] = useState<"silhouette" | "plus">("silhouette");
+  // Where the "−" that leaves compare lives. "card-corner" pins it to the top
+  // right of the second card — the far right edge of the stage, the edge the
+  // hover mode above exists to keep quiet. "seam" floats it in the gap between
+  // the stats column and the second card, so it reads as unjoining the pair
+  // rather than as a control belonging to one card.
+  const [minusPlacement, setMinusPlacement] = useState<"card-corner" | "seam">("seam");
   const [pillsLayout, setPillsLayout] = useState<"stack" | "grouped">("stack");
   const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill" | "chip">("after-name");
   const [groupedFill, setGroupedFill] = useState<string>("#F9F9F9");
@@ -1881,6 +1918,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [arcMaskFade, setArcMaskFade] = useState(22);
   const [arcBoundary, setArcBoundary] = useState<"off" | "dots" | "arc" | "wedge">("off");
   const [arcInactiveOp, setArcInactiveOp] = useState(0.59);
+  // Rail rest / proximity boost. Both start at 1 = current shipped behavior;
+  // nothing changes until these are moved in the tuner.
+  const [arcRestOp, setArcRestOp] = useState(1);
+  const [arcHoverBoost, setArcHoverBoost] = useState(1);
+  const [arcHoverRadius, setArcHoverRadius] = useState(200);
   // Arc-tag tuning
   const [tagFsMin, setTagFsMin] = useState(11);
   const [tagFsMax, setTagFsMax] = useState(14);
@@ -2343,7 +2385,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [scenePortalDim, setScenePortalDim] = useState(22);      // % of a top/bottom scrim over the scene
   const [scenePortalGlass, setScenePortalGlass] = useState(true); // swap in-card chips to liquid glass
   const [sceneBleedWash, setSceneBleedWash] = useState(10);      // % viewport wash in bleed mode
-  const [sceneGlow, setSceneGlow] = useState(34);   // % — scene light spilling onto the page around the card
+  const [sceneGlow, setSceneGlow] = useState(0);    // % — scene light spilling onto the page around the card. Off by default: the halo competes with the card, and a flat page reads cleaner.
   const [sceneParallax, setSceneParallax] = useState(true);
   const [sceneParallaxAmt, setSceneParallaxAmt] = useState(56);  // px of counter-drift per index of spring travel
   const [sceneCardScale, setSceneCardScale] = useState(100);
@@ -2499,6 +2541,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     ? cardPxFor(robotW - 8, robotH - 10, robotMaxW - 100, COMPARE_ASPECT)
     : cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT);
   const cardH = cardW / cardAspect;
+  // The size the second card will actually be. Single view is 0.88 aspect and
+  // wider; entering compare shrinks BOTH cards to COMPARE_ASPECT. So the empty
+  // slot has to be drawn at the compare size or it promises a card bigger than
+  // the one that arrives.
+  const compareCardW = cardPxFor(robotW - 8, robotH - 10, robotMaxW - 100, COMPARE_ASPECT);
+  const compareCardH = compareCardW / COMPARE_ASPECT;
   // Compare middle column tracks the card rather than sitting at a fixed px
   // width — it used to carry +200px to fit long manufacturer names in the
   // Company row, which now lives in the placard above the card instead.
@@ -3109,6 +3157,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // its neighbour. A one-robot lane wraps to the same robot rather than seating
   // out of range.
   const enterCompare = () => {
+    if (!hasCompared) { setHasCompared(true); try { localStorage.setItem("humanoid-index:hasCompared", "1"); } catch {} }
     springR.jumpTo(seatL < lane.length - 1 ? seatL + 1 : 0);
     setComparing(true);
     setActiveSide("right");
@@ -3511,7 +3560,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               borderRadius: 20,
               background: "rgba(95, 96, 89, 0.07)",
               transform: `translateY(${Math.max(0, FORM_FILTERS.findIndex((f) => f.key === formFilter)) * 40}px)`,
-              opacity: 1,
+              // The saved lane is not a form lane, so while it holds the wheel
+              // no form row is the filter in force. The indicator fades rather
+              // than sliding away: it stays where it will return to.
+              opacity: savedLaneLive ? 0 : 1,
               // 320ms / cubic-bezier(0.33, 1, 0.68, 1) is the site's motion. No
               // overshoot: nothing else on the page bounces, and a sidebar that
               // did would read as the one decorated control.
@@ -3520,7 +3572,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             }}
           />
           {FORM_FILTERS.map(({ key, label }) => {
-            const active = formFilter === key;
+            const active = formFilter === key && !savedLaneLive;
             const hovered = railHover === key;
             const count = countFor(key);
             return (
@@ -3556,7 +3608,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 </span>
                 {/* Label and count are separate columns now — the label is
                     fixed, the count is what opens. */}
-                <span aria-hidden={comparing} style={sidebarLabel(comparing)}>
+                <span aria-hidden={railNarrow} style={sidebarLabel(railNarrow)}>
                   <span>{label}</span>
                 </span>
                 <span aria-hidden={comparing} style={sidebarCount(railExpanded && !comparing)}>
@@ -3586,7 +3638,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           <span style={{ ...SIDEBAR_GLYPH_SLOT, opacity: gridOpen ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off, transition: "opacity 200ms ease" }}>
             <LayoutGrid size={16} strokeWidth={1.75} />
           </span>
-          <span aria-hidden={comparing} style={sidebarLabel(comparing)}>
+          <span aria-hidden={railNarrow} style={sidebarLabel(railNarrow)}>
             <span>Grid</span>
           </span>
           {/* Keeps the trailing column so the row's width tracks the lanes and
@@ -3644,7 +3696,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             <span style={{ ...SIDEBAR_GLYPH_SLOT, opacity: item.active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off, transition: "opacity 200ms ease" }}>
               {item.icon}
             </span>
-            <span aria-hidden={comparing} style={sidebarLabel(comparing)}>
+            <span aria-hidden={railNarrow} style={sidebarLabel(railNarrow)}>
               <span>{item.label}</span>
             </span>
             {/* Same trailing column the lane counts open into — a shortcut is
@@ -3660,7 +3712,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             butted straight against Feedback, so the one break in the column
             without space read as an orphaned line rather than a footer. Gated
             on compare so it collapses with the credit it spaces. */}
-        <div aria-hidden style={{ height: comparing ? 0 : SIDEBAR_GROUP_GAP, transition: "height 320ms cubic-bezier(0.33, 1, 0.68, 1)" }} />
+        <div aria-hidden style={{ height: railNarrow ? 0 : SIDEBAR_GROUP_GAP, transition: "height 320ms cubic-bezier(0.33, 1, 0.68, 1)" }} />
 
         {/* Always on. Revealing it with the counts meant a copyright line
             animated every time the cursor crossed the column — motion on the
@@ -3672,21 +3724,21 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           aria-hidden
           style={{
             overflow: "hidden",
-            height: comparing ? 0 : 24,
+            height: railNarrow ? 0 : 24,
             // Width has to collapse with the height. It is the widest thing in
             // the column, so at width:auto it kept setting the column's width
             // even at height 0 — invisible, but it held the whole rail ~52px
             // wider than its rows in compare, which the lane indicator then
             // drew as a bar hanging off the glyphs. 92 matches the blurb.
-            width: comparing ? 0 : SIDEBAR_PROSE_W,
-            opacity: comparing ? 0 : 1,
+            width: railNarrow ? 0 : SIDEBAR_PROSE_W,
+            opacity: railNarrow ? 0 : 1,
             transition: "height 320ms cubic-bezier(0.33, 1, 0.68, 1), width 320ms cubic-bezier(0.33, 1, 0.68, 1), opacity 200ms ease",
             display: "flex",
             alignItems: "center",
             // 10 is the rows' own horizontal inset, so the credit starts on the
             // same vertical as the glyph column above it. 12 was off by two
             // against every other thing in the sidebar.
-            paddingLeft: comparing ? 0 : 10,
+            paddingLeft: railNarrow ? 0 : 10,
             fontFamily: "var(--font-geist-sans)",
             // On the same ink step as the row labels rather than a fainter one
             // of its own — 0.45 at 12px was legible in theory and invisible in
@@ -3737,6 +3789,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
           arcBoundary={arcBoundary}
           arcInactiveOp={arcInactiveOp}
+          arcRestOp={arcRestOp} arcHoverBoost={arcHoverBoost} arcHoverRadius={arcHoverRadius}
           arcNameOuterOffset={arcRightAlign ? effectiveLongestNamePx : 0}
           entered={introDone}
           tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
@@ -3793,6 +3846,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             arcMarkerColor={arcMarkerVariant === 22 ? arcMarkerColor : undefined}
             arcBoundary={arcBoundary}
             arcInactiveOp={arcInactiveOp}
+            arcRestOp={arcRestOp} arcHoverBoost={arcHoverBoost} arcHoverRadius={arcHoverRadius}
             arcNameOuterOffset={arcRightAlign ? effectiveLongestNamePx : 0}
             entered={introDone}
             tagFsMin={tagFsMin} tagFsMax={tagFsMax} tagOpMin={tagOpMin} tagOpMax={tagOpMax}
@@ -3803,32 +3857,73 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
 
       {/* ── Add compare button — hover zone right of center ── */}
       {!comparing && (() => {
-        const alwaysMode = addCtaMode === "always";
+        // "hover" only takes effect once compare has been found once.
+        const alwaysMode = addCtaMode === "always" || !hasCompared;
         const addShown = alwaysMode || addHover;
         const baseScale = alwaysMode ? 1 : (addShown ? 1 : 0.75);
         const hoverScale = addHover ? 1.015 : 1;
         const liftY = addHover ? -1 : 0;
         return (
           <div
-            className="absolute flex items-center justify-center cursor-pointer"
+            className="absolute flex items-center justify-start cursor-pointer"
             // Anchored to the content block, not to the viewport. This used to
             // be `right: calc(19% - 67px)` — a percentage of window width set
             // against a card whose right edge comes from `centerHalfWidth`, so
             // the gap between the two drifted every time the window changed
             // size (72px at 1494 wide, growing from there). Now it sits a fixed
             // COMPARE_SLOT_GAP right of where the card + stats actually end.
-            style={{ width: 110, height: 100, top: "50%", transform: "translateY(-50%)", left: compareSlotLeft, zIndex: 12 }}
+            // The hit zone runs from the slot to the right edge of the window
+            // and the full height of the card. It used to be 110x100 — a target
+            // you had to already know about to land on, which is a poor way to
+            // reveal something on hover. The glyph still sits at the slot
+            // (justify-start + a fixed-width inner), only the region that wakes
+            // it up got bigger.
+            style={{ width: Math.max(110, windowWidth - compareSlotLeft), height: Math.max(100, compareCardH), top: "50%", transform: "translateY(-50%)", left: compareSlotLeft, zIndex: 12 }}
             onClick={() => { setAddHover(false); enterCompare(); }}
             onMouseEnter={() => setAddHover(true)}
             onMouseLeave={() => setAddHover(false)}
           >
+            {/* The empty slot, drawn. A bare "+" floating in white asks you to
+                already know what it does; a vacant card-shaped surface at the
+                exact size and radius of the card that will land there shows
+                you. It reads as a pedestal with nothing on it — which is what
+                it is — and it gives the composition a right-hand edge instead
+                of trailing off. Fill sits well under the card's own #F9F9F9, so
+                an occupied card never reads as an empty one. */}
+            {compareSlotStyle === "silhouette" && (
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: "50%",
+                  width: compareCardW,
+                  height: compareCardH,
+                  marginTop: -compareCardH / 2,
+                  borderRadius: cardRadius,
+                  background: addHover ? "rgba(0,0,0,0.032)" : "rgba(0,0,0,0.018)",
+                  transition: "background 200ms ease",
+                  pointerEvents: "none",
+                }}
+              />
+            )}
             <div
               className="flex flex-col items-center"
               style={{
                 gap: 9,
+                // Fixed width so items-center still centres the glyph on the
+                // slot now that the outer box stretches to the window edge.
+                width: compareSlotStyle === "silhouette" ? compareCardW : 110,
+                position: "relative",
                 transform: `translateY(${liftY}px) scale(${baseScale * hoverScale})`,
-                opacity: addHover ? 1 : (alwaysMode ? 0.7 : 1),
-                transition: "transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease",
+                // Hover mode leaves a ghost rather than nothing. Fully hidden
+                // makes compare undiscoverable — the whole interaction lives on
+                // someone finding this slot. With the silhouette drawn, the
+                // shape carries that job and the glyph can sit higher; without
+                // it, 0.16 is the most that can be left without giving the
+                // composition a tail.
+                opacity: addHover ? 1 : (alwaysMode ? 0.7 : (compareSlotStyle === "silhouette" ? 0.55 : 0.16)),
+                transition: "transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease, width var(--collapse-dur) var(--collapse-ease)",
               }}
             >
               {(() => {
@@ -7196,6 +7291,31 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   // Still reads larger than the "i" on the left card, which is
                   // right: it's the counterpart to the Compare "+".
                   const closeSize = Math.round(cardIconSize * 0.72);
+                  // Seam: centred on the gap the right card carries as its own
+                  // margin-left, so the button straddles stats column and card
+                  // instead of belonging to either. The gap is only statsGap
+                  // wide (12px default) — far narrower than the button — which
+                  // is the point: it sits ON the join, not inside it.
+                  const seam = minusPlacement === "seam";
+                  // NOT in the 12px gap itself. Both bands that cross it are
+                  // occupied — the stats table runs full-bleed through the
+                  // card's middle, and the label row carries the second card's
+                  // logo mark hard against its left edge. A 26px button in a
+                  // 12px seam crowds one or the other.
+                  //
+                  // So: the middle column, centred, under the stats block. It
+                  // is the one genuinely empty region in the composition, it is
+                  // the optical centre of the pair, and a control sitting there
+                  // belongs to both cards rather than to the right one — which
+                  // is what leaving compare actually does.
+                  const pos: React.CSSProperties = seam
+                    // compareStatsW, not statsW — statsW is the single-view
+                    // column and is ~40px narrower, which parked the button
+                    // right of the stats table's own centre line.
+                    ? { bottom: Math.round(closeSize * 0.9), left: -Math.round(effectiveGap + compareStatsW / 2) }
+                    : { top: 0, right: 0 };
+                  const restT = seam ? "translateX(-50%) translateY(10px)" : "translateY(10px)";
+                  const inT = seam ? "translateX(-50%)" : "translateY(0)";
                   return (
                     <button
                       onClick={exitCompare}
@@ -7210,10 +7330,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        top: 0,
-                        right: 0,
+                        ...pos,
                         opacity: comparing ? 1 : 0,
-                        transform: comparing ? "translateY(0)" : "translateY(10px)",
+                        transform: comparing ? inT : restT,
                         pointerEvents: comparing ? "auto" : "none",
                         transition: comparing
                           ? "opacity 220ms ease 280ms, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 280ms"
@@ -8129,7 +8248,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               )}
             </div>
           )}
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div><div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Compare slot</p><div className="flex flex-wrap gap-1.5">{(["silhouette", "plus"] as const).map((v) => (<button key={v} onClick={() => setCompareSlotStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${compareSlotStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div><div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Minus</p><div className="flex flex-wrap gap-1.5">{(["seam", "card-corner"] as const).map((v) => (<button key={v} onClick={() => setMinusPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${minusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "seam" ? "Seam" : "Card corner"}</button>))}</div></div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill", "chip"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
           <div className="pt-2 border-t border-neutral-100 space-y-2">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">Pills layout</p>
@@ -8803,6 +8922,16 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Disk gap <span className="tabular-nums text-neutral-400">{arcDiskGap}px</span></label><input type="range" min={0} max={280} value={arcDiskGap} onChange={(e) => setArcDiskGap(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Edge fade <span className="tabular-nums text-neutral-400">{arcMaskFade}%</span></label><input type="range" min={0} max={45} value={arcMaskFade} onChange={(e) => setArcMaskFade(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Inactive fade <span className="tabular-nums text-neutral-400">{arcInactiveOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(arcInactiveOp * 100)} onChange={(e) => setArcInactiveOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Rail at rest <span className="tabular-nums text-neutral-400">{arcRestOp.toFixed(2)}</span></label><input type="range" min={0} max={100} value={Math.round(arcRestOp * 100)} onChange={(e) => setArcRestOp(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Rail on approach <span className="tabular-nums text-neutral-400">{arcHoverBoost.toFixed(2)}</span></label><input type="range" min={0} max={200} value={Math.round(arcHoverBoost * 100)} onChange={(e) => setArcHoverBoost(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Approach radius <span className="tabular-nums text-neutral-400">{arcHoverRadius}px</span></label><input type="range" min={40} max={600} value={arcHoverRadius} onChange={(e) => setArcHoverRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="pt-2 mt-1 border-t border-neutral-200/70">
+              <label className="text-[12px] text-neutral-500 flex items-center justify-between cursor-pointer">
+                <span>Rail labels on approach</span>
+                <input type="checkbox" checked={railLabelsOnHover} onChange={(e) => setRailLabelsOnHover(e.target.checked)} className="accent-neutral-900" />
+              </label>
+            </div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Rail approach band <span className="tabular-nums text-neutral-400">{railNearPx}px</span></label><input type="range" min={60} max={480} value={railNearPx} onChange={(e) => setRailNearPx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
               <label className="text-[12px] text-neutral-500 mb-1.5 block">Boundary fill</label>
               <div className="flex flex-wrap gap-1.5">

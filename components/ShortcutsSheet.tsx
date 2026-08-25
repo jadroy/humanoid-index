@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { INK, SEAM, WEIGHT } from "@/lib/design/chrome";
+import { Key } from "@/components/Key";
 
 type Row = { label: string; keys: string[][] };
 
@@ -17,15 +19,13 @@ const ROWS: Row[] = [
 function ModRow({ row, isMac }: { row: Row; isMac: boolean }) {
   return (
     <li className="flex items-center justify-between gap-4 py-[7px]">
-      <span className="text-[12px]" style={{ color: "#555" }}>{row.label}</span>
+      <span style={{ fontSize: 13, fontWeight: WEIGHT.body, color: INK.off }}>{row.label}</span>
       <span className="flex items-center gap-1.5 flex-wrap justify-end">
         {row.keys.map((group, gi) => (
           <span key={gi} className="flex items-center gap-1">
-            {gi > 0 && <span className="text-[10px]" style={{ color: "var(--c-ink-subtle)" }}>·</span>}
+            {gi > 0 && <span style={{ fontSize: 10, color: INK.faint }}>·</span>}
             {group.map((k, ki) => (
-              <kbd key={ki} className="shortcuts-kbd">
-                {k === "⌘" && !isMac ? "Ctrl" : k}
-              </kbd>
+              <Key key={ki}>{k === "⌘" && !isMac ? "Ctrl" : k}</Key>
             ))}
           </span>
         ))}
@@ -59,12 +59,14 @@ export function ShortcutsSheet({ onClose }: { onClose: () => void }) {
         style={{ maxWidth: 380, padding: "26px 26px 20px" }}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[13px] font-medium" style={{ color: "#1a1a1a", letterSpacing: "-0.005em" }}>
+          {/* On the page's ink scale — #1a1a1a was darker than any other text
+              on the site, and 10.5px was a size used nowhere else. */}
+          <h2 style={{ fontSize: 14, fontWeight: WEIGHT.label, color: INK.on, letterSpacing: "normal" }}>
             Shortcuts
           </h2>
-          <span className="text-[10.5px]" style={{ color: "var(--c-ink-muted)" }}>press / to toggle</span>
+          <span style={{ fontSize: 12, fontWeight: WEIGHT.body, color: INK.faint }}>press / to toggle</span>
         </div>
-        <ul className="divide-y" style={{ borderColor: "#f1f1f1" }}>
+        <ul className="divide-y" style={{ borderColor: SEAM }}>
           {ROWS.map((row) => (
             <ModRow key={row.label} row={row} isMac={isMac} />
           ))}

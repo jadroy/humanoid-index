@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { type Humanoid } from "@/data/humanoids";
@@ -191,15 +193,22 @@ export function SavedShelf({
   onRemove: (id: string) => void;
   onShare?: () => void;
 }) {
-  if (!open) return null;
+  // Portalled to the body. Inside Browse's tree the card sits in its own
+  // stacking context and painted straight through a sibling overlay however
+  // high its z-index — the shelf covers the page or it isn't a shelf.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal((
     <div
-      className="fixed inset-0 z-[8] flex flex-col"
+      className="fixed inset-0 flex flex-col"
       style={{
-        background: "rgba(250, 250, 249, 0.92)",
-        backdropFilter: "blur(28px) saturate(160%)",
-        WebkitBackdropFilter: "blur(28px) saturate(160%)",
+        zIndex: 100,
+        // Opaque, not frosted. At 0.97 with a blur behind it the card still
+        // ghosted through the middle of the shelf, which read as a rendering
+        // fault rather than as depth.
+        background: "#FAFAF9",
         fontFamily: "var(--font-geist-sans)",
         animation: `shelf-in 320ms ${EASE}`,
       }}
@@ -299,5 +308,5 @@ export function SavedShelf({
         )}
       </div>
     </div>
-  );
+  ), document.body);
 }
