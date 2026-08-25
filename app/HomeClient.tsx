@@ -99,6 +99,15 @@ const NEW_WINDOW_DAYS = 14;
 
 // Tallest documented robot height in the index — used as the reference for
 // the "to scale" toggle so every other robot renders at height/MAX_HEIGHT.
+// Body-plan filter. "all" is the default so ?h= deeplinks always resolve.
+type FormFilter = "all" | "humanoid" | "semi" | "other";
+const FORM_FILTERS: { key: FormFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "humanoid", label: "Humanoid" },
+  { key: "semi", label: "Semi" },
+  { key: "other", label: "Other" },
+];
+
 const MAX_HEIGHT = humanoids.reduce((m, h) => (h.height && h.height > m ? h.height : m), 0);
 
 const formatHeight = (cm: number) => {
@@ -1495,6 +1504,16 @@ function StatusLegendModal({ children, style }: { children: React.ReactNode; sty
 // ═══════════════════════════════════════════════════════════════
 function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onRandomHumanoid, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onRandomHumanoid?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
+  // ── Form filter ────────────────────────────────────────────────────────────
+  // The wheel is index-driven, so filtering works by deriving a `view` list and
+  // letting the springs index into that instead of the canonical array. Ids stay
+  // canonical, so ?h= deeplinks and compare are unaffected.
+  const [formFilter, setFormFilter] = useState<FormFilter>("all");
+  const view = useMemo(
+    () => (formFilter === "all" ? humanoids : humanoids.filter((h) => (h.form ?? "humanoid") === formFilter)),
+    [formFilter],
+  );
+
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
   const [customThreshold, setCustomThreshold] = useState(54);
@@ -2348,6 +2367,19 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
   const springL = useSpring(stiffness, damping);
   const springR = useSpring(stiffness, damping);
+  // Filter changes shouldn't teleport you somewhere arbitrary: hold onto the
+  // robot you were looking at if it survives the filter, otherwise go to the top.
+  const prevViewRef = useRef(view);
+  useEffect(() => {
+    const prev = prevViewRef.current;
+    if (prev === view) return;
+    prevViewRef.current = view;
+    const keepId = prev[springL.index]?.id;
+    const next = keepId ? view.findIndex((h) => h.id === keepId) : -1;
+    springL.jumpTo(next >= 0 ? next : 0);
+    if (springR.index >= view.length) springR.jumpTo(0);
+  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const activeGo = comparing ? (activeSide === "left" ? springL.go : springR.go) : springL.go;
 
   // Lucky tap — short RAF-driven animation, independent of spring duration.
@@ -2485,10 +2517,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   useEffect(() => {
     if (!luckyNonce) return;
     const pickDifferent = (exclude: number[]) => {
-      let t = Math.floor(Math.random() * humanoids.length);
+      let t = Math.floor(Math.random() * view.length);
       let guard = 0;
       while (exclude.includes(t) && guard++ < 20) {
-        t = Math.floor(Math.random() * humanoids.length);
+        t = Math.floor(Math.random() * view.length);
       }
       return t;
     };
@@ -2631,7 +2663,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         const spring = comparing && x != null
           ? (x < window.innerWidth / 2 ? springL : springR)
           : (comparing && activeSide === "right" ? springR : springL);
-        spring.jumpTo(isJumpStart ? 0 : humanoids.length - 1);
+        spring.jumpTo(isJumpStart ? 0 : view.length - 1);
         return;
       }
       const isDown = e.key === "ArrowDown" || e.key === "ArrowRight";
@@ -2655,7 +2687,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const currentId = humanoids[springL.index]?.id;
+      const currentId = view[springL.index]?.id;
       switch (e.key) {
         case "d": case "D":
           if (!comparing) { setStatsCollapsed((v) => !v); }
@@ -2689,7 +2721,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
-  const enterCompare = () => { springR.jumpTo(springL.index < humanoids.length - 1 ? springL.index + 1 : 0); setComparing(true); setActiveSide("right"); };
+  const enterCompare = () => { springR.jumpTo(springL.index < view.length - 1 ? springL.index + 1 : 0); setComparing(true); setActiveSide("right"); };
   const exitCompare = () => { setComparing(false); setActiveSide("left"); setSplitHover(false); };
 
   useEffect(() => {
@@ -2722,8 +2754,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   useEffect(() => {
     if (typeof window === "undefined" || !shareUrlRef) return;
     const origin = window.location.origin;
-    const leftId = humanoids[springL.index]?.id;
-    const rightId = humanoids[springR.index]?.id;
+    const leftId = view[springL.index]?.id;
+    const rightId = view[springR.index]?.id;
     if (comparing) {
       shareUrlRef.current = leftId && rightId ? `${origin}/?compare=${leftId},${rightId}` : origin;
     } else {
@@ -2739,8 +2771,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
   useEffect(() => {
     if (!onShareViewLabelChange) return;
-    const leftName = humanoids[springL.index]?.name;
-    const rightName = humanoids[springR.index]?.name;
+    const leftName = view[springL.index]?.name;
+    const rightName = view[springR.index]?.name;
     if (comparing && leftName && rightName) {
       onShareViewLabelChange(`Share ${leftName} vs ${rightName}`);
     } else if (leftName) {
@@ -2776,8 +2808,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   }, [springL.index]);
 
 
-  const hL = humanoids[springL.index];
-  const hR = humanoids[springR.index];
+  const hL = view[springL.index];
+  const hR = view[springR.index];
   const distL = Math.abs(springL.getPos() - springL.targetRef.current);
   const distR = Math.abs(springR.getPos() - springR.targetRef.current);
   const getStats = (h: typeof humanoids[0]) => [
@@ -2796,13 +2828,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // on the first pass.
   const [preloadRadius, setPreloadRadius] = useState(2);
   useEffect(() => {
-    if (preloadRadius >= humanoids.length) return;
+    if (preloadRadius >= view.length) return;
     type IdleWindow = Window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
       cancelIdleCallback?: (h: number) => void;
     };
     const w = window as IdleWindow;
-    const run = () => setPreloadRadius((r) => Math.min(humanoids.length, r + 4));
+    const run = () => setPreloadRadius((r) => Math.min(view.length, r + 4));
     let handle: number;
     if (w.requestIdleCallback) {
       handle = w.requestIdleCallback(run, { timeout: 1500 });
@@ -2817,7 +2849,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     const add = (idx: number) => {
       for (let k = -preloadRadius; k <= preloadRadius; k++) {
         const n = idx + k;
-        if (n >= 0 && n < humanoids.length && k !== 0) s.add(n);
+        if (n >= 0 && n < view.length && k !== 0) s.add(n);
       }
     };
     add(springL.index);
@@ -2826,7 +2858,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   })();
   const preloadSizes = `${Math.round(robotW)}vw`;
 
-  const focusedH = !comparing ? humanoids[springL.index] : undefined;
+  const focusedH = !comparing ? view[springL.index] : undefined;
   const sceneAvailable = !!focusedH?.sceneUrl;
   const sceneActive = sceneEnabled && sceneAvailable;
   const sceneBackgroundImage = focusedH?.sceneUrl ? `url(${focusedH.sceneUrl})` : undefined;
@@ -2897,7 +2929,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           card's sizes, so the optimized variants are cached before crossings. */}
       <div aria-hidden style={{ position: "absolute", left: -99999, top: 0, width: `${robotW}vw`, height: `${robotH}vh`, maxWidth: robotMaxW, pointerEvents: "none", opacity: 0 }}>
         {preloadIndices.map((i) => {
-          const h = humanoids[i];
+          const h = view[i];
           if (!h?.imageUrl) return null;
           return (
             <div key={i} style={{ position: "absolute", inset: 0 }}>
@@ -2907,9 +2939,55 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         })}
       </div>
 
+      {/* Form filter chips — sit under the layout switcher, centred on the card.
+          Hidden in compare so the two-card layout keeps its breathing room. */}
+      <div
+        className="fixed left-1/2 -translate-x-1/2 z-[4] flex items-center gap-1"
+        style={{
+          top: 68,
+          opacity: comparing ? 0 : 1,
+          visibility: comparing ? "hidden" : "visible",
+          transition: "opacity 260ms ease, visibility 260ms ease",
+          pointerEvents: comparing ? "none" : "auto",
+        }}
+      >
+        {FORM_FILTERS.map(({ key, label }) => {
+          const active = formFilter === key;
+          const count = key === "all"
+            ? humanoids.length
+            : humanoids.filter((h) => (h.form ?? "humanoid") === key).length;
+          if (!count) return null;
+          return (
+            <button
+              key={key}
+              onClick={() => setFormFilter(key)}
+              aria-pressed={active}
+              className="cursor-pointer"
+              style={{
+                fontFamily: "var(--font-geist-sans)",
+                fontSize: 12,
+                lineHeight: 1,
+                letterSpacing: "0.01em",
+                padding: "7px 12px",
+                borderRadius: 999,
+                border: "1px solid transparent",
+                background: active ? "rgba(0,0,0,0.05)" : "transparent",
+                color: active ? "rgba(0,0,0,0.72)" : "rgba(0,0,0,0.38)",
+                transition: "background 200ms ease, color 200ms ease",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {label}
+              <span style={{ marginLeft: 6, opacity: 0.45, fontVariantNumeric: "tabular-nums" }}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Left arc nav */}
       <div className="fixed top-0 bottom-0 left-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
         <ArcDots
+          list={view}
           index={springL.index}
           subscribe={springL.subscribe}
           onClickItem={(idx) => springL.jumpTo(idx)}
