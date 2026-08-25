@@ -1493,7 +1493,7 @@ function StatusLegendModal({ children, style }: { children: React.ReactNode; sty
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onRandomHumanoid, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange, footerLayout = "center", onFooterLayoutChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onRandomHumanoid?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void; footerLayout?: "center" | "sides"; onFooterLayoutChange?: (v: "center" | "sides") => void }) {
+function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onRandomHumanoid, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onRandomHumanoid?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -5087,21 +5087,26 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               {/* Info-icon collapse affordance — sits opposite the label, on the
                   far right of the label row. Active (info showing) = outline.
                   Non-active (info hidden) = very low-opacity fill, no border. */}
-              {collapseVariant === "info-icon" && !comparing && isFirst && (
+              {collapseVariant === "info-icon" && !comparing && isFirst && (() => {
+                // Hit target runs a touch larger than the manufacturer logo it
+                // sits opposite — at logo size the circle read as decoration
+                // rather than a button.
+                const infoBtnSize = Math.round(labelLogoSize * 1.2);
+                return (
                 <button
                   onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }}
                   aria-label={statsCollapsed ? "Show details" : "Hide details"}
                   className="flex-shrink-0 cursor-pointer flex items-center justify-center"
                   style={{
-                    width: labelLogoSize,
-                    height: labelLogoSize,
+                    width: infoBtnSize,
+                    height: infoBtnSize,
                     borderRadius: 999,
                     background: statsCollapsed ? "rgba(0,0,0,0.05)" : "transparent",
                     color: "rgba(0,0,0,0.45)",
                     border: statsCollapsed ? "1px solid transparent" : "1px solid rgba(0,0,0,0.18)",
                     padding: 0,
                     fontFamily: "var(--font-geist-sans)",
-                    fontSize: Math.round(labelLogoSize * 0.55),
+                    fontSize: Math.round(infoBtnSize * 0.55),
                     fontWeight: 500,
                     lineHeight: 1,
                     pointerEvents: "auto",
@@ -5110,7 +5115,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 >
                   i
                 </button>
-              )}
+                );
+              })()}
             </div>
           );
 
@@ -5268,7 +5274,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             );
             const hasMediaPill = hasThreeD || hasSpin || hasScene;
             const otherButtons = (<>{infoSlot}{mediaSlots}</>);
-            const buttons = (<>{shuffleButton}{shareButton}{otherButtons}{panelButton}</>);
+            // panelButton is deliberately NOT in the default row — the "i"
+            // circle in the label row already toggles the stats column, and two
+            // controls for one action made the bottom bar read as clutter. It
+            // stays exported for the split / image-corner groupings.
+            const buttons = (<>{shuffleButton}{shareButton}{otherButtons}</>);
             return { buttons, shareButton, shuffleButton, otherButtons, infoSlot, mediaSlots, hasMediaPill, panelButton, infoButton, mediaButtons, hasMedia };
           })() : null;
 
@@ -6273,6 +6283,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     color: "rgba(0,0,0,0.62)",
                     border: "none",
                   };
+                  // Sized to fit INSIDE the label row so it never overlaps the
+                  // card image below. `top: 0` is the wrapper top, which is the
+                  // label row — NOT the image — so at full cardIconSize the
+                  // button is taller than the row and spills onto the card.
+                  // Still reads larger than the "i" on the left card, which is
+                  // right: it's the counterpart to the Compare "+".
+                  const closeSize = Math.round(cardIconSize * 0.72);
                   return (
                     <button
                       onClick={exitCompare}
@@ -6280,14 +6297,14 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                       className="absolute z-30 cursor-pointer"
                       style={{
                         ...(compareBtnStyle === "flat" ? flatStyle : { ...glassChipChrome, border: "none" }),
-                        width: cardIconSize,
-                        height: cardIconSize,
-                        borderRadius: cardIconSize / 2,
+                        width: closeSize,
+                        height: closeSize,
+                        borderRadius: closeSize / 2,
                         padding: 0,
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        top: -(cardIconSize + 8),
+                        top: 0,
                         right: 0,
                         opacity: comparing ? 1 : 0,
                         transform: comparing ? "translateY(0)" : "translateY(10px)",
@@ -6298,7 +6315,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                         WebkitTapHighlightColor: "transparent",
                       }}
                     >
-                      <Minus size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                      <Minus size={Math.round(ico.iconBoxPx * 0.72)} strokeWidth={ico.iconStrokeWidth} />
                     </button>
                   );
                 })()}
@@ -6988,20 +7005,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                   className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${bottomAlignment === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
                 >
                   {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <p className="text-[12px] tracking-widest uppercase text-neutral-400">Footer layout</p>
-            <div className="flex gap-1.5">
-              {(["center", "sides"] as const).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => onFooterLayoutChange?.(v)}
-                  className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${footerLayout === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}
-                >
-                  {v}
                 </button>
               ))}
             </div>
@@ -8226,7 +8229,6 @@ export default function HomeClient() {
   const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>("text");
   const [chatOpen, setChatOpen] = useState(false);
   const [showChatTuner, setShowChatTuner] = useState(false);
-  const [footerLayout, setFooterLayout] = useState<"center" | "sides">("sides");
   const [chatConfig, setChatConfig] = useState({
     bgOpacity: 92,
     blur: 24,
@@ -8531,7 +8533,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} onRandomHumanoid={onRandomHumanoid} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} footerLayout={footerLayout} onFooterLayoutChange={setFooterLayout} />}
+        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} onRandomHumanoid={onRandomHumanoid} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>
@@ -8624,94 +8626,62 @@ export default function HomeClient() {
       {/* Launch: chat trigger hidden, replaced with credit link.
           To bring chat back, swap this for the <OptionsMenu .../> block. */}
       {introDone && (() => {
+        // One capsule, matching the card action row's chrome — the site's
+        // chrome idiom is a single glass pill of borderless segments, not
+        // free-floating pills. Credit is a muted, non-interactive segment
+        // so the footer reads as one object instead of three.
         const footerChipHeight = 40;
         const labelStyle: React.CSSProperties = {
           fontSize: 14,
           fontWeight: 500,
           letterSpacing: "normal",
         };
-        const creditStyle: React.CSSProperties = {
+        const segmentStyle: React.CSSProperties = {
           ...labelStyle,
-          color: "rgba(95, 96, 89, 0.8)",
+          height: footerChipHeight,
+          padding: "0 16px",
           background: "transparent",
-          cursor: "default",
-          padding: `0 4px`,
-          height: footerChipHeight,
-          display: "inline-flex",
-          alignItems: "center",
-        };
-        const glassChipStyle: React.CSSProperties = {
-          ...FOOTER_GLASS_CHROME,
-          ...labelStyle,
-          height: footerChipHeight,
-          padding: `0 20px`,
           borderRadius: footerChipHeight / 2,
           display: "inline-flex",
           alignItems: "center",
         };
+        const creditStyle: React.CSSProperties = {
+          ...segmentStyle,
+          color: "rgba(95, 96, 89, 0.55)",
+          cursor: "default",
+          paddingRight: 4,
+        };
         return (
-          <>
-            <div
-              className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none"
-              style={{ bottom: "var(--corner-y, 8px)" }}
-            >
-              {footerLayout === "sides" ? (
-                <div
-                  className="flex items-center justify-between"
-                  style={{
-                    paddingLeft: "var(--nav-edge, 24px)",
-                    paddingRight: "var(--nav-edge, 24px)",
+          <div
+            className="intro-credit fixed left-0 right-0 z-[48] pointer-events-none"
+            style={{ bottom: "var(--corner-y, 8px)" }}
+          >
+            <div className="flex items-center justify-center">
+              <div
+                className="pointer-events-auto inline-flex items-center"
+                style={{
+                  ...FOOTER_GLASS_CHROME,
+                  height: footerChipHeight,
+                  borderRadius: footerChipHeight / 2,
+                  padding: "0 4px",
+                }}
+              >
+                <span style={creditStyle}>Roy Jad © 2026</span>
+                <Chip
+                  onClick={() => {
+                    const origin = typeof window !== "undefined" ? window.location.origin : "";
+                    copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
                   }}
+                  style={segmentStyle}
                 >
-                  <Chip className="pointer-events-auto" style={creditStyle}>
-                    Roy Jad © 2026
-                  </Chip>
-                  <div className="flex items-center" style={{ gap: 8 }}>
-                    <Chip
-                      className="pointer-events-auto"
-                      onClick={() => {
-                        const origin = typeof window !== "undefined" ? window.location.origin : "";
-                        copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
-                      }}
-                      style={glassChipStyle}
-                    >
-                      Share site
-                    </Chip>
-                    <Chip
-                      className="pointer-events-auto"
-                      onClick={() => setFeedbackOpen(true)}
-                      style={glassChipStyle}
-                    >
-                      Submit feedback
-                    </Chip>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center" style={{ gap: 8 }}>
-                  <Chip className="pointer-events-auto" style={creditStyle}>
-                    Roy Jad © 2026
-                  </Chip>
-                  <Chip
-                    className="pointer-events-auto"
-                    onClick={() => {
-                      const origin = typeof window !== "undefined" ? window.location.origin : "";
-                      copyUrl(origin, "Site link copied", `${origin}/og-default.png`);
-                    }}
-                    style={glassChipStyle}
-                  >
-                    Share site
-                  </Chip>
-                  <Chip
-                    className="pointer-events-auto"
-                    onClick={() => setFeedbackOpen(true)}
-                    style={glassChipStyle}
-                  >
-                    Submit feedback
-                  </Chip>
-                </div>
-              )}
+                  Share site
+                </Chip>
+                <Chip onClick={() => setFeedbackOpen(true)} style={segmentStyle}>
+                  Feedback
+                </Chip>
+              </div>
             </div>
-          </>
+          </div>
         );
       })()}
 
