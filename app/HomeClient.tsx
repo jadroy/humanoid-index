@@ -2225,7 +2225,23 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // Single view is the hero shot rather than one of a matched pair, so it gets
   // a squarer frame; compare stays tighter since the eye is measuring two
   // cards against each other there.
-  const SINGLE_ASPECT = 0.88;
+  // ...and each lane gets its own single-view proportion. A full biped wants a
+  // tall frame; a wheeled appliance like Matic reads as an object rather than a
+  // figure, so the "other" lane goes square and stops letterboxing a landscape
+  // product shot inside a portrait frame.
+  //
+  // Per LANE, never per robot. Card width feeds `--nav-x` and the arc inset, so
+  // a per-robot aspect would slide the nav, footer and arcs every time you
+  // scrolled between two body plans. A lane change already animates, and the
+  // chips make it an explicit move, so resizing there reads as intent.
+  // Compare is deliberately excluded — a matched pair needs one shared
+  // proportion regardless of what the two robots are.
+  const SINGLE_ASPECT_BY_FORM: Record<FormFilter, number> = {
+    humanoid: 0.88,
+    semi: 0.88,
+    other: 1.0,
+  };
+  const SINGLE_ASPECT = SINGLE_ASPECT_BY_FORM[formFilter];
   const cardPxFor = (wVw: number, hVh: number, maxPx: number, aspect: number) =>
     Math.min(
       wVw * windowWidth / 100,
@@ -2337,7 +2353,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     const contentW = cardPxStable + statsGap + statsColStable;
     const x = Math.max(16, Math.round((windowWidth - contentW) / 2));
     document.documentElement.style.setProperty("--nav-x", `${x}px`);
-  }, [autoNavX, navX, windowWidth, windowHeight, robotW, robotH, robotMaxW, statsW, statsGap, stackedInfo, statsColScale]);
+  }, [autoNavX, navX, windowWidth, windowHeight, robotW, robotH, robotMaxW, statsW, statsGap, stackedInfo, statsColScale, SINGLE_ASPECT]);
 
   // Publish nav top offset as a CSS variable
   useEffect(() => {
