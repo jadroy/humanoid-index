@@ -8,6 +8,7 @@ import { Toaster, toast } from "sonner";
 import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus, Dices } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, type Humanoid } from "@/data/humanoids";
+import { FORM_FILTERS, COMPARE_LIST, formOf, listFor, countFor, indexOfId, idAt, seat, resolveDeeplink, type FormFilter } from "@/lib/wheelLanes";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
@@ -99,15 +100,6 @@ const NEW_WINDOW_DAYS = 14;
 
 // Tallest documented robot height in the index — used as the reference for
 // the "to scale" toggle so every other robot renders at height/MAX_HEIGHT.
-// Body-plan filter. "all" is the default so ?h= deeplinks always resolve.
-type FormFilter = "all" | "humanoid" | "semi" | "other";
-const FORM_FILTERS: { key: FormFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "humanoid", label: "Humanoid" },
-  { key: "semi", label: "Semi" },
-  { key: "other", label: "Other" },
-];
-
 const MAX_HEIGHT = humanoids.reduce((m, h) => (h.height && h.height > m ? h.height : m), 0);
 
 const formatHeight = (cm: number) => {
@@ -999,12 +991,6 @@ function parseShareParams(): { leftId: string | null; compareIds: string[] } {
   return { leftId: p.get("h"), compareIds };
 }
 
-function findHumanoidIndex(id: string | null | undefined): number | null {
-  if (!id) return null;
-  const i = humanoids.findIndex((h) => h.id === id);
-  return i >= 0 ? i : null;
-}
-
 // Shelved — pending relative-size revisit. ScaleToggle is not currently
 // rendered; the `toScale` Browse prop is plumbed so the consumer at
 // `effectiveScale` below stays live when this is re-enabled.
@@ -1502,17 +1488,8 @@ function StatusLegendModal({ children, style }: { children: React.ReactNode; sty
 // ═══════════════════════════════════════════════════════════════
 // BROWSE — Single + Compare
 // ═══════════════════════════════════════════════════════════════
-function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onRandomHumanoid, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange }: { goToIndex?: number | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onRandomHumanoid?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void }) {
+function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherStyle, onSwitcherStyleChange, luckyNonce = 0, onRandomHumanoid, onComparingChange, onShareViewLabelChange, introDone = false, shareUrlRef, shareOgRef, onShareView, buttonVariant, onButtonVariantChange, allCaps = false, onAllCapsChange, showChatTuner = false, onToggleChatTuner, epetriMode = false, onEpetriModeChange, isDev = false, surfaceColor, onSurfaceColorChange, surfaceHover, onSurfaceHoverChange, chromeVariant, onChromeVariantChange, toScale = false, onToScaleChange, useImperial = true, onUseImperialChange, palette = "cool", onPaletteChange }: { goToId?: string | null; homeNonce?: number; navStyle: NavStyle; onNavStyleChange: (s: NavStyle) => void; switcherStyle: SwitcherStyle; onSwitcherStyleChange: (s: SwitcherStyle) => void; luckyNonce?: number; onRandomHumanoid?: () => void; onComparingChange?: (v: boolean) => void; onShareViewLabelChange?: (s: string) => void; introDone?: boolean; shareUrlRef?: React.MutableRefObject<string>; shareOgRef?: React.MutableRefObject<string>; onShareView?: () => void; buttonVariant: ButtonVariant; onButtonVariantChange: (v: ButtonVariant) => void; allCaps?: boolean; onAllCapsChange?: (v: boolean) => void; showChatTuner?: boolean; onToggleChatTuner?: () => void; epetriMode?: boolean; onEpetriModeChange?: (v: boolean) => void; isDev?: boolean; surfaceColor: string; onSurfaceColorChange: (c: string) => void; surfaceHover: string; onSurfaceHoverChange: (c: string) => void; chromeVariant: "split" | "joined"; onChromeVariantChange: (v: "split" | "joined") => void; toScale?: boolean; onToScaleChange?: (v: boolean) => void; useImperial?: boolean; onUseImperialChange?: (v: boolean) => void; palette?: "cool" | "neutral"; onPaletteChange?: (p: "cool" | "neutral") => void }) {
   const [presetKey, setPresetKey] = useState<PresetKey>("smooth");
-  // ── Form filter ────────────────────────────────────────────────────────────
-  // The wheel is index-driven, so filtering works by deriving a `view` list and
-  // letting the springs index into that instead of the canonical array. Ids stay
-  // canonical, so ?h= deeplinks and compare are unaffected.
-  const [formFilter, setFormFilter] = useState<FormFilter>("all");
-  const view = useMemo(
-    () => (formFilter === "all" ? humanoids : humanoids.filter((h) => (h.form ?? "humanoid") === formFilter)),
-    [formFilter],
-  );
 
   const [customStiffness, setCustomStiffness] = useState(0.10);
   const [customDamping, setCustomDamping] = useState(0.42);
@@ -1584,6 +1561,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const [hideUnbuyable, setHideUnbuyable] = useState(false);
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
+  // ── Form filter ────────────────────────────────────────────────────────────
+  // See lib/wheelLanes.ts for the index model. `lane` is the list the left
+  // spring is currently indexing; it swaps wholesale when the filter changes or
+  // when compare opens, and the lane-change effect below re-seats by id.
+  const [formFilter, setFormFilter] = useState<FormFilter>("humanoid");
+  const browseList = listFor(formFilter);
+  const lane = comparing ? COMPARE_LIST : browseList;
   const spinViewerRef = useRef<SpinViewerHandle>(null);
   const spinViewerRightRef = useRef<SpinViewerHandle>(null);
   const spinLoopRef = useRef(false);
@@ -2365,20 +2349,24 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   const wheelThreshold = isCustom ? customThreshold : SCROLL_PRESETS[presetKey].wheelThreshold;
   const thresholdRef = useRef(wheelThreshold); thresholdRef.current = wheelThreshold;
 
-  const springL = useSpring(stiffness, damping);
-  const springR = useSpring(stiffness, damping);
-  // Filter changes shouldn't teleport you somewhere arbitrary: hold onto the
-  // robot you were looking at if it survives the filter, otherwise go to the top.
-  const prevViewRef = useRef(view);
+  // Each spring is bounded by the list it navigates — the left one by the live
+  // lane (which shrinks when you filter), the right one by the full index.
+  const laneLenRef = useRef(lane.length);
+  laneLenRef.current = lane.length;
+  const springL = useSpring(stiffness, damping, useCallback(() => laneLenRef.current, []));
+  const springR = useSpring(stiffness, damping, useCallback(() => COMPARE_LIST.length, []));
+  // The ONLY place an index crosses from one list to another. Whenever the lane
+  // swaps (filter changed, or compare opened/closed) the spring's integer index
+  // stops meaning what it meant, so re-seat it on the same robot by id. Falls to
+  // the top of the new lane when that robot isn't in it.
+  const laneRef = useRef(lane);
   useEffect(() => {
-    const prev = prevViewRef.current;
-    if (prev === view) return;
-    prevViewRef.current = view;
-    const keepId = prev[springL.index]?.id;
-    const next = keepId ? view.findIndex((h) => h.id === keepId) : -1;
-    springL.jumpTo(next >= 0 ? next : 0);
-    if (springR.index >= view.length) springR.jumpTo(0);
-  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+    const prev = laneRef.current;
+    if (prev === lane) return;
+    const keepId = idAt(prev, springL.index);
+    laneRef.current = lane;
+    springL.snapTo(seat(indexOfId(lane, keepId)));
+  }, [lane]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeGo = comparing ? (activeSide === "left" ? springL.go : springR.go) : springL.go;
 
@@ -2477,9 +2465,16 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   }, [effectiveGive, giveVelScale, givePushAmt, giveLeanAmt, giveTiltAmt, giveTiltDepth, springL.getPos, springR.getPos, springL.getVel, springR.getVel]);
 
   // External navigation from chat
+  // External jumps (chat suggestions, the "what's new" toast) address a robot by
+  // id, not position — the caller has no idea which lane is open. Resolve the id
+  // to its own lane and seat there, same contract as a ?h= deeplink.
   useEffect(() => {
-    if (goToIndex != null) springL.jumpTo(goToIndex);
-  }, [goToIndex, springL.jumpTo]);
+    const target = resolveDeeplink(goToId);
+    if (!target) return;
+    setFormFilter(target.filter);
+    laneRef.current = listFor(target.filter);
+    springL.snapTo(target.index);
+  }, [goToId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Wheel accumulators for each side
   const accL = useRef(0);
@@ -2517,15 +2512,15 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   useEffect(() => {
     if (!luckyNonce) return;
     const pickDifferent = (exclude: number[]) => {
-      let t = Math.floor(Math.random() * view.length);
+      let t = Math.floor(Math.random() * lane.length);
       let guard = 0;
       while (exclude.includes(t) && guard++ < 20) {
-        t = Math.floor(Math.random() * view.length);
+        t = Math.floor(Math.random() * lane.length);
       }
       return t;
     };
     const recordingExcludes = recordingMode
-      ? humanoids.reduce<number[]>((acc, h, i) => (RECORDING_SHUFFLE_EXCLUDE_IDS.includes(h.id) ? [...acc, i] : acc), [])
+      ? lane.reduce<number[]>((acc, h, i) => (RECORDING_SHUFFLE_EXCLUDE_IDS.includes(h.id) ? [...acc, i] : acc), [])
       : [];
     const targetL = pickDifferent([springL.index, ...recordingExcludes]);
     springL.jumpTo(targetL);
@@ -2663,7 +2658,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
         const spring = comparing && x != null
           ? (x < window.innerWidth / 2 ? springL : springR)
           : (comparing && activeSide === "right" ? springR : springL);
-        spring.jumpTo(isJumpStart ? 0 : view.length - 1);
+        spring.jumpTo(isJumpStart ? 0 : (spring === springR ? COMPARE_LIST : lane).length - 1);
         return;
       }
       const isDown = e.key === "ArrowDown" || e.key === "ArrowRight";
@@ -2679,7 +2674,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeGo, comparing, activeSide, arcStyle, springL, springR, isDev]);
+  }, [activeGo, comparing, activeSide, arcStyle, springL, springR, isDev, lane]);
 
   // In-card icon shortcuts — mirror the buttons one-for-one. Plain single
   // keys (no modifier) so ⌘C/⌘R/⌘D etc. still trigger native browser actions.
@@ -2687,7 +2682,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const currentId = view[springL.index]?.id;
+      const currentId = idAt(lane, springL.index);
       switch (e.key) {
         case "d": case "D":
           if (!comparing) { setStatsCollapsed((v) => !v); }
@@ -2717,35 +2712,68 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [comparing, springL, useImperial, onUseImperialChange, onShareView, toggleSpin]);
+  }, [comparing, springL, useImperial, onUseImperialChange, onShareView, toggleSpin, lane]);
 
 
   const applyPreset = (key: PresetKey) => { setPresetKey(key); setIsCustom(false); const p = SCROLL_PRESETS[key]; setCustomStiffness(p.stiffness); setCustomDamping(p.damping); setCustomThreshold(p.wheelThreshold); };
-  const enterCompare = () => { springR.jumpTo(springL.index < view.length - 1 ? springL.index + 1 : 0); setComparing(true); setActiveSide("right"); };
-  const exitCompare = () => { setComparing(false); setActiveSide("left"); setSplitHover(false); };
+  // Compare spans every body plan, so entering it swaps the lane out from under
+  // the left spring. Seat both springs against COMPARE_LIST here and claim the
+  // lane, so the lane-change effect has nothing left to correct.
+  const enterCompare = () => {
+    const li = seat(indexOfId(COMPARE_LIST, idAt(lane, springL.index)));
+    laneRef.current = COMPARE_LIST;
+    springL.snapTo(li);
+    springR.jumpTo(li < COMPARE_LIST.length - 1 ? li + 1 : 0);
+    setComparing(true);
+    setActiveSide("right");
+  };
+  // Leaving compare drops back into a single lane — pick the one that contains
+  // the robot you were looking at, so exiting never loses your place.
+  const exitCompare = () => {
+    const h = COMPARE_LIST[springL.index];
+    if (h) {
+      const f = formOf(h);
+      setFormFilter(f);
+      const next = listFor(f);
+      laneRef.current = next;
+      springL.snapTo(seat(indexOfId(next, h.id)));
+    }
+    setComparing(false);
+    setActiveSide("left");
+    setSplitHover(false);
+  };
 
   useEffect(() => {
     if (homeNonce === 0) return;
-    exitCompare();
+    if (comparing) exitCompare();
+    springL.jumpTo(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [homeNonce]);
 
   // ── Hydrate spring positions from share URL on mount ──
+  // Compare links seat against COMPARE_LIST (compare spans everything). A single
+  // ?h= link resolves to the lane that actually contains that robot, so a link
+  // to a non-humanoid opens in its own lane instead of missing.
   useEffect(() => {
     const { leftId, compareIds } = parseShareParams();
     if (compareIds.length >= 2) {
-      const l = findHumanoidIndex(compareIds[0]);
-      const r = findHumanoidIndex(compareIds[1]);
-      if (l != null) springL.snapTo(l);
-      if (r != null) {
+      const l = indexOfId(COMPARE_LIST, compareIds[0]);
+      const r = indexOfId(COMPARE_LIST, compareIds[1]);
+      if (l >= 0 && r >= 0) {
+        laneRef.current = COMPARE_LIST;
+        springL.snapTo(l);
         springR.snapTo(r);
         setComparing(true);
         setActiveSide("right");
+        return;
       }
-      return;
     }
-    const leftIdx = findHumanoidIndex(leftId);
-    if (leftIdx != null) springL.snapTo(leftIdx);
+    const target = resolveDeeplink(leftId);
+    if (target) {
+      setFormFilter(target.filter);
+      laneRef.current = listFor(target.filter);
+      springL.snapTo(target.index);
+    }
     // run only on mount; springs are stable refs
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -2754,8 +2782,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   useEffect(() => {
     if (typeof window === "undefined" || !shareUrlRef) return;
     const origin = window.location.origin;
-    const leftId = view[springL.index]?.id;
-    const rightId = view[springR.index]?.id;
+    const leftId = idAt(lane, springL.index);
+    const rightId = idAt(COMPARE_LIST, springR.index);
     if (comparing) {
       shareUrlRef.current = leftId && rightId ? `${origin}/?compare=${leftId},${rightId}` : origin;
     } else {
@@ -2771,8 +2799,8 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
 
   useEffect(() => {
     if (!onShareViewLabelChange) return;
-    const leftName = view[springL.index]?.name;
-    const rightName = view[springR.index]?.name;
+    const leftName = lane[springL.index]?.name;
+    const rightName = COMPARE_LIST[springR.index]?.name;
     if (comparing && leftName && rightName) {
       onShareViewLabelChange(`Share ${leftName} vs ${rightName}`);
     } else if (leftName) {
@@ -2808,8 +2836,12 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   }, [springL.index]);
 
 
-  const hL = view[springL.index];
-  const hR = view[springR.index];
+  // The lane can change during a render that still holds the previous index
+  // (chip click), so clamp here rather than trusting the re-seat effect to have
+  // run — it cannot, it is an effect.
+  const idxL = Math.min(springL.index, lane.length - 1);
+  const hL = lane[Math.max(0, idxL)];
+  const hR = COMPARE_LIST[springR.index];
   const distL = Math.abs(springL.getPos() - springL.targetRef.current);
   const distR = Math.abs(springR.getPos() - springR.targetRef.current);
   const getStats = (h: typeof humanoids[0]) => [
@@ -2828,13 +2860,13 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   // on the first pass.
   const [preloadRadius, setPreloadRadius] = useState(2);
   useEffect(() => {
-    if (preloadRadius >= view.length) return;
+    if (preloadRadius >= lane.length) return;
     type IdleWindow = Window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
       cancelIdleCallback?: (h: number) => void;
     };
     const w = window as IdleWindow;
-    const run = () => setPreloadRadius((r) => Math.min(view.length, r + 4));
+    const run = () => setPreloadRadius((r) => Math.min(lane.length, r + 4));
     let handle: number;
     if (w.requestIdleCallback) {
       handle = w.requestIdleCallback(run, { timeout: 1500 });
@@ -2849,7 +2881,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     const add = (idx: number) => {
       for (let k = -preloadRadius; k <= preloadRadius; k++) {
         const n = idx + k;
-        if (n >= 0 && n < view.length && k !== 0) s.add(n);
+        if (n >= 0 && n < lane.length && k !== 0) s.add(n);
       }
     };
     add(springL.index);
@@ -2858,7 +2890,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
   })();
   const preloadSizes = `${Math.round(robotW)}vw`;
 
-  const focusedH = !comparing ? view[springL.index] : undefined;
+  const focusedH = !comparing ? lane[springL.index] : undefined;
   const sceneAvailable = !!focusedH?.sceneUrl;
   const sceneActive = sceneEnabled && sceneAvailable;
   const sceneBackgroundImage = focusedH?.sceneUrl ? `url(${focusedH.sceneUrl})` : undefined;
@@ -2929,7 +2961,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
           card's sizes, so the optimized variants are cached before crossings. */}
       <div aria-hidden style={{ position: "absolute", left: -99999, top: 0, width: `${robotW}vw`, height: `${robotH}vh`, maxWidth: robotMaxW, pointerEvents: "none", opacity: 0 }}>
         {preloadIndices.map((i) => {
-          const h = view[i];
+          const h = lane[i];
           if (!h?.imageUrl) return null;
           return (
             <div key={i} style={{ position: "absolute", inset: 0 }}>
@@ -2953,9 +2985,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       >
         {FORM_FILTERS.map(({ key, label }) => {
           const active = formFilter === key;
-          const count = key === "all"
-            ? humanoids.length
-            : humanoids.filter((h) => (h.form ?? "humanoid") === key).length;
+          const count = countFor(key);
           if (!count) return null;
           return (
             <button
@@ -2987,7 +3017,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
       {/* Left arc nav */}
       <div className="fixed top-0 bottom-0 left-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
         <ArcDots
-          list={view}
+          list={lane}
           index={springL.index}
           subscribe={springL.subscribe}
           onClickItem={(idx) => springL.jumpTo(idx)}
@@ -8088,7 +8118,7 @@ function parseChat(raw: string): { reply: string; results: typeof humanoids; com
   return { reply, results, compare: wantsCompare && results.length >= 2 };
 }
 
-function GuideChat({ onSelect, config }: { onSelect: (idx: number) => void; config: ChatConfig }) {
+function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; config: ChatConfig }) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<{ role: "user" | "guide"; text: string; suggestions?: typeof humanoids }[]>([
     { role: "guide", text: "What kind of humanoid are you looking for? I can help you narrow it down." },
@@ -8150,11 +8180,10 @@ function GuideChat({ onSelect, config }: { onSelect: (idx: number) => void; conf
               {m.suggestions && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {m.suggestions.map((h) => {
-                    const idx = humanoids.findIndex((x) => x.id === h.id);
                     return (
                       <button
                         key={h.id}
-                        onClick={() => onSelect(idx)}
+                        onClick={() => onSelect(h.id)}
                         className="flex items-center gap-2 px-3 py-2 rounded-2xl cursor-pointer transition-all hover:scale-[1.03]"
                         style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}
                       >
@@ -8318,7 +8347,7 @@ export default function HomeClient() {
     fontSize: 13,
     inputRadius: 99,
   });
-  const [goToIndex, setGoToIndex] = useState<number | null>(null);
+  const [goToId, setGoToId] = useState<string | null>(null);
   const [luckyNonce, setLuckyNonce] = useState(0);
   const [comparing, setComparing] = useState(false);
   const [shareViewLabel, setShareViewLabel] = useState("Share view");
@@ -8460,11 +8489,11 @@ export default function HomeClient() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isDev, onRandomHumanoid]);
 
-  const handleSelectHumanoid = useCallback((idx: number) => {
+  const handleSelectHumanoid = useCallback((id: string) => {
     setLayout("E");
-    setGoToIndex(idx);
+    setGoToId(id);
     setChatOpen(false);
-    setTimeout(() => setGoToIndex(null), 100);
+    setTimeout(() => setGoToId(null), 100);
   }, []);
 
   // "What's new" toast — fires once on mount, after the intro overlay clears.
@@ -8474,12 +8503,9 @@ export default function HomeClient() {
       (h) => h.addedAt && new Date(h.addedAt).getTime() >= cutoff,
     );
   }, []);
-  const firstNewIdx = useMemo(
-    () => (newHumanoids.length === 0 ? -1 : humanoids.findIndex((h) => h.id === newHumanoids[0].id)),
-    [newHumanoids],
-  );
+  const firstNewId = newHumanoids.length > 0 ? newHumanoids[0].id : null;
   useEffect(() => {
-    if (introPhase !== "done" || newHumanoids.length === 0 || firstNewIdx < 0) return;
+    if (introPhase !== "done" || newHumanoids.length === 0 || !firstNewId) return;
     const seenKey = `hi:new-toast-seen:${newHumanoids.map((h) => h.id).sort().join(",")}`;
     try {
       if (localStorage.getItem(seenKey)) return;
@@ -8490,7 +8516,7 @@ export default function HomeClient() {
           humanoids={newHumanoids}
           onView={() => {
             try { localStorage.setItem(seenKey, "1"); } catch {}
-            handleSelectHumanoid(firstNewIdx);
+            handleSelectHumanoid(firstNewId);
             toast.dismiss(id);
           }}
           onDismiss={() => {
@@ -8502,15 +8528,13 @@ export default function HomeClient() {
       try { localStorage.setItem(seenKey, "1"); } catch {}
     }, 400);
     return () => clearTimeout(t);
-  }, [introPhase, newHumanoids, firstNewIdx, handleSelectHumanoid]);
+  }, [introPhase, newHumanoids, firstNewId, handleSelectHumanoid]);
 
   const [homeNonce, setHomeNonce] = useState(0);
   const goHome = useCallback(() => {
     setLayout("E");
     setChatOpen(false);
-    setGoToIndex(0);
     setHomeNonce((n) => n + 1);
-    setTimeout(() => setGoToIndex(null), 100);
   }, []);
 
   const introDone = introPhase === "done";
@@ -8611,7 +8635,7 @@ export default function HomeClient() {
 
       {/* ── Content ── */}
       <div className={introDone ? "intro-content" : "opacity-0"}>
-        {layout === "E" && <Browse goToIndex={goToIndex} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} onRandomHumanoid={onRandomHumanoid} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} />}
+        {layout === "E" && <Browse goToId={goToId} homeNonce={homeNonce} navStyle={navStyle} onNavStyleChange={setNavStyle} switcherStyle={switcherStyle} onSwitcherStyleChange={setSwitcherStyle} luckyNonce={luckyNonce} onRandomHumanoid={onRandomHumanoid} onComparingChange={setComparing} onShareViewLabelChange={setShareViewLabel} introDone={introDone} shareUrlRef={shareUrlRef} shareOgRef={shareOgRef} onShareView={() => copyUrl(shareUrlRef.current || (typeof window !== "undefined" ? window.location.origin : ""), "View link copied", shareOgRef.current)} buttonVariant={buttonVariant} onButtonVariantChange={setButtonVariant} allCaps={allCaps} onAllCapsChange={setAllCaps} showChatTuner={showChatTuner} onToggleChatTuner={() => setShowChatTuner((v) => !v)} epetriMode={epetriMode} onEpetriModeChange={setEpetriMode} isDev={isDev} surfaceColor={surfaceColor} onSurfaceColorChange={setSurfaceColor} surfaceHover={surfaceHover} onSurfaceHoverChange={setSurfaceHover} chromeVariant={chromeVariant} onChromeVariantChange={setChromeVariant} toScale={toScale} onToScaleChange={setToScale} useImperial={useImperial} onUseImperialChange={setUseImperial} palette={palette} onPaletteChange={setPalette} />}
         {layout === "Z" && indexView === "timeline" && <EllipticalCarousel allCaps={allCaps} isDev={isDev} />}
         {layout === "Z" && indexView === "grid" && <GridView humanoids={humanoids} />}
       </div>

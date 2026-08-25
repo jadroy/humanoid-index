@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { humanoids } from "@/data/humanoids";
 
 export const SCROLL_PRESETS = {
   snappy:    { stiffness: 0.22, damping: 0.72, wheelThreshold: 20, label: "Snappy" },
@@ -15,7 +14,19 @@ export type PresetKey = keyof typeof SCROLL_PRESETS;
 
 export type SpringSubscribe = (cb: (p: number) => void) => () => void;
 
-export function useSpring(s: number, d: number) {
+/**
+ * `getLength` reports how many items the spring is currently navigating. It is a
+ * getter rather than a number because the wheel's list changes at runtime (see
+ * lib/wheelLanes.ts) and every clamp below must use the length as of *now* —
+ * a captured number would let the spring walk off the end of a shorter lane.
+ * Defaults to an unbounded-above spring only for callers that never filter.
+ */
+export function useSpring(s: number, d: number, getLength?: () => number) {
+  const lenRef = useRef(getLength);
+  lenRef.current = getLength;
+  /** Highest seat that exists right now; never negative, so an empty list clamps to 0. */
+  const maxIndex = useCallback(() => Math.max(0, (lenRef.current?.() ?? Infinity) - 1), []);
+
   const sRef = useRef(s); sRef.current = s;
   const dRef = useRef(d); dRef.current = d;
   const targetRef = useRef(0);
@@ -32,12 +43,12 @@ export function useSpring(s: number, d: number) {
   }, []);
 
   const commitIndex = useCallback(() => {
-    const next = Math.max(0, Math.min(humanoids.length - 1, Math.round(posRef.current)));
+    const next = Math.max(0, Math.min(maxIndex(), Math.round(posRef.current)));
     if (next !== indexRef.current) {
       indexRef.current = next;
       setIndex(next);
     }
-  }, []);
+  }, [maxIndex]);
 
   const tick = useCallback(() => {
     const force = (targetRef.current - posRef.current) * sRef.current;
@@ -64,22 +75,22 @@ export function useSpring(s: number, d: number) {
   const start = useCallback(() => { if (rafRef.current) return; rafRef.current = requestAnimationFrame(tick); }, [tick]);
 
   const go = useCallback((delta: number) => {
-    const next = Math.max(0, Math.min(humanoids.length - 1, targetRef.current + delta));
+    const next = Math.max(0, Math.min(maxIndex(), targetRef.current + delta));
     if (next === targetRef.current) return;
     targetRef.current = next; start();
-  }, [start]);
+  }, [start, maxIndex]);
 
   const nudge = useCallback((amount: number) => {
     nudgeRef.current = Math.max(-0.15, Math.min(0.15, nudgeRef.current + amount));
     start();
   }, [start]);
 
-  const jumpTo = useCallback((idx: number) => { targetRef.current = Math.max(0, Math.min(humanoids.length - 1, idx)); start(); }, [start]);
+  const jumpTo = useCallback((idx: number) => { targetRef.current = Math.max(0, Math.min(maxIndex(), idx)); start(); }, [start, maxIndex]);
 
   // Synchronous snap — no RAF, no animation. Use for URL hydration so React
   // state is consistent from the very first render cycle.
   const snapTo = useCallback((idx: number) => {
-    const clamped = Math.max(0, Math.min(humanoids.length - 1, idx));
+    const clamped = Math.max(0, Math.min(maxIndex(), idx));
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; }
     targetRef.current = clamped;
     posRef.current = clamped;
@@ -88,7 +99,7 @@ export function useSpring(s: number, d: number) {
     indexRef.current = clamped;
     setIndex(clamped);
     notify(clamped);
-  }, [notify]);
+  }, [notify, maxIndex]);
 
   const subscribe = useCallback((cb: (p: number) => void) => {
     subscribersRef.current.add(cb);
