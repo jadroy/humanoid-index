@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { humanoids } from "@/data/humanoids";
-import { INK, FILL, SEAM, SCRIM, RADIUS, WEIGHT, EASE, panelStyle } from "@/lib/design/chrome";
+import { INK, FILL, SEAM, SCRIM, RADIUS, WEIGHT, EASE, DUR, panelStyle } from "@/lib/design/chrome";
 import { Key } from "@/components/Key";
 
 // This component lives in `layout.tsx`, a different tree from HomeClient, so
@@ -39,13 +39,13 @@ export default function SearchModal() {
     return () => window.removeEventListener(SEARCH_OPEN_EVENT, onOpen);
   }, []);
 
-  const filteredResults = query
-    ? humanoids.filter(
-        (h) =>
-          h.name.toLowerCase().includes(query.toLowerCase()) ||
-          h.manufacturer.toLowerCase().includes(query.toLowerCase())
-      )
-    : [];
+  // Memoised on the query: the keydown effect below keys on this array, and a
+  // fresh identity per render (e.g. every row hover) would re-bind it.
+  const filteredResults = useMemo(() => {
+    if (!query) return [];
+    const q = query.toLowerCase();
+    return humanoids.filter((h) => h.name.toLowerCase().includes(q) || h.manufacturer.toLowerCase().includes(q));
+  }, [query]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -93,7 +93,7 @@ export default function SearchModal() {
       // Warm scrim. `bg-black/20` reads blue-grey over this page and turned the
       // card behind it muddy.
       className="fixed inset-0 flex items-start justify-center pt-32 z-50"
-      style={{ background: SCRIM, animation: `search-fade 200ms ${EASE} both` }}
+      style={{ background: SCRIM, animation: `share-modal-fade ${DUR.fast}ms ${EASE} both` }}
       onClick={close}
     >
       <div
@@ -137,7 +137,7 @@ export default function SearchModal() {
                 border: "none",
                 margin: "2px 8px",
                 width: "calc(100% - 16px)",
-                transition: `background ${200}ms ${EASE}`,
+                transition: `background ${DUR.fast}ms ${EASE}`,
               }}
             >
               <div className="w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ borderRadius: 12, background: FILL.rest }}>

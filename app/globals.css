@@ -123,6 +123,15 @@
   40% { opacity: 1; transform: scale(1); }
 }
 
+/* Compare "veil" — the second card's remove control. Nothing at rest; hovering
+   the card washes it toward the empty slot it came from and offers the "−".
+   The button rises on the same spring the "+" uses, so opening and closing
+   compare feel like one gesture reversed. */
+.compare-veil { opacity: 0; transition: opacity 200ms ease; }
+.compare-rcard:hover .compare-veil { opacity: 1; }
+.compare-veil-btn { transform: scale(0.75); transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.compare-rcard:hover .compare-veil-btn { transform: scale(1); }
+
 @keyframes share-modal-fade {
   0% { opacity: 0; }
   100% { opacity: 1; }
@@ -1059,23 +1068,6 @@ main {
   text-overflow: ellipsis;
 }
 
-.shortcuts-kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border: 1px solid #ececec;
-  border-radius: 5px;
-  background: #fafafa;
-  font-size: 10.5px;
-  font-family: inherit;
-  color: #6a6a6a;
-  flex-shrink: 0;
-  letter-spacing: 0;
-}
-
 /* Spin viewer exit — static media fades in, mirroring the entry canvas fade-in */
 @keyframes spin-static-in {
   from { opacity: 0; }
@@ -1291,5 +1283,4 @@ main {
    anything else on the page. */
 .chat-input::placeholder { color: rgba(95, 96, 89, 0.45); font-weight: 450; }
 
-@keyframes search-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
 .search-input::placeholder { color: rgba(95, 96, 89, 0.4); font-weight: 450; }

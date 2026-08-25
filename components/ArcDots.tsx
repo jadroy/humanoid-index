@@ -441,8 +441,9 @@ function ArcNamesWheel({ list, index, subscribe, mirrored, onClickItem, aInset, 
 
   // Proximity tracking. Skipped entirely while both knobs sit at their 1
   // defaults, so the shipped rail pays nothing for this.
+  const proximityOn = !(aRestOp === 1 && aHoverBoost === 1);
   useEffect(() => {
-    if (aRestOp === 1 && aHoverBoost === 1) return;
+    if (!proximityOn) return;
     const onMove = (e: PointerEvent) => {
       // The rail lives against one edge; horizontal distance to that edge is
       // a good enough proxy for "near the rail" without a layout read.
@@ -455,7 +456,7 @@ function ArcNamesWheel({ list, index, subscribe, mirrored, onClickItem, aInset, 
     };
     window.addEventListener("pointermove", onMove, { passive: true });
     return () => window.removeEventListener("pointermove", onMove);
-  }, [aRestOp, aHoverBoost, aHoverRadius, aInset, mirrored]);
+  }, [proximityOn, aHoverRadius, aInset, mirrored]);
 
   // Boundary fill (arc / wedge): render a path that covers the angular range
   // where ghost items would be — keeps the wheel visually "complete" at list ends.
@@ -581,7 +582,10 @@ function ArcNamesWheel({ list, index, subscribe, mirrored, onClickItem, aInset, 
                 <tspan
                   ref={(el) => { nameRefs.current[idx] = el; }}
                   textAnchor={rightAlign ? (mirrored ? "start" : "end") : (mirrored ? "end" : "start")}
-                  style={{ transition: "opacity 0.2s ease" }}
+                  // Only while the proximity boost is live: the spring writes
+                  // this opacity every frame, and a transition under it would
+                  // retarget N animations per frame and lag the wheel.
+                  style={proximityOn ? { transition: "opacity 0.2s ease" } : undefined}
                 >
                   {name}
                 </tspan>

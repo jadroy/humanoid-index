@@ -1,13 +1,7 @@
 import { Metadata } from "next";
-import { headers } from "next/headers";
-import { humanoids } from "@/data/humanoids";
 import { formOf } from "@/lib/wheelLanes";
+import { findHumanoid, requestBaseUrl, robotMetadata, siteMetadata, socialMetadata } from "@/lib/metadata";
 import HomeClient from "./HomeClient";
-
-function findHumanoid(id: string | undefined | null) {
-  if (!id) return null;
-  return humanoids.find((h) => h.id === id) ?? null;
-}
 
 export async function generateMetadata({
   searchParams,
@@ -15,10 +9,7 @@ export async function generateMetadata({
   searchParams: Promise<{ h?: string; compare?: string }>;
 }): Promise<Metadata> {
   let params = await searchParams;
-  const headersList = await headers();
-  const host = headersList.get("host") || "localhost:3000";
-  const proto = headersList.get("x-forwarded-proto") || "http";
-  const baseUrl = `${proto}://${host}`;
+  const baseUrl = await requestBaseUrl();
 
   // ?compare=leftId,rightId — both must resolve, and both must sit in the same
   // lane. Compare runs inside one body plan, so a cross-lane pair can't open as
@@ -31,13 +22,7 @@ export async function generateMetadata({
     if (left && right && formOf(left) === formOf(right)) {
       const title = `${left.name} vs ${right.name}`;
       const description = `Compare ${left.name} (${left.manufacturer}) and ${right.name} (${right.manufacturer}) side by side.`;
-      const ogImage = `${baseUrl}/api/og/${left.id}?compare=${right.id}`;
-      return {
-        title,
-        description,
-        openGraph: { title, description, images: [ogImage], siteName: "Humanoid Index" },
-        twitter: { card: "summary_large_image", title, description, images: [ogImage] },
-      };
+      return socialMetadata(title, description, `${baseUrl}/api/og/${left.id}?compare=${right.id}`);
     }
     // Partial compare (one valid id) or a cross-lane pair — fall through to the
     // single-bot path on the left robot, which is what the client opens too.
@@ -48,37 +33,11 @@ export async function generateMetadata({
   }
 
   // ?h=id — single bot
-  if (params.h) {
-    const bot = findHumanoid(params.h);
-    if (bot) {
-      const title = bot.name;
-      const description = [
-        bot.manufacturer,
-        bot.year && `(${bot.year})`,
-        bot.height && `${bot.height}cm`,
-        bot.weight && `${bot.weight}kg`,
-        bot.dof && `${bot.dof} DOF`,
-      ].filter(Boolean).join(" \u00b7 ");
-      const ogImage = `${baseUrl}/api/og/${bot.id}`;
-      return {
-        title,
-        description,
-        openGraph: { title, description, images: [ogImage], siteName: "Humanoid Index" },
-        twitter: { card: "summary_large_image", title, description, images: [ogImage] },
-      };
-    }
-  }
+  const bot = findHumanoid(params.h);
+  if (bot) return robotMetadata(bot, baseUrl);
 
   // Default — no valid params or bare URL
-  const title = "Humanoid Index";
-  const description = "A comprehensive visual index of humanoid robots";
-  const ogImage = `${baseUrl}/og-default.png`;
-  return {
-    title,
-    description,
-    openGraph: { title, description, images: [ogImage], siteName: "Humanoid Index" },
-    twitter: { card: "summary_large_image", title, description, images: [ogImage] },
-  };
+  return siteMetadata(baseUrl, "A comprehensive visual index of humanoid robots");
 }
 
 export default function Page() {

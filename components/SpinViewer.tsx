@@ -4,6 +4,9 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import { createPortal } from "react-dom";
 import { RotateCw, ArrowUpRight } from "lucide-react";
 
+/** The turntable frame naming — /public/spin/<name>/frame_0000.webp … */
+export const spinFrameUrl = (path: string, i: number) => `${path}/frame_${String(i).padStart(4, "0")}.webp`;
+
 interface SpinViewerProps {
   frameCount: number;
   path: string;
@@ -50,7 +53,7 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
     let done = 0;
     const imgs = Array.from({ length: frameCount }, (_, i) => {
       const img = new Image();
-      img.src = `${path}/frame_${String(i).padStart(4, "0")}.webp`;
+      img.src = spinFrameUrl(path, i);
       img.onload = () => {
         done++;
         if (done === frameCount && alive) {
@@ -250,7 +253,7 @@ const SpinViewer = forwardRef<SpinViewerHandle, SpinViewerProps>(function SpinVi
           crossfade lands on an identical image (no flash). Hidden once loaded
           to avoid front-pose ghosting through rotated frames' transparent BG. */}
       <img
-        src={`${path}/frame_0000.webp`}
+        src={spinFrameUrl(path, 0)}
         alt=""
         aria-hidden
         draggable={false}

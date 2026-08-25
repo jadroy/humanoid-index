@@ -13,9 +13,13 @@ import { SavedTray, SavedShelf } from "@/components/SavedSurfaces";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
+import Collection from "@/app/v3/Collection";
+import { humanoidsToItems, humanoidConfig } from "@/app/v3/humanoidCollection";
 import MobileView from "@/components/MobileView";
 import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
 import { Tooltip } from "@/components/Tooltip";
+import { INK, WEIGHT, GLASS_EDGE } from "@/lib/design/chrome";
+import { CONTACT_EMAIL } from "@/lib/site";
 
 // Lazy-loaded so three.js + URDFLoader stay out of the main bundle.
 const Robot3D = dynamic(() => import("@/components/Robot3D"), { ssr: false });
@@ -60,7 +64,7 @@ const THREEDEE_ROBOTS: Record<
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import ContactSheet from "@/components/ContactSheet";
 
-const FOOTER_CONTACT_EMAIL = "jadroy77@gmail.com";
+const FOOTER_CONTACT_EMAIL = CONTACT_EMAIL;
 import { LogoMark, PlaceholderLogo, SiteMark } from "@/components/LogoMark";
 import { SEARCH_OPEN_EVENT, SEARCH_SELECT_EVENT } from "@/components/SearchModal";
 import { FormGlyph } from "@/components/FormGlyph";
@@ -332,6 +336,66 @@ const sidebarCount = (open: boolean): React.CSSProperties => ({
 });
 
 const SIDEBAR_GROUP_GAP = 16;
+// ── Live rail ──────────────────────────────────────────────────────────────
+// The collapsed rail's second form. Instead of switching between two states it
+// reads one continuous number — how near/engaged the cursor is — and every
+// dimension in the column is a function of it. `--rail-p` is the column's own
+// openness; `--rail-q` is the trailing column (counts, shortcuts), which rides
+// a later, steeper ramp so it arrives *after* the labels rather than with them.
+// Both are written by one RAF; nothing here transitions, because the easing is
+// in the number, not in CSS.
+const RAIL_LABEL_GROW = 0.06; // glyphs sit 6% under size at rest and grow in
+const RAIL_GLYPH_FLOOR = 0.5; // how much of a glyph's ink survives at rest
+
+// The label box opens as a width, which means that at mid-travel it is a box
+// narrower than the word inside it. Left to `overflow: hidden` that reads as
+// "Hu", "Se", "Oth" — type sliced down the middle, which is the one thing the
+// iOS control never does. Two corrections: the right edge is feathered so the
+// cut is a fade rather than a blade, and opacity runs quadratic so the word is
+// still faint while it is still short. By the time a label is legible enough
+// to read, its box is wide enough to hold it.
+// The feather has to get out of the way once the box is wide enough to hold
+// the word. A fixed 55%/96% gradient was still eating the tail of "Humanoid"
+// at full open — the label column is sized to exactly that word, so anything
+// fading before 100% clips the longest label permanently. The stops ride the
+// same ramp: a feather while the box is short, fully opaque by the time it is
+// open.
+const RAIL_LABEL_MASK =
+  "linear-gradient(to right, #000 calc(55% + var(--rail-p, 0) * 45%), transparent calc(96% + var(--rail-p, 0) * 4%))";
+
+const sidebarLabelLive: React.CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+  overflow: "hidden",
+  width: `calc(var(--rail-p, 0) * ${SIDEBAR_LABEL_W}px)`,
+  marginLeft: "calc(var(--rail-p, 0) * 10px)",
+  opacity: "calc(var(--rail-p, 0) * var(--rail-p, 0))",
+  maskImage: RAIL_LABEL_MASK,
+  WebkitMaskImage: RAIL_LABEL_MASK,
+  // The word sits still and the box uncovers it, rather than the word sliding
+  // in behind a moving edge — one motion instead of two racing each other.
+  whiteSpace: "nowrap",
+};
+
+const sidebarCountLive: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  overflow: "hidden",
+  width: `calc(var(--rail-q, 0) * ${SIDEBAR_COUNT_W}px)`,
+  opacity: "calc(var(--rail-q, 0) * 0.45)",
+  fontVariantNumeric: "tabular-nums",
+};
+
+// Glyphs are the only thing on screen at rest, so they carry the response the
+// labels can't: they lift out of a dimmed floor and grow the last few percent
+// into place. This is the "coming alive" half — without it the column just
+// unfolds text, which reads as a menu opening rather than as one object
+// responding.
+const glyphLive = (base: number): React.CSSProperties => ({
+  opacity: `calc(${base} * (${RAIL_GLYPH_FLOOR} + var(--rail-p, 0) * ${1 - RAIL_GLYPH_FLOOR}))`,
+  transform: `scale(calc(${1 - RAIL_LABEL_GROW} + var(--rail-p, 0) * ${RAIL_LABEL_GROW}))`,
+});
+
 
 // One glyph column for every row — mark, lanes, actions. It was three
 // different measurements before (a fixed 18 on two of them, intrinsic width on
@@ -357,12 +421,6 @@ const SIDEBAR_SMALL: React.CSSProperties = { fontSize: 12, lineHeight: 1.35 };
 // which fit the prose at 11px and clipped "Roy Jad © 2026" to "© 202" at 12.
 // The credit sets the floor here, so the blurb follows it rather than the rows.
 const SIDEBAR_PROSE_W = 104;
-
-const CHROME_INK = {
-  on: "rgba(95, 96, 89, 0.95)",
-  hover: "rgba(95, 96, 89, 0.75)",
-  off: "rgba(95, 96, 89, 0.55)",
-};
 
 // Footer chips reuse the same liquid-glass chrome as the in-card icon
 // buttons + the compare minus button. Static because the footer lives
@@ -1737,27 +1795,99 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // arrive with the cursor and leave with it. `railFlash` reaches the same
   // state from a swipe, where the cursor is nowhere near the column and the
   // sliding indicator alone is easy to miss.
-  // Labels-on-hover: the column rests as a glyph strip and opens to labels when
-  // the cursor comes near it. Off by default — the rail ships with its labels
-  // always on until this is judged in the browser.
-  const [railLabelsOnHover, setRailLabelsOnHover] = useState(false);
-  // "Near", not "on": the column sits 24px off the left edge, so waiting for
-  // the cursor to land on it means the labels arrive after you have already
-  // committed to the reach. A left-edge band opens it on approach instead.
-  const [railNear, setRailNear] = useState(false);
-  const [railNearPx, setRailNearPx] = useState(180);
+  // Live rail: the column rests as a dimmed glyph strip and grows continuously
+  // with how near the cursor is, rather than switching between two states. On
+  // by default; the tuner switch drops it back to labels-always-on.
+  const [railLabelsOnHover, setRailLabelsOnHover] = useState(true);
+  // The band the response happens over. Not a hover target: the column sits
+  // 24px off the left edge, so waiting for the cursor to land on it means the
+  // rail only reacts once you have already committed to the reach — which is
+  // the moment the feedback stops being useful.
+  const [railNearPx, setRailNearPx] = useState(280);
+  const [railGrowMs, setRailGrowMs] = useState(120);
+  const railRef = useRef<HTMLDivElement | null>(null);
+  // Openness lives in a ref and reaches the DOM as a CSS variable. It changes
+  // every frame while the cursor moves, so it must never be React state — see
+  // the same rule the spring follows.
+  const railPRef = useRef(0);
+  const railTargetRef = useRef(0);
+  const railRafRef = useRef<number | null>(null);
+
+  // What the mode pins openness to, or null when the cursor decides: compare
+  // owns the column outright; hover and the swipe flash pin it fully open.
+  const railPin = comparing ? 0 : (railOpen || railFlash) ? 1 : null;
+  // Read through a ref by the pointer listener so a mode flip doesn't tear
+  // the listener (and the in-flight ease) down and re-bind it.
+  const railPinRef = useRef<number | null>(railPin);
+  railPinRef.current = railPin;
+  const railKickRef = useRef<(() => void) | null>(null);
+  // One place decides which of the two systems a row is wearing, so no call
+  // site has to know the mode. Legacy = today's boolean widths with their CSS
+  // transitions; live = the --rail-p functions above.
+  const railLive = railLabelsOnHover;
+  const railLabelStyle = railLive ? sidebarLabelLive : sidebarLabel(comparing);
+  const railCountStyle = railLive ? sidebarCountLive : sidebarCount(railPin === 1);
+  const railGlyphStyle = (base: number): React.CSSProperties =>
+    railLive ? glyphLive(base) : { opacity: base, transition: "opacity 200ms ease" };
+
+  // One writer for the whole column. `target` is where openness wants to be;
+  // the frame loop eases toward it and stops the moment it arrives, so a rail
+  // sitting still costs nothing.
   useEffect(() => {
-    if (!railLabelsOnHover) { setRailNear(false); return; }
-    const onMove = (e: PointerEvent) => setRailNear(e.clientX < railNearPx);
+    if (!railLabelsOnHover) {
+      // Off: pin fully open (or shut, in compare) and let the existing CSS
+      // transitions own the change, exactly as before.
+      const el = railRef.current;
+      if (el) { el.style.removeProperty("--rail-p"); el.style.removeProperty("--rail-q"); }
+      if (railRafRef.current) { cancelAnimationFrame(railRafRef.current); railRafRef.current = null; }
+      return;
+    }
+    // Per-frame ease toward the target. The rate is framed as a time constant
+    // so the slider reads in milliseconds rather than in lerp coefficients.
+    const step = () => {
+      railRafRef.current = null;
+      const el = railRef.current;
+      if (!el) return;
+      const target = railTargetRef.current;
+      const cur = railPRef.current;
+      const next = cur + (target - cur) * Math.min(1, 16.7 / Math.max(16.7, railGrowMs));
+      const done = Math.abs(target - next) < 0.002;
+      railPRef.current = done ? target : next;
+      const pv = railPRef.current;
+      el.style.setProperty("--rail-p", pv.toFixed(3));
+      // The trailing column rides the top 45% of the ramp, so counts and
+      // shortcuts land after the labels have finished opening instead of
+      // sliding out alongside them.
+      el.style.setProperty("--rail-q", Math.max(0, (pv - 0.55) / 0.45).toFixed(3));
+      if (!done) railRafRef.current = requestAnimationFrame(step);
+    };
+    const kick = () => { if (railRafRef.current == null) railRafRef.current = requestAnimationFrame(step); };
+    railKickRef.current = kick;
+
+    const retarget = (t: number) => {
+      if (Math.abs(t - railTargetRef.current) < 0.002) return;
+      railTargetRef.current = t;
+      kick();
+    };
+    // Unless the mode pins it, openness is just how far into the band you are.
+    const onMove = (e: PointerEvent) =>
+      retarget(railPinRef.current ?? Math.max(0, 1 - e.clientX / railNearPx));
     window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
-  }, [railLabelsOnHover, railNearPx]);
-  const railExpanded = railOpen || railFlash || railNear;
-  // Everything that collapses in compare collapses at rest too when the mode is
-  // on — the label column, the credit, and the gap that spaces it. They share
-  // one flag because they share one width: leaving the credit out held the
-  // column ~92px wider than its glyphs, which is the same bug compare hit.
-  const railNarrow = comparing || (railLabelsOnHover && !railExpanded);
+    kick();
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      railKickRef.current = null;
+      if (railRafRef.current) { cancelAnimationFrame(railRafRef.current); railRafRef.current = null; }
+    };
+  }, [railLabelsOnHover, railNearPx, railGrowMs]);
+  // Mode changes happen with no pointer moving — entering compare has to shut
+  // the column even if the cursor never leaves the rail — so they retarget on
+  // their own, without re-binding the listener above.
+  useEffect(() => {
+    if (!railLabelsOnHover || railPin == null) return;
+    railTargetRef.current = railPin;
+    railKickRef.current?.();
+  }, [railLabelsOnHover, railPin]);
   // ── Form filter ────────────────────────────────────────────────────────────
   // See lib/wheelLanes.ts for the index model. `lane` is the list BOTH springs
   // index — compare stays inside the open category, so opening it no longer
@@ -1805,6 +1935,25 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // you left it, unless you left by picking a robot, which seats the wheel on
   // that robot instead.
   const [gridOpen, setGridOpen] = useState(false);
+  // Derived from the lane, memoised on it: a fresh array every render would
+  // hand the grid new items on frames where nothing changed.
+  const gridItems = useMemo(() => humanoidsToItems(lane), [lane]);
+  /* ── Input lock ────────────────────────────────────────────────────────────
+     The wheel's three input listeners are on `window`, and the vertical one
+     calls preventDefault on every scroll it accepts — that is how the page can
+     scroll a spring instead of a document. So anything that opens ON TOP of the
+     wheel and scrolls for itself has to take that input away first, or the two
+     fight: the grid gets a scroll that was cancelled out from under it while
+     the wheel spins behind it.
+
+     One ref, read by all three handlers. A ref and not state because the wheel
+     effect is bound once per spring identity — putting a boolean in its
+     dependencies would tear down and rebind the listener (and drop its
+     accumulator) every time an overlay opened. Today the grid is the only
+     thing that raises it; the next full-page overlay joins this line rather
+     than adding a second mechanism. */
+  const inputLockedRef = useRef(false);
+  inputLockedRef.current = gridOpen;
   const spinViewerRef = useRef<SpinViewerHandle>(null);
   const spinViewerRightRef = useRef<SpinViewerHandle>(null);
   const spinLoopRef = useRef(false);
@@ -1833,16 +1982,6 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [videoPaused, setVideoPaused] = useState(false);
   const [splitHover, setSplitHover] = useState(false);
   const [addHover, setAddHover] = useState(false);
-  // Compare is the one interaction on this page nobody arrives knowing about,
-  // and hover-reveal made it invisible to first-time visitors — the feedback
-  // was "couldn't find it". So the ghost is earned, not the default: until you
-  // have opened compare once, ever, the "+" sits at full dim opacity the way it
-  // always did. After that it goes quiet for good. Zero upkeep, no dismissal
-  // UI, and it resolves itself on the one action it is advertising.
-  const [hasCompared, setHasCompared] = useState(true); // assume seen until hydrated — avoids a flash for returning users
-  useEffect(() => {
-    try { setHasCompared(!!localStorage.getItem("humanoid-index:hasCompared")); } catch { setHasCompared(true); }
-  }, []);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("hover");
   const [compareSlotStyle, setCompareSlotStyle] = useState<"silhouette" | "plus">("silhouette");
   // Where the "−" that leaves compare lives. "card-corner" pins it to the top
@@ -1850,7 +1989,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // hover mode above exists to keep quiet. "seam" floats it in the gap between
   // the stats column and the second card, so it reads as unjoining the pair
   // rather than as a control belonging to one card.
-  const [minusPlacement, setMinusPlacement] = useState<"card-corner" | "seam">("seam");
+  const [minusPlacement, setMinusPlacement] = useState<"card-corner" | "veil">("veil");
   const [pillsLayout, setPillsLayout] = useState<"stack" | "grouped">("stack");
   const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill" | "chip">("after-name");
   const [groupedFill, setGroupedFill] = useState<string>("#F9F9F9");
@@ -2536,17 +2675,15 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       maxPx,
       (hVh * windowHeight / 100) * aspect,
     );
-  const cardAspect = comparing ? COMPARE_ASPECT : SINGLE_ASPECT;
-  const cardW = comparing
-    ? cardPxFor(robotW - 8, robotH - 10, robotMaxW - 100, COMPARE_ASPECT)
-    : cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT);
-  const cardH = cardW / cardAspect;
   // The size the second card will actually be. Single view is 0.88 aspect and
   // wider; entering compare shrinks BOTH cards to COMPARE_ASPECT. So the empty
   // slot has to be drawn at the compare size or it promises a card bigger than
   // the one that arrives.
   const compareCardW = cardPxFor(robotW - 8, robotH - 10, robotMaxW - 100, COMPARE_ASPECT);
   const compareCardH = compareCardW / COMPARE_ASPECT;
+  const cardAspect = comparing ? COMPARE_ASPECT : SINGLE_ASPECT;
+  const cardW = comparing ? compareCardW : cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT);
+  const cardH = cardW / cardAspect;
   // Compare middle column tracks the card rather than sitting at a fixed px
   // width — it used to carry +200px to fit long manufacturer names in the
   // Company row, which now lives in the placard above the card instead.
@@ -2837,17 +2974,26 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // External jumps (chat suggestions, the "what's new" toast) address a robot by
   // id, not position — the caller has no idea which lane is open. Resolve the id
   // to its own lane and seat there, same contract as a ?h= deeplink.
-  useEffect(() => {
+   // Landing on one robot from outside the wheel — a deeplink, the tray, the
+  // shelf. It always lands in the robot's own form lane (staying in the saved
+  // lane would mean seating on an index that list doesn't have), and it
+  // dismisses the grid: landing on a robot is a request to look at it, and
+  // the grid is what's in front of the wheel — otherwise the wheel re-seats
+  // silently behind a page that never changed.
+  const landOn = useCallback((target: NonNullable<ReturnType<typeof resolveDeeplink>>) => {
+    setSavedLaneOn(false);
+    setGridOpen(false);
+    setFormFilter(target.filter);
+    laneRef.current = listFor(target.filter);
+    springL.snapTo(target.index);
+  }, [springL]);
+
+ useEffect(() => {
     const target = resolveDeeplink(goToId);
     // Ignored while comparing: moving the lane out from under an open pair would
     // strand the right card on a robot from another category.
     if (!target || comparing) return;
-    // An external jump always lands in the robot's own form lane. Staying in
-    // the saved lane would mean seating on an index that list doesn't have.
-    setSavedLaneOn(false);
-    setFormFilter(target.filter);
-    laneRef.current = listFor(target.filter);
-    springL.snapTo(target.index);
+    landOn(target);
   }, [goToId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Picking a robot out of the tray or the shelf. Inside the saved lane it is
@@ -2857,12 +3003,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     const local = indexOfId(laneRef.current, id);
     if (savedLaneLive && local >= 0) { springL.jumpTo(local); return; }
     const target = resolveDeeplink(id);
-    if (!target) return;
-    setSavedLaneOn(false);
-    setFormFilter(target.filter);
-    laneRef.current = listFor(target.filter);
-    springL.snapTo(target.index);
-  }, [savedLaneLive, springL]);
+    if (target) landOn(target);
+  }, [savedLaneLive, springL, landOn]);
 
   // Wheel accumulators for each side
   const accL = useRef(0);
@@ -2955,6 +3097,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     };
 
     const onWheel = (e: WheelEvent) => {
+      // Locked: return before any preventDefault so the overlay on top scrolls
+      // natively, exactly as it would if this listener weren't here.
+      if (inputLockedRef.current) return;
       // Tuners only exist in dev; skip the DOM walk in production.
       if (isDev && (e.target as HTMLElement)?.closest?.("[data-tuner]")) return;
       const wheelNow = performance.now();
@@ -3065,6 +3210,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // Keyboard — arrows control active side, tab switches, esc exits
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (inputLockedRef.current) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
@@ -3110,6 +3256,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // keys (no modifier) so ⌘C/⌘R/⌘D etc. still trigger native browser actions.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (inputLockedRef.current) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const currentId = idAt(lane, springL.index);
@@ -3157,7 +3304,6 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // its neighbour. A one-robot lane wraps to the same robot rather than seating
   // out of range.
   const enterCompare = () => {
-    if (!hasCompared) { setHasCompared(true); try { localStorage.setItem("humanoid-index:hasCompared", "1"); } catch {} }
     springR.jumpTo(seatL < lane.length - 1 ? seatL + 1 : 0);
     setComparing(true);
     setActiveSide("right");
@@ -3202,6 +3348,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     // Leave compare without adopting the compared robot's body plan — Home
     // should return you to the top of the lane you already had open.
     if (comparing) { setComparing(false); setActiveSide("left"); setSplitHover(false); }
+    setGridOpen(false);
     springL.jumpTo(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [homeNonce]);
@@ -3477,10 +3624,19 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           style={{
             zIndex: 20,
             background: pageBg,
-            paddingLeft: "calc(var(--nav-edge, 24px) + 128px)",
+            paddingLeft: "calc(var(--nav-edge, 24px) + 112px)",
           }}
         >
-          <GridView humanoids={lane} onSelect={openFromGrid} />
+          {/* The v3 Collection, embedded: no header of its own (the column is
+              the chrome), no detail panel, no ?h= writing. Clicks come back
+              through onPick. `items` is derived per lane, so switching lanes
+              re-runs the entry intro — the grid re-deals into the new set. */}
+          <Collection
+            items={gridItems}
+            config={humanoidConfig}
+            embedded
+            onPick={openFromGrid}
+          />
         </div>
       )}
 
@@ -3499,6 +3655,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           room for labels — but the lane indicator stays lit, because compare
           runs inside the open lane and that lane is still the filter in force. */}
       <div
+        ref={railRef}
         className="fixed top-1/2 -translate-y-1/2 flex flex-col"
         style={{
           // Normally z-4, above the stage and below nothing. The grid opens at
@@ -3527,7 +3684,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           onClick={onHome}
           aria-label="Humanoid Index"
           className="site-mark-btn cursor-pointer"
-          style={{ ...SIDEBAR_ROW, color: CHROME_INK.off }}
+          style={{ ...SIDEBAR_ROW, color: INK.off }}
         >
           <span style={SIDEBAR_GLYPH_SLOT}>
             {/* Sized to the glyph column rather than overhanging it. The mark
@@ -3589,7 +3746,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 className="lane-row cursor-pointer"
                 style={{
                   ...SIDEBAR_ROW,
-                  color: active ? CHROME_INK.on : hovered ? CHROME_INK.hover : CHROME_INK.off,
+                  color: active ? INK.on : hovered ? INK.hover : INK.off,
                   transition: "color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
                 }}
               >
@@ -3598,8 +3755,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 <span
                   style={{
                     ...SIDEBAR_GLYPH_SLOT,
-                    opacity: active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off,
-                    transition: "opacity 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+                    ...railGlyphStyle(active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off),
                   }}
                 >
                   {/* Remount on activation so the glyph's one-shot replays;
@@ -3608,10 +3764,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 </span>
                 {/* Label and count are separate columns now — the label is
                     fixed, the count is what opens. */}
-                <span aria-hidden={railNarrow} style={sidebarLabel(railNarrow)}>
+                <span aria-hidden={comparing} style={railLabelStyle}>
                   <span>{label}</span>
                 </span>
-                <span aria-hidden={comparing} style={sidebarCount(railExpanded && !comparing)}>
+                <span aria-hidden={comparing} style={railCountStyle}>
                   {count}
                 </span>
               </button>
@@ -3633,17 +3789,17 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           aria-pressed={gridOpen}
           onMouseEnter={() => setRailHover(null)}
           className="sidebar-action cursor-pointer"
-          style={{ ...SIDEBAR_ROW, color: gridOpen ? CHROME_INK.on : CHROME_INK.off }}
+          style={{ ...SIDEBAR_ROW, color: gridOpen ? INK.on : INK.off }}
         >
-          <span style={{ ...SIDEBAR_GLYPH_SLOT, opacity: gridOpen ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off, transition: "opacity 200ms ease" }}>
+          <span style={{ ...SIDEBAR_GLYPH_SLOT, ...railGlyphStyle(gridOpen ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off) }}>
             <LayoutGrid size={16} strokeWidth={1.75} />
           </span>
-          <span aria-hidden={railNarrow} style={sidebarLabel(railNarrow)}>
+          <span aria-hidden={comparing} style={railLabelStyle}>
             <span>Grid</span>
           </span>
           {/* Keeps the trailing column so the row's width tracks the lanes and
               the actions as the counts open — an empty slot, not a missing one. */}
-          <span aria-hidden style={{ ...sidebarCount(railExpanded && !comparing), fontSize: 12 }} />
+          <span aria-hidden style={{ ...railCountStyle, fontSize: 12 }} />
         </button>
 
         <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
@@ -3690,29 +3846,24 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               // Open chat reads like an open lane — same ink step — but without
               // the sliding pill, which belongs to the lanes and would imply
               // Ask is a fourth category.
-              color: item.active ? CHROME_INK.on : CHROME_INK.off,
+              color: item.active ? INK.on : INK.off,
             }}
           >
-            <span style={{ ...SIDEBAR_GLYPH_SLOT, opacity: item.active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off, transition: "opacity 200ms ease" }}>
+            <span style={{ ...SIDEBAR_GLYPH_SLOT, ...railGlyphStyle(item.active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off) }}>
               {item.icon}
             </span>
-            <span aria-hidden={railNarrow} style={sidebarLabel(railNarrow)}>
+            <span aria-hidden={comparing} style={railLabelStyle}>
               <span>{item.label}</span>
             </span>
             {/* Same trailing column the lane counts open into — a shortcut is
                 the action row's equivalent of a count, so it reveals with the
                 same gesture instead of inventing a second one. */}
-            <span aria-hidden style={{ ...sidebarCount(railExpanded && !comparing), fontSize: 12 }}>
+            <span aria-hidden style={{ ...railCountStyle, fontSize: 12 }}>
               {item.hint}
             </span>
           </button>
         ))}
 
-        {/* The credit is its own group and needs the group gap above it — it was
-            butted straight against Feedback, so the one break in the column
-            without space read as an orphaned line rather than a footer. Gated
-            on compare so it collapses with the credit it spaces. */}
-        <div aria-hidden style={{ height: railNarrow ? 0 : SIDEBAR_GROUP_GAP, transition: "height 320ms cubic-bezier(0.33, 1, 0.68, 1)" }} />
 
         {/* Always on. Revealing it with the counts meant a copyright line
             animated every time the cursor crossed the column — motion on the
@@ -3723,22 +3874,27 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         <div
           aria-hidden
           style={{
-            overflow: "hidden",
-            height: railNarrow ? 0 : 24,
-            // Width has to collapse with the height. It is the widest thing in
-            // the column, so at width:auto it kept setting the column's width
-            // even at height 0 — invisible, but it held the whole rail ~52px
-            // wider than its rows in compare, which the lane indicator then
-            // drew as a bar hanging off the glyphs. 92 matches the blurb.
-            width: railNarrow ? 0 : SIDEBAR_PROSE_W,
-            opacity: railNarrow ? 0 : 1,
-            transition: "height 320ms cubic-bezier(0.33, 1, 0.68, 1), width 320ms cubic-bezier(0.33, 1, 0.68, 1), opacity 200ms ease",
+            // Out of flow. In flow, its height was part of the column's height,
+            // and the column is centred on the viewport — so a credit line
+            // opening from 0 to 24px moved the centre, and every row above it
+            // slid up half that on approach. The one element here that never
+            // changes was making everything else travel. Anchored under the
+            // column instead, it can appear and disappear without the rows
+            // knowing, and it no longer sets the column's width either — which
+            // is what the height/width collapse dance below used to be for.
+            position: "absolute",
+            top: `calc(100% + ${SIDEBAR_GROUP_GAP - 8}px)`,
+            left: 0,
+            height: 24,
+            width: SIDEBAR_PROSE_W,
+            opacity: railLive ? "var(--rail-p, 0)" : comparing ? 0 : 1,
+            transition: "opacity 200ms ease",
             display: "flex",
             alignItems: "center",
             // 10 is the rows' own horizontal inset, so the credit starts on the
             // same vertical as the glyph column above it. 12 was off by two
             // against every other thing in the sidebar.
-            paddingLeft: railNarrow ? 0 : 10,
+            paddingLeft: 10 + 4,
             fontFamily: "var(--font-geist-sans)",
             // On the same ink step as the row labels rather than a fainter one
             // of its own — 0.45 at 12px was legible in theory and invisible in
@@ -3746,7 +3902,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             fontSize: 13,
             lineHeight: 1.35,
             fontWeight: 450,
-            color: CHROME_INK.off,
+            color: INK.off,
             whiteSpace: "nowrap",
           }}
         >
@@ -3857,8 +4013,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
 
       {/* ── Add compare button — hover zone right of center ── */}
       {!comparing && (() => {
-        // "hover" only takes effect once compare has been found once.
-        const alwaysMode = addCtaMode === "always" || !hasCompared;
+        const alwaysMode = addCtaMode === "always";
         const addShown = alwaysMode || addHover;
         const baseScale = alwaysMode ? 1 : (addShown ? 1 : 0.75);
         const hoverScale = addHover ? 1.015 : 1;
@@ -7256,7 +7411,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               {/* Right robot — compare only. Slides in from screen-right (translateX)
                   alongside the wheel and the 2nd-humanoid stat column, all riding the
                   shared collapse clock so the right side enters as one piece. */}
-              <div className="flex-shrink-0 relative compare-rcard" style={{
+              <div
+                className="flex-shrink-0 relative compare-rcard"
+                style={{
                 opacity: comparing ? 1 : 0,
                 pointerEvents: comparing ? "auto" : "none",
                 // Card stays at full visual size (overflow visible) and
@@ -7291,31 +7448,73 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   // Still reads larger than the "i" on the left card, which is
                   // right: it's the counterpart to the Compare "+".
                   const closeSize = Math.round(cardIconSize * 0.72);
-                  // Seam: centred on the gap the right card carries as its own
-                  // margin-left, so the button straddles stats column and card
-                  // instead of belonging to either. The gap is only statsGap
-                  // wide (12px default) — far narrower than the button — which
-                  // is the point: it sits ON the join, not inside it.
-                  const seam = minusPlacement === "seam";
-                  // NOT in the 12px gap itself. Both bands that cross it are
-                  // occupied — the stats table runs full-bleed through the
-                  // card's middle, and the label row carries the second card's
-                  // logo mark hard against its left edge. A 26px button in a
-                  // 12px seam crowds one or the other.
-                  //
-                  // So: the middle column, centred, under the stats block. It
-                  // is the one genuinely empty region in the composition, it is
-                  // the optical centre of the pair, and a control sitting there
-                  // belongs to both cards rather than to the right one — which
-                  // is what leaving compare actually does.
-                  const pos: React.CSSProperties = seam
-                    // compareStatsW, not statsW — statsW is the single-view
-                    // column and is ~40px narrower, which parked the button
-                    // right of the stats table's own centre line.
-                    ? { bottom: Math.round(closeSize * 0.9), left: -Math.round(effectiveGap + compareStatsW / 2) }
-                    : { top: 0, right: 0 };
-                  const restT = seam ? "translateX(-50%) translateY(10px)" : "translateY(10px)";
-                  const inT = seam ? "translateX(-50%)" : "translateY(0)";
+
+                  // "veil" — the inverse of the plus. The plus sits in an empty
+                  // card-shaped slot and fills it; hovering the filled card
+                  // washes it back toward that same empty slot and offers the
+                  // "−" to finish the job. Nothing is drawn at rest, which is
+                  // the point: the second card is the subject, not a thing
+                  // wearing a close button. The whole veil is the hit target,
+                  // so it is far easier to land on than the 26px corner it
+                  // replaces, despite being invisible until you go there.
+                  // Hover state is CSS (`.compare-rcard:hover .compare-veil`
+                  // in globals.css) — a re-render of Browse per card
+                  // enter/leave is a high price for an opacity flip.
+                  if (minusPlacement === "veil") {
+                    return (
+                      <div
+                        onClick={exitCompare}
+                        role="button"
+                        aria-label="Remove from compare"
+                        className="absolute z-30 compare-veil"
+                        style={{
+                          // Anchored to the card, not the wrapper: the wrapper
+                          // also holds the label row above the card, and a veil
+                          // that covered the placard would read as removing the
+                          // name too.
+                          left: 0,
+                          bottom: 0,
+                          width: cardW,
+                          height: cardH,
+                          borderRadius: cardRadius,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          // Page-bg wash rather than a grey scrim — the card is
+                          // #F9F9F9 on white, so washing toward white is what
+                          // "emptying" actually looks like here. Stops short of
+                          // opaque: the robot stays legible underneath, so it
+                          // reads as about-to-leave, not already gone.
+                          background: "rgba(255,255,255,0.66)",
+                          pointerEvents: comparing ? "auto" : "none",
+                          cursor: "pointer",
+                          WebkitTapHighlightColor: "transparent",
+                        }}
+                      >
+                        <div
+                          className="compare-veil-btn"
+                          style={{
+                            // Always the flat circle here, whatever
+                            // compareBtnStyle says. The glass chrome is a
+                            // translucent fill over a backdrop blur — put it on
+                            // top of a white wash and it vanishes, leaving a
+                            // bare dash floating on the card. This one has to
+                            // read as a button.
+                            ...flatStyle,
+                            width: cardIconSize,
+                            height: cardIconSize,
+                            borderRadius: cardIconSize / 2,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Minus size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <button
                       onClick={exitCompare}
@@ -7330,9 +7529,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        ...pos,
+                        top: 0,
+                        right: 0,
                         opacity: comparing ? 1 : 0,
-                        transform: comparing ? inT : restT,
+                        transform: comparing ? "translateY(0)" : "translateY(10px)",
                         pointerEvents: comparing ? "auto" : "none",
                         transition: comparing
                           ? "opacity 220ms ease 280ms, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 280ms"
@@ -8248,7 +8448,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               )}
             </div>
           )}
-          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div><div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Compare slot</p><div className="flex flex-wrap gap-1.5">{(["silhouette", "plus"] as const).map((v) => (<button key={v} onClick={() => setCompareSlotStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${compareSlotStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div><div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Minus</p><div className="flex flex-wrap gap-1.5">{(["seam", "card-corner"] as const).map((v) => (<button key={v} onClick={() => setMinusPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${minusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "seam" ? "Seam" : "Card corner"}</button>))}</div></div>
+          <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div><div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Compare slot</p><div className="flex flex-wrap gap-1.5">{(["silhouette", "plus"] as const).map((v) => (<button key={v} onClick={() => setCompareSlotStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${compareSlotStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div><div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Minus</p><div className="flex flex-wrap gap-1.5">{(["veil", "card-corner"] as const).map((v) => (<button key={v} onClick={() => setMinusPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${minusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "veil" ? "Hover veil" : "Card corner"}</button>))}</div></div>
           <div className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill", "chip"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
           <div className="pt-2 border-t border-neutral-100 space-y-2">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">Pills layout</p>
@@ -8927,11 +9127,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Approach radius <span className="tabular-nums text-neutral-400">{arcHoverRadius}px</span></label><input type="range" min={40} max={600} value={arcHoverRadius} onChange={(e) => setArcHoverRadius(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div className="pt-2 mt-1 border-t border-neutral-200/70">
               <label className="text-[12px] text-neutral-500 flex items-center justify-between cursor-pointer">
-                <span>Rail labels on approach</span>
+                <span>Live rail (grows on approach)</span>
                 <input type="checkbox" checked={railLabelsOnHover} onChange={(e) => setRailLabelsOnHover(e.target.checked)} className="accent-neutral-900" />
               </label>
             </div>
-            <div><label className="text-[12px] text-neutral-500 flex justify-between">Rail approach band <span className="tabular-nums text-neutral-400">{railNearPx}px</span></label><input type="range" min={60} max={480} value={railNearPx} onChange={(e) => setRailNearPx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Rail approach band <span className="tabular-nums text-neutral-400">{railNearPx}px</span></label><input type="range" min={60} max={600} value={railNearPx} onChange={(e) => setRailNearPx(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Rail follow <span className="tabular-nums text-neutral-400">{railGrowMs}ms</span></label><input type="range" min={17} max={400} value={railGrowMs} onChange={(e) => setRailGrowMs(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div>
               <label className="text-[12px] text-neutral-500 mb-1.5 block">Boundary fill</label>
               <div className="flex flex-wrap gap-1.5">
@@ -9138,7 +9339,6 @@ function parseChat(raw: string): { reply: string; results: typeof humanoids; com
 // was the only place on the site running default body weight, which is what
 // made it look like a different product's component. 450 sits between the
 // site's body text and its 500 labels.
-const CHAT_WEIGHT = 450;
 
 function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; config: ChatConfig }) {
   const [query, setQuery] = useState("");
@@ -9163,10 +9363,10 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
   };
 
   const userBubbleStyle = (): React.CSSProperties => {
-    const base: React.CSSProperties = { fontSize: config.fontSize, fontWeight: CHAT_WEIGHT, maxWidth: "80%", lineHeight: 1.5 };
+    const base: React.CSSProperties = { fontSize: config.fontSize, fontWeight: WEIGHT.body, maxWidth: "80%", lineHeight: 1.5 };
     if (config.userStyle === "dark") return { ...base, background: "var(--c-ink)", color: "white" };
-    if (config.userStyle === "outline") return { ...base, background: "transparent", boxShadow: "inset 0 0 0 1px rgba(95, 96, 89, 0.18)", color: CHROME_INK.on };
-    return { ...base, background: "rgba(95, 96, 89, 0.08)", color: CHROME_INK.on };
+    if (config.userStyle === "outline") return { ...base, background: "transparent", boxShadow: "inset 0 0 0 1px rgba(95, 96, 89, 0.18)", color: INK.on };
+    return { ...base, background: "rgba(95, 96, 89, 0.08)", color: INK.on };
   };
 
   return (
@@ -9184,7 +9384,7 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
           // (card icon buttons, the compare minus, the old footer capsule) is
           // built this way, and the plain border was the tell that this panel
           // came from somewhere else.
-          boxShadow: `inset 0 1px 0 rgba(178,178,178,0.10), inset 0 0 0 1px rgba(140,140,140,0.18), 0 24px 64px rgba(0,0,0,${config.shadowOp / 100}), 0 4px 16px rgba(0,0,0,${config.shadowOp / 200})`,
+          boxShadow: `${GLASS_EDGE}, 0 24px 64px rgba(0,0,0,${config.shadowOp / 100}), 0 4px 16px rgba(0,0,0,${config.shadowOp / 200})`,
           animation: "chat-rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both",
         }}
       >
@@ -9194,11 +9394,11 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
             <div key={i}>
               {m.role === "guide" ? (
                 config.guideStyle === "bubble" ? (
-                  <div style={{ display: "inline-block", background: "rgba(95, 96, 89, 0.06)", borderRadius: 18, padding: "8px 12px", fontSize: config.fontSize, fontWeight: CHAT_WEIGHT, color: CHROME_INK.on, lineHeight: 1.5 }}>
+                  <div style={{ display: "inline-block", background: "rgba(95, 96, 89, 0.06)", borderRadius: 18, padding: "8px 12px", fontSize: config.fontSize, fontWeight: WEIGHT.body, color: INK.on, lineHeight: 1.5 }}>
                     {m.text}
                   </div>
                 ) : (
-                  <p style={{ fontSize: config.fontSize, fontWeight: CHAT_WEIGHT, color: CHROME_INK.on, lineHeight: 1.6 }}>{m.text}</p>
+                  <p style={{ fontSize: config.fontSize, fontWeight: WEIGHT.body, color: INK.on, lineHeight: 1.6 }}>{m.text}</p>
                 )
               ) : (
                 <div className="flex justify-end">
@@ -9232,8 +9432,8 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
                               `fontSize - 3` put the manufacturer at 10px when
                               the tuner went low, which is below the size the
                               rest of the page will render. */}
-                          <p style={{ fontSize: 14, fontWeight: 500, color: CHROME_INK.on, lineHeight: 1.3 }}>{h.name}</p>
-                          <p style={{ fontSize: 12, fontWeight: CHAT_WEIGHT, color: CHROME_INK.off, lineHeight: 1.3 }}>{h.manufacturer}</p>
+                          <p style={{ fontSize: 14, fontWeight: 500, color: INK.on, lineHeight: 1.3 }}>{h.name}</p>
+                          <p style={{ fontSize: 12, fontWeight: WEIGHT.body, color: INK.off, lineHeight: 1.3 }}>{h.manufacturer}</p>
                         </div>
                       </button>
                     );
@@ -9253,7 +9453,7 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             placeholder="fastest, cheapest, for home…"
             className="chat-input flex-1 outline-none bg-transparent"
-            style={{ fontSize: config.fontSize, fontWeight: CHAT_WEIGHT, color: CHROME_INK.on }}
+            style={{ fontSize: config.fontSize, fontWeight: WEIGHT.body, color: INK.on }}
           />
           <button
             onClick={handleSubmit}
@@ -9268,7 +9468,7 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
               borderRadius: config.inputRadius,
               border: "none",
               background: query.trim() ? "rgba(95, 96, 89, 0.09)" : "transparent",
-              color: query.trim() ? CHROME_INK.on : "rgba(95, 96, 89, 0.3)",
+              color: query.trim() ? INK.on : "rgba(95, 96, 89, 0.3)",
               cursor: query.trim() ? "pointer" : "default",
               transition: "background 200ms cubic-bezier(0.33, 1, 0.68, 1), color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
             }}

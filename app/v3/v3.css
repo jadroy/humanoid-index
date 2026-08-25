@@ -1,0 +1,372 @@
+/* ---------------------------------------------------------------------------
+   Humanoid Index v3 — "Thuma calm" design tokens
+   Everything the look depends on lives here. Tune from one place.
+   --------------------------------------------------------------------------- */
+
+/* The main app locks `html, body { overflow: hidden }` globally for its
+   spring-scroll UI. /v3 wants normal document scrolling — re-enable it only
+   when the v3 shell is on the page.
+   html scrolls; body must be `visible`, NOT `auto` — overflow:auto would make
+   body its own (never-scrolling) scroll container, and every position:sticky
+   inside would pin to it instead of the viewport, i.e. never stick. */
+/* `.v3-embedded` opts out: the collection branch drops this grid inside a page
+   that owns document scrolling for its spring wheel, and the grid scrolls in
+   its own box there. Only a standalone .v3-root unlocks the document. */
+html:has(.v3-root:not(.v3-embedded)) {
+  overflow: auto !important;
+  overscroll-behavior: auto !important;
+  height: auto !important;
+}
+body:has(.v3-root:not(.v3-embedded)) {
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+  height: auto !important;
+}
+
+.v3-root {
+  /* — Color: monochrome by design. The robot renders are the only color.
+     Cool greys — harryjatkins' neutral hierarchy (#292929 / #999 / #c4c4c4)
+     nudged blue. Hierarchy is COLOR only; size and weight never change. — */
+  --canvas: #ffffff;        /* page background */
+  --tile: #f1f2f3;          /* category card tile (Thuma's grey carousel) */
+  --tile-grid: #f5f6f7;     /* product grid tile — cool near-white */
+  --tile-hover: #eceef0;    /* tile on hover */
+  --ink: #2a2c31;           /* primary text — cool near-black */
+  --ink-soft: #8d8f97;      /* secondary text (maker, category, labels) */
+  --ink-faint: #bcbec6;     /* tertiary text (meta, numbers, disabled) */
+  --hairline: #e7e8ea;      /* dividers, borders */
+
+  /* — Type: ONE font, ONE weight, ONE size (nearly everywhere). — */
+  /* THE FONT TOGGLE. Söhne-alike default; A/B by swapping this one line.
+     Alts: var(--font-inter) · var(--font-mona-sans) · var(--v3-sans) (Saira) */
+  --v3-font: var(--font-geist-sans);
+  --font-sans: var(--v3-font), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--v3-serif), Georgia, "Times New Roman", serif;
+  /* THE SERIF TOGGLE. Set to var(--font-serif) to A/B Yrsa on all headings. */
+  --font-display: var(--font-sans);
+
+  --fs: 13px;               /* THE size — used nearly everywhere */
+  --fs-lg: 26px;            /* the single larger size (page / detail titles) */
+  --fw: 450;                /* THE weight — "book", slightly above regular */
+  --tracking: -0.02em;      /* uniform tight tracking */
+
+  /* — Rhythm (tight + consistent, Benji-Taylor restraint) — */
+  --page-x: clamp(20px, 4vw, 64px);   /* horizontal page margin */
+  --gap: 20px;                         /* grid gutter */
+  --tile-radius: 14px;                 /* rounded "collection tile" corners */
+
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs);
+  font-weight: var(--fw);
+  letter-spacing: var(--tracking);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+/* THE LABEL. One size, one weight, tight tracking — the whole site's text.
+   Differentiate ONLY by color: default (primary), --soft, --faint. */
+.v3-label {
+  font-family: var(--font-sans);
+  font-size: var(--fs);
+  font-weight: var(--fw);
+  letter-spacing: var(--tracking);
+  line-height: 1.3;
+  color: var(--ink);
+}
+.v3-label--soft { color: var(--ink-soft); }
+.v3-label--faint { color: var(--ink-faint); }
+
+/* Display headings (page / detail titles) — the ONE larger size. */
+.v3-display {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+/* Small-caps micro-label — reserved for functional chrome only
+   (360° badge, tuning HUD). Not for content; content uses .v3-label. */
+.v3-eyebrow {
+  font-family: var(--font-sans);
+  font-weight: var(--fw);
+  font-size: 10px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* Product grid — 4-up on desktop, calmly stepping down on smaller widths. */
+/* Shared column system — cards AND nav align to the same columns.
+   minmax(0,1fr) so wide content (e.g. the nav blurb) can't stretch a column. */
+.v3-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--gap);
+}
+@media (min-width: 640px) {
+  .v3-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 960px) {
+  .v3-cols { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1280px) {
+  .v3-cols { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+.v3-grid {
+  row-gap: 32px;
+}
+
+/* Hover-swap media (e-commerce alt-image flash). Two stacked layers inside
+   the tile cross-dissolve when the card is hovered. Only rendered when a
+   robot actually has a second image. */
+/* Positioning (center vs bottom-anchor) is set inline per-robot by layerStyle,
+   keyed off each robot's imagePosition so only flagged renders sit on the floor. */
+.v3-media {
+  position: absolute;
+}
+/* Instant switch on hover — no fade, snaps like a product-image toggle.
+   Scoped to .v3-card--swap so cards WITHOUT a second image never blank out. */
+.v3-media--primary { transition: none; }
+.v3-media--secondary { opacity: 0; transition: none; }
+.v3-card--swap:hover .v3-media--secondary { opacity: 1; }
+.v3-card--swap:hover .v3-media--primary { opacity: 0; }
+
+/* 360° turntable badge (cards with spin frames). */
+.v3-spin-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1px solid var(--hairline);
+  border-radius: 9999px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+
+/* Product grid tile — near-white with a soft floor shadow so the robot is
+   grounded rather than floating (Thuma's studio-shadow trick). */
+.v3-grid-tile {
+  background: var(--grid-tile, var(--tile-grid));
+  border-radius: var(--tile-radius);
+}
+
+/* Entry deal — cards pile at viewport center, then spread to the grid.
+   The measured transforms live in Collection.tsx; these classes only handle
+   (a) hiding server HTML until the pile transforms are applied and
+   (b) hiding card labels while piled, fading them back as cards land. */
+.v3-deal-pending > .v3-card { visibility: hidden; }
+.v3-nav-pending > div > * { visibility: hidden; } /* nav items join the intro */
+.v3-grid > .v3-card > :not(:first-child) { transition: opacity 0.55s ease 0.5s; }
+.v3-dealing > .v3-card > :not(:first-child) { opacity: 0; transition: none; }
+
+
+/* Nav item — quiet until hover. */
+.v3-nav-link {
+  color: var(--ink);
+  letter-spacing: var(--tracking);
+  transition: opacity 0.2s ease;
+}
+.v3-nav-link:hover { opacity: 0.5; }
+
+/* ---------------------------------------------------------------------------
+   Inline detail panel — click a card, a calm side column opens on the LEFT of
+   the grid (recent.design-style) instead of navigating to the full page. The
+   grid drops one column and FLIP-glides right (Collection.tsx); nothing dims,
+   so browsing stays live.
+   --------------------------------------------------------------------------- */
+.v3-stage {
+  display: flex;
+  align-items: flex-start;
+}
+.v3-stage--open { gap: 40px; }
+
+/* The panel column — sticky so it stays in view as the grid scrolls past. */
+.v3-panel-wrap {
+  flex: 0 0 clamp(320px, 26vw, 384px);
+  position: sticky;
+  top: 92px; /* clears the sticky nav, which grows with extra blurb lines */
+  align-self: flex-start;
+  /* Tall content (specs + links) can outgrow the viewport; a sticky column
+     never scrolls with the page, so it scrolls itself — quiet, no scrollbar.
+     The 140px clears the nav plus the grid's top padding, so the box fits the
+     viewport even before it sticks (page at top), not only once stuck. */
+  max-height: calc(100vh - 140px);
+  overflow-y: auto; /* chains to the page when exhausted — no overscroll trap */
+  scrollbar-width: none;
+  animation: v3-panel-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.v3-panel-wrap::-webkit-scrollbar { display: none; }
+@keyframes v3-panel-in {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Stepping ←/→ swaps content inside the open panel — a quiet crossfade,
+   no frame re-slide. */
+.v3-panel-content { animation: v3-panel-content-in 0.22s ease both; }
+@keyframes v3-panel-content-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.v3-panel-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.v3-panel-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+.v3-panel-btn:hover { color: var(--ink); background: #ffffff; }
+.v3-panel-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+/* Hover hint — a quiet "Details" tag in the tile corner, spin-badge language.
+   Nothing starts open anymore, so this is how you learn cards open the panel.
+   Hidden on the selected card (its panel is already the answer). */
+.v3-detail-hint {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1px solid var(--hairline);
+  border-radius: 9999px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.v3-card:hover .v3-detail-hint {
+  opacity: 1;
+  transform: none;
+}
+.v3-card--selected .v3-detail-hint { display: none; }
+
+/* Selected card — no ring, no chrome. While the panel is open the other cards
+   recede a touch; the selected one stays at full strength. Hovering a dimmed
+   card brings it back, so browsing for the next pick still feels live. */
+.v3-card { transition: opacity 0.25s ease; }
+.v3-stage--open .v3-card:not(.v3-card--selected) { opacity: 0.55; }
+.v3-stage--open .v3-card:not(.v3-card--selected):hover { opacity: 1; }
+
+/* Ghost "+" card — an empty slot at the end of the grid inviting a suggestion.
+   Same grey tile as the product cards (tracks the c-key tuning var); only the
+   lone "+" marks it as empty. Quiet until hover. */
+.v3-suggest-tile {
+  background: var(--grid-tile, var(--tile-grid));
+  display: grid;
+  place-items: center;
+  color: var(--ink-faint);
+  transition: color 0.2s ease, background 0.2s ease;
+}
+.v3-suggest:hover .v3-suggest-tile {
+  color: var(--ink-soft);
+  background: var(--tile-hover);
+}
+
+/* Suggest form — one field, v3-quiet. */
+.v3-suggest-field {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: var(--font-sans);
+  font-size: var(--fs);
+  font-weight: var(--fw);
+  letter-spacing: var(--tracking);
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--tile-grid);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  outline: none;
+  resize: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.v3-suggest-field::placeholder { color: var(--ink-faint); }
+.v3-suggest-field:focus { background: #ffffff; border-color: var(--ink-faint); }
+.v3-suggest-send {
+  border: 1px solid var(--ink);
+  border-radius: 9999px;
+  padding: 7px 14px;
+  white-space: nowrap;
+  background: transparent;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.v3-suggest-send:hover { opacity: 0.55; }
+.v3-suggest-send:disabled { border-color: var(--hairline); color: var(--ink-faint); cursor: default; opacity: 1; }
+
+/* On narrow screens the panel becomes a bottom drawer (no room for a side
+   column) — the grid keeps its full width underneath, and tapping another
+   card just swaps the drawer's content. ✕ or Esc closes. */
+@media (max-width: 767px) {
+  .v3-stage--open { gap: 0; }
+  .v3-panel-wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    z-index: 60;
+    flex: none;
+    max-height: 72dvh;
+    padding: 14px 20px calc(20px + env(safe-area-inset-bottom));
+    background: #ffffff;
+    border-top: 1px solid var(--hairline);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -16px 48px rgba(30, 34, 40, 0.1);
+    animation: v3-drawer-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  /* The drawer covers the lower grid — keep the fade for what's visible. */
+  @keyframes v3-drawer-in {
+    from { transform: translateY(48px); opacity: 0; }
+    to   { transform: none; opacity: 1; }
+  }
+  /* Smaller render in the drawer — the specs are the point on mobile. */
+  .v3-panel-content > .v3-grid-tile { aspect-ratio: 16 / 10; }
+}
+
+/* Horizontal carousel: native scroll-snap, hidden scrollbar for calm. */
+.v3-scroller {
+  display: flex;
+  gap: var(--gap);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.v3-scroller::-webkit-scrollbar { display: none; }
+.v3-snap { scroll-snap-align: start; flex: 0 0 auto; }
+
+

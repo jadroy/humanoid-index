@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import ContactSheet from "./ContactSheet";
 
-const CONTACT_EMAIL = "jadroy77@gmail.com";
+import { CONTACT_EMAIL } from "@/lib/site";
 
 type Props = {
   shareLabel: string;

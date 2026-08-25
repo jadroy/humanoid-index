@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { INK, FILL, SEAM, SCRIM, RADIUS, WEIGHT, EASE, GLASS_EDGE, PANEL_SHADOW } from "@/lib/design/chrome";
+import { INK, FILL, SEAM, SCRIM, RADIUS, WEIGHT, EASE, DUR, panelStyle } from "@/lib/design/chrome";
 
 type Variant = "feedback" | "suggest";
 
@@ -88,12 +88,8 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
           // Was a dark panel — the only one in the app besides the tooltip,
           // and the reason opening Feedback felt like leaving the site. Same
           // white glass and inset edge as the search modal and the chat.
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(28px) saturate(1.4)",
-          WebkitBackdropFilter: "blur(28px) saturate(1.4)",
+          ...panelStyle(),
           border: "none",
-          borderRadius: RADIUS.panel,
-          boxShadow: `${GLASS_EDGE}, ${PANEL_SHADOW}`,
           padding: 20,
           display: "flex",
           flexDirection: "column",
@@ -177,7 +173,7 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
               background: canSubmit ? FILL.hover : FILL.rest,
               color: canSubmit ? INK.on : INK.faint,
               cursor: canSubmit ? "pointer" : "default",
-              transition: `background 200ms ${EASE}, color 200ms ${EASE}`,
+              transition: `background ${DUR.fast}ms ${EASE}, color ${DUR.fast}ms ${EASE}`,
             }}
           >
             {COPY[variant].submit}
@@ -229,7 +225,7 @@ function Field({ placeholder, value, onChange, as = "input", type = "text", rows
     borderRadius: 14,
     outline: "none",
     resize: "none",
-    transition: `background 200ms ${EASE}, box-shadow 200ms ${EASE}`,
+    transition: `background ${DUR.fast}ms ${EASE}, box-shadow ${DUR.fast}ms ${EASE}`,
   };
   if (as === "textarea") {
     return (

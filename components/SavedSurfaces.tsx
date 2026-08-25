@@ -6,6 +6,7 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import { type Humanoid } from "@/data/humanoids";
 import { parseCost, savedTotal } from "@/lib/wheelLanes";
+import { EASE } from "@/lib/design/chrome";
 
 // Two ways of showing the same saved set. Which one is live is a `savedSurface`
 // switch in Browse's dev tuner — the state, the toggle on the card and the
@@ -19,7 +20,6 @@ import { parseCost, savedTotal } from "@/lib/wheelLanes";
 
 const INK = "#5F6059";
 const ink = (a: number) => `rgba(95, 96, 89, ${a})`;
-const EASE = "cubic-bezier(0.33, 1, 0.68, 1)";
 
 /** $20,900 — no cents, no abbreviation. A total that rounds is a total you distrust. */
 const money = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;

@@ -12,28 +12,24 @@ import { INK, FILL, SEAM, WEIGHT } from "@/lib/design/chrome";
  * text. This is the page's own fill and seam at a size that sits under the
  * label rather than beside it.
  */
+const KEY_STYLE: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minWidth: 18,
+  height: 18,
+  padding: "0 5px",
+  borderRadius: 5,
+  background: FILL.rest,
+  boxShadow: `inset 0 0 0 1px ${SEAM}`,
+  fontFamily: "inherit",
+  fontSize: 11,
+  fontWeight: WEIGHT.body,
+  color: INK.off,
+  lineHeight: 1,
+  whiteSpace: "nowrap",
+};
+
 export function Key({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minWidth: 18,
-        height: 18,
-        padding: "0 5px",
-        borderRadius: 5,
-        background: FILL.rest,
-        boxShadow: `inset 0 0 0 1px ${SEAM}`,
-        fontFamily: "inherit",
-        fontSize: 11,
-        fontWeight: WEIGHT.body,
-        color: INK.off,
-        lineHeight: 1,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </kbd>
-  );
+  return <kbd style={KEY_STYLE}>{children}</kbd>;
 }
