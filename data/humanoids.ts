@@ -14,6 +14,9 @@ export interface Humanoid {
   manufacturer: string;
   country?: string; // Origin country/region (e.g., "USA", "China", "Norway / USA"). Drives the Country stat row.
   useCase?: string; // Primary use case (e.g., "Home", "Industrial", "Research"). Drives the Use stat row.
+  form?: "humanoid" | "semi" | "other"; // Body plan. Omit for a normal bipedal humanoid (the default).
+  // "semi" = human-form upper body, no walking legs (wheeled base, static plinth).
+  // "other" = not human-shaped at all. Drives the form filter chips above the wheel.
   drive?: string; // Drive/actuation/form-factor (e.g., "Electric", "Hydraulic", "Tendon-driven", "Wheeled base"). Drives the Drive stat row.
   year?: number;
   addedAt?: string; // ISO date the robot was added to the index (e.g. "2026-05-15"). Drives the "what's new" toast on the home page — entries within NEW_WINDOW_DAYS surface there. Set this on every new entry; omit for established robots (they won't toast).
@@ -204,6 +207,7 @@ const allHumanoids: Humanoid[] = [
   {
     id: "3",
     name: "Memo",
+    form: "semi",
     manufacturer: "Sunday Robotics",
     country: "USA",
     useCase: "Home",
@@ -516,6 +520,7 @@ const allHumanoids: Humanoid[] = [
   {
     id: "15",
     name: "Astribot S1",
+    form: "semi",
     availability: "enterprise",
     manufacturer: "Astribot",
     country: "China",
@@ -652,6 +657,7 @@ const allHumanoids: Humanoid[] = [
   {
     id: "19",
     name: "Eve",
+    form: "semi",
     availability: "enterprise",
     infoUrl: "https://www.1x.tech/eve",
     manufacturer: "1X Technologies",
@@ -675,6 +681,7 @@ const allHumanoids: Humanoid[] = [
   {
     id: "20",
     name: "Ameca",
+    form: "semi",
     infoUrl: "https://engineeredarts.com/robot/ameca/",
     manufacturer: "Engineered Arts",
     country: "UK",
@@ -699,6 +706,7 @@ const allHumanoids: Humanoid[] = [
   {
     id: "23",
     name: "Armar-6",
+    form: "semi",
     availability: "research",
     infoUrl: "https://h2t.iar.kit.edu/english/397.php",
     manufacturer: "KIT",
@@ -744,6 +752,7 @@ const allHumanoids: Humanoid[] = [
   {
     id: "legend-2",
     name: "Sophia",
+    form: "semi",
     availability: "research",
     infoUrl: "https://www.hansonrobotics.com/sophia/",
     manufacturer: "Hanson Robotics",
@@ -761,6 +770,7 @@ const allHumanoids: Humanoid[] = [
   {
     id: "21",
     name: "Pepper",
+    form: "semi",
     availability: "discontinued",
     infoUrl: "https://us.softbankrobotics.com/pepper",
     manufacturer: "SoftBank Robotics",
@@ -861,11 +871,28 @@ const allHumanoids: Humanoid[] = [
 //
 // To go live: drop the images in, add `imageUrl` to each entry, flip this to true.
 // Assets still needed:
-//   figure-03.png · unitree-r1.png · xpeng-iron.png · agibot-a2.png · walker-s2.png
+//   figure-03.png ✓ · unitree-r1.png · xpeng-iron.png · agibot-a2.png · walker-s2.png · matic.png
 //   Xpeng-logo.svg · AgiBot-logo.svg   (Figure / Unitree / UBTech logos already exist)
 const SHOW_PENDING_IMAGE_ENTRIES = false;
 
 const pendingImageHumanoids: Humanoid[] = [
+  {
+    // VERIFY before launch: height, weight, runtime, camera count, current price.
+    id: "141",
+    name: "Matic",
+    manufacturer: "Matic Robots",
+    country: "USA",
+    useCase: "Home",
+    drive: "Wheeled base",
+    form: "other",
+    manufacturerUrl: "https://maticrobots.com",
+    year: 2024,
+    addedAt: "2026-08-24",
+    status: "In Production",
+    availability: "consumer",
+    description: "Matic vacuums and mops without sending video to the cloud. It navigates by sight alone, and everything it sees stays on the robot.",
+    tags: ["Home", "Vision-only", "On-device", "No cloud video"],
+  },
   {
     // VERIFY before launch: height, weight, dof, battery capacity.
     id: "136",
@@ -877,6 +904,7 @@ const pendingImageHumanoids: Humanoid[] = [
     logoUrl: "/robots/Figure-ai.svg",
     manufacturerUrl: "https://www.figure.ai",
     infoUrl: "https://www.figure.ai/news/figure-03",
+    imageUrl: "/robots/figure-03.png",
     year: 2025,
     addedAt: "2026-08-24",
     cost: "N/A",
