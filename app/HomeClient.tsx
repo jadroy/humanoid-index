@@ -2349,17 +2349,19 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const wheelThreshold = isCustom ? customThreshold : SCROLL_PRESETS[presetKey].wheelThreshold;
   const thresholdRef = useRef(wheelThreshold); thresholdRef.current = wheelThreshold;
 
-  // Each spring is bounded by the list it navigates — the left one by the live
-  // lane (which shrinks when you filter), the right one by the full index.
-  const laneLenRef = useRef(lane.length);
-  laneLenRef.current = lane.length;
-  const springL = useSpring(stiffness, damping, useCallback(() => laneLenRef.current, []));
+  // `laneRef` is the single representation of "which list the left spring is on".
+  // The spring's bound reads from the SAME ref rather than a parallel one: the
+  // handlers below claim the new lane before they snap, and a bound that lagged
+  // behind that claim would silently truncate a legitimate index — with the
+  // claim already made, the re-seat effect would then early-return and never
+  // correct it. One ref, so claim and clamp cannot disagree.
+  const laneRef = useRef(lane);
+  const springL = useSpring(stiffness, damping, useCallback(() => laneRef.current.length, []));
   const springR = useSpring(stiffness, damping, useCallback(() => COMPARE_LIST.length, []));
   // The ONLY place an index crosses from one list to another. Whenever the lane
   // swaps (filter changed, or compare opened/closed) the spring's integer index
   // stops meaning what it meant, so re-seat it on the same robot by id. Falls to
   // the top of the new lane when that robot isn't in it.
-  const laneRef = useRef(lane);
   useEffect(() => {
     const prev = laneRef.current;
     if (prev === lane) return;
@@ -2367,6 +2369,15 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     laneRef.current = lane;
     springL.snapTo(seat(indexOfId(lane, keepId)));
   }, [lane]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The lane can change during a render that still holds the previous index
+  // (chip click), so clamp here rather than trusting the re-seat effect to have
+  // run — it cannot, it is an effect. Everything downstream reads `seatL`, not
+  // the raw spring index, so the card, the scene and the arc can't disagree
+  // about which robot is selected on that frame.
+  const seatL = Math.max(0, Math.min(springL.index, lane.length - 1));
+  const hL = lane[seatL];
+  const hR = COMPARE_LIST[springR.index];
 
   const activeGo = comparing ? (activeSide === "left" ? springL.go : springR.go) : springL.go;
 
@@ -2470,7 +2481,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // to its own lane and seat there, same contract as a ?h= deeplink.
   useEffect(() => {
     const target = resolveDeeplink(goToId);
-    if (!target) return;
+    // While comparing, the lane is COMPARE_LIST and setFormFilter wouldn't move
+    // it — claiming a browse list here would desync the seat from what's shown.
+    if (!target || comparing) return;
     setFormFilter(target.filter);
     laneRef.current = listFor(target.filter);
     springL.snapTo(target.index);
@@ -2745,7 +2758,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
 
   useEffect(() => {
     if (homeNonce === 0) return;
-    if (comparing) exitCompare();
+    // Leave compare without adopting the compared robot's body plan — Home
+    // should return you to the top of the lane you already had open.
+    if (comparing) { setComparing(false); setActiveSide("left"); setSplitHover(false); }
     springL.jumpTo(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [homeNonce]);
@@ -2767,6 +2782,16 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         setActiveSide("right");
         return;
       }
+      // Only the left id resolved — open on it rather than dropping the link on
+      // the floor. app/page.tsx already renders a solo title/OG for this case.
+      if (l >= 0) {
+        const h = COMPARE_LIST[l];
+        const f = formOf(h);
+        setFormFilter(f);
+        laneRef.current = listFor(f);
+        springL.snapTo(seat(indexOfId(listFor(f), h.id)));
+        return;
+      }
     }
     const target = resolveDeeplink(leftId);
     if (target) {
@@ -2782,8 +2807,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   useEffect(() => {
     if (typeof window === "undefined" || !shareUrlRef) return;
     const origin = window.location.origin;
-    const leftId = idAt(lane, springL.index);
-    const rightId = idAt(COMPARE_LIST, springR.index);
+    const leftId = hL?.id;
+    const rightId = hR?.id;
     if (comparing) {
       shareUrlRef.current = leftId && rightId ? `${origin}/?compare=${leftId},${rightId}` : origin;
     } else {
@@ -2795,18 +2820,18 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         : (leftId ? `${origin}/api/og/${leftId}` : "");
       shareOgRef.current = og;
     }
-  }, [springL.index, springR.index, comparing, shareUrlRef, shareOgRef]);
+  }, [hL?.id, hR?.id, comparing, shareUrlRef, shareOgRef]);
 
   useEffect(() => {
     if (!onShareViewLabelChange) return;
-    const leftName = lane[springL.index]?.name;
-    const rightName = COMPARE_LIST[springR.index]?.name;
+    const leftName = hL?.name;
+    const rightName = hR?.name;
     if (comparing && leftName && rightName) {
       onShareViewLabelChange(`Share ${leftName} vs ${rightName}`);
     } else if (leftName) {
       onShareViewLabelChange(`Share ${leftName}`);
     }
-  }, [comparing, springL.index, springR.index, onShareViewLabelChange]);
+  }, [comparing, hL?.id, hR?.id, onShareViewLabelChange]);
 
   // Initial fade-in only — re-running on every index/compare change made the blurb
   // re-flash whenever you landed on a card (most obvious on Memo, the home card).
@@ -2827,21 +2852,16 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     setSpinPlaying(false);
     setVideoPaused(false);
     resetGalleryIdx();
-  }, [springL.index, springR.index, comparing, resetGalleryIdx]);
+  }, [hL?.id, hR?.id, comparing, resetGalleryIdx]);
 
   // 3D viewer is per-robot — scrolling away should drop you back to the
-  // photo rather than carrying the 3D mode into the next humanoid.
+  // photo rather than carrying the 3D mode into the next humanoid. Keyed on the
+  // robot, not the seat: a filter change can land on the same index.
   useEffect(() => {
     setShow3D(false);
-  }, [springL.index]);
+  }, [hL?.id]);
 
 
-  // The lane can change during a render that still holds the previous index
-  // (chip click), so clamp here rather than trusting the re-seat effect to have
-  // run — it cannot, it is an effect.
-  const idxL = Math.min(springL.index, lane.length - 1);
-  const hL = lane[Math.max(0, idxL)];
-  const hR = COMPARE_LIST[springR.index];
   const distL = Math.abs(springL.getPos() - springL.targetRef.current);
   const distR = Math.abs(springR.getPos() - springR.targetRef.current);
   const getStats = (h: typeof humanoids[0]) => [
@@ -2890,7 +2910,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   })();
   const preloadSizes = `${Math.round(robotW)}vw`;
 
-  const focusedH = !comparing ? lane[springL.index] : undefined;
+  const focusedH = !comparing ? lane[seatL] : undefined;
   const sceneAvailable = !!focusedH?.sceneUrl;
   const sceneActive = sceneEnabled && sceneAvailable;
   const sceneBackgroundImage = focusedH?.sceneUrl ? `url(${focusedH.sceneUrl})` : undefined;
@@ -2986,7 +3006,6 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         {FORM_FILTERS.map(({ key, label }) => {
           const active = formFilter === key;
           const count = countFor(key);
-          if (!count) return null;
           return (
             <button
               key={key}
@@ -3018,7 +3037,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       <div className="fixed top-0 bottom-0 left-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
         <ArcDots
           list={lane}
-          index={springL.index}
+          index={seatL}
           subscribe={springL.subscribe}
           onClickItem={(idx) => springL.jumpTo(idx)}
           variant={arcStyle}
@@ -5910,7 +5929,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   transition: `transform ${dur} ${ease}`,
                 }}
               >
-                {renderRobot(hL, distL, springL.index, true)}
+                {renderRobot(hL, distL, indexOfId(COMPARE_LIST, hL?.id), true)}
               </div>
 
               {/* Stats slot — crossfade single ↔ merged */}
@@ -6427,7 +6446,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     </button>
                   );
                 })()}
-                {renderRobot(hR, distR, springR.index, false)}
+                {renderRobot(hR, distR, indexOfId(COMPARE_LIST, hR?.id), false)}
               </div>
             </div>
             {/* Unified chip bar — one centered row that morphs between

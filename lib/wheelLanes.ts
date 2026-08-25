@@ -21,7 +21,7 @@ import { humanoids, type Humanoid } from "@/data/humanoids";
 
 export type FormFilter = "humanoid" | "semi" | "other";
 
-export const FORM_FILTERS: { key: FormFilter; label: string }[] = [
+const ALL_FORM_FILTERS: { key: FormFilter; label: string }[] = [
   { key: "humanoid", label: "Humanoid" },
   { key: "semi", label: "Semi" },
   { key: "other", label: "Other" },
@@ -43,6 +43,20 @@ const LISTS: Record<FormFilter, Humanoid[]> = {
 };
 
 export const listFor = (f: FormFilter): Humanoid[] => LISTS[f];
+
+/**
+ * INVARIANT: every selectable filter has at least one member, so a lane is never
+ * empty and `lane[0]` always exists.
+ *
+ * This is what keeps the seat arithmetic in Browse safe — `seat()` collapses a
+ * miss to 0, which is only meaningful if index 0 exists. Rather than guard the
+ * empty case at each read site (where it reads as handled but isn't — `Math.max(0,
+ * Math.min(0, -1))` is 0, which still indexes past the end of an empty array),
+ * an empty category simply isn't offered. The only other ways a filter is
+ * produced are `formOf(robot)` and `resolveDeeplink`, both derived from a robot
+ * that exists, hence from a category with at least that member.
+ */
+export const FORM_FILTERS = ALL_FORM_FILTERS.filter((f) => LISTS[f.key].length > 0);
 
 /** Compare deliberately spans every body plan — a humanoid beside a vacuum is
  *  the interesting comparison, and the chips are hidden in compare anyway. */

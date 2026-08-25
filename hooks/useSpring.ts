@@ -19,13 +19,15 @@ export type SpringSubscribe = (cb: (p: number) => void) => () => void;
  * getter rather than a number because the wheel's list changes at runtime (see
  * lib/wheelLanes.ts) and every clamp below must use the length as of *now* —
  * a captured number would let the spring walk off the end of a shorter lane.
- * Defaults to an unbounded-above spring only for callers that never filter.
+ * Required on purpose: an optional bound would let a future caller construct a
+ * spring with no upper bound at all, which is the failure this parameter exists
+ * to prevent. A caller that never filters passes `() => list.length`.
  */
-export function useSpring(s: number, d: number, getLength?: () => number) {
+export function useSpring(s: number, d: number, getLength: () => number) {
   const lenRef = useRef(getLength);
   lenRef.current = getLength;
   /** Highest seat that exists right now; never negative, so an empty list clamps to 0. */
-  const maxIndex = useCallback(() => Math.max(0, (lenRef.current?.() ?? Infinity) - 1), []);
+  const maxIndex = useCallback(() => Math.max(0, lenRef.current() - 1), []);
 
   const sRef = useRef(s); sRef.current = s;
   const dRef = useRef(d); dRef.current = d;
