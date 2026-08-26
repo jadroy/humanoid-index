@@ -160,54 +160,6 @@ function ArrowGlyph({ size = 13, color = "#fff" }: { size?: number; color?: stri
   );
 }
 
-// ── Page dots ─────────────────────────────────────────────────
-// iOS page-control: the rail holds every robot but only a window is at full
-// size — the row slides so the active dot stays centred. Index-driven, so it
-// repaints on settle, never during a swipe.
-const DOT = 6;
-const DOT_STEP = 12;
-const DOT_WINDOW = 7;
-
-function PageDots({ index }: { index: number }) {
-  const railW = DOT_WINDOW * DOT_STEP;
-  return (
-    <div style={{ width: railW, height: DOT, overflow: "hidden", margin: "0 auto", position: "relative" }}>
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: railW / 2 - DOT_STEP / 2,
-          display: "flex",
-          transform: `translate3d(${-index * DOT_STEP}px,0,0)`,
-          transition: "transform 320ms cubic-bezier(0.32, 0.72, 0, 1)",
-          willChange: "transform",
-        }}
-      >
-        {humanoids.map((h, i) => {
-          const d = Math.abs(i - index);
-          const scale = d === 0 ? 1 : d === 1 || d === 2 ? 0.72 : d === 3 ? 0.5 : 0.34;
-          return (
-            <span
-              key={h.id}
-              style={{
-                width: DOT,
-                height: DOT,
-                marginRight: DOT_STEP - DOT,
-                borderRadius: 999,
-                flexShrink: 0,
-                background: d === 0 ? INK : INK_MUTED,
-                opacity: d === 0 ? 1 : d > 3 ? 0.3 : 0.5,
-                transform: `scale(${scale})`,
-                transition: "transform 320ms cubic-bezier(0.32,0.72,0,1), opacity 320ms linear, background 320ms linear",
-              }}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ── Card ──────────────────────────────────────────────────────
 // One slide, one robot, nothing else. Identity lives in the sheet header
 // below, which stays put while these move — so the deck is pure image and
@@ -225,7 +177,7 @@ function Card({ h, priority }: { h: Humanoid; priority: boolean }) {
           style={{
             objectFit: h.imageFit ?? "contain",
             objectPosition: h.imagePosition ?? "center",
-            padding: "9%",
+            padding: "16% 12% 8%",
             transform: h.imageScale && h.imageScale !== 1 ? `scale(${h.imageScale})` : undefined,
           }}
         />
@@ -256,10 +208,14 @@ const nearest = (xs: number[], v: number) =>
 
 function DetailSheet({
   h,
+  index,
+  total,
   onCopied,
   onLipHeight,
 }: {
   h: Humanoid;
+  index: number;
+  total: number;
   onCopied: () => void;
   onLipHeight: (px: number) => void;
 }) {
@@ -540,21 +496,49 @@ function DetailSheet({
           tabIndex={0}
           style={{
             flexShrink: 0,
-            padding: "0 22px",
-            paddingBottom: "calc(20px + env(safe-area-inset-bottom))",
+            padding: `0 ${PEEK}vw`,
+            paddingBottom: "calc(22px + env(safe-area-inset-bottom))",
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          <div style={{ height: 26, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ width: 36, height: 4, borderRadius: 999, background: "#D8D8D8" }} />
           </div>
-          {/* Keyed so a swipe swaps the identity with a soft fade rather than a cut. */}
-          <div key={h.id} style={{ animation: "deck-swap 240ms cubic-bezier(0.22,1,0.36,1)" }}>
-            <div style={{ fontSize: 24, fontWeight: 500, color: INK, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
-              {h.name}
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
+            {/* Keyed so a swipe swaps the identity with a soft fade, not a cut. */}
+            <div key={h.id} style={{ minWidth: 0, animation: "deck-swap 240ms cubic-bezier(0.22,1,0.36,1)" }}>
+              <div
+                style={{
+                  fontSize: 26,
+                  fontWeight: 500,
+                  color: INK,
+                  letterSpacing: "-0.022em",
+                  lineHeight: 1.1,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {h.name}
+              </div>
+              <div style={{ fontSize: 13, color: INK_MUTED, marginTop: 3, lineHeight: 1.3 }}>
+                {[h.manufacturer, h.year].filter(Boolean).join(" · ")}
+              </div>
             </div>
-            <div style={{ fontSize: 13, color: INK_MUTED, marginTop: 4, lineHeight: 1.3 }}>
-              {[h.manufacturer, h.year].filter(Boolean).join(" · ")}
+            {/* Position, on the same alignment as the name — the dots used to
+                float centred between the robot and the drawer with nothing to
+                anchor them. */}
+            <div
+              style={{
+                fontSize: 12,
+                color: INK_MUTED,
+                lineHeight: 1.3,
+                flexShrink: 0,
+                fontVariantNumeric: "tabular-nums",
+                paddingBottom: 1,
+              }}
+            >
+              {index + 1} / {total}
             </div>
           </div>
         </div>
@@ -569,7 +553,7 @@ function DetailSheet({
             WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain",
             touchAction: "pan-y",
-            padding: "0 22px calc(34px + env(safe-area-inset-bottom))",
+            padding: `0 ${PEEK}vw calc(34px + env(safe-area-inset-bottom))`,
           }}
         >
           {text && <p style={{ fontSize: 15, lineHeight: 1.55, color: INK_BODY, marginTop: 4 }}>{text}</p>}
@@ -773,7 +757,7 @@ export default function MobileDeck() {
       {/* Header */}
       <div
         style={{
-          height: 50,
+          height: 44,
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
@@ -781,7 +765,7 @@ export default function MobileDeck() {
           padding: `0 ${PEEK}vw`,
         }}
       >
-        <HIMark height={12} />
+        <HIMark height={13} />
         <button
           type="button"
           onClick={() => shareRobot(current, () => setToast(true))}
@@ -810,7 +794,7 @@ export default function MobileDeck() {
           minHeight: 0,
           display: "flex",
           gap: `${PEEK}vw`,
-          padding: `2px ${PEEK}vw ${lipH + 40}px`,
+          padding: `0 ${PEEK}vw ${lipH + 16}px`,
           overflowX: "auto",
           overflowY: "hidden",
           scrollSnapType: "x mandatory",
@@ -839,12 +823,13 @@ export default function MobileDeck() {
         ))}
       </div>
 
-      {/* Dots — sit just above the sheet lip */}
-      <div style={{ position: "fixed", left: 0, right: 0, bottom: `${lipH + 18}px`, zIndex: 10, pointerEvents: "none" }}>
-        <PageDots index={index} />
-      </div>
-
-      <DetailSheet h={current} onCopied={() => setToast(true)} onLipHeight={setLipH} />
+      <DetailSheet
+        h={current}
+        index={index}
+        total={humanoids.length}
+        onCopied={() => setToast(true)}
+        onLipHeight={setLipH}
+      />
 
       {toast && (
         <div
