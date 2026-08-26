@@ -5535,7 +5535,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     short blurbs sit flush, longer blurbs rise above it. */}
                 {isFirst && !comparing && (() => {
                   const desc = getRobotDescription(h);
-                  const fullText = desc.long ?? desc.text;
+                  const fullText = desc.long || desc.text;
                   if (!fullText) return null;
                   return (
                     <div

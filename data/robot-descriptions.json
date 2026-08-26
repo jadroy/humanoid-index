@@ -95,6 +95,18 @@
     "short": "Atlas was the first robot that actually moved. Boston Dynamics built it to show what's possible.",
     "long": "Built for the DARPA Robotics Challenge in 2013, Atlas was designed to handle disaster response tasks too dangerous for people. Its hydraulic system gave it the power to run, jump, and recover from falls, and later to perform backflips and parkour routines that reset expectations for humanoid hardware. The platform was a research tool, not a product, and Boston Dynamics used it to push balance, perception, and whole-body control. It was retired in April 2024 and replaced by the all-electric Atlas."
   },
+  "27": {
+    "short": "Lumi is a social humanoid, 137 cm tall.\nIt sees, listens, and holds a conversation.",
+    "long": "Lumi is designed around conversation rather than tasks. It recognises the person in front of it, follows the thread of what they say, and responds with a consistent character across sessions. At 137 cm and 37 kg, it is sized for homes, lobbies, and classrooms where people approach it directly. Lightberry has moved Lumi into production for early commercial partners in retail, hospitality, and education."
+  },
+  "28": {
+    "short": "A humanoid built for developers. Twenty-three joints, one honest price.",
+    "long": "Domo is a small humanoid designed for people who want to build on a real platform without a lab budget. It stands 90 cm tall, weighs 20 kg, and moves through a full set of articulated joints controllable from a documented software layer. The focus is accessibility for independent developers, students, and small research teams. It entered production in 2025 and ships as a working development unit, not a prototype."
+  },
+  "29": {
+    "short": "Domo, now taller and stronger.\nBuilt for serious motion research.",
+    "long": "Domo Plus takes the original Domo platform and rebuilds it at a larger scale, standing 130 cm tall with 25 degrees of freedom. The heavier frame and reinforced joints handle dynamic movement that the smaller version couldn't sustain. It's aimed at labs and teams working on locomotion, balance, and whole-body control. Now in production."
+  },
   "legend-2": {
     "short": "A humanoid built for human conversation.\nHer face shows over 60 expressions.",
     "long": "Sophia is built for face-to-face interaction, with silicone skin and cameras that let her track people, hold eye contact, and respond in real time. She is used mainly for research, public events, and education, not as a household or service robot. Hanson Robotics produces her in small numbers, refining the platform with each new unit. She remains one of the most recognisable examples of social humanoid design."
