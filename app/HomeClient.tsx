@@ -1092,6 +1092,8 @@ function AnnouncementToast({
     names.length <= 1
       ? names[0]
       : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  // The maker only reads cleanly when there's exactly one arrival.
+  const maker = items.length === 1 ? items[0].manufacturer : null;
 
   return (
     <div
@@ -1120,7 +1122,7 @@ function AnnouncementToast({
         background: "#ffffff",
         border: "1px solid rgba(0,0,0,0.07)",
         borderRadius: 999,
-        padding: "10px 18px",
+        padding: "8px 16px 8px 8px",
         boxShadow: hovered
           ? "0 1px 2px rgba(0,0,0,0.06), 0 6px 20px rgba(0,0,0,0.10)"
           : "0 1px 2px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.07)",
@@ -1128,7 +1130,24 @@ function AnnouncementToast({
         userSelect: "none",
       }}
     >
-      <span>Meet {who}</span>
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "var(--c-accent)",
+          background: "rgba(255,122,69,0.10)",
+          borderRadius: 999,
+          padding: "4px 8px",
+        }}
+      >
+        New
+      </span>
+      <span>
+        {who}
+        {maker && <span style={{ color: "var(--c-ink-body)" }}> by {maker}</span>}
+      </span>
       <svg
         width="14"
         height="14"

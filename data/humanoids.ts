@@ -235,19 +235,6 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 2.0,
     description: "A social humanoid built around conversation. Lumi sees who it is talking to, holds a thread, and answers with a personality of its own. Shipping 2026.",
     tags: ["Conversational AI", "Expressive", "YC F25", "Shipping 2026"],
-    media: [
-      {
-        type: "video",
-        url: "/launch/lumi-launch.mp4",
-        thumbnail: "/launch/lumi-launch.jpg",
-        fit: "cover",
-        credit: {
-          prefix: "Launch film —",
-          name: "Lightberry",
-          href: "https://x.com/lightberry/status/2092670038159626632",
-        },
-      },
-    ],
   },
   // 2025
   {
