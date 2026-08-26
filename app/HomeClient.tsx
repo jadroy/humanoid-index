@@ -8462,8 +8462,15 @@ export default function HomeClient() {
   useEffect(() => {
     if (introPhase !== "done" || newHumanoids.length === 0 || firstNewIdx < 0) return;
     const seenKey = `hi:new-toast-seen:${newHumanoids.map((h) => h.id).sort().join(",")}`;
+    // ?announce replays the announcement on demand — it is one-shot by design,
+    // which makes "did that actually ship?" impossible to answer without it.
+    // Replays never record themselves as seen, so a real visit still gets one.
+    let replay = false;
     try {
-      if (localStorage.getItem(seenKey)) return;
+      replay = new URLSearchParams(window.location.search).has("announce");
+    } catch {}
+    try {
+      if (!replay && localStorage.getItem(seenKey)) return;
     } catch {}
     const t = setTimeout(() => {
       toast.custom((id) => (
@@ -8479,10 +8486,11 @@ export default function HomeClient() {
             toast.dismiss(id);
           }}
           onShown={() => {
+            if (replay) return;
             try { localStorage.setItem(seenKey, "1"); } catch {}
           }}
         />
-      ), { duration: 12000 });
+      ), { duration: replay ? 60000 : 12000 });
     }, 400);
     return () => clearTimeout(t);
   }, [introPhase, newHumanoids, firstNewIdx, handleSelectHumanoid]);
