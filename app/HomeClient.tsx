@@ -11,7 +11,7 @@ import { humanoids, takesReservations, type Humanoid } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
-import MobileView from "@/components/MobileView";
+import MobileDeck from "@/components/MobileDeck";
 import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
 import { Tooltip } from "@/components/Tooltip";
 
@@ -8473,7 +8473,7 @@ export default function HomeClient() {
     return <main className="min-h-[100dvh] bg-white" />;
   }
   if (isMobile) {
-    return <MobileView />;
+    return <MobileDeck />;
   }
 
   return (
