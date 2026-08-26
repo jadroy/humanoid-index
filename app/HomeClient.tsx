@@ -1077,14 +1077,37 @@ function StatusDot({ color, size = 10 }: { color: string; size?: number }) {
 }
 
 // "What's new" toast card — minimal: hairline frame, tiny shared image, single line.
+// Brand accents arrive as plain hex, so the toast derives its own tint and a
+// darker ink for the label rather than shipping three colours per maker.
+function hexRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const n = parseInt(full, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function hexAlpha(hex: string, a: number) {
+  const [r, g, b] = hexRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+function shadeHex(hex: string, f: number) {
+  const [r, g, b] = hexRgb(hex);
+  return `rgb(${Math.round(r * f)}, ${Math.round(g * f)}, ${Math.round(b * f)})`;
+}
+
 function AnnouncementToast({
   humanoids: items,
   onView,
+  onShown,
 }: {
   humanoids: Humanoid[];
   onView: () => void;
   onDismiss: () => void;
+  onShown: () => void;
 }) {
+  // Marking "seen" belongs here, not at fire time: if no Toaster is mounted
+  // (the mobile path renders none) this never runs, so the announcement is
+  // still waiting the next time the visitor is somewhere it can be shown.
+  useEffect(() => { onShown(); }, [onShown]);
   const [hovered, setHovered] = useState(false);
   // "Lumi", "Lumi and Domo", "Lumi, Domo and Domo Plus"
   const names = items.map((h) => h.name);
@@ -1094,6 +1117,11 @@ function AnnouncementToast({
       : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
   // The maker only reads cleanly when there's exactly one arrival.
   const maker = items.length === 1 ? items[0].manufacturer : null;
+  // Tint the chip with the maker's colour when a single robot arrives, so the
+  // announcement carries a little of their brand. Falls back to the site accent.
+  const accent = items.length === 1 ? items[0].accent : undefined;
+  const chipTint = accent ? hexAlpha(accent, 0.22) : "rgba(255,122,69,0.10)";
+  const chipInk = accent ? shadeHex(accent, 0.5) : "var(--c-accent)";
 
   return (
     <div
@@ -1136,8 +1164,8 @@ function AnnouncementToast({
           fontWeight: 600,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
-          color: "var(--c-accent)",
-          background: "rgba(255,122,69,0.10)",
+          color: chipInk,
+          background: chipTint,
           borderRadius: 999,
           padding: "4px 8px",
         }}
@@ -8450,9 +8478,11 @@ export default function HomeClient() {
             try { localStorage.setItem(seenKey, "1"); } catch {}
             toast.dismiss(id);
           }}
+          onShown={() => {
+            try { localStorage.setItem(seenKey, "1"); } catch {}
+          }}
         />
       ), { duration: 12000 });
-      try { localStorage.setItem(seenKey, "1"); } catch {}
     }, 400);
     return () => clearTimeout(t);
   }, [introPhase, newHumanoids, firstNewIdx, handleSelectHumanoid]);

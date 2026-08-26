@@ -35,6 +35,7 @@ export interface Humanoid {
   media?: MediaItem[]; // Additional images and videos
   purchaseUrl?: string; // Link to buy/learn more about the robot
   sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
+  accent?: string; // Maker's brand colour (hex) — tints the "New" chip when this robot is announced
   tags?: string[]; // Short descriptor chips — facets like use case, drive, vibe, reception (country lives on its own `country` field now)
   // Extended engineering specs surfaced when the stats column is in Engineer mode
   // (toggle persists in localStorage). All fields optional — missing rows render as
@@ -235,6 +236,7 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 2.0,
     description: "A social humanoid built around conversation. Lumi sees who it is talking to, holds a thread, and answers with a personality of its own. Shipping 2026.",
     tags: ["Conversational AI", "Expressive", "YC F25", "Shipping 2026"],
+    accent: "#F7CA4F",
   },
   // 2025
   {
