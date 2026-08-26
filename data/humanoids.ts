@@ -8,6 +8,13 @@ export interface MediaItem {
   credit?: { prefix?: string; name: string; href?: string }; // Source attribution rendered on the slide
 }
 
+export interface LaunchMedia {
+  url: string;       // Where the chip links — the maker's launch post, film, or announcement
+  poster: string;    // Still shown by default (cheap; always loaded)
+  video?: string;    // Short muted clip played in place on hover/focus (loaded on intent only)
+  label?: string;    // Chip caption (default "Launch")
+}
+
 export interface Humanoid {
   id: string;
   name: string;
@@ -35,6 +42,7 @@ export interface Humanoid {
   media?: MediaItem[]; // Additional images and videos
   purchaseUrl?: string; // Link to buy/learn more about the robot
   sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
+  launch?: LaunchMedia; // Optional launch moment — renders a small poster in the card corner
   tags?: string[]; // Short descriptor chips — facets like use case, drive, vibe, reception (country lives on its own `country` field now)
   // Extended engineering specs surfaced when the stats column is in Engineer mode
   // (toggle persists in localStorage). All fields optional — missing rows render as
@@ -235,6 +243,11 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 2.0,
     description: "A social humanoid built around conversation. Lumi sees who it is talking to, holds a thread, and answers with a personality of its own. Shipping 2026.",
     tags: ["Conversational AI", "Expressive", "YC F25", "Shipping 2026"],
+    launch: {
+      url: "https://x.com/lightberry/status/2092670038159626632",
+      poster: "/launch/lumi-launch.jpg",
+      video: "/launch/lumi-launch.mp4",
+    },
   },
   // 2025
   {

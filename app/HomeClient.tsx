@@ -8,6 +8,7 @@ import { Toaster, toast } from "sonner";
 import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus, Dices } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, takesReservations, type Humanoid } from "@/data/humanoids";
+import LaunchChip from "@/components/LaunchChip";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
@@ -5365,6 +5366,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               })()}
               {/* Media area */}
               <div className="relative flex-1 min-h-0 overflow-hidden">
+                {/* Launch moment — sits above whichever media view is active.
+                    Steps to the left when the buy chip owns the right corner. */}
+                {h.launch && (
+                  <LaunchChip id={h.id} launch={h.launch} name={h.name} corner={buyLayout === "chip" ? "tl" : "tr"} />
+                )}
                 {/* Static — hidden when SpinViewer or Robot3D takes over. */}
                 {!SPIN_ROBOTS[h.id] && !(isFirst && show3D && THREEDEE_ROBOTS[h.id]) && (
                   <div className="absolute inset-0">
