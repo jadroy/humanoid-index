@@ -8478,7 +8478,16 @@ export default function HomeClient() {
           humanoids={newHumanoids}
           onView={() => {
             try { localStorage.setItem(seenKey, "1"); } catch {}
-            handleSelectHumanoid(firstNewIdx);
+            if (isMobile) {
+              // MobileDeck owns its own navigation and hydrates from ?h=, so the
+              // desktop spring jump would be a no-op here.
+              const url = new URL(window.location.href);
+              url.searchParams.delete("announce");
+              url.searchParams.set("h", newHumanoids[0].id);
+              window.location.href = url.toString();
+            } else {
+              handleSelectHumanoid(firstNewIdx);
+            }
             toast.dismiss(id);
           }}
           onDismiss={() => {
@@ -8493,7 +8502,7 @@ export default function HomeClient() {
       ), { duration: replay ? 60000 : 12000 });
     }, 400);
     return () => clearTimeout(t);
-  }, [introPhase, newHumanoids, firstNewIdx, handleSelectHumanoid]);
+  }, [introPhase, newHumanoids, firstNewIdx, handleSelectHumanoid, isMobile]);
 
   const [homeNonce, setHomeNonce] = useState(0);
   const goHome = useCallback(() => {
@@ -8511,7 +8520,21 @@ export default function HomeClient() {
     return <main className="min-h-[100dvh] bg-white" />;
   }
   if (isMobile) {
-    return <MobileDeck />;
+    return (
+      <>
+        <MobileDeck />
+        {/* The what's-new effect runs on every path, but only the desktop tree
+            mounted a Toaster — so phones fired the announcement into nothing. */}
+        <Toaster
+          position="bottom-center"
+          // Clears the deck's peek drawer (~94px) so the pill floats above it
+          // rather than landing on the robot's name.
+          offset={112}
+          style={{ "--width": "100%" } as React.CSSProperties}
+          toastOptions={{ unstyled: true, style: { display: "flex", justifyContent: "center", width: "100%" } }}
+        />
+      </>
+    );
   }
 
   return (
