@@ -8,11 +8,10 @@ import { Toaster, toast } from "sonner";
 import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus, Dices } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, takesReservations, type Humanoid } from "@/data/humanoids";
-import LaunchChip from "@/components/LaunchChip";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
-import MobileView from "@/components/MobileView";
+import MobileDeck from "@/components/MobileDeck";
 import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
 import { Tooltip } from "@/components/Tooltip";
 
@@ -1086,46 +1085,68 @@ function AnnouncementToast({
   onView: () => void;
   onDismiss: () => void;
 }) {
+  const [hovered, setHovered] = useState(false);
+  // "Lumi", "Lumi and Domo", "Lumi, Domo and Domo Plus"
+  const names = items.map((h) => h.name);
+  const who =
+    names.length <= 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+
   return (
     <div
       onClick={onView}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       role="button"
       tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onView();
+        }
+      }}
       style={{
-        display: "inline-flex", alignItems: "center", gap: 10,
-        background: "#ffffff",
-        border: "1px solid rgba(0,0,0,0.07)",
-        borderRadius: 10,
-        padding: "6px 14px 6px 6px",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 9,
         cursor: "pointer",
         fontFamily: "var(--font-geist-sans)",
+        fontSize: 14,
+        fontWeight: 450,
+        letterSpacing: "-0.01em",
+        lineHeight: 1,
+        color: "var(--c-ink)",
+        background: "#ffffff",
+        border: "1px solid rgba(0,0,0,0.07)",
+        borderRadius: 999,
+        padding: "10px 18px",
+        boxShadow: hovered
+          ? "0 1px 2px rgba(0,0,0,0.06), 0 6px 20px rgba(0,0,0,0.10)"
+          : "0 1px 2px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.07)",
+        transition: "box-shadow 260ms cubic-bezier(0.4,0,0.2,1)",
+        userSelect: "none",
       }}
     >
-      <div
+      <span>Meet {who}</span>
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 14 14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
         style={{
-          display: "flex", alignItems: "flex-end", justifyContent: "center",
-          width: 48, height: 32,
-          overflow: "hidden",
-          flexShrink: 0,
+          color: "var(--c-ink-muted)",
+          transform: hovered ? "translateX(3px)" : "translateX(0)",
+          transition: "transform 260ms cubic-bezier(0.4,0,0.2,1)",
         }}
       >
-        {items.map((h) => (
-          h.imageUrl ? (
-            <Image
-              key={h.id}
-              src={h.imageUrl}
-              alt={h.name}
-              width={22}
-              height={28}
-              style={{ objectFit: "contain", objectPosition: "center bottom", height: "100%", width: "auto" }}
-            />
-          ) : null
-        ))}
-      </div>
-      <span style={{ fontSize: 12.5, color: "var(--c-ink-body)", letterSpacing: "-0.005em" }}>
-        <span style={{ color: "var(--c-ink-subtle)" }}>New&nbsp;—&nbsp;</span>
-        <span style={{ fontWeight: 600 }}>{items.map((h) => h.name).join(" + ")}</span>
-      </span>
+        <path d="M2.5 7h9M8 3.5L11.5 7 8 10.5" />
+      </svg>
     </div>
   );
 }
@@ -5366,11 +5387,6 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               })()}
               {/* Media area */}
               <div className="relative flex-1 min-h-0 overflow-hidden">
-                {/* Launch moment — sits above whichever media view is active.
-                    Steps to the left when the buy chip owns the right corner. */}
-                {h.launch && (
-                  <LaunchChip id={h.id} launch={h.launch} name={h.name} corner={buyLayout === "chip" ? "tl" : "tr"} />
-                )}
                 {/* Static — hidden when SpinViewer or Robot3D takes over. */}
                 {!SPIN_ROBOTS[h.id] && !(isFirst && show3D && THREEDEE_ROBOTS[h.id]) && (
                   <div className="absolute inset-0">
@@ -8438,7 +8454,7 @@ export default function HomeClient() {
     return <main className="min-h-[100dvh] bg-white" />;
   }
   if (isMobile) {
-    return <MobileView />;
+    return <MobileDeck />;
   }
 
   return (
