@@ -77,6 +77,12 @@ export interface Humanoid {
   };
 }
 
+// Makers who take reservations rather than selling outright — their CTA reads
+// "Reserve" instead of "Buy" so the button matches what actually happens.
+const RESERVE_MAKERS = new Set(["Rotaku", "Lightberry"]);
+export const takesReservations = (h: Humanoid) => RESERVE_MAKERS.has(h.manufacturer);
+
+
 // Flip to false to hide the 2026-05-08 density-experiment stubs (ids 30–135).
 const SHOW_EXPERIMENT_STUBS = false;
 
@@ -214,9 +220,10 @@ const allHumanoids: Humanoid[] = [
     useCase: "Social",
     drive: "Electric",
     availability: "consumer",
+    logoUrl: "/robots/Lightberry.png",
     manufacturerUrl: "https://lightberry.com",
-    infoUrl: "https://lightberry.com",
-    purchaseUrl: "https://lightberry.com",
+    infoUrl: "https://lightberry.com/lumi",
+    purchaseUrl: "https://lightberry.com/lumi",
     imageUrl: "/robots/lumi.png",
     year: 2026,
     addedAt: "2026-08-26",
@@ -226,8 +233,8 @@ const allHumanoids: Humanoid[] = [
     weight: 37,
     dof: 34,
     maxSpeed: 2.0,
-    description: "A social humanoid built around conversation. Lumi sees who it is talking to, holds a thread, and answers with a personality of its own.",
-    tags: ["Conversational AI", "Expressive", "YC F25", "$39.9K"],
+    description: "A social humanoid built around conversation. Lumi sees who it is talking to, holds a thread, and answers with a personality of its own. Shipping 2026.",
+    tags: ["Conversational AI", "Expressive", "YC F25", "Shipping 2026"],
   },
   // 2025
   {

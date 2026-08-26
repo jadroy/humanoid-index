@@ -33,7 +33,7 @@ import {
   useState,
 } from "react";
 import Image from "next/image";
-import { humanoids, type Humanoid } from "@/data/humanoids";
+import { humanoids, takesReservations, type Humanoid } from "@/data/humanoids";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { withUtm } from "@/lib/outbound";
 import { getRobotDescription } from "@/lib/robotDescription";
@@ -128,7 +128,7 @@ const formatWeight = (kg: number) => `${Math.round(kg * 2.20462)} lb`;
 const formatSpeed = (ms: number) => `${(ms * 2.23694).toFixed(1)} mph`;
 
 function visitTarget(h: Humanoid): { href?: string; label: string } {
-  if (h.purchaseUrl) return { href: withUtm(h.purchaseUrl, h.id), label: "Order" };
+  if (h.purchaseUrl) return { href: withUtm(h.purchaseUrl, h.id), label: takesReservations(h) ? "Reserve" : "Order" };
   const href = withUtm(h.infoUrl || h.manufacturerUrl, h.id);
   return { href, label: "Visit site" };
 }

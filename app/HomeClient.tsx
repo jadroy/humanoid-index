@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
 import { Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus, Dices } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
-import { humanoids, type Humanoid } from "@/data/humanoids";
+import { humanoids, takesReservations, type Humanoid } from "@/data/humanoids";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
@@ -3364,11 +3364,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
             const hasCost = h.cost && h.cost !== "N/A";
             const hasUrl = !!href;
             const ctaKind: "buy" | "visit" = buyHref ? "buy" : "visit";
-            const isRotaku = h.manufacturer === "Rotaku";
+            const isReserve = takesReservations(h);
             const ctaText =
               isSundayBeta ? "Apply for Beta" :
               ctaKind === "visit" ? "Visit" :
-              isRotaku ? "Reserve" : "Buy";
+              isReserve ? "Reserve" : "Buy";
             const availabilityLabel: string | undefined = (
               h.availability === "enterprise" ? "Enterprise only" :
               h.availability === "research" ? "Research only" :
@@ -5686,11 +5686,11 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
               const visitHref = !buyHref ? withUtm(h.infoUrl || h.manufacturerUrl, h.id) : undefined;
               const href = buyHref || visitHref;
               const hasCost = h.cost && h.cost !== "N/A";
-              const isRotaku = h.manufacturer === "Rotaku";
+              const isReserve = takesReservations(h);
               const ctaText =
                 isSundayBeta ? "Apply for Beta" :
                 !buyHref ? "Visit" :
-                isRotaku ? "Reserve" : "Buy";
+                isReserve ? "Reserve" : "Buy";
               const availabilityLabel: string | undefined = (
                 h.availability === "enterprise" ? "Enterprise only" :
                 h.availability === "research" ? "Research only" :
@@ -6081,10 +6081,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     const buyHref = withUtm(isSundayBeta ? "https://www.sunday.ai/beta-program" : (hL.purchaseUrl || undefined), hL.id);
                     const visitHref = !buyHref ? withUtm(hL.infoUrl || hL.manufacturerUrl, hL.id) : undefined;
                     const href = buyHref || visitHref;
-                    const isRotaku = hL.manufacturer === "Rotaku";
+                    const isReserve = takesReservations(hL);
                     const ctaText = isSundayBeta
                       ? "Apply for Beta"
-                      : (buyHref ? (isRotaku ? "Reserve" : "Buy") : "Visit");
+                      : (buyHref ? (isReserve ? "Reserve" : "Buy") : "Visit");
                     const availabilityLabel: string | undefined = (
                       hL.availability === "enterprise" ? "Enterprise only" :
                       hL.availability === "research" ? "Research only" :
@@ -6328,10 +6328,10 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                 const buyHref = withUtm(isSundayBeta ? "https://www.sunday.ai/beta-program" : (activeH.purchaseUrl || undefined), activeH.id);
                 const visitHref = !buyHref ? withUtm(activeH.infoUrl || activeH.manufacturerUrl, activeH.id) : undefined;
                 const href = buyHref || visitHref;
-                const isRotaku = activeH.manufacturer === "Rotaku";
+                const isReserve = takesReservations(activeH);
                 const ctaText = isSundayBeta
                   ? "Apply for Beta"
-                  : (buyHref ? (isRotaku ? "Reserve" : "Buy") : "Visit");
+                  : (buyHref ? (isReserve ? "Reserve" : "Buy") : "Visit");
                 const availabilityLabel: string | undefined = (
                   activeH.availability === "enterprise" ? "Enterprise only" :
                   activeH.availability === "research" ? "Research only" :
