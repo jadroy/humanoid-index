@@ -1275,7 +1275,8 @@ export function LayoutSwitcher({
             </svg>
           </button>
           {/* Quiet door to the /v3 grid — same muted grey as the mark, with a
-              fainter "Beta" tag so it reads as a destination, not a label. */}
+              fainter "Beta" tag so it reads as a destination, not a label.
+              Hidden for now: /v3 isn't ready to be public. Uncomment to ship it.
           <a
             href="/v3"
             className="pointer-events-auto"
@@ -1288,6 +1289,7 @@ export function LayoutSwitcher({
           >
             Grid view <span style={{ opacity: 0.55 }}>Beta</span>
           </a>
+          */}
         </div>
       </nav>
     );
