@@ -227,7 +227,7 @@ const allHumanoids: Humanoid[] = [
     infoUrl: "https://lightberry.com/lumi",
     purchaseUrl: "https://lightberry.com/lumi",
     imageUrl: "/robots/lumi.png",
-    ogImageUrl: "/og/lumi-2.png",
+    ogImageUrl: "/og/lumi-3.png",
     year: 2026,
     addedAt: "2026-08-26",
     cost: "$39.9K",
