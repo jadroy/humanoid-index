@@ -34,6 +34,7 @@ export interface Humanoid {
   infoUrl?: string; // Specific product/info page — preferred Visit target when not for sale
   media?: MediaItem[]; // Additional images and videos
   purchaseUrl?: string; // Link to buy/learn more about the robot
+  ogImageUrl?: string; // Custom share/OG card (1200×630, in /public). Overrides the generated /api/og/<id> card.
   sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
   accent?: string; // Maker's brand colour (hex) — tints the "New" chip when this robot is announced
   tags?: string[]; // Short descriptor chips — facets like use case, drive, vibe, reception (country lives on its own `country` field now)
@@ -226,6 +227,7 @@ const allHumanoids: Humanoid[] = [
     infoUrl: "https://lightberry.com/lumi",
     purchaseUrl: "https://lightberry.com/lumi",
     imageUrl: "/robots/lumi.png",
+    ogImageUrl: "/og/lumi.png",
     year: 2026,
     addedAt: "2026-08-26",
     cost: "$39.9K",

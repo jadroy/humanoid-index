@@ -54,7 +54,9 @@ export async function generateMetadata({
         bot.weight && `${bot.weight}kg`,
         bot.dof && `${bot.dof} DOF`,
       ].filter(Boolean).join(" \u00b7 ");
-      const ogImage = `${baseUrl}/api/og/${bot.id}`;
+      const ogImage = bot.ogImageUrl
+        ? `${baseUrl}${bot.ogImageUrl}`
+        : `${baseUrl}/api/og/${bot.id}`;
       return {
         title,
         description,

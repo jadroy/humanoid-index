@@ -2775,7 +2775,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     if (shareOgRef) {
       const og = comparing
         ? (leftId && rightId ? `${origin}/api/og/${leftId}?compare=${rightId}` : "")
-        : (leftId ? `${origin}/api/og/${leftId}` : "");
+        : (leftId ? (humanoids[springL.index]?.ogImageUrl ? `${origin}${humanoids[springL.index].ogImageUrl}` : `${origin}/api/og/${leftId}`) : "");
       shareOgRef.current = og;
     }
   }, [springL.index, springR.index, comparing, shareUrlRef, shareOgRef]);
