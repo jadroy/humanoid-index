@@ -4,6 +4,28 @@ A visual index of humanoid robots. Next.js App Router, deployed on Vercel. Worki
 
 ## Working agreements
 
+### Shipping — read this before deploying anything
+
+**`v2` is production.** `humanoid-index.com` is served by Vercel's git
+integration from the `v2` branch. The `v3` branch is not shipped.
+
+**Never run `vercel --prod`.** It uploads the working tree of whatever directory
+it runs in — committed or not, whatever branch — and takes the production alias
+from the git deployment. On 2026-08-27 that silently put a v3 build on the
+domain: four verified data corrections stopped being live with zero commits on
+`v2`, and two robots were live off an *uncommitted* file. Use `./scripts/ship.sh`,
+which pushes to `v2` and waits until the domain actually serves it. For showing
+someone something, plain `vercel` gives a preview URL that leaves the domain alone.
+
+**A push is not a deploy.** Confirm with `npx vercel ls` (top Production row must
+read `● Ready`), never by grepping the served bundle — a bundle grep reads the
+*previous* build while the new one is still building, and will happily tell you a
+change is live when the build has actually failed.
+
+**Beware the directory names.** `~/CODE/humanoid-index` is the main worktree and
+is on `v3`. `~/CODE/humanoid-index-v2` is on branch `sol`, *not* `v2`. Check
+`git branch --show-current` before believing you're where you think you are.
+
 ### Commits
 Roy commits broadly (often `git commit -a`) across parallel chats. When committing an isolated fix into a file Roy has unstaged changes in, his next broad commit can silently clobber it. To protect isolated fixes:
 
