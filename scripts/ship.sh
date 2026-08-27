@@ -17,13 +17,15 @@ say() { printf '%s\n' "$*"; }
 die() { printf 'STOP: %s\n' "$*" >&2; exit 1; }
 
 live_commit() {
-  # Vercel stamps the built commit into the deployment; fall back to a reachability check.
-  curl -fsS --max-time 20 "$DOMAIN/" >/dev/null 2>&1 && echo up || echo down
+  # /api/version reports the commit this deployment was built from, so "is it
+  # live?" is an equality check rather than a guess. Empty if the domain is down.
+  curl -fsS --max-time 20 "$DOMAIN/api/version" 2>/dev/null \
+    | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p'
 }
 
 if [[ "${1:-}" == "--check" ]]; then
-  say "local  $BRANCH : $(git rev-parse --short "origin/$BRANCH")"
-  say "domain        : $(live_commit)"
+  say "origin/$BRANCH : $(git rev-parse --short "origin/$BRANCH")"
+  say "domain        : $(live_commit | cut -c1-7)"
   npx --no-install vercel ls --yes 2>/dev/null | grep -E "Ready|Building|Error" | head -3
   exit 0
 fi
@@ -57,17 +59,19 @@ fi
 # `vercel --prod` from another directory can hold the alias.
 say "Waiting for $DOMAIN to serve it (up to $((TIMEOUT / 60))m)…"
 deadline=$(( SECONDS + TIMEOUT ))
+want="$(git rev-parse HEAD)"
 while (( SECONDS < deadline )); do
-  row="$(npx --no-install vercel ls --yes 2>/dev/null | grep -E "Ready|Building|Error" | head -1 || true)"
-  case "$row" in
-    *Error*)    die "Build failed. Logs:
-       npx vercel inspect --logs \$(npx vercel ls --yes | awk 'NR==6{print \$2}')" ;;
-    *Ready*)
-      if [[ "$(live_commit)" == "up" ]]; then
-        say "Live: $DOMAIN is serving $(git rev-parse --short HEAD)."
-        exit 0
-      fi ;;
-  esac
-  sleep 15
+  got="$(live_commit)"
+  if [[ "$got" == "$want" ]]; then
+    say "Live: $DOMAIN is serving $(git rev-parse --short HEAD)."
+    exit 0
+  fi
+  sleep 10
 done
-die "Timed out after $((TIMEOUT / 60))m. Check: npx vercel ls"
+
+# Timed out — say why, since "still building" and "build failed" look identical
+# from the outside, and a stray `vercel --prod` elsewhere can hold the alias.
+say "Domain is still on ${got:-<unreachable>}, expected $(git rev-parse --short "$want")."
+npx --no-install vercel ls --yes 2>/dev/null | grep -E "Ready|Building|Error" | head -3 || true
+die "Timed out after $((TIMEOUT / 60))m. If a row above says Error, run:
+       npx vercel inspect --logs <that-url>"

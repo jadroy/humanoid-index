@@ -22,9 +22,26 @@ read `● Ready`), never by grepping the served bundle — a bundle grep reads t
 *previous* build while the new one is still building, and will happily tell you a
 change is live when the build has actually failed.
 
+**A push is not a deploy, part two.** `/api/version` reports the commit the live
+deployment was built from — `curl -s https://humanoid-index.com/api/version`.
+That, or `./scripts/ship.sh --check`, is the answer to "did it ship?".
+
 **Beware the directory names.** `~/CODE/humanoid-index` is the main worktree and
 is on `v3`. `~/CODE/humanoid-index-v2` is on branch `sol`, *not* `v2`. Check
 `git branch --show-current` before believing you're where you think you are.
+
+### Parallel tabs share one worktree — on purpose
+
+Roy runs several chats against the same checkout at once and accepts occasional
+collisions as the price of working in parallel. **Do not "fix" this by creating a
+worktree per thread** — he has explicitly rejected that. Isolate only when you
+are about to commit or deploy, not to do ordinary work.
+
+What this costs, and the one habit that pays for it: another tab's edits will be
+sitting in files you are about to stage. So read `git diff --cached` before every
+commit and confirm each hunk is yours, and reach for `git add -p` when a file has
+someone else's work in it. Assume any file you did not just write may have moved
+under you.
 
 ### Commits
 Roy commits broadly (often `git commit -a`) across parallel chats. When committing an isolated fix into a file Roy has unstaged changes in, his next broad commit can silently clobber it. To protect isolated fixes:
