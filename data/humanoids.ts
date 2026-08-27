@@ -81,7 +81,7 @@ export interface Humanoid {
 
 // Makers who take reservations rather than selling outright — their CTA reads
 // "Reserve" instead of "Buy" so the button matches what actually happens.
-const RESERVE_MAKERS = new Set(["Rotaku", "Lightberry"]);
+const RESERVE_MAKERS = new Set(["Rotaku", "Lightberry", "1X Technologies"]);
 export const takesReservations = (h: Humanoid) => RESERVE_MAKERS.has(h.manufacturer);
 
 
@@ -411,17 +411,24 @@ const allHumanoids: Humanoid[] = [
     imageUrl: "/robots/neo.png",
     year: 2024,
     cost: "$20K",
-    status: "Prototype",
-    height: 165,
+    status: "In Production",
+    height: 168,
     weight: 30,
+    dof: 75,
     maxSpeed: 1.4,
     description: "Lightweight bipedal humanoid for safe human interaction and home assistance.",
     purchaseUrl: "https://www.1x.tech/order",
     sceneUrl: "/scenes/neo-scene.png",
-    tags: ["Soft & lightweight"],
+    tags: ["Soft & lightweight", "22-DOF hands", "$499/mo option"],
     engineering: {
-      payload: 20,
+      payload: 25,
+      liftPerArm: 8,
       walkSpeed: 1.4,
+      runtime: 4,
+      batteryCapacity: 0.842,
+      handDof: 22,
+      armDof: 7,
+      legDof: 6,
       actuators: "Tendon-driven",
       teleop: true,
       noiseLevel: 22,
