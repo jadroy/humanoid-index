@@ -81,7 +81,7 @@ export interface Humanoid {
 
 // Makers who take reservations rather than selling outright — their CTA reads
 // "Reserve" instead of "Buy" so the button matches what actually happens.
-const RESERVE_MAKERS = new Set(["Rotaku", "Lightberry", "1X Technologies"]);
+const RESERVE_MAKERS = new Set(["Rotaku", "Lightberry", "1X Technologies", "Nori Robotics"]);
 export const takesReservations = (h: Humanoid) => RESERVE_MAKERS.has(h.manufacturer);
 
 
@@ -214,6 +214,39 @@ const allHumanoids: Humanoid[] = [
   //   description: "Tesla's next-generation humanoid — teased for unveil, details not yet public.",
   // },
   // 2026
+  {
+    id: "136",
+    name: "A3",
+    manufacturer: "Nori Robotics",
+    country: "USA",
+    useCase: "Home",
+    drive: "Wheeled base",
+    availability: "consumer",
+    logoUrl: "/robots/Nori.png",
+    manufacturerUrl: "https://www.norirobotics.com",
+    infoUrl: "https://www.norirobotics.com",
+    purchaseUrl: "https://www.norirobotics.com/preorder",
+    imageUrl: "/robots/nori-a3.png",
+    year: 2026,
+    addedAt: "2026-08-27",
+    cost: "$1,688",
+    status: "In Production",
+    height: 145, // top of a three-stage telescoping column; collapses to 69 cm
+    weight: 20,
+    dof: 19,
+    description: "A two-armed home robot on a wheeled base, priced at $1,688. Its column telescopes so it can reach the floor or a countertop. Owners train it on new chores and share them with everyone else.",
+    tags: ["$1,688", "Skills marketplace", "3D-printable parts", "Assembled in SF", "YC S26"],
+    engineering: {
+      liftPerArm: 1.5,
+      runtime: 8,
+      armDof: 8,
+      cameras: "4× 720p RGB, 30 fps",
+      lidar: "12 m range, 8–12 Hz",
+      microphones: 1,
+      compute: "Raspberry Pi 5",
+      software: "Nori Lab",
+    },
+  },
   {
     id: "27",
     name: "Lumi",

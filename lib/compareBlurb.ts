@@ -30,6 +30,10 @@ function fallback(a: Humanoid, b: Humanoid): string {
     return `${a.name} is ${statusA.toLowerCase()}, ${b.name} ${statusB.toLowerCase()} — different points on the same trajectory.`;
   }
 
+  if (yearA && yearB && gap === 0) {
+    return `${a.name} (${a.manufacturer}) and ${b.name} (${b.manufacturer}), both ${yearA}.`;
+  }
+
   if (yearA && yearB) {
     return `${older.name} (${older.year}, ${older.manufacturer}) and ${newer.name} (${newer.year}, ${newer.manufacturer}), ${gap} year${gap === 1 ? "" : "s"} apart.`;
   }
