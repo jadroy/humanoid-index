@@ -1825,6 +1825,51 @@ const DRAWER_EASE = "cubic-bezier(0.2, 0, 0, 1)";
 // bounces looks like a notification, not a panel.
 const GENIE_DUR = 520;
 const GENIE_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+// Springs, not curves. This is the whole difference between motion that feels
+// like a website and motion that feels like iOS: a cubic-bezier is a shape
+// someone drew, a spring is a physical system settling. Ease-outs decelerate
+// on a schedule; a spring decelerates because it ran out of energy, and the
+// eye knows the difference even when it can't name it.
+//
+// Sampled into CSS `linear()`, which takes an arbitrary list of stops — so the
+// browser interpolates a real second-order response with no JS on the frame
+// path. Damping is the only knob that matters: 1.0 is critically damped (fast,
+// no overshoot), below ~0.8 it visibly passes the mark and comes back.
+function springLinear(damping: number, steps = 44): string {
+  const z = Math.max(0.3, Math.min(1, damping));
+  // Pick the frequency so the spring has all but settled by the end of the
+  // transition's own duration — that way the duration slider means what it
+  // says, and damping changes the character without changing the length.
+  const w = 6 / z;
+  const pts: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    let v: number;
+    if (z < 1) {
+      const wd = w * Math.sqrt(1 - z * z);
+      v = 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + ((z * w) / wd) * Math.sin(wd * t));
+    } else {
+      v = 1 - Math.exp(-w * t) * (1 + w * t);
+    }
+    pts.push(v);
+  }
+  // Land exactly on 1: a spring that stops at 0.9997 leaves a sub-pixel seam
+  // where the sheet meets the card edge.
+  pts[pts.length - 1] = 1;
+  return `linear(${pts.map((v) => v.toFixed(4)).join(",")})`;
+}
+
+function genieAxes(open: boolean, dur: number, close: number, stagger: number) {
+  const D = open ? dur : close;
+  const a = Math.min(0.9, Math.abs(stagger));
+  const lead = D * (1 - a / 2);
+  const followDelay = (D * a) / 2;
+  const follow = D - followDelay;
+  const yLeads = open ? stagger >= 0 : stagger < 0;
+  return yLeads
+    ? { y: { dur: lead, delay: 0 }, x: { dur: follow, delay: followDelay } }
+    : { x: { dur: lead, delay: 0 }, y: { dur: follow, delay: followDelay } };
+}
 // Shut isn't scale(0): a hair of width left in the shape keeps the browser
 // interpolating a real box, and the tail of the motion stays legible as the
 // sheet narrowing into the button rather than blinking out.
@@ -1846,6 +1891,15 @@ type BlurbDock = "drawer" | "shelf" | "chip" | "swap" | "free";
 // an unknown number of lines — the arithmetic version could only ever count
 // fixed-height stat rows. Writes a CSS var on the card instead of lifting the
 // height into state: this runs on every resize and must not re-render the deck.
+// The genie's second axis. A single `transform` carries one timing, so a
+// staggered genie has to be nested: the outer box runs Y, this one runs X, and
+// the painted surface rides down here so both scales act on the same box.
+// Off, it renders nothing of its own — every other dock keeps its old markup.
+function GenieAxisX({ enabled, style, children }: { enabled: boolean; style: React.CSSProperties; children: React.ReactNode }) {
+  if (!enabled) return <>{children}</>;
+  return <div style={style}>{children}</div>;
+}
+
 function ShelfMeasure({ cardH, active, open, children, ...rest }: { cardH: number; active: boolean; open: boolean } & React.HTMLAttributes<HTMLDivElement>) {
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -1961,6 +2015,31 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // share it with, and a solid surface is what makes the genie read as the
   // card turning into its own detail page instead of a panel laid over it.
   const [drawerOpaque, setDrawerOpaque] = useState(true);
+  // The genie bench. One motion, tuned — not a menu of motions. Every knob here
+  // shapes the same gesture: the sheet being pulled out of the "i".
+  const [genieDur, setGenieDur] = useState<number>(520);
+  const [genieCloseDur, setGenieCloseDur] = useState<number>(340);
+  // Damping is the character knob. 1.0 is critically damped — quick and dead
+  // flat. Around 0.8 the sheet just barely passes its mark and comes back,
+  // which is where iOS lives.
+  const [genieDamping, setGenieDamping] = useState<number>(0.82);
+  // Which axis leads. Positive is the Dock's tall-first; the sheet needs some
+  // of it or it is only a box growing.
+  const [genieStagger, setGenieStagger] = useState<number>(0.4);
+  const [genieShutX, setGenieShutX] = useState<number>(0.07);
+  const [genieShutY, setGenieShutY] = useState<number>(0.03);
+  const [genieContent, setGenieContent] = useState<number>(0.45);
+  // How far the robot behind the sheet pulls back as it arrives. Small numbers
+  // only: this is depth, not a second animation competing with the first.
+  const [genieRecede, setGenieRecede] = useState<number>(4);
+  // How much the "i" gives way as the sheet takes over. The button is the
+  // thing the sheet comes out of, so it should look spent while the sheet is
+  // up and recover as it leaves — otherwise the origin story stops the moment
+  // the motion starts.
+  const [genieHandoff, setGenieHandoff] = useState<number>(0.55);
+  // Rebuilt only when damping moves. The string is ~45 stops; regenerating it
+  // per render would put string-building on the same frames as the animation.
+  const genieSpring = useMemo(() => springLinear(genieDamping), [genieDamping]);
   // The card row's "i" is redundant once the drawer exists — the placard's own
   // handle opens the same panel, and two controls for one thing is one too
   // many. Off in drawer mode, on everywhere else, restorable from the tuner.
@@ -6656,6 +6735,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           const overlayRows = overlayRowsFor(h);
           // One consolidated pull-up panel per card. See `BlurbDock`.
           const cardDrawer = statsOverlay === "strip" && blurbDock === "drawer";
+          // The robot behind the sheet. Pulling it back a little as the sheet
+          // arrives is what puts the two on different planes — without it the
+          // sheet is a rectangle that appeared, with it the sheet is in front.
+          const genieOn = cardDrawer && drawerMotion === "genie";
           const drawerKey = isFirst ? "left" : "right";
           const gallery = h.media || [];
           const allImages = [h.imageUrl, ...gallery.map((m) => m.url)].filter(Boolean) as string[];
@@ -6745,7 +6828,17 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     fontWeight: 500,
                     lineHeight: 1,
                     pointerEvents: "auto",
-                    transition: `background ${dur} ${ease}, border-color ${dur} ${ease}, color ${dur} ${ease}`,
+                    transition: `background ${dur} ${ease}, border-color ${dur} ${ease}, color ${dur} ${ease}, transform ${cardDrawer && drawerMotion === "genie" ? `${shut ? genieCloseDur : genieDur}ms ${genieSpring}` : `${dur} ${ease}`}, opacity ${dur} ${ease}`,
+                    // Handoff. The sheet is supposed to have come out of this
+                    // button, so the button gives way while it is out — pressed
+                    // down and dimmed — and recovers as the sheet retreats.
+                    // Without it the origin story stops the instant the motion
+                    // starts, and the button just sits there looking untouched
+                    // next to the thing it supposedly produced.
+                    ...(cardDrawer && drawerMotion === "genie" && genieHandoff > 0 && !shut ? {
+                      transform: `scale(${(1 - genieHandoff * 0.22).toFixed(3)})`,
+                      opacity: 1 - genieHandoff * 0.45,
+                    } : { transform: "scale(1)", opacity: 1 }),
                   }}
                 >
                   i
@@ -7200,6 +7293,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 // pixels in is the closest it can sit to the button and still
                 // be drawn, and directly under it reads as out of it.
                 const genie = drawer && drawerMotion === "genie";
+                const ax = genieAxes(!!on, genieDur, genieCloseDur, genieStagger);
+                const gEase = genieSpring;
+                const gDur = on ? genieDur : genieCloseDur;
                 const genieOriginY = -(cardH - Math.round(cardH * drawerMaxPct / 100) - 10);
                 // A sheet that covers the whole face has to round to the card's
                 // own corners, not the drawer's. At anything less than full
@@ -7207,6 +7303,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 // 100% a smaller top radius cuts two notches out of the corners
                 // and lets the image show through them.
                 const sheetRadius = drawerMaxPct >= 100 ? cardRadius : drawerRadius;
+                const genieOrigin = `calc(100% - 14px) ${genieOriginY}px`;
                 return (
                   <ShelfMeasure
                     cardH={cardH}
@@ -7223,37 +7320,58 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "flex-end",
-                      opacity: drawer && genie ? (on ? 1 : 0) : (drawer || on ? 1 : 0),
+                      opacity: genie ? (on ? 1 : 0) : (drawer || on ? 1 : 0),
                       transform: !strip
                         ? "none"
-                        : (drawer && genie)
-                          ? (on ? "scale(1, 1)" : GENIE_SHUT)
+                        // Y only. X is on the inner box so the two axes can run
+                        // on different clocks — the whole point of the stagger.
+                        : genie
+                          ? (on ? "scaleY(1)" : `scaleY(${genieShutY})`)
                           : (on ? "translateY(0)" : "translateY(100%)"),
-                      // The point the sheet is pulled out of: the placard's "i",
-                      // which lives above the card's top-right corner. Y is
-                      // negative because the panel is bottom-anchored — the
-                      // button is a whole card-height above its own top edge.
-                      ...(drawer && genie ? { transformOrigin: `calc(100% - 14px) ${genieOriginY}px` } : null),
+                      // The point the sheet is pulled out of: just under the
+                      // placard's "i". Y is negative because the panel is
+                      // bottom-anchored, so the button sits above its own top
+                      // edge by however much of the card the sheet doesn't take.
+                      ...(genie ? { transformOrigin: genieOrigin } : null),
                       pointerEvents: "none",
                       transition: drawer
                         ? (genie
-                            ? `transform ${GENIE_DUR}ms ${GENIE_EASE}, opacity ${Math.round(GENIE_DUR * 0.45)}ms ${GENIE_EASE}, border-radius ${GENIE_DUR}ms ${GENIE_EASE}`
+                            ? `transform ${Math.round(ax.y.dur)}ms ${gEase} ${Math.round(ax.y.delay)}ms, opacity ${Math.round(gDur * 0.45)}ms ${gEase}`
                             : `transform ${DRAWER_DUR} ${DRAWER_EASE}`)
                         : `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
-                      ...(onePanel ? glass : null),
-                      ...(drawer ? {
-                        // Shut, the sheet is the size and shape of the button
-                        // it collapses into; open, it is a sheet. Rounding the
-                        // corners on the way is most of what sells the shape
-                        // change as one object rather than two.
-                        borderTopLeftRadius: genie && !on ? 999 : sheetRadius,
-                        borderTopRightRadius: genie && !on ? 999 : sheetRadius,
-                        // The glass has to clip to the new corners, and the
-                        // scroller inside it with them.
-                        overflow: "hidden",
-                      } : null),
+                      // Genie paints on the inner box instead; everything else
+                      // keeps its surface here.
+                      ...(genie ? null : {
+                        ...(onePanel ? glass : null),
+                        ...(drawer ? {
+                          borderTopLeftRadius: sheetRadius,
+                          borderTopRightRadius: sheetRadius,
+                          // The glass has to clip to the new corners, and the
+                          // scroller inside it with them.
+                          overflow: "hidden",
+                        } : null),
+                      }),
                     }}
                   >
+                    <GenieAxisX
+                      enabled={genie}
+                      style={{
+                        ...(onePanel ? glass : null),
+                        // Shut, the sheet is the size and shape of the button it
+                        // collapses into; open, it is a sheet. Rounding the
+                        // corners on the way is most of what sells the shape
+                        // change as one object rather than two.
+                        borderTopLeftRadius: on ? sheetRadius : 999,
+                        borderTopRightRadius: on ? sheetRadius : 999,
+                        overflow: "hidden",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "flex-end",
+                        transform: on ? "scaleX(1)" : `scaleX(${genieShutX})`,
+                        transformOrigin: genieOrigin,
+                        transition: `transform ${Math.round(ax.x.dur)}ms ${gEase} ${Math.round(ax.x.delay)}ms, border-radius ${Math.round(gDur)}ms ${gEase}`,
+                      }}
+                    >
                     {drawer && (
                       // The drawer proper: blurb and rows in one scroll region,
                       // capped so it can never grow past its share of the card.
@@ -7283,8 +7401,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                           ...(genie ? {
                             opacity: on ? 1 : 0,
                             transition: on
-                              ? `opacity ${Math.round(GENIE_DUR * 0.4)}ms ${GENIE_EASE} ${Math.round(GENIE_DUR * 0.5)}ms`
-                              : `opacity ${Math.round(GENIE_DUR * 0.2)}ms ${GENIE_EASE}`,
+                              ? `opacity ${Math.round(genieDur * 0.4)}ms ${gEase} ${Math.round(genieDur * genieContent)}ms`
+                              : `opacity ${Math.round(genieCloseDur * 0.25)}ms ${gEase}`,
                           } : null),
                         }}
                       >
@@ -7339,6 +7457,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       </div>
                     )}
                     {!drawer && rows}
+                    </GenieAxisX>
                   </ShelfMeasure>
                 );
               })()}
@@ -7422,11 +7541,15 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 // real height, so the image also clears the blurb once the
                 // blurb docks into the shelf — not just the stat rows.
                 style={statsOverlay === "strip" ? {
-                  transform: "scale(var(--shelf-k, 1))",
+                  transform: genieOn && genieRecede > 0
+                    ? `scale(calc(var(--shelf-k, 1) * ${drawerOpenFor(drawerKey) ? (1 - genieRecede / 100).toFixed(4) : 1}))`
+                    : "scale(var(--shelf-k, 1))",
                   transformOrigin: "50% 0%",
-                  transition: cardDrawer
-                    ? `transform ${DRAWER_DUR} ${DRAWER_EASE}`
-                    : `transform ${dur} ${ease}`,
+                  transition: genieOn
+                    ? `transform ${drawerOpenFor(drawerKey) ? genieDur : genieCloseDur}ms ${genieSpring}`
+                    : cardDrawer
+                      ? `transform ${DRAWER_DUR} ${DRAWER_EASE}`
+                      : `transform ${dur} ${ease}`,
                 } : undefined}
               >
                 {/* Static — hidden when SpinViewer or Robot3D takes over. */}
@@ -9259,7 +9382,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           )}
           <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
           <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Compare slot</p><div className="flex flex-wrap gap-1.5">{(["silhouette", "plus"] as const).map((v) => (<button key={v} onClick={() => setCompareSlotStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${compareSlotStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div>
-          <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Stats over card</p><div className="flex flex-wrap gap-1.5">{(["off", "strip", "wash"] as const).map((v) => (<button key={v} onClick={() => setStatsOverlay(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${statsOverlay === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "off" ? "Column" : v}</button>))}</div>{blurbDock === "drawer" ? (<p className="text-[11px] text-neutral-400 mt-3">Image fit is the drawer&rsquo;s own &ldquo;Lift robot above it&rdquo; below — the sheet reads `drawerLift`, not `stripFit`.</p>) : (<div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Fit image above strip</label><button type="button" onClick={() => setStripFit((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${stripFit ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{stripFit ? "On" : "Off"}</button></div>)}</div><div className="mt-3"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Info blurb</p><div className="flex flex-wrap gap-1.5">{([["drawer", "Drawer"], ["shelf", "Shelf"], ["chip", "Chip"], ["swap", "Swap"], ["free", "Free"]] as const).map(([v, label]) => (<button key={v} onClick={() => setBlurbDock(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${blurbDock === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{blurbDock === "drawer" ? "One pull-up panel per card — blurb + rows, scrolls, hides on the card's i." : blurbDock === "shelf" ? "Top row of the stats strip — one glass panel." : blurbDock === "chip" ? "Own chip, resting on the strip's top edge." : blurbDock === "swap" ? "Replaces the rows while info is on." : "Floats loose in the image (pre-shelf)."}</p>{blurbDock === "drawer" && (<><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Open by default</label><button type="button" onClick={() => { setDrawerDefaultOpen((v) => !v); setDrawerOverrides({}); }} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerDefaultOpen ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerDefaultOpen ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Keep card-row &ldquo;i&rdquo;</label><button type="button" onClick={() => setShowInfoChip((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${showInfoChip ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{showInfoChip ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Lift robot above it</label><button type="button" onClick={() => setDrawerLift((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerLift ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerLift ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Height<span className="tabular-nums text-neutral-400">{drawerMaxPct}%</span></label><input type="range" min={25} max={100} step={1} value={drawerMaxPct} onChange={(e) => setDrawerMaxPct(+e.target.value)} className="w-full" /><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Opaque</label><button type="button" onClick={() => setDrawerOpaque((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerOpaque ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerOpaque ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Top radius<span className="tabular-nums text-neutral-400">{drawerRadius}px</span></label><input type="range" min={0} max={36} step={1} value={drawerRadius} onChange={(e) => setDrawerRadius(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Blurb lines<span className="tabular-nums text-neutral-400">{blurbClampLines === 0 ? "Off" : blurbClampLines}</span></label><input type="range" min={0} max={12} step={1} value={blurbClampLines} onChange={(e) => setBlurbClampLines(+e.target.value)} className="w-full" /><p className="text-[11px] text-neutral-400 mt-1">Lines of description before &ldquo;More&rdquo;. 0 = no cap. Keeps the stat rows in the drawer&rsquo;s first screenful.</p><p className="text-[12px] tracking-widest uppercase text-neutral-400 mt-3 mb-2">Motion</p><div className="flex gap-1.5">{([["slide", "Slide"], ["genie", "Genie"]] as const).map(([m, label]) => (<button key={m} onClick={() => setDrawerMotion(m)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${drawerMotion === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{drawerMotion === "genie" ? "Scales out of the placard\u2019s i \u2014 Dock un-minimise, inverted." : "Slides up from the card\u2019s bottom edge."}</p></>)}</div>
+          <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Stats over card</p><div className="flex flex-wrap gap-1.5">{(["off", "strip", "wash"] as const).map((v) => (<button key={v} onClick={() => setStatsOverlay(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${statsOverlay === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "off" ? "Column" : v}</button>))}</div>{blurbDock === "drawer" ? (<p className="text-[11px] text-neutral-400 mt-3">Image fit is the drawer&rsquo;s own &ldquo;Lift robot above it&rdquo; below — the sheet reads `drawerLift`, not `stripFit`.</p>) : (<div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Fit image above strip</label><button type="button" onClick={() => setStripFit((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${stripFit ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{stripFit ? "On" : "Off"}</button></div>)}</div><div className="mt-3"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Info blurb</p><div className="flex flex-wrap gap-1.5">{([["drawer", "Drawer"], ["shelf", "Shelf"], ["chip", "Chip"], ["swap", "Swap"], ["free", "Free"]] as const).map(([v, label]) => (<button key={v} onClick={() => setBlurbDock(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${blurbDock === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{blurbDock === "drawer" ? "One pull-up panel per card — blurb + rows, scrolls, hides on the card's i." : blurbDock === "shelf" ? "Top row of the stats strip — one glass panel." : blurbDock === "chip" ? "Own chip, resting on the strip's top edge." : blurbDock === "swap" ? "Replaces the rows while info is on." : "Floats loose in the image (pre-shelf)."}</p>{blurbDock === "drawer" && (<><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Open by default</label><button type="button" onClick={() => { setDrawerDefaultOpen((v) => !v); setDrawerOverrides({}); }} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerDefaultOpen ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerDefaultOpen ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Keep card-row &ldquo;i&rdquo;</label><button type="button" onClick={() => setShowInfoChip((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${showInfoChip ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{showInfoChip ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Lift robot above it</label><button type="button" onClick={() => setDrawerLift((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerLift ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerLift ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Height<span className="tabular-nums text-neutral-400">{drawerMaxPct}%</span></label><input type="range" min={25} max={100} step={1} value={drawerMaxPct} onChange={(e) => setDrawerMaxPct(+e.target.value)} className="w-full" /><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Opaque</label><button type="button" onClick={() => setDrawerOpaque((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerOpaque ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerOpaque ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Top radius<span className="tabular-nums text-neutral-400">{drawerRadius}px</span></label><input type="range" min={0} max={36} step={1} value={drawerRadius} onChange={(e) => setDrawerRadius(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Blurb lines<span className="tabular-nums text-neutral-400">{blurbClampLines === 0 ? "Off" : blurbClampLines}</span></label><input type="range" min={0} max={12} step={1} value={blurbClampLines} onChange={(e) => setBlurbClampLines(+e.target.value)} className="w-full" /><p className="text-[11px] text-neutral-400 mt-1">Lines of description before &ldquo;More&rdquo;. 0 = no cap. Keeps the stat rows in the drawer&rsquo;s first screenful.</p><p className="text-[12px] tracking-widest uppercase text-neutral-400 mt-3 mb-2">Motion</p><div className="flex gap-1.5">{([["slide", "Slide"], ["genie", "Genie"]] as const).map(([m, label]) => (<button key={m} onClick={() => setDrawerMotion(m)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${drawerMotion === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{drawerMotion === "genie" ? "Scales out of the placard\u2019s i \u2014 Dock un-minimise, inverted." : "Slides up from the card\u2019s bottom edge."}</p>{drawerMotion === "genie" && (<div className="mt-3 rounded-lg bg-neutral-50 p-2.5 space-y-2"><p className="text-[11px] text-neutral-400">Spring, not a curve — damping is the character. 1.00 is dead flat; below ~0.85 the sheet passes its mark and comes back.</p><label className="flex items-center justify-between text-[12px] text-neutral-500">Damping<span className="tabular-nums text-neutral-400">{genieDamping.toFixed(2)}</span></label><input type="range" min={0.55} max={1} step={0.01} value={genieDamping} onChange={(e) => setGenieDamping(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Open<span className="tabular-nums text-neutral-400">{genieDur + "ms"}</span></label><input type="range" min={160} max={900} step={10} value={genieDur} onChange={(e) => setGenieDur(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Close<span className="tabular-nums text-neutral-400">{genieCloseDur + "ms"}</span></label><input type="range" min={120} max={700} step={10} value={genieCloseDur} onChange={(e) => setGenieCloseDur(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Stagger<span className="tabular-nums text-neutral-400">{genieStagger === 0 ? "none" : `${genieStagger > 0 ? "tall" : "wide"} first ${Math.abs(genieStagger).toFixed(2)}`}</span></label><input type="range" min={-0.9} max={0.9} step={0.05} value={genieStagger} onChange={(e) => setGenieStagger(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Shut width<span className="tabular-nums text-neutral-400">{genieShutX.toFixed(2)}</span></label><input type="range" min={0.02} max={1} step={0.01} value={genieShutX} onChange={(e) => setGenieShutX(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Shut height<span className="tabular-nums text-neutral-400">{genieShutY.toFixed(2)}</span></label><input type="range" min={0.02} max={1} step={0.01} value={genieShutY} onChange={(e) => setGenieShutY(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Contents in at<span className="tabular-nums text-neutral-400">{Math.round(genieContent * 100) + "%"}</span></label><input type="range" min={0} max={0.9} step={0.05} value={genieContent} onChange={(e) => setGenieContent(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Robot recedes<span className="tabular-nums text-neutral-400">{genieRecede === 0 ? "Off" : genieRecede + "%"}</span></label><input type="range" min={0} max={14} step={1} value={genieRecede} onChange={(e) => setGenieRecede(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">i hands off<span className="tabular-nums text-neutral-400">{genieHandoff === 0 ? "Off" : Math.round(genieHandoff * 100) + "%"}</span></label><input type="range" min={0} max={1} step={0.05} value={genieHandoff} onChange={(e) => setGenieHandoff(+e.target.value)} className="w-full" /><p className="text-[11px] text-neutral-400">Stagger is which axis leads — tall-first is the Dock. Close runs the axes in reverse so the sheet retreats the way it came.</p></div>)}</>)}</div>
           <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Minus</p><div className="flex flex-wrap gap-1.5">{(["veil", "card-corner"] as const).map((v) => (<button key={v} onClick={() => setMinusPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${minusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "veil" ? "Hover veil" : "Card corner"}</button>))}</div></div>
           <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill", "chip"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
           <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100 space-y-2">
