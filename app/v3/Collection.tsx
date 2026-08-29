@@ -203,13 +203,17 @@ export default function Collection({ items, config, details, initialSel, embedde
      navigating away. Grid drops one column to make room; the grid stays alive. */
   const [sel, setSel] = useState<string | null>(initialSel ?? null);
   const [baseCols, setBaseCols] = useState(5);
+  // Keep in step with the `.v3-cols` ladder in v3.css. The panel's inline
+  // grid-template overrides the class, so if this drifts below the CSS the
+  // grid collapses the moment a card is opened.
+  const colsForWidth = (w: number) =>
+    w >= 2400 ? 8 : w >= 2000 ? 7 : w >= 1600 ? 6 : w >= 1280 ? 5 : w >= 960 ? 4 : w >= 640 ? 3 : 2;
   const canPanel = !!details && !carousel;
   // Only the open panel reads baseCols; without details there is no panel.
   useEffect(() => {
     if (!details) return;
     const compute = () => {
-      const w = window.innerWidth;
-      setBaseCols(w >= 1280 ? 5 : w >= 960 ? 4 : w >= 640 ? 3 : 2);
+      setBaseCols(colsForWidth(window.innerWidth));
     };
     compute();
     window.addEventListener("resize", compute);

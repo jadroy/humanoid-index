@@ -118,6 +118,19 @@ body:has(.v3-root:not(.v3-embedded)) {
 @media (min-width: 1280px) {
   .v3-cols { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
+/* Above 1600 the ladder keeps climbing instead of stretching five columns
+   across the width. Pinned at 5, a Studio Display drew ~470px tiles — twice
+   the ~220px they are at 1280, so the grid read as a handful of posters
+   rather than a collection. Each step keeps the tile in its 220–280px band. */
+@media (min-width: 1600px) {
+  .v3-cols { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+@media (min-width: 2000px) {
+  .v3-cols { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+}
+@media (min-width: 2400px) {
+  .v3-cols { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+}
 
 .v3-grid {
   row-gap: 32px;

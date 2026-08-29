@@ -1879,6 +1879,13 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // the rows wrapped above and below it.
   const [toggleOnMode, setToggleOnMode] = useState<ToggleOnState>("ink");
   const [railShape, setRailShape] = useState<"column" | "ring" | "concentric">("column");
+  // Wide-screen rail: the column is pinned 24px off the left edge while the
+  // card stays centered, so past ~1900px the two drift apart and the rail ends
+  // up alone in the corner of a very large screen. On, it walks inward as the
+  // viewport grows so the chrome stays part of the same composition. Inert
+  // below 1600px — every laptop keeps the 24px edge it has now.
+  const [railPullIn, setRailPullIn] = useState(true);
+  const [railPull, setRailPull] = useState(0.6); // px of inset per px of viewport past 1600
   const [ringR, setRingR] = useState(84);
   const [ringSweep, setRingSweep] = useState(170);
   // How far inside the names' circle the concentric ring sits.
@@ -2219,7 +2226,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // Layout dimensions
   const [robotW, setRobotW] = useState(30);       // vw
   const [robotH, setRobotH] = useState(60);       // vh
-  const [robotMaxW, setRobotMaxW] = useState(400); // px
+  const [robotMaxW, setRobotMaxW] = useState(400); // px — floor for the cap
+  // How fast the card's px cap grows with viewport width. 0.22 keeps every
+  // laptop exactly where it was (the vh budget binds there anyway) and lands
+  // at 563 on a 2560 display; 0.28 is the "hero" end, ~714.
+  const [cardGrowth, setCardGrowth] = useState(0.22);
   // Compare-mode middle column width. Stats need ~150-180px; the rest is
   // breathing room (and blurb width when the AI overview is on).
   const [statsW, setStatsW] = useState(180);       // px
@@ -2769,6 +2780,20 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   };
   const SINGLE_ASPECT = SINGLE_ASPECT_BY_FORM[formFilter];
   const COMPARE_ASPECT = COMPARE_ASPECT_BY_FORM[formFilter];
+  // `cardGrowth` is the rate, and on a Studio Display it — not the 780 ceiling
+  // — is what sets the size: 0.22 × 2560 = 563. The ceiling only binds on an
+  // ultrawide, where the vh budget in cardPxFor usually gets there first.
+  const effectiveMaxW = Math.min(780, Math.max(robotMaxW, Math.round(windowWidth * cardGrowth)));
+  // Chrome nudge for large displays. The card grows with the viewport now, but
+  // the rail's type is inline px and doesn't, so on a Studio Display a 560px
+  // card sits beside 14px labels — legible (a CSS px is physically larger on a
+  // 27" 5K than on a laptop) but proportionally thin. This walks the column up
+  // by a notch over the same range the card grows, and is exactly 1 below
+  // 1900px, so no laptop moves. Carried as `zoom` rather than a font-size pass:
+  // the rail's sizes live in ~8 inline declarations plus glyph and row-height
+  // px, and scaling the subtree keeps type, glyphs and the lane pill in step
+  // instead of drifting apart one constant at a time.
+  const uiScale = Math.min(1.15, Math.max(1, 1 + (windowWidth - 1900) / 4400));
   const cardPxFor = (wVw: number, hVh: number, maxPx: number, aspect: number) =>
     Math.min(
       wVw * windowWidth / 100,
@@ -2779,10 +2804,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // wider; entering compare shrinks BOTH cards to COMPARE_ASPECT. So the empty
   // slot has to be drawn at the compare size or it promises a card bigger than
   // the one that arrives.
-  const compareCardW = cardPxFor(robotW - 8, robotH - 10, robotMaxW - 100, COMPARE_ASPECT);
+  const compareCardW = cardPxFor(robotW - 8, robotH - 10, effectiveMaxW - 100, COMPARE_ASPECT);
   const compareCardH = compareCardW / COMPARE_ASPECT;
   const cardAspect = comparing ? COMPARE_ASPECT : SINGLE_ASPECT;
-  const cardW = comparing ? compareCardW : cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT);
+  const cardW = comparing ? compareCardW : cardPxFor(robotW, robotH, effectiveMaxW, SINGLE_ASPECT);
   const cardH = cardW / cardAspect;
   // Compare middle column tracks the card rather than sitting at a fixed px
   // width — it used to carry +200px to fit long manufacturer names in the
@@ -2790,7 +2815,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // With stats over the card, compare has no middle: each card carries its
   // own rows, and the pair closes up to a gap.
   const compareStatsW = statsOverlay !== "off" ? 0 : Math.round(cardW * 0.75);
-  const baseCardPx = windowWidth ? cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT) : robotMaxW;
+  const baseCardPx = windowWidth ? cardPxFor(robotW, robotH, effectiveMaxW, SINGLE_ASPECT) : effectiveMaxW;
   const singleStatsW = Math.round(baseCardPx * statsColScale);
   // When info is hidden, the stats slot fully collapses to 0 so the card lands
   // at viewport center. The "i" toggle lives inside the card label, so no rail
@@ -2885,6 +2910,25 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     document.documentElement.style.setProperty("--arc-logo-x", `${x}px`);
   }, [effectiveArcInset, arcTextGap]);
 
+  // How far off the left edge the rail (and the nav paddings that share
+  // `--nav-edge`) sit. Nothing ever defined this var, so every consumer has
+  // been taking its 24px fallback. Growth starts at 1600 — below that the
+  // result is exactly 24 and no existing viewport moves.
+  //
+  // The ceiling is the arc, not the card: the names hug the card's left side,
+  // so the column has to stop short of the leftmost label or it walks into the
+  // wheel. 190 clears the widest rail row (~127 at full uiScale) plus a gap.
+  const navEdge = useMemo(() => {
+    if (!railPullIn) return 24;
+    const grown = 24 + Math.max(0, windowWidth - 1600) * railPull;
+    const arcLimit = Math.max(16, effectiveArcInset - arcTextGap) - 190;
+    return Math.round(Math.max(24, Math.min(grown, arcLimit)));
+  }, [railPullIn, railPull, windowWidth, effectiveArcInset, arcTextGap]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--nav-edge", `${navEdge}px`);
+  }, [navEdge]);
+
   // Publish a stable nav inset that ignores `comparing` so the logo and
   // share button stay anchored when entering/leaving compare mode.
   // Aligns nav/footer with the inner content edges (card + gap + stats column),
@@ -2894,7 +2938,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       document.documentElement.style.setProperty("--nav-x", `${navX}px`);
       return;
     }
-    const cardPxStable = windowWidth ? cardPxFor(robotW, robotH, robotMaxW, SINGLE_ASPECT) : robotMaxW;
+    const cardPxStable = windowWidth ? cardPxFor(robotW, robotH, effectiveMaxW, SINGLE_ASPECT) : effectiveMaxW;
     // Use the expanded stats width regardless of `statsCollapsed` so the nav
     // and footer (driven off `--nav-x`) stay anchored when the i toggle fires.
     const statsColStable = stackedInfo ? Math.round(cardPxStable * statsColScale) : statsW;
@@ -3968,7 +4012,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           // stacking context), so the column steps over it rather than being
           // buried by the view its own row opened.
           zIndex: gridOpen ? 21 : 4,
-          left: "var(--nav-edge, 24px)",
+          // `zoom` scales the inset along with everything else, so the edge
+          // distance is divided back out — the column steps up in size without
+          // walking away from the edge it's anchored to.
+          zoom: uiScale,
+          left: `calc(var(--nav-edge, 24px) / ${uiScale})`,
           // No capsule, in either state. Nothing else on this page sits in a
           // container — not the card, not the arc — and glass that faded in and
           // out under the cursor was the fussiest of the three options. The
@@ -8850,6 +8898,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               <div><p className="text-[12px] text-neutral-500 mb-1.5">Switcher</p><div className="flex flex-wrap gap-1.5">{SWITCHER_STYLES.map((s) => (<button key={s} onClick={() => onSwitcherStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${switcherStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             )}
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Top offset <span className="tabular-nums text-neutral-400">{navTop}px</span></label><input type="range" min={0} max={48} value={navTop} onChange={(e) => setNavTop(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Card growth <span className="tabular-nums text-neutral-400">{cardGrowth.toFixed(2)} → {effectiveMaxW}px cap</span></label><input type="range" min={18} max={32} value={Math.round(cardGrowth * 100)} onChange={(e) => setCardGrowth(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
+            <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">Rail pull-in <span className="text-neutral-300">(wide screens)</span></label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${railPullIn ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setRailPullIn(!railPullIn)}>{railPullIn ? "On" : "Off"}</button></div>
+            <div style={{ opacity: railPullIn ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Pull rate <span className="tabular-nums text-neutral-400">{railPull.toFixed(2)} → {navEdge}px</span></label><input type="range" min={0} max={100} value={Math.round(railPull * 100)} onChange={(e) => { setRailPull(Number(e.target.value) / 100); setRailPullIn(true); }} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">Auto side inset</label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${autoNavX ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setAutoNavX(!autoNavX)}>{autoNavX ? "On" : "Off"}</button></div>
             <div style={{ opacity: autoNavX ? 0.5 : 1 }}><label className="text-[12px] text-neutral-500 flex justify-between">Side inset <span className="tabular-nums text-neutral-400">{navX}px</span></label><input type="range" min={0} max={200} value={navX} onChange={(e) => { setNavX(Number(e.target.value)); setAutoNavX(false); }} className="w-full accent-neutral-900 h-1" /></div>
           </div>

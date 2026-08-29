@@ -212,7 +212,7 @@ const allHumanoids: Humanoid[] = [
   // 2026
   // 2026
   {
-    id: "136",
+    id: "147",
     name: "A3",
     manufacturer: "Nori Robotics",
     country: "USA",
