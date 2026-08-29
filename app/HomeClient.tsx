@@ -15,7 +15,7 @@ import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
 import GridView from "@/components/GridView";
 import Collection from "@/app/v3/Collection";
 import { humanoidsToItems, humanoidConfig } from "@/app/v3/humanoidCollection";
-import MobileView from "@/components/MobileView";
+import MobileDeck from "@/components/MobileDeck";
 import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
 import { Tooltip } from "@/components/Tooltip";
 import { INK, WEIGHT, SEAM, GLASS_EDGE } from "@/lib/design/chrome";
@@ -3493,7 +3493,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     if (shareOgRef) {
       const og = comparing
         ? (leftId && rightId ? `${origin}/api/og/${leftId}?compare=${rightId}` : "")
-        : (leftId ? `${origin}/api/og/${leftId}` : "");
+        : (leftId ? (humanoids[springL.index]?.ogImageUrl ? `${origin}${humanoids[springL.index].ogImageUrl}` : `${origin}/api/og/${leftId}`) : "");
       shareOgRef.current = og;
     }
   }, [hL?.id, hR?.id, comparing, shareUrlRef, shareOgRef]);
@@ -7013,7 +7013,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     short blurbs sit flush, longer blurbs rise above it. */}
                 {isFirst && !comparing && (() => {
                   const desc = getRobotDescription(h);
-                  const fullText = desc.long ?? desc.text;
+                  const fullText = desc.long || desc.text;
                   if (!fullText) return null;
                   return (
                     <div
@@ -10039,7 +10039,7 @@ export default function HomeClient() {
     return <main className="min-h-[100dvh] bg-white" />;
   }
   if (isMobile) {
-    return <MobileView />;
+    return <MobileDeck />;
   }
 
   return (

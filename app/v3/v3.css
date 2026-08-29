@@ -272,6 +272,13 @@ body:has(.v3-root:not(.v3-embedded)) {
   transform: none;
 }
 .v3-card--selected .v3-detail-hint { display: none; }
+/* First-visit pin — see Collection.tsx. Fades in a beat after load so it
+   reads as an invitation rather than part of the static composition. */
+.v3-detail-hint--pinned {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.45s ease 0.9s, transform 0.45s ease 0.9s;
+}
 
 /* Selected card — no ring, no chrome. While the panel is open the other cards
    recede a touch; the selected one stays at full strength. Hovering a dimmed

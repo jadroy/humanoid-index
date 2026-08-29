@@ -1,4 +1,116 @@
 {
+  "27|3": {
+    "short": "Lumi is a chatty social humanoid, while Memo is a wheeled bot built to do your chores.",
+    "long": "These two really represent different camps in the current humanoid wave: Lumi leans into the companion-robot lineage, aiming at homes, receptions, and retail spaces where presence and dialogue matter most. Memo comes from the manipulation-first school, prioritizing payload and reach over mobility, which is why it's heavier and slower. If you want interaction, Lumi's your pick; if you want a folded laundry pile, Memo's the bet."
+  },
+  "14|27": {
+    "short": "Lumi is built for chatty companionship, while Oli is a full-size service bot.",
+    "long": "Lumi lands in the emerging companion-robot space that's really taken shape in 2026, sized and priced to sit in homes or lobbies where the conversation itself is the product. Oli comes from LimX's push to get research-grade humanoids into labs and service pilots without the usual six-figure barrier, leaning on their COSA stack for developers who want a platform, not a personality. Different buyers, different rooms, barely overlapping roadmaps."
+  },
+  "16|27": {
+    "short": "Lumi is built for chatty companionship, while K2 is a workhorse for factory floors.",
+    "long": "These two aren't really competing, they're aimed at completely different buyers. Lumi fits the wave of smaller companion bots meant for homes, retail greeters, or reception desks where reading a room matters more than lifting things. K2 sits in the adult-sized labor category Kepler helped popularize, undercutting pricier rivals so warehouses can actually deploy fleets."
+  },
+  "27|28": {
+    "short": "Lumi is built to chat and remember you, while Domo is a hackable dev platform.",
+    "long": "These two are aimed at completely different buyers. Lumi is Lightberry's play for homes and reception desks where the point is warm interaction, which is why it's taller and packs more actuators for expressive motion. Domo comes from the tinkerer lineage — think Poppy or Nao successors — sized and priced so labs and solo devs can actually own one and build on the SDK."
+  },
+  "27|29": {
+    "short": "Lumi is built for chatting with people, while Domo Plus is made for motion research.",
+    "long": "These two really aren't competing for the same buyer. Lumi lands in 2026 as Lightberry's play for hospitality, retail, and home companion work, where remembering a face and following a conversation is the whole point. Domo Plus, meanwhile, extends Rotaku's lab-focused lineage — universities and robotics teams pushing gait and manipulation research need that beefier joint setup, not small talk."
+  },
+  "1|27": {
+    "short": "Lumi is built for conversation, while Optimus is built for physical work.",
+    "long": "That gap really comes down to who each team is designing for. Lightberry is chasing the companion and hospitality space with a smaller frame and more articulation for expressive interaction, while Tesla is iterating Optimus toward factory work, drawing on its manufacturing lineage. Different customers, different roadmaps, both landing in the mid-2020s humanoid wave."
+  },
+  "2|27": {
+    "short": "Lumi is a chatty social humanoid, while Electric Atlas is built for factory work.",
+    "long": "These two really aren't playing the same game. Lumi is a production-ready companion robot aimed at homes, retail floors, and reception desks, where reading a room matters more than lifting anything heavy. Electric Atlas is still a prototype, continuing Boston Dynamics' long push toward humanoids that can actually earn their keep on a warehouse or factory floor."
+  },
+  "27|4": {
+    "short": "Lumi is built for conversation, while Neo is built to actually help around the house.",
+    "long": "That framing tracks with where each company sits: Lightberry is chasing the companion-robot market that took off after LLMs got good, so Lumi's shorter frame and dense actuation make sense for expressive face-to-face exchanges. Neo comes from 1X's longer bet on general-purpose home labor, closer in lineage to warehouse humanoids scaled down for living rooms. Different buyers, different timelines."
+  },
+  "27|7": {
+    "short": "Lumi is built for chatting with people, while Figure 02 is built for factory work.",
+    "long": "These two really show how split the humanoid market has become. Figure 02 sits in the industrial camp alongside Apptronik and Agility, aimed at warehouse pilots with partners like BMW, while Lumi is chasing the companion-robot niche that Pepper vacated years ago. Different buyers, different room in the house, different bet on where humanoids actually land first."
+  },
+  "27|8": {
+    "short": "Lumi is built for conversation, while Phoenix is a general-purpose worker robot.",
+    "long": "Lumi lands in the emerging companion-robot space, a smaller, lighter machine tuned for households and public-facing roles where reading a room matters more than lifting things. Phoenix comes out of Sanctuary AI's longer push toward labor automation, closer in intent to Figure or Agility's warehouse-bound builds. Different buyers, different problems — one wants presence, the other wants hands."
+  },
+  "10|27": {
+    "short": "Lumi chats and reads the room, while Apollo hauls boxes on the factory floor.",
+    "long": "These two really show how split the humanoid space has gotten. Lumi sits in the companion and hospitality lane, closer to consumer robotics, where reading a room matters more than payload. Apollo comes from the industrial side, aimed at logistics buyers who want a bipedal worker that fits existing warehouse flows without retooling."
+  },
+  "11|27": {
+    "short": "Lumi is built for conversation, while the G1 is tuned for mobility and research.",
+    "long": "That gap in degrees of freedom tells the story: Lumi's extra articulation goes into expressive upper-body movement for face-to-face interaction, which fits its role in retail, hospitality, and homes. The G1 comes from Unitree's quadruped lineage, so it's really a locomotion platform aimed at labs and developers who want an affordable base to build on."
+  },
+  "12|27": {
+    "short": "Lumi is built for chatty companionship, while the H1 is a fast industrial workhorse.",
+    "long": "These two really aren't competing for the same buyer. Lightberry's Lumi sits in the emerging companion-bot space alongside things like Moxie, aimed at homes, classrooms, and reception desks where read-the-room social intelligence matters more than raw mobility. Unitree took the opposite path with H1, extending their quadruped locomotion expertise into a bipedal platform for warehouses and research labs that need a fast, capable body to build on."
+  },
+  "15|27": {
+    "short": "Lumi is built to chat and read the room, while the S1 is all hands—literally cooking and pouring.",
+    "long": "These two really represent different branches of the humanoid tree right now. Lumi sits in the companion and reception space, closer in spirit to social robots like Pepper but with modern language models doing the heavy lifting, while Astribot's S1 comes out of the manipulation research wave chasing household and service tasks. One is aimed at homes, lobbies, and retail floors; the other is still proving what a pair of fast, precise arms can actually do."
+  },
+  "17|27": {
+    "short": "Lumi is built for chatting with people, while Tiangong is all about full-body motion.",
+    "long": "That split tells you a lot about where each project comes from. Lumi is Lightberry's play for homes and retail floors, where reading a face matters more than clearing an obstacle, while Tiangong sits inside China's state-backed push for a general-purpose research platform other labs can build on. Different customers, different decade of robotics."
+  },
+  "18|27": {
+    "short": "Lumi is a chatty social humanoid, while Menteebot is built to actually haul stuff around.",
+    "long": "These two are chasing different futures entirely. Lumi sits in the companion-robot lane alongside things like Moxie or early Jibo, sized small on purpose so it reads as approachable rather than industrial, and it's already shipping. Menteebot is playing the Figure and 1X game, betting a single foundation model can handle real labor, though it's still prototype-stage and aimed at logistics buyers, not living rooms."
+  },
+  "27|5": {
+    "short": "Lumi is built for chatty companionship, while Digit is out hauling totes in warehouses.",
+    "long": "These two really live in different worlds. Lumi is Lightberry's bet on the emerging home companion market, smaller and lighter so it can share a living room, while Digit comes from Agility's years of bipedal research aimed squarely at replacing repetitive warehouse tasks. One is meant for families and retail spaces; the other answers to a shift supervisor."
+  },
+  "27|9": {
+    "short": "Lumi is built for chatty eye-contact conversations, while Walker X is a heavier industrial humanoid made for rough terrain.",
+    "long": "The five-year gap really shows here: Walker X came out of Ubtech's push into service and light industrial work, prioritizing payload and stability over any real social layer, so you see it in showrooms, expos, and research labs. Lumi arrives in a different market entirely, aimed at homes and hospitality where reading a room matters more than lifting a box. Different buyers, different lineages, both humanoid in name only."
+  },
+  "13|27": {
+    "short": "Lumi is built for conversation, while the GR-1 is made for rehab research.",
+    "long": "These two are aiming at completely different corners of the humanoid market. Lumi is a smaller, lighter companion robot arriving in the current wave of consumer-facing social bots, tuned for homes and lobbies where interaction matters more than payload. The GR-1 came out of Fourier's exoskeleton lineage, so it's really a lab and clinic platform for researchers building assistive or physical-therapy applications."
+  },
+  "19|27": {
+    "short": "Lumi is a chatty social humanoid, while Eve rolls around handling security gigs.",
+    "long": "These two are aimed at completely different customers. Lumi is part of the newer wave of expressive home and hospitality bots leaning hard into conversational AI, with a smaller frame and higher joint count for nuanced gestures. Eve comes from 1X's earlier commercial line, built taller and heavier for patrol shifts and light industrial work before the company pivoted toward the bipedal Neo."
+  },
+  "20|27": {
+    "short": "Lumi is a compact chatty companion, while Ameca is a bigger expressive showpiece.",
+    "long": "The gap here is really about intent. Lumi is Lightberry's bet on approachable home-scale companionship, sized and priced to actually live with someone, whereas Ameca comes out of Engineered Arts' lineage of research and exhibition platforms — the kind of machine you meet at a museum or a lab, built to study human-robot expression rather than share your kitchen."
+  },
+  "23|27": {
+    "short": "Lumi chats with you at eye level, while Armar-6 hauls tools around a factory.",
+    "long": "These two really aren't chasing the same buyer. Lumi is a consumer-facing companion coming out of the current wave of LLM-driven social robots, sized and weighted to feel approachable in a home. Armar-6 predates that shift by nearly a decade, built at KIT as a research platform for human-robot collaboration in heavy industrial settings like maintenance bays."
+  },
+  "24|27": {
+    "short": "Lumi is built for chatty social moments, while Talos is a torque-controlled industrial workhorse.",
+    "long": "These two really live in different worlds. Lumi is part of the recent wave of companion humanoids aimed at homes, receptions, and retail, where light weight and expressive interaction matter more than payload. Talos comes from PAL's research lineage, sold mostly to labs and industrial teams who need a full-size platform for manipulation and locomotion work."
+  },
+  "27|legend-2": {
+    "short": "Lumi actually walks and tracks a conversation, while Sophia is mostly a talking bust.",
+    "long": "Sophia arrived a decade earlier as a research and PR platform, essentially a very expressive head-and-torso built to explore whether people would emotionally engage with a machine. Lumi comes from a different moment, when full-body mobility and on-device conversational AI became viable for consumer-facing robots. If you want a talking display piece with cultural weight, Sophia; if you want something that follows you into the kitchen, Lumi."
+  },
+  "21|27": {
+    "short": "Lumi actually tracks and remembers a conversation, while Pepper mostly just reacted.",
+    "long": "That gap comes down to twelve years of language models catching up to the ambition. Pepper launched into malls and banks as a friendly greeter, and its charm was mostly scripted reactions and mood lighting, since real dialogue wasn't there yet. Lumi is aimed at the same hospitality and retail spaces but assumes the conversation itself is the product, which is why the sensor count and joint budget both jumped."
+  },
+  "26|27": {
+    "short": "Lumi chats and reads the room, while Hydraulic Atlas was built to backflip.",
+    "long": "These two really show how far the field has stretched in a decade. Hydraulic Atlas came out of the DARPA Robotics Challenge era, a heavyweight research platform meant to prove humanoids could handle disaster zones. Lumi lands in a totally different market: lighter, quieter hardware aimed at homes and lobbies where the job is holding a conversation, not clearing rubble."
+  },
+  "25|27": {
+    "short": "Lumi is a chatty social humanoid, while Roboy uses tendons to mimic human muscles.",
+    "long": "These two really live in different worlds. Lumi is a 2026 consumer-facing product aimed at homes and public spaces, riding the current wave of LLM-powered companion robots, while Roboy came out of a University of Zurich lab back in 2013 as a research platform for studying how tendon-driven actuation compares to human anatomy. One is built to talk to you, the other was built for engineers and biomechanics researchers to poke at."
+  },
+  "27|legend-1": {
+    "short": "Lumi is built for conversation, while ASIMO was Honda's walking-first pioneer.",
+    "long": "The gap here is really about what each era thought a humanoid should prove. ASIMO came from a two-decade Honda research push focused on locomotion and mechanical refinement, aimed at labs and demos, while Lumi arrives in the LLM era and targets homes and lobbies where talking to people is the whole point."
+  },
   "14|3": {
     "short": "Memo rolls around your home on wheels, using two arms to help with chores.\nOli walks on legs, stands tall at 165 cm, and runs smart AI software.",
     "long": "Memo and Oli represent two different bets on where home and service robotics are heading in 2025. Sunday's wheeled approach keeps things simpler and cheaper for real apartments, while LimX is pushing a full bipedal platform aimed at developers and businesses who want something closer to a research-ready humanoid. One's chasing practical chores now, the other's building a base for whatever comes next."
@@ -6,6 +118,14 @@
   "16|3": {
     "short": "Memo rolls around your home on wheels, helping with chores using two arms.\nK2 stands tall like an adult and is built to work in factories.",
     "long": "These two represent the 2025 split in humanoid robotics: Sunday's Memo is part of the new wave of consumer-focused home helpers, where a wheeled base keeps things safe and affordable for families. Kepler's K2 is aimed at industrial buyers chasing a cheaper alternative to Figure or Tesla's Optimus, with full bipedal locomotion built for warehouse shifts. Same year, totally different customers."
+  },
+  "28|3": {
+    "short": "Memo tackles housework on wheels, while Domo is a pint-sized hackable humanoid.",
+    "long": "Both landed in 2025 but they're aiming at completely different rooms in the house. Memo is Sunday's swing at the domestic assistant market, betting that a wheeled base and two capable arms beat legs for actual chore work, while Domo follows the Poppy and Reachy lineage of open research platforms priced for solo developers rather than labs."
+  },
+  "29|3": {
+    "short": "Memo tackles laundry and dishes at home, while Domo Plus is built for lab research.",
+    "long": "Memo represents Sunday Robotics' bet that domestic help is finally viable, leaning on a wheeled base to keep things stable and affordable for eventual homes. Domo Plus, on the other hand, is Rotaku's answer for universities and labs wanting a bigger platform to push manipulation research further. Different buyers, different problems — but both point to where 2025 humanoids are actually landing."
   },
   "1|3": {
     "short": "Memo rolls around on wheels to help with chores at home.\nOptimus Gen 2 walks fast and has hands good enough to grab small things.",
@@ -103,6 +223,14 @@
     "short": "Oli is lighter and cheaper, built to help out in offices or labs.\nK2 is bigger and tougher, designed to handle heavy factory work.",
     "long": "Both landed in 2025, but they're chasing different corners of the humanoid market: Oli leans into the research and light-service crowd with LimX's COSA software stack, making it a natural fit for universities and startups prototyping behaviors. K2 is Kepler's bid for industrial deployment, with the payload capacity and frame to actually move things around a warehouse floor. One's a platform you build on, the other's a worker you put on a shift."
   },
+  "14|28": {
+    "short": "Oli is a full-size service humanoid, while Domo is a pint-sized dev platform built for tinkerers.",
+    "long": "Oli sits in the same emerging category as Unitree's G1 or Fourier's GR series — full-size humanoids priced to actually reach labs and integrators rather than just demo reels. Domo takes the opposite route, shrinking things down for solo developers who want a real SDK without a five-figure commitment. Different buyers, but both signal 2025's push to make humanoids something you can just order."
+  },
+  "14|29": {
+    "short": "Oli aims for affordable service work, while Domo Plus is built purely for motion research.",
+    "long": "Oli reflects LimX's push to get full-size humanoids into labs and light service roles without the usual six-figure barrier, leaning on their COSA software stack to attract developers. Domo Plus takes a narrower path, giving robotics researchers a beefier version of Rotaku's smaller Domo platform for pure locomotion and manipulation work. Different buyers, different intent — one wants deployment, the other wants iteration."
+  },
   "1|14": {
     "short": "Oli is built to actually work in real places people can afford to buy it.\nOptimus Gen 2 is Tesla's practice robot, still being tested before real jobs.",
     "long": "The gap here is really about market timing and intent. LimX is a Shenzhen startup leaning into the research and light-service market that Unitree opened up, shipping units now to labs and integrators who want a working platform with an open agentic stack. Optimus is a longer bet aimed at Tesla's own factories first, with consumer sales still years out."
@@ -195,6 +323,14 @@
     "short": "Oli is a newer, cheaper robot built to actually work real jobs today.\nASIMO was Honda's famous walking experiment that taught the world robots could move like us.",
     "long": "The gap here is really about intent and era: ASIMO was a 2000s research showcase from Honda meant to prove bipedal locomotion was even possible, while Oli arrives in a market where that's settled and the question is deployment cost. LimX is targeting labs, integrators, and service operators who need a working platform now, not a corporate moonshot. That shift — from prestige project to commodity tool — is basically the story of humanoids over the past decade."
   },
+  "16|28": {
+    "short": "K2 is a full-size factory workhorse, while Domo is a desktop hacker's humanoid.",
+    "long": "Kepler's K2 slots into the same 2025 wave as Figure and Agility, chasing warehouse contracts where a full-size adult-scale frame actually matters for reaching shelves and moving totes. Domo comes from the opposite direction, following the Poppy and Reachy lineage of tabletop platforms built so a solo developer or lab can actually own the hardware and poke at the stack. Different buyers, different budgets, and honestly different definitions of what a humanoid is for right now."
+  },
+  "16|29": {
+    "short": "K2 is built to grind in warehouses, while Domo Plus is a lab-bound motion nerd.",
+    "long": "Kepler's K2 lands in the current wave of Chinese humanoids chasing warehouse and assembly contracts, prioritizing cost-per-unit so integrators can actually deploy fleets. Domo Plus comes from a different lineage entirely, sized up from Rotaku's smaller research platform for labs that need more reach and joint torque without jumping to a full-scale humanoid. One's a workhorse for operations teams, the other's a testbed for people writing papers."
+  },
   "1|16": {
     "short": "Kepler's K2 packs 52 moving joints, built tough for factory work.\nTesla's Optimus Gen 2 is lighter and moves faster on its feet.",
     "long": "The split here is really about who each company is chasing. Kepler is going after industrial buyers who want a workhorse on the floor sooner rather than later, leaning on China's manufacturing supply chain to keep costs down. Tesla's playing a longer game, refining dexterity and movement quality with an eye toward eventually scaling beyond the factory."
@@ -286,6 +422,194 @@
   "16|legend-1": {
     "short": "Kepler's K2 is a newer, taller robot built to actually work in factories.\nASIMO was Honda's famous walking robot, retired after 20 years of research.",
     "long": "The gap here is really about intent: ASIMO was a research platform meant to prove bipedal locomotion was even possible, which is why Honda poured two decades into it without ever selling one. K2 shows up 25 years later in a market that's already past that question, aimed at warehouse operators who need affordable labor, not lab demos. Different eras, different audiences, same lineage of trying to make humanoids useful."
+  },
+  "28|29": {
+    "short": "Domo is the affordable desktop-sized dev platform, while Domo Plus scales up for heavier motion research.",
+    "long": "Rotaku's split here mirrors what Unitree and others figured out a few years back: hobbyists and university labs want something they can actually buy and hack on, while serious locomotion and manipulation work needs mass and reach the small frame just can't deliver. Domo fits on a workbench and pairs with the SDK for solo devs; Domo Plus is aimed at teams pushing bimanual tasks or full-body dynamics where the extra 15 kg and taller reach start to matter."
+  },
+  "1|28": {
+    "short": "Domo is a hackable desktop humanoid for devs, while Optimus is Tesla's full-size prototype.",
+    "long": "These two are aimed at completely different audiences. Domo fits into the growing wave of accessible research platforms — think LeRobot or Unitree's smaller kits — where the goal is getting real hardware into the hands of individual devs and university labs. Optimus is Tesla's long-term bet on general-purpose labor at human scale, still pre-production and not something you'll be tinkering with at home."
+  },
+  "2|28": {
+    "short": "Domo is a hackable desktop humanoid for tinkerers, while Atlas is a factory-bound giant.",
+    "long": "Domo lands in the same wave of accessible humanoids as Unitree's G1, aimed at university labs and independent developers who want something they can actually program and modify without a six-figure grant. Atlas comes from a completely different lineage — Boston Dynamics spent over a decade on the hydraulic version before going electric, and the 2024 platform is being tuned for Hyundai's manufacturing lines. Different eras of the field, really: one democratizing research, the other chasing warehouse contracts."
+  },
+  "28|4": {
+    "short": "Domo is a hackable desktop-sized research bot, while Neo is a full-size home helper.",
+    "long": "Think of Domo as the spiritual successor to platforms like Nao or Pepper, aimed at university labs and indie developers who want to actually own their hardware and write code against it. Neo sits in a different category entirely — 1X is chasing the same household-assistant vision as Figure and Tesla Optimus, so it's built around adult-scale reach and safe contact with people. Different buyers, different timelines, barely overlapping goals."
+  },
+  "28|7": {
+    "short": "Domo is a hackable desktop humanoid for devs, while Figure 02 is a full-size worker.",
+    "long": "Think of Domo as the spiritual successor to platforms like Nao or Poppy, aimed at university labs and hobbyist devs who want to actually own the hardware and poke at the stack. Figure 02 sits in a completely different lane, chasing the same warehouse and factory contracts as Tesla's Optimus and Agility's Digit. Different eras, different buyers, barely overlapping use cases."
+  },
+  "28|8": {
+    "short": "Domo is a hacker-friendly desktop humanoid with an SDK, while Phoenix is a full-size worker.",
+    "long": "These two really represent opposite ends of the humanoid market right now. Domo continues the tradition of accessible research platforms like Poppy or Nao, aimed at university labs and indie developers who want to actually write code and tinker, while Phoenix targets warehouse and industrial contracts where Sanctuary's Carbon AI does the heavy lifting. Different buyers, different budgets, different problems being solved."
+  },
+  "10|28": {
+    "short": "Domo is a hackable desktop humanoid for tinkerers, while Apollo hauls boxes.",
+    "long": "Domo fits into the wave of accessible research platforms following the Unitree and Booster playbook — small enough to sit on your workbench, cheap enough that a grad student or indie roboticist can actually own one. Apollo is playing a completely different game, competing with Figure and Tesla for warehouse contracts where uptime and payload matter more than SDK access. Different eras of the same field, really: one's about lowering the barrier to entry, the other's about proving humanoids can earn their keep on a factory floor."
+  },
+  "11|28": {
+    "short": "Domo is a desk-sized dev platform with an open SDK, while G1 is a full-size mover.",
+    "long": "Domo lands in the emerging tier of hobbyist-accessible humanoids, targeting solo developers and small labs who want to actually own the hardware and write code against it. G1 comes from Unitree's quadruped heritage, so it's built around locomotion research and pilot deployments at universities or startups. Different buyers, different budgets, same year-ish window."
+  },
+  "12|28": {
+    "short": "Domo is a desk-sized hackable humanoid for devs, while H1 is a full-size industrial sprinter.",
+    "long": "The gap here is really about audience and price bracket. Domo lands in the same accessible-research niche that Poppy and Reachy opened up, aimed at university labs, indie devs, and hobbyists who want to actually own the hardware. H1 sits in Unitree's push toward warehouse and logistics work, following the lineage of their quadrupeds into bipedal territory."
+  },
+  "15|28": {
+    "short": "Domo is a tabletop dev platform you can actually buy, while the S1 is a full-size dexterous prototype built to cook and pour drinks.",
+    "long": "These two really aren't chasing the same customer. Domo fits into the wave of accessible research platforms aimed at university labs and solo developers who want to prototype behaviors without a six-figure purchase order, while Astribot's S1 sits in the frontier manipulation crowd, showing what's possible before commercial deployment. One is a tool you learn on; the other is a bet on where general-purpose home robots are heading."
+  },
+  "17|28": {
+    "short": "Domo is a hackable desktop humanoid for devs, while Tiangong is China's full-size moonshot.",
+    "long": "Domo lands in the same lineage as tabletop research platforms like Poppy or NAO, aimed at university labs and indie developers who want something they can actually modify. Tiangong sits at the opposite end: a state-backed reference platform meant to push locomotion research forward and signal China's position in the humanoid race. Different buyers, different decades of ambition, both useful."
+  },
+  "18|28": {
+    "short": "Domo is a pint-sized dev platform you can actually buy, while Menteebot is a full-size AI prototype.",
+    "long": "Think of Domo as the spiritual successor to lab bots like Poppy or the Nao — something a grad student or indie developer can put on a desk and actually hack on without institutional funding. Menteebot sits in the opposite camp, chasing the Figure and 1X crowd with a full-height platform betting everything on end-to-end learning. Different eras of thinking, really: one serves the tinkerer now, the other is pitching a labor-market future that isn't quite here yet."
+  },
+  "28|5": {
+    "short": "Domo is a hackable desktop humanoid for tinkerers, while Digit hauls totes in warehouses.",
+    "long": "The gap here is really about who's writing the check. Domo continues the tradition of accessible research platforms like Poppy or Nao, aimed at university labs, indie roboticists, and startups that need something programmable without a six-figure PO. Digit descends from Cassie and years of bipedal locomotion research at Oregon State, built for a customer that measures success in tote moves per hour."
+  },
+  "28|9": {
+    "short": "Domo is a pint-sized hackable dev bot, while Walker X is built for real industrial work.",
+    "long": "Domo lands in the same lineage as hobbyist platforms like Poppy or NAO, aimed at students and indie devs who want a working humanoid without institutional budgets. Walker X sits in a different bracket entirely, competing with Ubtech's own service deployments and rivals like Unitree's H1 for factory and showroom contracts. The four-year gap also shows: Domo reflects the recent push to make humanoids accessible, not just capable."
+  },
+  "13|28": {
+    "short": "Domo is a desk-sized hackable humanoid for devs, while GR-1 is a full-size research rig.",
+    "long": "The gap here is really about who's buying and why. Domo fits the wave of accessible dev kits arriving in 2025, aimed at solo researchers, students, and small labs who want to actually own the hardware and ship code against it. GR-1 came out of Fourier's exoskeleton and rehab background, so it's built for institutions running clinical trials or full-body manipulation work where scale and payload matter."
+  },
+  "19|28": {
+    "short": "Domo is a pint-sized dev platform you can actually buy, while Eve is a full-size wheeled worker for commercial gigs.",
+    "long": "The gap here is really about who's buying and why. Domo sits in the hobbyist-meets-university lane that Rotaku is carving out in 2025, following the same accessible-robotics playbook that made Unitree and Poppy popular with tinkerers. Eve, by contrast, is 1X's pre-Neo commercial platform, already deployed for night patrols and warehouse tasks where a wheeled base beats legs on cost and reliability."
+  },
+  "20|28": {
+    "short": "Domo is a hackable desktop humanoid for devs, while Ameca is a full-size showstopper.",
+    "long": "These two aren't really competing so much as bookending what a humanoid can be right now. Domo comes out of the recent wave making robotics accessible to solo developers and small labs, while Ameca has spent years as the go-to platform for museums, expos, and face-to-face interaction studies where expressive upper-body movement matters more than portability."
+  },
+  "23|28": {
+    "short": "Domo is a hackable desktop humanoid for devs, while Armar-6 is a full-size factory helper.",
+    "long": "These two really represent opposite ends of the humanoid spectrum. Armar-6 came out of KIT's long ARMAR research lineage, built to help maintenance workers in real industrial settings — think big, expensive, lab-backed. Domo is the newer wave: cheap enough for solo devs, small enough for a desk, and open enough to actually tinker with."
+  },
+  "24|28": {
+    "short": "Domo is a desk-sized hackable humanoid, while Talos is a full industrial giant.",
+    "long": "These two really sit at opposite ends of the humanoid spectrum. Domo is Rotaku's bet that indie developers and university labs want something they can actually buy and tinker with, while Talos has been PAL's answer for heavy manipulation research and factory-floor testing since the late 2010s. Different budgets, different users, same category."
+  },
+  "28|legend-2": {
+    "short": "Domo is a hackable dev humanoid, while Sophia is built to emote and schmooze.",
+    "long": "Domo lands in the recent wave of affordable research platforms following the Unitree and Booster crowd, aimed at university labs and indie devs who actually want to write motion code. Sophia comes from an earlier era of PR-driven social robotics, closer to animatronics lineage than open research. Different audiences entirely: one ships to your workshop, the other shows up at conferences."
+  },
+  "21|28": {
+    "short": "Domo is a hackable dev platform with an SDK, while Pepper was built to greet customers.",
+    "long": "These two really represent different eras and audiences. Pepper came out of SoftBank's push to put social robots in retail and hospitality, tuned for scripted interactions with the public, while Domo lands a decade later aimed squarely at solo developers and labs who want to actually write code against the hardware without needing an enterprise contract."
+  },
+  "26|28": {
+    "short": "Domo is an affordable desktop dev bot, while Atlas was a hulking hydraulic showoff.",
+    "long": "These two really represent opposite ends of the humanoid world. Atlas was a DARPA-era research platform built to push the limits of dynamic motion, aimed at institutions with serious budgets and lab space. Domo comes from the current wave of accessible humanoids, targeting solo developers and small teams who want to actually write code on real hardware."
+  },
+  "25|28": {
+    "short": "Domo is an affordable dev-friendly humanoid, while Roboy mimics human muscles.",
+    "long": "These two robots come from different worlds even if they share the humanoid label. Roboy was a university-driven biomechanics project from the early 2010s, built to explore how tendon actuation could replicate human movement — closer to a research testbed than a product. Domo shows up over a decade later with a very different goal: give individual developers and small labs a rigid-actuator platform they can actually buy, code against, and iterate on."
+  },
+  "28|legend-1": {
+    "short": "Domo is a hackable dev humanoid you can actually buy, while ASIMO was Honda's lab icon.",
+    "long": "Domo lands in the current wave of accessible research platforms, aimed at university labs, indie roboticists, and startups who want to prototype behaviors without a seven-figure budget. ASIMO came from a very different era, when only a corporate giant like Honda could justify a decades-long moonshot on bipedal locomotion. One made humanoids visible to the public; the other is making them workable for the rest of us."
+  },
+  "1|29": {
+    "short": "Domo Plus is a compact research platform, while Optimus Gen 2 aims for human-scale work.",
+    "long": "That gap in intent shapes everything else about them. Rotaku's Domo line has always catered to universities and robotics labs wanting a reliable platform to test locomotion and manipulation code, whereas Tesla is chasing a general-purpose worker meant to eventually handle factory tasks. One's a tool for researchers, the other's a bet on labor at scale."
+  },
+  "2|29": {
+    "short": "Domo Plus is a compact research platform, while Atlas is built for factory work.",
+    "long": "The gap here is really about who's buying and why. Rotaku's Domo Plus sits in the university and startup lab space, where 130 cm is easy to work around and 25 DOF is plenty for locomotion and manipulation studies without breaking a grant budget. Atlas, on the other hand, is Boston Dynamics' pivot away from hydraulics toward warehouse and factory deployment, which is why it's built human-scale and packed with joints it'll actually need on the floor."
+  },
+  "29|4": {
+    "short": "Domo Plus is a beefy lab platform for motion research, while Neo's a lighter biped built for the home.",
+    "long": "Think of Domo Plus as the natural next step in Rotaku's research lineage, aimed at university labs and companies pushing manipulation and whole-body control past what the original Domo could handle. Neo comes from a different world entirely — 1X is chasing the consumer robot dream, so lightness and softness matter more than raw joint torque. Different buyers, different bets on where humanoids actually go next."
+  },
+  "29|7": {
+    "short": "Domo Plus is a lab-scale research platform, while Figure 02 is a full-size humanoid.",
+    "long": "Rotaku's Domo line has always leaned academic, giving labs a reliable platform to prototype gaits and control algorithms without the overhead of a full-size humanoid, and the Plus just gives researchers more headroom to push those experiments. Figure, meanwhile, is aiming straight at commercial deployment, with the 02 tuned for warehouse and factory tasks where end-to-end learning and grasping actually earn their keep. Different eras of ambition, really — one serves the lab bench, the other is angling for a payroll slot."
+  },
+  "29|8": {
+    "short": "Domo Plus is built for motion research, while Phoenix aims to actually do jobs.",
+    "long": "Domo Plus sits in the academic lineage, a beefed-up successor meant for labs pushing whole-body control and manipulation studies without wrestling a full-size adult humanoid. Phoenix is Sanctuary's bet on commercial labor, tied to their Carbon reasoning stack and sized to slot into real warehouse and retail workflows. Different customers, different decades of ambition really."
+  },
+  "10|29": {
+    "short": "Domo Plus is a compact research platform, while Apollo is built for factory work.",
+    "long": "The gap here is really about who's buying and why. Rotaku's Domo line has always catered to university labs and motion researchers who need an expressive, articulated platform they can actually afford to iterate on, whereas Apptronik came out of Nasa-adjacent work and is chasing the same warehouse contracts as Figure and Agility. Different eras of the humanoid boom, different endgames."
+  },
+  "11|29": {
+    "short": "Domo Plus is built purely for motion research, while the G1 chases affordable all-purpose use.",
+    "long": "The Domo Plus lands in a niche Rotaku has been carving out for lab-grade platforms, with those extra joints giving researchers finer control for gait and manipulation studies. Unitree's G1 comes from a very different lineage — it's an evolution of their quadruped work, aimed at teams who want a humanoid on the floor quickly without a huge budget. So one's a research instrument, the other's a starting point for building products."
+  },
+  "12|29": {
+    "short": "Domo Plus packs more joints for dexterity research, while H1 trades DOF for raw speed.",
+    "long": "Rotaku's Domo Plus sits in that sweet spot for university labs and startups wanting a mid-size platform to prototype whole-body manipulation without jumping straight to a 180cm machine. Unitree's H1, meanwhile, targets warehouse and industrial buyers who need something that can actually keep pace with humans on a factory floor. Different customers, different priorities."
+  },
+  "15|29": {
+    "short": "Domo Plus is built for motion research, while the S1 is chasing real chores.",
+    "long": "Rotaku's Domo line has always been a lab tool, and the Plus just gives researchers more reach and torque to push locomotion studies further without changing that core purpose. Astribot went the other direction with the S1, targeting household manipulation with the extra DOF and payload you need to actually handle kitchen tasks. Different eras of the same humanoid wave, aimed at very different buyers."
+  },
+  "17|29": {
+    "short": "Domo Plus is built for lab motion research, while Tiangong is China's flagship humanoid.",
+    "long": "The gap here is really about scope and backing. Rotaku's Domo Plus is a scaled-up research platform aimed at university labs and small teams who want a capable body for locomotion work without the overhead of a full-size humanoid. Tiangong sits in a different category entirely — state-supported, adult-sized, and pitched as a shared foundation for China's broader humanoid ecosystem."
+  },
+  "18|29": {
+    "short": "Domo Plus is a beefed-up research platform, while Menteebot is a full-size humanoid run by one LLM.",
+    "long": "Rotaku's Domo line has always been aimed at labs wanting a reliable body to test controllers and manipulation on, and the Plus just gives researchers more reach and payload to work with. Menteebot comes from a totally different angle — it's built ground-up around a foundation model, targeting real deployment in warehouses and homes. One's a tool for the people building the future, the other's trying to be it."
+  },
+  "29|5": {
+    "short": "Domo Plus is built for lab research, while Digit's already hauling totes at Amazon.",
+    "long": "These two really live in different worlds. Domo Plus is Rotaku's bigger take on their research platform, aimed at university labs and manipulation researchers who need a capable body to run experiments on. Digit, meanwhile, is Agility's commercial bet — a fourth-gen machine designed around warehouse workflows and priced for fleet buyers, not grad students."
+  },
+  "29|9": {
+    "short": "Domo Plus is a lean research platform, while Walker X is built for real work.",
+    "long": "Same height, totally different missions. Rotaku's Domo Plus keeps things light and joint-rich for labs iterating on locomotion and manipulation algorithms, following the tinker-friendly path Domo established. Walker X, four years older and nearly twice the mass, comes from Ubtech's push into commercial service and factory-floor deployments, so the extra DOF and weight are there to handle real payloads and rough ground."
+  },
+  "13|29": {
+    "short": "Domo Plus is a compact research rig, while GR-1 is a full-size humanoid.",
+    "long": "The size gap here reflects different bets on where humanoid research is headed. Rotaku's Domo Plus targets labs iterating on gait and manipulation without the overhead of a full-scale platform, while Fourier's GR-1 leans into its rehabilitation roots, built to physically support and interact with adult patients in clinical settings."
+  },
+  "19|29": {
+    "short": "Domo Plus is a compact research platform, while Eve is a full-size wheeled worker.",
+    "long": "Domo Plus sits in the lab-focused lineage of smaller Rotaku platforms, giving universities and motion researchers a bigger canvas without jumping to full adult scale. Eve comes from 1X's push toward deployable service robots, trading legs for a wheeled base to actually patrol sites and handle commercial tasks today. Different eras, different buyers — one iterates on research hardware, the other is already clocking shifts."
+  },
+  "20|29": {
+    "short": "Domo Plus is built for motion research, while Ameca focuses on lifelike interaction.",
+    "long": "Think of Domo Plus as a lab tool aimed at researchers pushing whole-body dynamics and control, a natural step up from Rotaku's smaller Domo platform. Ameca comes from a different lineage entirely, built by Engineered Arts for expressive faces and social presence at events, museums, and HRI studies. Different buyers, different problems."
+  },
+  "23|29": {
+    "short": "Domo Plus is a nimble research platform, while Armar-6 is built for factory work.",
+    "long": "The gap here is really about who's buying and why. Rotaku's Domo Plus lands in university labs and startups that need an affordable, human-scale testbed for manipulation and locomotion work, continuing a lineage of accessible research humanoids. Armar-6 comes from KIT's decade-plus Armar program, aimed at heavy industrial partners exploring maintenance automation alongside human workers."
+  },
+  "24|29": {
+    "short": "Domo Plus is a lightweight research platform, while Talos is built for industry.",
+    "long": "Think of Domo Plus as the newer, nimbler option for labs that want to iterate on motion algorithms without wrangling a 95 kg machine, which is why Rotaku scaled the original Domo rather than chasing full-size humanoid specs. Talos comes from a different lineage entirely — PAL has been shipping it since 2017 to teams doing heavy manipulation and industrial R&D. Different budgets, different rooms, different goals."
+  },
+  "29|legend-2": {
+    "short": "Domo Plus is built for motion research, while Sophia is all about lifelike social presence.",
+    "long": "Domo Plus sits firmly in the lab-tool category, a scaled-up successor aimed at researchers pushing whole-body dynamics and manipulation work. Sophia comes from a completely different lineage — nearly a decade older, built around Hanson's facial actuation and conversational AI for public engagement and media appearances. One's a platform you buy to run experiments on; the other's a spokesbot."
+  },
+  "21|29": {
+    "short": "Domo Plus is built for hardcore motion research, while Pepper was made to chat.",
+    "long": "Think of Domo Plus as a lab tool for teams pushing whole-body control and dynamic manipulation, which is why Rotaku bulked up the frame and added joints over the standard Domo. Pepper came from a very different moment, SoftBank's mid-2010s bet on social robots for retail floors and reception desks. Different eras, different buyers, and honestly different definitions of what a humanoid is for."
+  },
+  "26|29": {
+    "short": "Domo Plus is a lean electric research platform, while Atlas was a hulking hydraulic bruiser.",
+    "long": "These two really represent different eras of humanoid work. Atlas was DARPA-funded heavy iron from the 2010s, built for disaster-response scenarios and eventually stunt demos that proved what hydraulics could do before Boston Dynamics moved on. Domo Plus is aimed at today's academic and startup labs that want an affordable, serviceable platform for locomotion and manipulation research."
+  },
+  "25|29": {
+    "short": "Domo Plus uses conventional joints for motion research, while Roboy mimics human tendons.",
+    "long": "That difference really shapes who picks them up. Domo Plus is the pragmatic 2025 lab tool for teams pushing whole-body control and manipulation research on hardware that actually holds up, whereas Roboy came out of a much earlier academic push to model human anatomy itself, aimed at biomechanics and prosthetics groups."
+  },
+  "29|legend-1": {
+    "short": "Domo Plus is a lean modern research platform, while ASIMO packed way more DOF.",
+    "long": "Domo Plus arrives in a very different landscape than ASIMO did — labs today want approachable, affordable platforms they can actually modify, not sealed corporate showpieces. ASIMO was Honda's decades-long moonshot, built to prove bipedal locomotion was possible at all. Rotaku's machine assumes that groundwork is done and focuses on giving researchers headroom to build on."
   },
   "1|2": {
     "short": "Optimus is taller and lighter, making it easier to move around naturally.\nAtlas is built tough and heavy, ready to handle rough factory work.",

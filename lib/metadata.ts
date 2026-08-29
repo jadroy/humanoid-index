@@ -35,7 +35,10 @@ export function robotMetadata(bot: Humanoid, baseUrl: string): Metadata {
     bot.weight && `${bot.weight}kg`,
     bot.dof && `${bot.dof} DOF`,
   ].filter(Boolean).join(" \u00b7 ");
-  return socialMetadata(bot.name, description, `${baseUrl}/api/og/${bot.id}`);
+  // A hand-made card in /public beats the generated one; the generator stays
+  // the floor for every robot that has not been given one.
+  const ogImage = bot.ogImageUrl ? `${baseUrl}${bot.ogImageUrl}` : `${baseUrl}/api/og/${bot.id}`;
+  return socialMetadata(bot.name, description, ogImage);
 }
 
 /** Bare URL: the site card. */

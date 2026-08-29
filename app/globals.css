@@ -1294,3 +1294,12 @@ main {
   box-shadow: inset 0 0 0 1px rgba(95, 96, 89, 0.22), 0 1px 3px rgba(0, 0, 0, 0.14);
 }
 .tuner-body .text-\[10px\] { font-size: 11px; }
+/* Horizontal decks (mobile) — snap track with no visible scrollbar. */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Mobile deck — identity swap in the sheet header as cards change. */
+@keyframes deck-swap {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
