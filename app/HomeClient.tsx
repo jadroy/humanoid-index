@@ -401,6 +401,27 @@ const glyphLive = (base: number): React.CSSProperties => ({
 });
 
 
+// On-state for the card's icon toggles (info, details, scene). Save can fill
+// its bookmark; these three have no fillable interior — filling `Info` turns
+// it into a solid disc and swallows the "i" — so "on" has to be carried by
+// something outside the glyph. Three marks, switchable from the Card tuner:
+// "ink" lets the off state recede and the on state sit at full weight, "pill"
+// borrows the rounded ground the rail's active row uses, "dot" hangs a tab-
+// style indicator under the icon.
+type ToggleOnState = "ink" | "pill" | "dot";
+const TOGGLE_OFF_INK = 0.55;
+const TOGGLE_ON_TRANSITION = "opacity 200ms ease, background-color 200ms ease, box-shadow 200ms ease";
+const toggleOnStyle = (mode: ToggleOnState, active: boolean, box: number): React.CSSProperties => {
+  const base: React.CSSProperties = { transition: TOGGLE_ON_TRANSITION };
+  if (mode === "ink") return { ...base, opacity: active ? 1 : TOGGLE_OFF_INK };
+  if (!active) return base;
+  if (mode === "pill") return { ...base, borderRadius: 999, backgroundColor: "rgba(0,0,0,0.06)" };
+  // The dot rides on box-shadow rather than an extra element so every call
+  // site stays a bare <button>; the button's own radius rounds it.
+  return { ...base, borderRadius: 999, boxShadow: `0 ${Math.round(box / 2) + 3}px 0 -${Math.round(box / 2) - 2}px currentColor` };
+};
+
+
 // One glyph column for every row — mark, lanes, actions. It was three
 // different measurements before (a fixed 18 on two of them, intrinsic width on
 // the lanes), which is exactly the kind of drift that puts icons a fraction of
@@ -1745,7 +1766,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // inside the card's bottom edge; "wash" veils the whole image (the compare
   // veil's wash) and lays the rows on it. Either way the column stays shut and
   // the D toggle / details button drive the overlay instead.
-  const [statsOverlay, setStatsOverlay] = useState<"off" | "strip" | "wash">("off");
+  const [statsOverlay, setStatsOverlay] = useState<"off" | "strip" | "wash">("strip");
   const [statsCollapsedRaw, setStatsCollapsed] = useState(false);
   // Strip only: shrink the image from its top edge so the robot stands on the
   // strip instead of disappearing behind it.
@@ -1835,9 +1856,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // state from a swipe, where the cursor is nowhere near the column and the
   // sliding indicator alone is easy to miss.
   // Live rail: the column rests as a dimmed glyph strip and grows continuously
-  // with how near the cursor is, rather than switching between two states. On
-  // by default; the tuner switch drops it back to labels-always-on.
-  const [railLabelsOnHover, setRailLabelsOnHover] = useState(true);
+  // with how near the cursor is, rather than switching between two states. Off
+  // by default — the column rests with its labels always on; the tuner switch
+  // brings the proximity response back.
+  const [railLabelsOnHover, setRailLabelsOnHover] = useState(false);
   // The band the response happens over. Not a hover target: the column sits
   // 24px off the left edge, so waiting for the cursor to land on it means the
   // rail only reacts once you have already committed to the reach — which is
@@ -1855,7 +1877,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // angle, so every menu row sits on the same ray as a name — the column bent
   // onto the wheel's curvature, with the mark on the focused name's ray and
   // the rows wrapped above and below it.
-  const [railShape, setRailShape] = useState<"column" | "ring" | "concentric">("concentric");
+  const [toggleOnMode, setToggleOnMode] = useState<ToggleOnState>("ink");
+  const [railShape, setRailShape] = useState<"column" | "ring" | "concentric">("column");
   const [ringR, setRingR] = useState(84);
   const [ringSweep, setRingSweep] = useState(170);
   // How far inside the names' circle the concentric ring sits.
@@ -3303,8 +3326,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
       if (isDev) {
         if (e.key === "s") { pickArcStyle(ARC_STYLES[(ARC_STYLES.indexOf(arcStyle) + 1) % ARC_STYLES.length]); return; }
-        if (e.key === "t") { setShowTuner((v) => !v); return; }
-        if (e.key in TUNER_HOTKEYS) { setShowTuner(true); setTunerGroup(TUNER_HOTKEYS[e.key]); return; }
+        // preventDefault, or the keystroke that opened the panel lands in the
+        // panel: the shell autofocuses its search field on mount, and focus
+        // moving mid-keydown sends this key's own text insertion to the newly
+        // focused input — so `T` opened the tuner with "t" already typed in.
+        if (e.key === "t") { e.preventDefault(); setShowTuner((v) => !v); return; }
+        if (e.key in TUNER_HOTKEYS) { e.preventDefault(); setShowTuner(true); setTunerGroup(TUNER_HOTKEYS[e.key]); return; }
       }
       const mod = e.metaKey || e.ctrlKey;
       const isJumpStart =
@@ -6489,7 +6516,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             ) : null;
             const infoButton = hasInfo ? (
               <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
-                <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={innerBtnStyle}>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, blurbVisible, cardIconSize) }}>
                   <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                 </button>
               </Tooltip>
@@ -6516,7 +6543,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             const hasMedia = hasThreeD || hasSpin;
             const panelButton = hasPanel ? (
               <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
-                <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={innerBtnStyle}>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, !statsCollapsed, cardIconSize) }}>
                   <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                 </button>
               </Tooltip>
@@ -6566,7 +6593,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             );
             const infoSlot = slot(hasInfo, "info", (
               <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
-                <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={innerBtnStyle} tabIndex={hasInfo ? 0 : -1}>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, blurbVisible, cardIconSize) }} tabIndex={hasInfo ? 0 : -1}>
                   <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                 </button>
               </Tooltip>
@@ -6575,7 +6602,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               <>
                 {slot(hasScene, "scene", (
                   <Tooltip label={sceneEnabled ? "Hide scene" : "Show scene"} shortcut="E">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setSceneInteracted(true); setSceneEnabled((v) => !v); }} aria-pressed={sceneEnabled} aria-label={sceneEnabled ? "Hide scene" : "Show scene"} style={innerBtnStyle} tabIndex={hasScene ? 0 : -1}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setSceneInteracted(true); setSceneEnabled((v) => !v); }} aria-pressed={sceneEnabled} aria-label={sceneEnabled ? "Hide scene" : "Show scene"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, sceneEnabled, cardIconSize) }} tabIndex={hasScene ? 0 : -1}>
                       <svg width={ico.iconBoxPx} height={ico.iconBoxPx} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <path d="M3 18l5-6 4 5 3-4 6 7" />
                         <circle cx="17" cy="6" r="2" />
@@ -7899,7 +7926,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     )}
                     {hasInfo && (
                       <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
-                        <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={innerBtnStyle}>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, blurbVisible, cardIconSize) }}>
                           <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                         </button>
                       </Tooltip>
@@ -7920,7 +7947,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     )}
                     {hasPanel && (
                       <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
-                        <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={innerBtnStyle}>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, !statsCollapsed, cardIconSize) }}>
                           <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                         </button>
                       </Tooltip>
@@ -8694,6 +8721,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             )}
           </div>
           <div data-tuner-group="Card" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
+          <div data-tuner-group="Card" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Toggle on-state</p><div className="flex flex-wrap gap-1.5">{(["ink", "pill", "dot"] as const).map((v) => (<button key={v} onClick={() => setToggleOnMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${toggleOnMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div>
           <div data-tuner-group="Card" className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400">Card Icons</p>
