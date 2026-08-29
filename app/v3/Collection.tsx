@@ -71,6 +71,7 @@ const ASPECT_OPTIONS = ["4 / 5", "1 / 1", "5 / 6", "3 / 4", "2 / 3", "5 / 7", "4
 
 // Selection sentinel for the ghost "+" card — never collides with item ids.
 const SUGGEST_ID = "__suggest__";
+const HINT_KEY = "humanoid-index:v3-detail-hint-seen";
 
 /* ---- entry intros: variants of "cards find their formation" --------------
    FLIP-style: cards render in their final grid slots, each is measured, given
@@ -217,7 +218,9 @@ export default function Collection({ items, config, details, initialSel }: { ite
      card's index fallback (String(28) === Domo's id "28"), teleporting Domo's
      snapshot to the suggest card's slot on every step. */
   const flipRects = useRef<{ arr: { l: number; t: number; w: number }[]; sx: number; sy: number } | null>(null);
+  const dismissHintRef = useRef<(() => void) | null>(null);
   const changeSel = (next: string | null) => {
+    if (next != null) dismissHintRef.current?.();
     const grid = gridRef.current;
     if (grid) {
       flipRects.current = {
@@ -228,6 +231,23 @@ export default function Collection({ items, config, details, initialSel }: { ite
     }
     setSel(next);
   };
+  /* First-visit hint — the "Details" pill is hover-only, which leaves new
+     visitors (and every touch device, where hover never fires) with no sign
+     the panel exists. Pin it open on the first card until they open a panel
+     once, then it's hover-only forever. Starts hidden so SSR and the first
+     client render agree; the effect reveals it a beat later. */
+  const [showHint, setShowHint] = useState(false);
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(HINT_KEY)) setShowHint(true);
+    } catch {}
+  }, []);
+  const dismissHint = () => {
+    setShowHint(false);
+    try { localStorage.setItem(HINT_KEY, "1"); } catch {}
+  };
+  dismissHintRef.current = dismissHint;
+
   const stepSel = (d: number) => {
     if (selIdx < 0) return;
     changeSel(items[(selIdx + d + items.length) % items.length].id);
@@ -513,10 +533,11 @@ export default function Collection({ items, config, details, initialSel }: { ite
             )}
             <div style={{ flex: "1 1 auto", minWidth: 0 }}>
               <div ref={gridRef} className="v3-grid v3-cols v3-deal-pending" style={gridColsStyle}>
-                {items.map((it) => (
+                {items.map((it, i) => (
                   <Card
                     key={it.id}
                     item={it}
+                    hint={showHint && i === 0}
                     trueToSize={trueToSize}
                     refSize={refSize}
                     centered={centered}
@@ -591,7 +612,7 @@ function SuggestCard({ cfg, selected, onOpen }: { cfg: SuggestConfig; selected?:
 
 /* ------------------------------------------------------------------- Card -- */
 
-function Card({ item, trueToSize, refSize, centered, selected, onOpen }: { item: CollectionItem; trueToSize: boolean; refSize: number; centered: boolean; selected?: boolean; onOpen?: () => void }) {
+function Card({ item, trueToSize, refSize, centered, selected, onOpen, hint }: { item: CollectionItem; trueToSize: boolean; refSize: number; centered: boolean; selected?: boolean; onOpen?: () => void; hint?: boolean }) {
   const spin = item.spin;
   const hover = spin ? null : item.hover;
   const scale = trueToSize && item.size ? item.size / refSize : item.imageScale ?? 1;
@@ -644,7 +665,7 @@ function Card({ item, trueToSize, refSize, centered, selected, onOpen }: { item:
             )}
           </>
         )}
-        {onOpen && <span className="v3-detail-hint">Details</span>}
+        {onOpen && <span className={`v3-detail-hint${hint ? " v3-detail-hint--pinned" : ""}`}>Details</span>}
       </div>
 
       <div className="flex items-baseline justify-between" style={{ marginTop: 12, gap: 12 }}>
