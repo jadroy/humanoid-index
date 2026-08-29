@@ -2704,7 +2704,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
     if (shareOgRef) {
       const og = comparing
         ? (leftId && rightId ? `${origin}/api/og/${leftId}?compare=${rightId}` : "")
-        : (leftId ? `${origin}/api/og/${leftId}` : "");
+        : (leftId ? (humanoids[springL.index]?.ogImageUrl ? `${origin}${humanoids[springL.index].ogImageUrl}` : `${origin}/api/og/${leftId}`) : "");
       shareOgRef.current = og;
     }
   }, [springL.index, springR.index, comparing, shareUrlRef, shareOgRef]);
@@ -5533,7 +5533,7 @@ function Browse({ goToIndex, homeNonce = 0, navStyle, onNavStyleChange, switcher
                     short blurbs sit flush, longer blurbs rise above it. */}
                 {isFirst && !comparing && (() => {
                   const desc = getRobotDescription(h);
-                  const fullText = desc.long ?? desc.text;
+                  const fullText = desc.long || desc.text;
                   if (!fullText) return null;
                   return (
                     <div

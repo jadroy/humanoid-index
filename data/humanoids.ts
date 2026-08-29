@@ -34,6 +34,7 @@ export interface Humanoid {
   infoUrl?: string; // Specific product/info page — preferred Visit target when not for sale
   media?: MediaItem[]; // Additional images and videos
   purchaseUrl?: string; // Link to buy/learn more about the robot
+  ogImageUrl?: string; // Custom share/OG card (1200×630, in /public). Overrides the generated /api/og/<id> card.
   sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
   scenePosition?: string; // CSS object-position for cropping the (landscape) scene into portrait tiles — anchors the crop on the robot (default "center")
   tags?: string[]; // Short descriptor chips — facets like use case, drive, vibe, reception (country lives on its own `country` field now)
@@ -219,7 +220,7 @@ const allHumanoids: Humanoid[] = [
     manufacturerUrl: "https://www.norirobotics.com",
     infoUrl: "https://www.norirobotics.com",
     purchaseUrl: "https://www.norirobotics.com/preorder",
-    imageUrl: "/robots/nori-a3.png",
+    imageUrl: "/robots/nori-a3-v3.png",
     year: 2026,
     addedAt: "2026-08-27",
     cost: "$1,688",
@@ -239,6 +240,31 @@ const allHumanoids: Humanoid[] = [
       compute: "Raspberry Pi 5",
       software: "Nori Lab",
     },
+  },
+  {
+    id: "27",
+    name: "Lumi",
+    manufacturer: "Lightberry",
+    country: "USA",
+    useCase: "Social",
+    drive: "Electric",
+    availability: "consumer",
+    logoUrl: "/robots/Lightberry.png",
+    manufacturerUrl: "https://lightberry.com",
+    infoUrl: "https://lightberry.com/lumi",
+    purchaseUrl: "https://lightberry.com/lumi",
+    imageUrl: "/robots/lumi.png",
+    ogImageUrl: "/og/lumi-4.png",
+    year: 2026,
+    addedAt: "2026-08-26",
+    cost: "$39.9K",
+    status: "In Production",
+    height: 137,
+    weight: 37,
+    dof: 34,
+    maxSpeed: 2.0,
+    description: "A social humanoid built around conversation. Lumi sees who it is talking to, holds a thread, and answers with a personality of its own. Shipping 2026.",
+    tags: ["Conversational AI", "Expressive", "YC F25", "Shipping 2026"],
   },
   // 2025
   {
