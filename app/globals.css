@@ -1192,3 +1192,13 @@ main {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Horizontal decks (mobile) — snap track with no visible scrollbar. */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Mobile deck — identity swap in the sheet header as cards change. */
+@keyframes deck-swap {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
