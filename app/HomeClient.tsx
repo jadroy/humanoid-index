@@ -1733,6 +1733,14 @@ const VEIL_WASH = "rgba(255,255,255,0.66)";
 // Stats strip over the card: the vertical padding around its rows. The shelf's
 // height is measured, not derived, so there is no per-row constant here.
 const STRIP_PAD_TOP = 14, STRIP_PAD_BOTTOM = 16;
+const DRAWER_FADE = `linear-gradient(to bottom, transparent 0, #000 ${STRIP_PAD_TOP}px, #000 calc(100% - ${STRIP_PAD_BOTTOM}px), transparent 100%)`;
+// The drawer gets its own, shorter clock. The card's 0.5s is tuned for things
+// that happen once on arrival; this one is a control someone will hit again and
+// again, and at half a second a slide that long starts reading as a flourish.
+// Slide only, no cross-fade: the card clips its overflow, so a drawer parked
+// below the edge is already invisible and fading it too just adds mush.
+const DRAWER_DUR = "200ms";
+const DRAWER_EASE = "cubic-bezier(0.2, 0, 0, 1)";
 
 // How the blurb and the stats strip share the card's bottom edge.
 //   drawer — they stop being two things: one pull-up panel holds the blurb and
@@ -1750,21 +1758,37 @@ type BlurbDock = "drawer" | "shelf" | "chip" | "swap" | "free";
 // an unknown number of lines — the arithmetic version could only ever count
 // fixed-height stat rows. Writes a CSS var on the card instead of lifting the
 // height into state: this runs on every resize and must not re-render the deck.
-function ShelfMeasure({ cardH, active, children, ...rest }: { cardH: number; active: boolean } & React.HTMLAttributes<HTMLDivElement>) {
+function ShelfMeasure({ cardH, active, open, children, ...rest }: { cardH: number; active: boolean; open: boolean } & React.HTMLAttributes<HTMLDivElement>) {
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = ref.current;
     const card = el?.parentElement;
     if (!el || !card) return;
+    // `--shelf-h` also goes on the compare wrapper. The card sets its own
+    // z-index, so it is a stacking context and nothing inside it can paint
+    // over the compare veil, which lives outside it — the veil has to shorten
+    // itself instead, and it can only read a var it inherits. `closest` rather
+    // than a fixed number of hops: the card sits a couple of wrappers deep and
+    // that nesting is not this component's business.
+    const targets = [card, card.closest(".compare-rcard")].filter(Boolean) as HTMLElement[];
     const write = () => {
-      const k = active && cardH ? Math.max(0.4, 1 - el.offsetHeight / cardH) : 1;
+      const h = open ? el.offsetHeight : 0;
+      const k = active && cardH ? Math.max(0.4, 1 - h / cardH) : 1;
       card.style.setProperty("--shelf-k", k.toFixed(4));
+      for (const t of targets) {
+        t.style.setProperty("--shelf-h", `${h}px`);
+        t.style.setProperty("--shelf-open", open ? "1" : "0");
+      }
     };
     write();
     const ro = new ResizeObserver(write);
     ro.observe(el);
-    return () => { ro.disconnect(); card.style.removeProperty("--shelf-k"); };
-  }, [cardH, active]);
+    return () => {
+      ro.disconnect();
+      card.style.removeProperty("--shelf-k");
+      for (const t of targets) { t.style.removeProperty("--shelf-h"); t.style.removeProperty("--shelf-open"); }
+    };
+  }, [cardH, active, open]);
   return <div ref={ref} {...rest}>{children}</div>;
 }
 
@@ -1815,14 +1839,36 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // here, so it gets the whole card on arrival and the drawer comes up on the
   // card's i. Consolidating the strip into the drawer is what made this safe:
   // there's now one affordance to find, not a strip that was always up.
-  // The map holds overrides, keyed by humanoid id: in compare each card keeps
-  // its own drawer, and closing one leaves the other alone.
+  // Overrides are keyed by side, not by humanoid: opening the drawer says how
+  // you want to read the deck, so it stays open as you scroll from robot to
+  // robot rather than resetting on every crossing. Two keys because compare
+  // has two cards, and closing one must leave the other alone.
   const [drawerOverrides, setDrawerOverrides] = useState<Record<string, boolean>>({});
   const [drawerDefaultOpen, setDrawerDefaultOpen] = useState(false);
-  // Cap as a share of card height. Past this the drawer stops growing and its
-  // contents scroll, so a long description can never eat the robot.
-  const [drawerMaxPct, setDrawerMaxPct] = useState(46);
+  // A fixed share of card height, not a cap: the drawer is this tall whether
+  // the robot has four lines of description or one, and its contents scroll
+  // inside. Sizing to content meant the sheet jumped to a new height on every
+  // robot as you scrolled the deck, which read as instability rather than as
+  // information. It rides high — there is a lot in it now — which is only
+  // affordable because it sits over the robot instead of displacing it.
+  const [drawerMaxPct, setDrawerMaxPct] = useState(60);
+  // Off by default, unlike the strip's `stripFit`. The strip was a thin band
+  // and shrinking the robot by its height cost nothing; a drawer this tall
+  // would shrink the robot to a thumbnail. Letting it pass over the glass with
+  // the robot legible behind it is the whole reason the panel is glass.
+  const [drawerLift, setDrawerLift] = useState(false);
+  // Rounded on top only, square where it meets the card's own bottom corners —
+  // the shape that reads as a sheet pulled up rather than a band pinned on.
+  const [drawerRadius, setDrawerRadius] = useState(20);
+  // The card row's "i" is redundant once the drawer exists — the placard's own
+  // handle opens the same panel, and two controls for one thing is one too
+  // many. Off in drawer mode, on everywhere else, restorable from the tuner.
+  const [showInfoChip, setShowInfoChip] = useState(false);
   const drawerOpenFor = (id: string) => drawerOverrides[id] ?? drawerDefaultOpen;
+  // True wherever the card's own "i" chip should still be drawn. In drawer
+  // mode the placard handle already opens the same panel, so the chip is off
+  // unless the tuner asks for it back.
+  const infoChipOn = showInfoChip || !(statsOverlay === "strip" && blurbDock === "drawer");
   const toggleDrawer = (id: string) =>
     setDrawerOverrides((m) => ({ ...m, [id]: !(m[id] ?? drawerDefaultOpen) }));
   const statsCollapsed = statsOverlay !== "off" || statsCollapsedRaw;
@@ -2469,7 +2515,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // "single": all in one pill (current default).
   // "split": stable buttons in main pill, media in a secondary pill that
   // morphs in/out as a unit.
-  const [chipGrouping, setChipGrouping] = useState<"single" | "split" | "image-corner">("single");
+  // "top-corners": the bottom pill keeps only the dice; save and copy move to
+  // the card's own top corners, so every card (both sides of a compare) carries
+  // its own actions.
+  const [chipGrouping, setChipGrouping] = useState<"single" | "split" | "image-corner" | "top-corners">("single");
   // Horizontal alignment for the below chip row.
   const [bottomAlignment, setBottomAlignment] = useState<"left" | "center" | "right">("center");
   const [compareBtnStyle, setCompareBtnStyle] = useState<"glass" | "flat">("flat");
@@ -3298,6 +3347,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     // repeat-firing mid-gesture would take you from 26 robots to 6 in a flick.
     let accX = 0;
     let laneLatched = false;
+    // Which surface owns the current vertical gesture. Latched once at the
+    // start and held until the idle gap ends the gesture, so a flick never
+    // hands off mid-scroll — reaching the drawer's end stops, it does not
+    // spill into the deck, and a scroll begun on the deck keeps moving the
+    // deck even as cards animate under a stationary cursor.
+    let vTarget: "lane" | "drawer" | null = null;
     // Still above the vertical threshold (10–40 across the presets) — changing
     // lane is less reversible than moving within one — but only about double,
     // not the wall 120 turned out to be. A trackpad flick clears this.
@@ -3325,6 +3380,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         // the latch releases and the next swipe starts from zero.
         accX = 0;
         laneLatched = false;
+        vTarget = null;
       }
       lastWheelTime = wheelNow;
 
@@ -3337,18 +3393,20 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       // cursor (the cursor never "moves" so events don't fire).
       const overGallery = !!(e.target as Element | null)?.closest?.("[data-gallery]");
       if (overGallery && sx > sy) return;
-      // Same bail for the card drawer, on the other axis: a vertical wheel
-      // inside a drawer that still has somewhere to scroll belongs to the
-      // drawer, not the lane. Once it bottoms out the lane takes over again,
-      // so the gesture never dead-ends.
-      if (sy >= sx) {
+      // Card drawer, on the other axis. Intent is read once per gesture from
+      // the same rolling window the lane uses: a vertical scroll that starts
+      // over a drawer with room in it belongs to the drawer for its whole
+      // life; one that starts anywhere else belongs to the deck for its whole
+      // life. Deciding per event instead made the two trade the gesture back
+      // and forth mid-flick. A horizontal gesture is never latched, so lanes
+      // still switch with the cursor over an open drawer.
+      if (vTarget === null && sy > sx) {
         const drawerEl = (e.target as Element | null)?.closest?.("[data-drawer]") as HTMLElement | null;
-        if (drawerEl) {
-          const room = drawerEl.scrollHeight - drawerEl.clientHeight;
-          const atTop = drawerEl.scrollTop <= 0, atEnd = drawerEl.scrollTop >= room - 1;
-          if (room > 1 && !(e.deltaY < 0 && atTop) && !(e.deltaY > 0 && atEnd)) return;
-        }
+        vTarget = drawerEl && drawerEl.scrollHeight - drawerEl.clientHeight > 1 ? "drawer" : "lane";
       }
+      // No preventDefault: the drawer scrolls natively, and its
+      // `overscroll-behavior: contain` keeps the end of it from moving the page.
+      if (vTarget === "drawer") return;
       // ── Horizontal steps the lane rail ──────────────────────────────────
       // Vertical moves within the open lane; horizontal moves between lanes.
       // The gallery keeps its own horizontal scroll (bailed out just above),
@@ -3500,7 +3558,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           // Drawer mode: the key drives the focused card's drawer. In compare
           // that is the left card; the right card has its own handle.
           if (statsOverlay === "strip" && blurbDock === "drawer") {
-            if (currentId) toggleDrawer(currentId);
+            toggleDrawer("left");
           } else {
             setBlurbVisible((v) => !v);
           }
@@ -6497,6 +6555,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           const overlayRows = overlayRowsFor(h);
           // One consolidated pull-up panel per card. See `BlurbDock`.
           const cardDrawer = statsOverlay === "strip" && blurbDock === "drawer";
+          const drawerKey = isFirst ? "left" : "right";
           const gallery = h.media || [];
           const allImages = [h.imageUrl, ...gallery.map((m) => m.url)].filter(Boolean) as string[];
           const allKinds: ("image" | "video")[] = [
@@ -6556,10 +6615,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 // In drawer mode this is the card's own handle, so it reads the
                 // per-card drawer rather than the global stats collapse — which
                 // is also why it renders on both sides of a compare.
-                const shut = cardDrawer ? !drawerOpenFor(h.id) : statsCollapsed;
+                const shut = cardDrawer ? !drawerOpenFor(drawerKey) : statsCollapsed;
                 return (
                 <button
-                  onClick={(e) => { e.stopPropagation(); if (cardDrawer) { toggleDrawer(h.id); } else { setStatsCollapsed((v) => !v); } }}
+                  onClick={(e) => { e.stopPropagation(); if (cardDrawer) { toggleDrawer(drawerKey); } else { setStatsCollapsed((v) => !v); } }}
                   aria-label={shut ? "Show details" : "Hide details"}
                   className="flex-shrink-0 cursor-pointer flex items-center justify-center"
                   style={{
@@ -6651,10 +6710,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             // In drawer mode the blurb has no independent visibility — it is
             // part of the drawer — so this drives the same panel the placard's
             // handle does rather than a second, conflicting toggle.
-            const infoOn = cardDrawer ? drawerOpenFor(h.id) : blurbVisible;
-            const infoButton = hasInfo ? (
+            const infoOn = cardDrawer ? drawerOpenFor(drawerKey) : blurbVisible;
+            const infoButton = hasInfo && infoChipOn ? (
               <Tooltip label={infoOn ? "Hide info" : "Show info"} shortcut="I">
-                <button type="button" onClick={(e) => { e.stopPropagation(); if (cardDrawer) { toggleDrawer(h.id); } else { setBlurbVisible((v) => !v); } }} aria-pressed={infoOn} aria-label={infoOn ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, infoOn, cardIconSize) }}>
+                <button type="button" onClick={(e) => { e.stopPropagation(); if (cardDrawer) { toggleDrawer(drawerKey); } else { setBlurbVisible((v) => !v); } }} aria-pressed={infoOn} aria-label={infoOn ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, infoOn, cardIconSize) }}>
                   <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                 </button>
               </Tooltip>
@@ -6729,9 +6788,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 </div>
               </div>
             );
-            const infoSlot = slot(hasInfo, "info", (
-              <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
-                <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, blurbVisible, cardIconSize) }} tabIndex={hasInfo ? 0 : -1}>
+            const infoSlot = slot(hasInfo && infoChipOn, "info", (
+              <Tooltip label={infoOn ? "Hide info" : "Show info"} shortcut="I">
+                <button type="button" onClick={(e) => { e.stopPropagation(); if (cardDrawer) { toggleDrawer(drawerKey); } else { setBlurbVisible((v) => !v); } }} aria-pressed={infoOn} aria-label={infoOn ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, infoOn, cardIconSize) }} tabIndex={hasInfo && infoChipOn ? 0 : -1}>
                   <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                 </button>
               </Tooltip>
@@ -6772,7 +6831,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             // controls for one action made the bottom bar read as clutter. It
             // stays exported for the split / image-corner groupings.
             const buttons = (<>{saveButton}{shuffleButton}{shareButton}{otherButtons}</>);
-            return { buttons, saveButton, shareButton, shuffleButton, otherButtons, infoSlot, mediaSlots, hasMediaPill, panelButton, infoButton, mediaButtons, hasMedia };
+            const hasInfoPill = hasInfo && infoChipOn;
+            return { buttons, saveButton, shareButton, shuffleButton, otherButtons, infoSlot, mediaSlots, hasMediaPill, hasInfoPill, panelButton, infoButton, mediaButtons, hasMedia };
           })() : null;
 
           return (
@@ -6879,7 +6939,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 // The drawer is per card and carries its own open state, so it
                 // works on both sides of a compare. Every other dock still
                 // rides the global strip/blurb toggles.
-                const on = drawer ? drawerOpenFor(h.id) : statsOverCard;
+                const on = drawer ? drawerOpenFor(drawerKey) : statsOverCard;
                 // Outside drawer mode the blurb only docks in the single view,
                 // and only once the strip exists to dock into — "wash" lays rows
                 // over the whole image, so there is no bottom edge to share.
@@ -6952,7 +7012,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 return (
                   <ShelfMeasure
                     cardH={cardH}
-                    active={strip && stripFit && on}
+                    active={on && strip && (drawer ? drawerLift : stripFit)}
+                    open={!!on && drawer}
                     aria-hidden={!on}
                     style={{
                       position: "absolute",
@@ -6964,11 +7025,20 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "flex-end",
-                      opacity: on ? 1 : 0,
+                      opacity: drawer || on ? 1 : 0,
                       transform: strip ? (on ? "translateY(0)" : "translateY(100%)") : "none",
                       pointerEvents: "none",
-                      transition: `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
+                      transition: drawer
+                        ? `transform ${DRAWER_DUR} ${DRAWER_EASE}`
+                        : `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                       ...(onePanel ? glass : null),
+                      ...(drawer ? {
+                        borderTopLeftRadius: drawerRadius,
+                        borderTopRightRadius: drawerRadius,
+                        // The glass has to clip to the new corners, and the
+                        // scroller inside it with them.
+                        overflow: "hidden",
+                      } : null),
                     }}
                   >
                     {drawer && (
@@ -6980,15 +7050,15 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       <div
                         data-drawer
                         style={{
-                          maxHeight: Math.round(cardH * drawerMaxPct / 100),
+                          height: Math.round(cardH * drawerMaxPct / 100),
                           overflowY: "auto",
                           overscrollBehavior: "contain",
-                          // Softens the cut where a long description runs past
-                          // the cap. Costs nothing when it doesn't: a drawer
-                          // whose content fits ends in its own bottom padding,
-                          // so the fade falls on blank space.
-                          WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 20px), transparent 100%)",
-                          maskImage: "linear-gradient(to bottom, #000 calc(100% - 20px), transparent 100%)",
+                          // Softens both cuts where the contents run past the
+                          // cap. Each fade is sized to the padding behind it,
+                          // so at rest they land on blank space and the first
+                          // and last lines read at full strength.
+                          WebkitMaskImage: DRAWER_FADE,
+                          maskImage: DRAWER_FADE,
                           pointerEvents: on ? "auto" : "none",
                           WebkitOverflowScrolling: "touch",
                         }}
@@ -7125,7 +7195,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 style={statsOverlay === "strip" ? {
                   transform: "scale(var(--shelf-k, 1))",
                   transformOrigin: "50% 0%",
-                  transition: `transform ${dur} ${ease}`,
+                  transition: cardDrawer
+                    ? `transform ${DRAWER_DUR} ${DRAWER_EASE}`
+                    : `transform ${dur} ${ease}`,
                 } : undefined}
               >
                 {/* Static — hidden when SpinViewer or Robot3D takes over. */}
@@ -7216,15 +7288,20 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     card's bottom-right, near the image they control. Stable
                     buttons live in the below row. Fades + scales in as a unit
                     on scroll using the same morph clock as split mode. */}
-                {chipCtx && chipGrouping === "image-corner" && (chipLayout === "below" || chipLayout === "below-left") && (
+                {chipCtx && (chipGrouping === "image-corner" || chipGrouping === "top-corners") && (chipLayout === "below" || chipLayout === "below-left") && (() => {
+                  // Under top-corners the bottom pill is dice-only, so info
+                  // rides along with the media buttons in this corner.
+                  const withInfo = chipGrouping === "top-corners";
+                  const present = chipCtx.hasMediaPill || (withInfo && chipCtx.hasInfoPill);
+                  return (
                   <div
-                    aria-hidden={!chipCtx.hasMediaPill}
+                    aria-hidden={!present}
                     className="absolute z-30 pointer-events-auto"
                     style={{
                       bottom: cardIconInset,
                       right: cardIconInset,
                       display: "inline-flex",
-                      pointerEvents: chipCtx.hasMediaPill ? "auto" : "none",
+                      pointerEvents: present ? "auto" : "none",
                     }}
                   >
                     <div
@@ -7233,16 +7310,17 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                         ...cardChipChrome,
                         height: cardIconSize,
                         borderRadius: cardIconSize / 2,
-                        opacity: chipCtx.hasMediaPill ? 1 : 0,
-                        transform: chipCtx.hasMediaPill ? "scale(1)" : "scale(0.85)",
+                        opacity: present ? 1 : 0,
+                        transform: present ? "scale(1)" : "scale(0.85)",
                         transformOrigin: "right center",
                         transition: `opacity ${morphDuration}ms ${ease}, transform ${morphDuration}ms ${ease}`,
                       }}
                     >
-                      {chipCtx.mediaSlots}
+                      {withInfo ? <>{chipCtx.infoSlot}{chipCtx.mediaSlots}</> : chipCtx.mediaSlots}
                     </div>
                   </div>
-                )}
+                  );
+                })()}
                 {/* Corners — Share anchors bottom-left, every other chip
                     clusters bottom-right. Bare icons (no glass chrome) so the
                     affordance reads as a quiet system control, not a pill. */}
@@ -7410,9 +7488,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       borderRadius: cardIconSize / 2,
                     }}
                   >
-                    {chipGrouping === "split" || chipGrouping === "image-corner"
-                      ? (<>{chipCtx.shuffleButton}{chipCtx.shareButton}{chipCtx.infoSlot}{chipCtx.panelButton}</>)
-                      : chipCtx.buttons}
+                    {chipGrouping === "top-corners"
+                      ? chipCtx.shuffleButton
+                      : chipGrouping === "split" || chipGrouping === "image-corner"
+                        ? (<>{chipCtx.shuffleButton}{chipCtx.shareButton}{chipCtx.infoSlot}{chipCtx.panelButton}</>)
+                        : chipCtx.buttons}
                   </div>
                   {chipGrouping === "split" && (
                     <div
@@ -8066,10 +8146,19 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                           // that covered the placard would read as removing the
                           // name too.
                           left: 0,
-                          bottom: 0,
+                          // Stops at the open drawer's top edge rather than
+                          // running under it — see `--shelf-h`. Reaching for
+                          // the drawer to read or scroll it used to wash the
+                          // whole card out and offer to remove it, which made
+                          // the drawer unusable on this side.
+                          bottom: "var(--shelf-h, 0px)",
                           width: cardW,
-                          height: cardH,
+                          height: `calc(${cardH}px - var(--shelf-h, 0px))`,
                           borderRadius: cardRadius,
+                          // Square where it meets the drawer, so the two edges
+                          // meet flush instead of leaving lens-shaped gaps.
+                          borderBottomLeftRadius: `calc(${cardRadius}px * (1 - var(--shelf-open, 0)))`,
+                          borderBottomRightRadius: `calc(${cardRadius}px * (1 - var(--shelf-open, 0)))`,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -8185,7 +8274,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                         </button>
                       </Tooltip>
                     )}
-                    {hasInfo && (
+                    {hasInfo && infoChipOn && (
                       <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
                         <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, blurbVisible, cardIconSize) }}>
                           <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
@@ -8736,7 +8825,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           <div data-tuner-group="Stats" className="space-y-2">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">Chip grouping</p>
             <div className="flex gap-1.5">
-              {([["single", "Single"], ["split", "Split"], ["image-corner", "On card"]] as const).map(([m, label]) => (
+              {([["single", "Single"], ["split", "Split"], ["image-corner", "On card"], ["top-corners", "Top corners"]] as const).map(([m, label]) => (
                 <button
                   key={m}
                   onClick={() => setChipGrouping(m)}
@@ -8941,7 +9030,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           )}
           <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
           <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Compare slot</p><div className="flex flex-wrap gap-1.5">{(["silhouette", "plus"] as const).map((v) => (<button key={v} onClick={() => setCompareSlotStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${compareSlotStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div>
-          <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Stats over card</p><div className="flex flex-wrap gap-1.5">{(["off", "strip", "wash"] as const).map((v) => (<button key={v} onClick={() => setStatsOverlay(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${statsOverlay === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "off" ? "Column" : v}</button>))}</div><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Fit image above strip</label><button type="button" onClick={() => setStripFit((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${stripFit ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{stripFit ? "On" : "Off"}</button></div></div><div className="mt-3"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Info blurb</p><div className="flex flex-wrap gap-1.5">{([["drawer", "Drawer"], ["shelf", "Shelf"], ["chip", "Chip"], ["swap", "Swap"], ["free", "Free"]] as const).map(([v, label]) => (<button key={v} onClick={() => setBlurbDock(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${blurbDock === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{blurbDock === "drawer" ? "One pull-up panel per card — blurb + rows, scrolls, hides on the card's i." : blurbDock === "shelf" ? "Top row of the stats strip — one glass panel." : blurbDock === "chip" ? "Own chip, resting on the strip's top edge." : blurbDock === "swap" ? "Replaces the rows while info is on." : "Floats loose in the image (pre-shelf)."}</p>{blurbDock === "drawer" && (<><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Open by default</label><button type="button" onClick={() => { setDrawerDefaultOpen((v) => !v); setDrawerOverrides({}); }} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerDefaultOpen ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerDefaultOpen ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Max height<span className="tabular-nums text-neutral-400">{drawerMaxPct}%</span></label><input type="range" min={25} max={70} step={1} value={drawerMaxPct} onChange={(e) => setDrawerMaxPct(+e.target.value)} className="w-full" /></>)}</div>
+          <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Stats over card</p><div className="flex flex-wrap gap-1.5">{(["off", "strip", "wash"] as const).map((v) => (<button key={v} onClick={() => setStatsOverlay(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${statsOverlay === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "off" ? "Column" : v}</button>))}</div><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Fit image above strip</label><button type="button" onClick={() => setStripFit((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${stripFit ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{stripFit ? "On" : "Off"}</button></div></div><div className="mt-3"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Info blurb</p><div className="flex flex-wrap gap-1.5">{([["drawer", "Drawer"], ["shelf", "Shelf"], ["chip", "Chip"], ["swap", "Swap"], ["free", "Free"]] as const).map(([v, label]) => (<button key={v} onClick={() => setBlurbDock(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${blurbDock === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{blurbDock === "drawer" ? "One pull-up panel per card — blurb + rows, scrolls, hides on the card's i." : blurbDock === "shelf" ? "Top row of the stats strip — one glass panel." : blurbDock === "chip" ? "Own chip, resting on the strip's top edge." : blurbDock === "swap" ? "Replaces the rows while info is on." : "Floats loose in the image (pre-shelf)."}</p>{blurbDock === "drawer" && (<><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Open by default</label><button type="button" onClick={() => { setDrawerDefaultOpen((v) => !v); setDrawerOverrides({}); }} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerDefaultOpen ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerDefaultOpen ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Keep card-row &ldquo;i&rdquo;</label><button type="button" onClick={() => setShowInfoChip((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${showInfoChip ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{showInfoChip ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Lift robot above it</label><button type="button" onClick={() => setDrawerLift((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerLift ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerLift ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Height<span className="tabular-nums text-neutral-400">{drawerMaxPct}%</span></label><input type="range" min={25} max={80} step={1} value={drawerMaxPct} onChange={(e) => setDrawerMaxPct(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Top radius<span className="tabular-nums text-neutral-400">{drawerRadius}px</span></label><input type="range" min={0} max={36} step={1} value={drawerRadius} onChange={(e) => setDrawerRadius(+e.target.value)} className="w-full" /></>)}</div>
           <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Minus</p><div className="flex flex-wrap gap-1.5">{(["veil", "card-corner"] as const).map((v) => (<button key={v} onClick={() => setMinusPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${minusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "veil" ? "Hover veil" : "Card corner"}</button>))}</div></div>
           <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill", "chip"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
           <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100 space-y-2">
