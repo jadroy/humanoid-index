@@ -31,9 +31,7 @@ function hoverFor(r: Humanoid): HoverMedia | undefined {
     ? { url: alt.url, fit: alt.fit ?? "contain", position: alt.position ?? r.imagePosition ?? "ground" }
     : undefined;
   if (altMedia && PREFER_ALT_HOVER.has(r.id)) return altMedia;
-  // Upstream reads `r.scenePosition` here; this branch's Humanoid has no such
-  // field, and every scene we ship crops fine from the centre.
-  if (r.sceneUrl) return { url: r.sceneUrl, fit: "cover", position: "center" };
+  if (r.sceneUrl) return { url: r.sceneUrl, fit: "cover", position: r.scenePosition ?? "center" };
   return altMedia;
 }
 

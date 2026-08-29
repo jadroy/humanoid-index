@@ -42,6 +42,7 @@ export interface Humanoid {
   media?: MediaItem[]; // Additional images and videos
   purchaseUrl?: string; // Link to buy/learn more about the robot
   sceneUrl?: string; // Optional scene/lifestyle image used as the stats column background
+  scenePosition?: string; // CSS object-position for cropping the (landscape) scene into portrait tiles — anchors the crop on the robot (default "center")
   tags?: string[]; // Short descriptor chips — facets like use case, drive, vibe, reception (country lives on its own `country` field now)
   // Extended engineering specs surfaced when the stats column is in Engineer mode
   // (toggle persists in localStorage). All fields optional — missing rows render as
@@ -207,6 +208,40 @@ const allHumanoids: Humanoid[] = [
   //   status: "Anticipated",
   //   description: "Tesla's next-generation humanoid — teased for unveil, details not yet public.",
   // },
+  // 2026
+  {
+    id: "136",
+    name: "A3",
+    manufacturer: "Nori Robotics",
+    country: "USA",
+    useCase: "Home",
+    drive: "Wheeled base",
+    availability: "consumer",
+    logoUrl: "/robots/Nori.png",
+    manufacturerUrl: "https://www.norirobotics.com",
+    infoUrl: "https://www.norirobotics.com",
+    purchaseUrl: "https://www.norirobotics.com/preorder",
+    imageUrl: "/robots/nori-a3.png",
+    year: 2026,
+    addedAt: "2026-08-27",
+    cost: "$1,688",
+    status: "In Production",
+    height: 145, // top of a three-stage telescoping column; collapses to 69 cm
+    weight: 20,
+    dof: 19,
+    description: "A two-armed home robot on a wheeled base, priced at $1,688. Its column telescopes so it can reach the floor or a countertop. Owners train it on new chores and share them with everyone else.",
+    tags: ["$1,688", "Skills marketplace", "3D-printable parts", "Assembled in SF", "YC S26"],
+    engineering: {
+      liftPerArm: 1.5,
+      runtime: 8,
+      armDof: 8,
+      cameras: "4× 720p RGB, 30 fps",
+      lidar: "12 m range, 8–12 Hz",
+      microphones: 1,
+      compute: "Raspberry Pi 5",
+      software: "Nori Lab",
+    },
+  },
   // 2025
   {
     id: "3",
@@ -271,7 +306,7 @@ const allHumanoids: Humanoid[] = [
     weight: 85,
     dof: 52,
     maxSpeed: 1.0,
-    imageUrl: "/robots/k2.png",
+    imageUrl: "/robots/forerunner-k2.png",
     description: "Affordable general-purpose humanoid for manufacturing and logistics.",
     tags: ["$30K affordable"],
   },
@@ -363,7 +398,7 @@ const allHumanoids: Humanoid[] = [
     weight: 90,
     dof: 56,
     description: "Fully electric successor to hydraulic Atlas for industrial applications.",
-    sceneUrl: "/scenes/electric-atlas-scene.jpg",
+    sceneUrl: "/scenes/gen-2.png",
     tags: ["Iconic mobility"],
   },
   {
@@ -385,7 +420,6 @@ const allHumanoids: Humanoid[] = [
     maxSpeed: 1.4,
     description: "Lightweight bipedal humanoid for safe human interaction and home assistance.",
     purchaseUrl: "https://www.1x.tech/order",
-    sceneUrl: "/scenes/neo-scene.png",
     tags: ["Soft & lightweight"],
     engineering: {
       payload: 20,
@@ -464,6 +498,7 @@ const allHumanoids: Humanoid[] = [
     logoUrl: "/robots/Unitree-logo.svg",
     manufacturerUrl: "https://www.unitree.com",
     imageUrl: "/robots/g1.png",
+    sceneUrl: "/scenes/g1-gen.png",
     year: 2024,
     cost: "$13.5K",
     status: "In Production",
@@ -595,6 +630,7 @@ const allHumanoids: Humanoid[] = [
     logoUrl: "/robots/Agility2.svg",
     manufacturerUrl: "https://www.agilityrobotics.com",
     imageUrl: "/robots/digit.png",
+    sceneUrl: "/scenes/digit-gen.png",
     year: 2023,
     cost: "N/A",
     status: "In Production",
@@ -699,6 +735,7 @@ const allHumanoids: Humanoid[] = [
     weight: 62,
     dof: 61,
     imageUrl: "/robots/ameca.png",
+    sceneUrl: "/scenes/gen-20.png",
     imagePosition: "bottom",
     description: "Advanced human-shaped robot for interaction research and entertainment.",
     media: [
@@ -806,6 +843,7 @@ const allHumanoids: Humanoid[] = [
     logoUrl: "/robots/Boston_Dynamics-logo.svg",
     manufacturerUrl: "https://www.bostondynamics.com",
     imageUrl: "/robots/hydraulic-atlas.png",
+    sceneUrl: "/scenes/gen-26.png",
     year: 2013,
     cost: "N/A",
     status: "Discontinued",
