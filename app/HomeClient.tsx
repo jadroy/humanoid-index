@@ -1732,6 +1732,80 @@ const VEIL_WASH = "rgba(255,255,255,0.66)";
 
 // Stats strip over the card: the vertical padding around its rows. The shelf's
 // height is measured, not derived, so there is no per-row constant here.
+// Blurb with a line cap and its own More/Less control. The drawer is a fixed
+// share of card height, so a 400-character description doesn't make the panel
+// taller — it pushes the stat rows off the bottom, and opening "info" shows you
+// nothing but prose. Capping the lede keeps the rows in the first screenful and
+// leaves the full text one word away.
+//
+// Whether the control is needed is measured, not guessed: `scrollHeight >
+// clientHeight` on the clamped element. Estimating from character count breaks
+// the moment the card is resized, and this box is sized off `cardW`.
+//
+// Expansion resets when the text changes — the drawer's own open/shut state
+// persists across robots because it's a reading mode, but "show me all of this
+// one" is about a specific blurb and shouldn't set the next robot's layout.
+function ClampedBlurb({ text, lines, style, linkColor }: {
+  text: string;
+  lines: number;
+  style: React.CSSProperties;
+  linkColor: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { setExpanded(false); }, [text]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || lines <= 0) { setOverflows(false); return; }
+    // Measured against the clamped box, so this has to run while it is still
+    // clamped — hence the early bail once expanded, which leaves the last
+    // measurement (true, or we wouldn't have a control to press) standing.
+    if (expanded) return;
+    setOverflows(el.scrollHeight > el.clientHeight + 1);
+  }, [text, lines, expanded, style.fontSize, style.width]);
+  const clamped = lines > 0 && !expanded;
+  return (
+    <>
+      <div
+        ref={ref}
+        style={{
+          ...style,
+          ...(clamped ? {
+            display: "-webkit-box",
+            WebkitBoxOrient: "vertical",
+            WebkitLineClamp: lines,
+            overflow: "hidden",
+          } : null),
+        }}
+      >
+        {text}
+      </div>
+      {overflows && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
+          className="cursor-pointer"
+          style={{
+            marginTop: 6,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            font: "inherit",
+            fontSize: style.fontSize,
+            fontWeight: 500,
+            color: linkColor,
+            lineHeight: 1.35,
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          {expanded ? "Less" : "More"}
+        </button>
+      )}
+    </>
+  );
+}
+
 const STRIP_PAD_TOP = 14, STRIP_PAD_BOTTOM = 16;
 const DRAWER_FADE = `linear-gradient(to bottom, transparent 0, #000 ${STRIP_PAD_TOP}px, #000 calc(100% - ${STRIP_PAD_BOTTOM}px), transparent 100%)`;
 // The drawer gets its own, shorter clock. The card's 0.5s is tuned for things
@@ -1741,6 +1815,20 @@ const DRAWER_FADE = `linear-gradient(to bottom, transparent 0, #000 ${STRIP_PAD_
 // below the edge is already invisible and fading it too just adds mush.
 const DRAWER_DUR = "200ms";
 const DRAWER_EASE = "cubic-bezier(0.2, 0, 0, 1)";
+// Genie. The sheet is scaled about a point up at the placard's "i" rather than
+// slid up from the card's bottom edge, so it reads as being pulled out of the
+// button that summoned it — the Dock's un-minimise, not a drawer.
+//
+// Longer and softer than the slide it replaces: the travel is the length of
+// the card instead of the height of the sheet, and at 200ms that distance
+// reads as a jump-cut. The ease has no overshoot — a sheet full of text that
+// bounces looks like a notification, not a panel.
+const GENIE_DUR = 520;
+const GENIE_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+// Shut isn't scale(0): a hair of width left in the shape keeps the browser
+// interpolating a real box, and the tail of the motion stays legible as the
+// sheet narrowing into the button rather than blinking out.
+const GENIE_SHUT = "scale(0.05, 0.02)";
 
 // How the blurb and the stats strip share the card's bottom edge.
 //   drawer — they stop being two things: one pull-up panel holds the blurb and
@@ -1827,7 +1915,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [statsOverlay, setStatsOverlay] = useState<"off" | "strip" | "wash">("strip");
   const [statsCollapsedRaw, setStatsCollapsed] = useState(false);
   // Strip only: shrink the image from its top edge so the robot stands on the
-  // strip instead of disappearing behind it.
+  // strip instead of disappearing behind it. Only consulted outside drawer
+  // mode — the sheet has its own `drawerLift`, because a drawer this tall
+  // would shrink the robot to a thumbnail where a thin band costs nothing.
   const [stripFit, setStripFit] = useState(true);
   // Where the info blurb goes once the strip owns the card's bottom edge.
   // "free" is the old behaviour: the blurb floats inside the media area, which
@@ -1851,7 +1941,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // robot as you scrolled the deck, which read as instability rather than as
   // information. It rides high — there is a lot in it now — which is only
   // affordable because it sits over the robot instead of displacing it.
-  const [drawerMaxPct, setDrawerMaxPct] = useState(60);
+  const [drawerMaxPct, setDrawerMaxPct] = useState(100);
   // Off by default, unlike the strip's `stripFit`. The strip was a thin band
   // and shrinking the robot by its height cost nothing; a drawer this tall
   // would shrink the robot to a thumbnail. Letting it pass over the glass with
@@ -1860,6 +1950,17 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // Rounded on top only, square where it meets the card's own bottom corners —
   // the shape that reads as a sheet pulled up rather than a band pinned on.
   const [drawerRadius, setDrawerRadius] = useState(20);
+  // Lines of description shown before the More control. 0 turns the cap off and
+  // lets the blurb run to full length inside the drawer's scroll.
+  const [blurbClampLines, setBlurbClampLines] = useState(3);
+  // How the sheet arrives. "slide" is the plain translateY from the card's
+  // bottom edge; "genie" scales it out of the placard's "i".
+  const [drawerMotion, setDrawerMotion] = useState<"slide" | "genie">("genie");
+  // Opaque rather than glass. Glass is right for a band that shares the card
+  // with the robot; once the sheet takes the whole face there is nothing to
+  // share it with, and a solid surface is what makes the genie read as the
+  // card turning into its own detail page instead of a panel laid over it.
+  const [drawerOpaque, setDrawerOpaque] = useState(true);
   // The card row's "i" is redundant once the drawer exists — the placard's own
   // handle opens the same panel, and two controls for one thing is one too
   // many. Off in drawer mode, on everywhere else, restorable from the tuner.
@@ -6605,8 +6706,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 ) : null}
               </div>
               {/* Info-icon collapse affordance — sits opposite the label, on the
-                  far right of the label row. Active (info showing) = outline.
-                  Non-active (info hidden) = very low-opacity fill, no border. */}
+                  far right of the label row. Hollow ring when shut, solid fill
+                  when open. This used to run the other way — filled when shut,
+                  a ring when open — which made the one control that was doing
+                  something look like the one that wasn't, and put it out of
+                  step with every other toggle on the card. */}
               {collapseVariant === "info-icon" && (cardDrawer || (!comparing && isFirst)) && (() => {
                 // Hit target runs a touch larger than the manufacturer logo it
                 // sits opposite — at logo size the circle read as decoration
@@ -6620,14 +6724,21 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 <button
                   onClick={(e) => { e.stopPropagation(); if (cardDrawer) { toggleDrawer(drawerKey); } else { setStatsCollapsed((v) => !v); } }}
                   aria-label={shut ? "Show details" : "Hide details"}
+                  aria-pressed={!shut}
                   className="flex-shrink-0 cursor-pointer flex items-center justify-center"
                   style={{
                     width: infoBtnSize,
                     height: infoBtnSize,
                     borderRadius: 999,
-                    background: shut ? "rgba(0,0,0,0.05)" : "transparent",
-                    color: "rgba(0,0,0,0.45)",
-                    border: shut ? "1px solid transparent" : "1px solid rgba(0,0,0,0.18)",
+                    // Hollow when shut, solid when open — the circle is empty
+                    // or it is full, which is the drawer's own state. Both
+                    // states keep a circle: a bare `i` at this size reads as a
+                    // stray character rather than a control. Weight still runs
+                    // the right way (open is the heavier of the two), so the
+                    // ring is carrying the metaphor, not the hierarchy.
+                    background: shut ? "transparent" : "rgba(0,0,0,0.10)",
+                    color: shut ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.85)",
+                    border: shut ? "1px solid rgba(0,0,0,0.14)" : "1px solid transparent",
                     padding: 0,
                     fontFamily: "var(--font-geist-sans)",
                     fontSize: Math.round(infoBtnSize * 0.55),
@@ -6929,6 +7040,68 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   </span>
                 );
               })()}
+              {/* Top corners — save at top-left, copy-link at top-right, on
+                  every card. Rendered outside chipCtx (which only exists for
+                  the single view's left card) so both sides of a compare carry
+                  their own bookmark. The bottom pill is dice-only in this
+                  grouping; these two are the card's own actions. */}
+              {chipGrouping === "top-corners" && (chipLayout === "below" || chipLayout === "below-left") && (() => {
+                const ico = cardIconRender();
+                const saved = favoriteIds.has(h.id);
+                // Deliberately NOT the dock's glass pill. Inside the card these
+                // read like the placard's "i" and the `corners` layout: a bare
+                // ink glyph on the card's own surface, tinting only on hover.
+                // A second floating pill on top of the image would make the
+                // card look like it was wearing the dock.
+                const chip: React.CSSProperties = {
+                  ...ico.style,
+                  position: "absolute",
+                  top: cardIconInset,
+                  background: "transparent",
+                  borderColor: "transparent",
+                  backdropFilter: undefined,
+                  WebkitBackdropFilter: undefined,
+                  color: "rgba(60,60,67,0.62)",
+                  zIndex: 30,
+                  ["--ci-bg-hover" as string]: "rgba(0,0,0,0.05)",
+                  ["--ci-color-hover" as string]: "rgba(0,0,0,0.72)",
+                  ["--ci-border-hover" as string]: "transparent",
+                };
+                return (
+                  <>
+                    <Tooltip label={saved ? "Remove from saved" : "Save"} shortcut="⇧S">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(h.id); }}
+                        aria-pressed={saved}
+                        aria-label={saved ? "Remove from saved" : "Save"}
+                        className={ico.className}
+                        style={{ ...chip, left: cardIconInset, color: saved ? "rgba(0,0,0,0.78)" : chip.color }}
+                      >
+                        <Bookmark
+                          size={ico.iconBoxPx}
+                          strokeWidth={ico.iconStrokeWidth}
+                          fill={saved ? "currentColor" : "none"}
+                          style={{ transition: `fill ${dur} ${ease}` }}
+                        />
+                      </button>
+                    </Tooltip>
+                    {onShareView && (
+                      <Tooltip label="Copy link to this view" shortcut="C">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onShareView?.(); }}
+                          aria-label="Copy link to this view"
+                          className={ico.className}
+                          style={{ ...chip, right: cardIconInset }}
+                        >
+                          <Share size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                        </button>
+                      </Tooltip>
+                    )}
+                  </>
+                );
+              })()}
               {/* Stats over the card — see `statsOverlay`. Rows only; the
                   placard above already carries the name. Missing values are
                   left out rather than dashed: on a hero shot an em-dash is
@@ -6959,7 +7132,13 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   lineHeight: 1.35,
                   color: INK.on,
                 } as const;
-                const glass = {
+                const glass = (drawer && drawerOpaque) ? {
+                  // The card's own surface, so the face reads as having been
+                  // turned over rather than covered. No blur and no inner
+                  // highlight: both are glass tells, and there is nothing
+                  // behind this to see through to.
+                  background: "#F9F9F9",
+                } as const : {
                   background: "rgba(255,255,255,0.74)",
                   backdropFilter: "blur(20px) saturate(1.4)",
                   WebkitBackdropFilter: "blur(20px) saturate(1.4)",
@@ -7009,6 +7188,25 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     ))}
                   </div>
                 );
+                // Distance from the sheet's own top edge up to the point it is
+                // pulled out of. Derived rather than fixed, so the origin
+                // tracks the drawer-height slider instead of drifting every
+                // time it moves.
+                //
+                // Just inside the card's top edge, not at the "i" itself: the
+                // card clips its own contents, so a shut sheet parked at the
+                // button — which lives above the card, in the placard — would
+                // be clipped away and the motion would begin from nothing. Ten
+                // pixels in is the closest it can sit to the button and still
+                // be drawn, and directly under it reads as out of it.
+                const genie = drawer && drawerMotion === "genie";
+                const genieOriginY = -(cardH - Math.round(cardH * drawerMaxPct / 100) - 10);
+                // A sheet that covers the whole face has to round to the card's
+                // own corners, not the drawer's. At anything less than full
+                // height the two radii sit far apart and never meet, but at
+                // 100% a smaller top radius cuts two notches out of the corners
+                // and lets the image show through them.
+                const sheetRadius = drawerMaxPct >= 100 ? cardRadius : drawerRadius;
                 return (
                   <ShelfMeasure
                     cardH={cardH}
@@ -7025,16 +7223,31 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "flex-end",
-                      opacity: drawer || on ? 1 : 0,
-                      transform: strip ? (on ? "translateY(0)" : "translateY(100%)") : "none",
+                      opacity: drawer && genie ? (on ? 1 : 0) : (drawer || on ? 1 : 0),
+                      transform: !strip
+                        ? "none"
+                        : (drawer && genie)
+                          ? (on ? "scale(1, 1)" : GENIE_SHUT)
+                          : (on ? "translateY(0)" : "translateY(100%)"),
+                      // The point the sheet is pulled out of: the placard's "i",
+                      // which lives above the card's top-right corner. Y is
+                      // negative because the panel is bottom-anchored — the
+                      // button is a whole card-height above its own top edge.
+                      ...(drawer && genie ? { transformOrigin: `calc(100% - 14px) ${genieOriginY}px` } : null),
                       pointerEvents: "none",
                       transition: drawer
-                        ? `transform ${DRAWER_DUR} ${DRAWER_EASE}`
+                        ? (genie
+                            ? `transform ${GENIE_DUR}ms ${GENIE_EASE}, opacity ${Math.round(GENIE_DUR * 0.45)}ms ${GENIE_EASE}, border-radius ${GENIE_DUR}ms ${GENIE_EASE}`
+                            : `transform ${DRAWER_DUR} ${DRAWER_EASE}`)
                         : `opacity ${dur} ${ease}, transform ${dur} ${ease}`,
                       ...(onePanel ? glass : null),
                       ...(drawer ? {
-                        borderTopLeftRadius: drawerRadius,
-                        borderTopRightRadius: drawerRadius,
+                        // Shut, the sheet is the size and shape of the button
+                        // it collapses into; open, it is a sheet. Rounding the
+                        // corners on the way is most of what sells the shape
+                        // change as one object rather than two.
+                        borderTopLeftRadius: genie && !on ? 999 : sheetRadius,
+                        borderTopRightRadius: genie && !on ? 999 : sheetRadius,
                         // The glass has to clip to the new corners, and the
                         // scroller inside it with them.
                         overflow: "hidden",
@@ -7061,17 +7274,33 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                           maskImage: DRAWER_FADE,
                           pointerEvents: on ? "auto" : "none",
                           WebkitOverflowScrolling: "touch",
+                          // The panel's scale squashes whatever is inside it,
+                          // and squashed body copy reads as a rendering fault.
+                          // So the contents hold back until the shape has most
+                          // of the way arrived, then come up on their own —
+                          // and on the way out they leave first, which is what
+                          // makes the sheet look emptied rather than crushed.
+                          ...(genie ? {
+                            opacity: on ? 1 : 0,
+                            transition: on
+                              ? `opacity ${Math.round(GENIE_DUR * 0.4)}ms ${GENIE_EASE} ${Math.round(GENIE_DUR * 0.5)}ms`
+                              : `opacity ${Math.round(GENIE_DUR * 0.2)}ms ${GENIE_EASE}`,
+                          } : null),
                         }}
                       >
                         {!!blurbText && (
                           <div
                             style={{
-                              ...blurbType,
                               padding: `${STRIP_PAD_TOP}px 22px 12px`,
                               borderBottom: overlayRows.length ? `1px solid ${SEAM}` : undefined,
                             }}
                           >
-                            {blurbText}
+                            <ClampedBlurb
+                              text={blurbText}
+                              lines={blurbClampLines}
+                              style={blurbType}
+                              linkColor="rgba(0,0,0,0.42)"
+                            />
                           </div>
                         )}
                         {rows}
@@ -9030,7 +9259,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           )}
           <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
           <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Compare slot</p><div className="flex flex-wrap gap-1.5">{(["silhouette", "plus"] as const).map((v) => (<button key={v} onClick={() => setCompareSlotStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${compareSlotStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div>
-          <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Stats over card</p><div className="flex flex-wrap gap-1.5">{(["off", "strip", "wash"] as const).map((v) => (<button key={v} onClick={() => setStatsOverlay(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${statsOverlay === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "off" ? "Column" : v}</button>))}</div><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Fit image above strip</label><button type="button" onClick={() => setStripFit((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${stripFit ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{stripFit ? "On" : "Off"}</button></div></div><div className="mt-3"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Info blurb</p><div className="flex flex-wrap gap-1.5">{([["drawer", "Drawer"], ["shelf", "Shelf"], ["chip", "Chip"], ["swap", "Swap"], ["free", "Free"]] as const).map(([v, label]) => (<button key={v} onClick={() => setBlurbDock(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${blurbDock === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{blurbDock === "drawer" ? "One pull-up panel per card — blurb + rows, scrolls, hides on the card's i." : blurbDock === "shelf" ? "Top row of the stats strip — one glass panel." : blurbDock === "chip" ? "Own chip, resting on the strip's top edge." : blurbDock === "swap" ? "Replaces the rows while info is on." : "Floats loose in the image (pre-shelf)."}</p>{blurbDock === "drawer" && (<><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Open by default</label><button type="button" onClick={() => { setDrawerDefaultOpen((v) => !v); setDrawerOverrides({}); }} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerDefaultOpen ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerDefaultOpen ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Keep card-row &ldquo;i&rdquo;</label><button type="button" onClick={() => setShowInfoChip((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${showInfoChip ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{showInfoChip ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Lift robot above it</label><button type="button" onClick={() => setDrawerLift((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerLift ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerLift ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Height<span className="tabular-nums text-neutral-400">{drawerMaxPct}%</span></label><input type="range" min={25} max={80} step={1} value={drawerMaxPct} onChange={(e) => setDrawerMaxPct(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Top radius<span className="tabular-nums text-neutral-400">{drawerRadius}px</span></label><input type="range" min={0} max={36} step={1} value={drawerRadius} onChange={(e) => setDrawerRadius(+e.target.value)} className="w-full" /></>)}</div>
+          <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Stats over card</p><div className="flex flex-wrap gap-1.5">{(["off", "strip", "wash"] as const).map((v) => (<button key={v} onClick={() => setStatsOverlay(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${statsOverlay === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "off" ? "Column" : v}</button>))}</div>{blurbDock === "drawer" ? (<p className="text-[11px] text-neutral-400 mt-3">Image fit is the drawer&rsquo;s own &ldquo;Lift robot above it&rdquo; below — the sheet reads `drawerLift`, not `stripFit`.</p>) : (<div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Fit image above strip</label><button type="button" onClick={() => setStripFit((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${stripFit ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{stripFit ? "On" : "Off"}</button></div>)}</div><div className="mt-3"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Info blurb</p><div className="flex flex-wrap gap-1.5">{([["drawer", "Drawer"], ["shelf", "Shelf"], ["chip", "Chip"], ["swap", "Swap"], ["free", "Free"]] as const).map(([v, label]) => (<button key={v} onClick={() => setBlurbDock(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${blurbDock === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{blurbDock === "drawer" ? "One pull-up panel per card — blurb + rows, scrolls, hides on the card's i." : blurbDock === "shelf" ? "Top row of the stats strip — one glass panel." : blurbDock === "chip" ? "Own chip, resting on the strip's top edge." : blurbDock === "swap" ? "Replaces the rows while info is on." : "Floats loose in the image (pre-shelf)."}</p>{blurbDock === "drawer" && (<><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Open by default</label><button type="button" onClick={() => { setDrawerDefaultOpen((v) => !v); setDrawerOverrides({}); }} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerDefaultOpen ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerDefaultOpen ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Keep card-row &ldquo;i&rdquo;</label><button type="button" onClick={() => setShowInfoChip((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${showInfoChip ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{showInfoChip ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Lift robot above it</label><button type="button" onClick={() => setDrawerLift((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerLift ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerLift ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Height<span className="tabular-nums text-neutral-400">{drawerMaxPct}%</span></label><input type="range" min={25} max={100} step={1} value={drawerMaxPct} onChange={(e) => setDrawerMaxPct(+e.target.value)} className="w-full" /><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Opaque</label><button type="button" onClick={() => setDrawerOpaque((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerOpaque ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerOpaque ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Top radius<span className="tabular-nums text-neutral-400">{drawerRadius}px</span></label><input type="range" min={0} max={36} step={1} value={drawerRadius} onChange={(e) => setDrawerRadius(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Blurb lines<span className="tabular-nums text-neutral-400">{blurbClampLines === 0 ? "Off" : blurbClampLines}</span></label><input type="range" min={0} max={12} step={1} value={blurbClampLines} onChange={(e) => setBlurbClampLines(+e.target.value)} className="w-full" /><p className="text-[11px] text-neutral-400 mt-1">Lines of description before &ldquo;More&rdquo;. 0 = no cap. Keeps the stat rows in the drawer&rsquo;s first screenful.</p><p className="text-[12px] tracking-widest uppercase text-neutral-400 mt-3 mb-2">Motion</p><div className="flex gap-1.5">{([["slide", "Slide"], ["genie", "Genie"]] as const).map(([m, label]) => (<button key={m} onClick={() => setDrawerMotion(m)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${drawerMotion === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{drawerMotion === "genie" ? "Scales out of the placard\u2019s i \u2014 Dock un-minimise, inverted." : "Slides up from the card\u2019s bottom edge."}</p></>)}</div>
           <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Minus</p><div className="flex flex-wrap gap-1.5">{(["veil", "card-corner"] as const).map((v) => (<button key={v} onClick={() => setMinusPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${minusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "veil" ? "Hover veil" : "Card corner"}</button>))}</div></div>
           <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill", "chip"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
           <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100 space-y-2">
