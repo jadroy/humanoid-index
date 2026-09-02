@@ -2237,7 +2237,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // onto the wheel's curvature, with the mark on the focused name's ray and
   // the rows wrapped above and below it.
   const [toggleOnMode, setToggleOnMode] = useState<ToggleOnState>("ink");
-  const [railShape, setRailShape] = useState<"column" | "ring" | "concentric" | "gear">("gear");
+  const [railShape, setRailShape] = useState<"column" | "ring" | "concentric" | "gear">("column");
   // The gear's hover is per-ENTRY, not per-lane: every seat on the ring can
   // show its label, and `railHover` only ever names a form lane.
   const [railHoverKey, setRailHoverKey] = useState<string | null>(null);
