@@ -2237,7 +2237,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // onto the wheel's curvature, with the mark on the focused name's ray and
   // the rows wrapped above and below it.
   const [toggleOnMode, setToggleOnMode] = useState<ToggleOnState>("ink");
-  const [railShape, setRailShape] = useState<"column" | "ring" | "concentric">("column");
+  const [railShape, setRailShape] = useState<"column" | "ring" | "concentric" | "gear">("gear");
+  // The gear's hover is per-ENTRY, not per-lane: every seat on the ring can
+  // show its label, and `railHover` only ever names a form lane.
+  const [railHoverKey, setRailHoverKey] = useState<string | null>(null);
   // Wide-screen rail: the column is pinned 24px off the left edge while the
   // card stays centered, so past ~1900px the two drift apart and the rail ends
   // up alone in the corner of a very large screen. On, it walks inward as the
@@ -2245,8 +2248,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // below 1600px — every laptop keeps the 24px edge it has now.
   const [railPullIn, setRailPullIn] = useState(true);
   const [railPull, setRailPull] = useState(0.6); // px of inset per px of viewport past 1600
-  const [ringR, setRingR] = useState(84);
-  const [ringSweep, setRingSweep] = useState(170);
+  // Tuned for the gear: at 84/170 the seven seats sprawled over most of the
+  // viewport's height, which is the opposite of "shorter". 100/150 keeps the
+  // in-group chord clear of the 28px seats while the crescent still reads as
+  // part of a circle rather than as a bent line.
+  const [ringR, setRingR] = useState(100);
+  const [ringSweep, setRingSweep] = useState(150);
   // How far inside the names' circle the concentric ring sits.
   const [ringInset, setRingInset] = useState(72);
   const [autoRingInset, setAutoRingInset] = useState(true);
@@ -4303,7 +4310,196 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           sweep past it. In compare it narrows to glyphs — two cards leave no
           room for labels — but the lane indicator stays lit, because compare
           runs inside the open lane and that lane is still the filter in force. */}
-      {railShape !== "column" ? (() => {
+      {/* ── Gear ────────────────────────────────────────────────────────────
+          The small wheel. Its glyphs ride a tight circle whose hub sits on the
+          page's left edge, so the ring is half off-screen and reads as coming
+          out of the side — a second, smaller mechanism beside the big wheel of
+          names, rather than a list that happens to be bent.
+
+          The thing that makes it usable is what does NOT rotate. In the `ring`
+          shape the label rode its own ray, so "Humanoid" read bottom-to-top and
+          "Search" ran diagonally downhill: a nice drawing you had to tilt your
+          head to use. Here only the glyphs are on the arc. Labels are a flat
+          layer on top, horizontal, each anchored beside its own glyph, and only
+          one is ever up — the one you're pointing at. The open lane keeps its
+          label always, so at rest the ring still says what it is instead of
+          asking you to learn seven unlabelled marks.
+          ──────────────────────────────────────────────────────────────────── */}
+      {railShape === "gear" ? (() => {
+        const entries: RailRow[] = [
+          ...FORM_FILTERS.map(({ key, label }) => {
+            const on = formFilter === key && !savedLaneLive;
+            return {
+              key, label, lane: key, active: on,
+              icon: <FormGlyph key={on ? "on" : "off"} form={key} size={18} active={on} />,
+              onClick: () => { if (comparing) { compareInLane(key); return; } setFormFilter(key); },
+              hint: String(countFor(key)),
+            };
+          }),
+          { key: "grid", label: "Grid", icon: <LayoutGrid size={16} strokeWidth={1.75} />, onClick: () => setGridOpen((v) => !v), active: gridOpen },
+          ...railActions,
+        ];
+        const SEAT = 28;
+        const R = ringR;
+        /* Seats are spaced by SLOT, not by index, so the column's grouping
+           survives the bend: the three lanes sit together, the grid stands
+           apart, the tools sit together. Evenly spaced, the seven marks read as
+           one undifferentiated string of beads and the rail loses the one thing
+           the column got right. A gap of 0.6 of a step is the arc's version of
+           SIDEBAR_GROUP_GAP. */
+        const GROUP_GAP = 0.6;
+        const slots = entries.map((e, i) => {
+          const kind = e.lane ? 0 : e.key === "grid" ? 1 : 2;
+          const prevKind = i === 0 ? kind : (entries[i - 1].lane ? 0 : entries[i - 1].key === "grid" ? 1 : 2);
+          return { kind, breaks: i > 0 && kind !== prevKind ? GROUP_GAP : 0 };
+        });
+        const slotAt: number[] = [];
+        slots.reduce((acc, sl, i) => {
+          const v = i === 0 ? 0 : acc + 1 + sl.breaks;
+          slotAt.push(v);
+          return v;
+        }, 0);
+        const span = Math.max(1, slotAt[slotAt.length - 1]);
+        // Centred on 0° (due right of the hub) so the visible half of the
+        // circle carries every seat — the other half runs off the page, which
+        // is the point.
+        const angleAt = (i: number) => (-ringSweep / 2 + ringSweep * (slotAt[i] / span)) * (Math.PI / 180);
+        const activeLane = savedLaneLive ? -1 : FORM_FILTERS.findIndex((f) => f.key === formFilter);
+        return (
+          <div
+            ref={railRef}
+            className="fixed top-1/2"
+            style={{
+              zIndex: gridOpen ? 21 : 4,
+              // The hub, not the ring's left edge: the circle is meant to run
+              // off the side of the page.
+              left: "calc(var(--nav-edge, 24px) + 18px)",
+              width: 0, height: 0,
+            }}
+            onMouseEnter={() => setRailOpen(true)}
+            onMouseLeave={() => { setRailOpen(false); setRailHoverKey(null); }}
+          >
+            {/* Hover halo — margin enough that the cursor can travel between
+                seats, and out to where the labels appear, without the ring
+                deciding you left. */}
+            <div aria-hidden style={{ position: "absolute", left: -40, top: -(R + 40), width: R + 40 + 210, height: (R + 40) * 2, borderRadius: 999 }} />
+            {/* The rim. Drawn faintly at rest — it is what tells you the marks
+                are on one object instead of scattered, which is also why it
+                does NOT fade in compare the way the column collapses: take the
+                rim away and seven glyphs are left floating unmoored. The gear
+                is ~150px wide either way, so it never needed the room the
+                column was giving back. */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute", left: -R, top: -R, width: R * 2, height: R * 2,
+                borderRadius: "50%", border: `1px solid ${SEAM}`,
+                pointerEvents: "none",
+              }}
+            />
+            {/* The mark is the hub. On a wheel that is the one position that
+                isn't a choice, which is exactly the site's own name. */}
+            <button
+              type="button"
+              onClick={onHome}
+              aria-label="Humanoid Index"
+              className="site-mark-btn cursor-pointer"
+              style={{ position: "absolute", left: -20, top: -20, width: 40, height: 40, borderRadius: 20, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: INK.off, zIndex: 1 }}
+            >
+              <SiteMark size={20} color="#5F6059" opacity={SIDEBAR_GLYPH_OP.off} />
+            </button>
+            {/* The open lane's indicator, riding the rim between seats. A
+                rotation carries it along the arc rather than across the chord. */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute", left: 0, top: 0, width: SEAT, height: SEAT, borderRadius: SEAT / 2,
+                background: FILL.rest,
+                transformOrigin: "0 50%",
+                transform: `translateY(-50%) rotate(${angleAt(Math.max(0, activeLane)) * (180 / Math.PI)}deg) translateX(${R - SEAT / 2}px)`,
+                opacity: activeLane < 0 ? 0 : 1,
+                transition: "transform 320ms cubic-bezier(0.33, 1, 0.68, 1), opacity 200ms ease",
+                pointerEvents: "none",
+              }}
+            />
+            {entries.map((item, i) => {
+              const a = angleAt(i);
+              // Cartesian, so the label can be placed in flat page space while
+              // the glyph is placed on the ring.
+              const gx = Math.cos(a) * R;
+              const gy = Math.sin(a) * R;
+              const hovered = railHoverKey === item.key;
+              const labelUp = hovered || (!!item.lane && item.active);
+              return (
+                <Fragment key={item.key}>
+                  <button
+                    type="button"
+                    onClick={item.onClick}
+                    aria-label={item.label}
+                    aria-pressed={item.active || undefined}
+                    onMouseEnter={() => setRailHoverKey(item.key)}
+                    onMouseLeave={() => setRailHoverKey((k) => (k === item.key ? null : k))}
+                    className={`${item.lane ? "lane-row" : "sidebar-action"} cursor-pointer`}
+                    style={{
+                      position: "absolute",
+                      left: gx - SEAT / 2, top: gy - SEAT / 2, width: SEAT, height: SEAT,
+                      padding: 0, border: "none", background: "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: item.active ? INK.on : hovered ? INK.hover : INK.off,
+                      zIndex: 1,
+                    }}
+                  >
+                    {/* No counter-rotation to undo, because nothing rotated. */}
+                    <span style={{ ...SIDEBAR_GLYPH_SLOT, ...railGlyphStyle(item.active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off) }}>
+                      {item.icon}
+                    </span>
+                  </button>
+                  {/* The label, flat and beside its own glyph. Pointer-events
+                      off: it is a readout, and a label that could swallow the
+                      cursor would flicker itself away at its own edge. */}
+                  <span
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      left: gx + SEAT / 2 + 6,
+                      top: gy,
+                      transform: `translateY(-50%) translateX(${labelUp ? 0 : -4}px)`,
+                      fontFamily: "var(--font-geist-sans)",
+                      fontSize: 13, fontWeight: 500, lineHeight: 1, whiteSpace: "nowrap",
+                      color: item.active ? INK.on : INK.hover,
+                      opacity: labelUp ? 1 : 0,
+                      transition: "opacity 200ms ease, transform 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+                      pointerEvents: "none",
+                      zIndex: 2,
+                    }}
+                  >
+                    {item.label}
+                    {item.hint && (
+                      <span style={{ marginLeft: 8, color: INK.faint, fontVariantNumeric: "tabular-nums" }}>{item.hint}</span>
+                    )}
+                  </span>
+                </Fragment>
+              );
+            })}
+            {/* Small print, under the wheel rather than on it. */}
+            <div
+              style={{
+                position: "absolute", left: -18, top: R + 26,
+                fontFamily: "var(--font-geist-sans)", fontSize: 13, lineHeight: 1.35, fontWeight: 450,
+                color: INK.off, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              <span>Roy Jad © 2026</span>
+              {onFeedback && (
+                <>
+                  <span aria-hidden style={{ opacity: 0.5 }}>·</span>
+                  <button type="button" onClick={onFeedback} className="rail-credit-link cursor-pointer" style={{ font: "inherit", color: "inherit", background: "none", border: "none", padding: 0 }}>Feedback</button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })() : railShape !== "column" ? (() => {
         const concentric = railShape === "concentric";
         // Every row the column has, in the column's order, as points on an arc.
         const entries: RailRow[] = [
@@ -10353,7 +10549,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             <div>
               <label className="text-[12px] text-neutral-500 mb-1.5 block">Rail shape</label>
               <div className="flex flex-wrap gap-1.5">
-                {(["column", "ring", "concentric"] as const).map((b) => (
+                {(["column", "gear", "ring", "concentric"] as const).map((b) => (
                   <button key={b} onClick={() => setRailShape(b)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railShape === b ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{b}</button>
                 ))}
               </div>
