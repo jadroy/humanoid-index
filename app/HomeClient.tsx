@@ -2027,7 +2027,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [blurbClampLines, setBlurbClampLines] = useState(3);
   // How the sheet arrives. "slide" is the plain translateY from the card's
   // bottom edge; "genie" scales it out of the placard's "i".
-  const [drawerMotion, setDrawerMotion] = useState<"slide" | "genie">("genie");
+  // The drawer's handle lives in the dock under the card now, so the sheet
+  // comes up from the card's bottom edge to meet it. The genie pulled it out
+  // of the placard's top-right "i", which is the corner that no longer has a
+  // button in it.
+  const [drawerMotion, setDrawerMotion] = useState<"slide" | "genie">("slide");
   // Opaque rather than glass. Glass is right for a band that shares the card
   // with the robot; once the sheet takes the whole face there is nothing to
   // share it with, and a solid surface is what makes the genie read as the
@@ -2058,10 +2062,13 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // Rebuilt only when damping moves. The string is ~45 stops; regenerating it
   // per render would put string-building on the same frames as the animation.
   const genieSpring = useMemo(() => springLinear(genieDamping), [genieDamping]);
-  // The card row's "i" is redundant once the drawer exists — the placard's own
-  // handle opens the same panel, and two controls for one thing is one too
-  // many. Off in drawer mode, on everywhere else, restorable from the tuner.
-  const [showInfoChip, setShowInfoChip] = useState(false);
+  // The card row's "i" is the drawer's handle. It used to be off in drawer
+  // mode, because the placard carried a second "i" in its top-right corner and
+  // two controls for one panel is one too many. The dock is the better of the
+  // two homes: everything else you can do to the robot in front of you — save
+  // it, compare it, share it — is already there, and info is one of those, not
+  // a property of the placard. The placard's copy is off (`collapseVariant`).
+  const [showInfoChip, setShowInfoChip] = useState(true);
   const drawerOpenFor = (id: string) => drawerOverrides[id] ?? drawerDefaultOpen;
   // True wherever the card's own "i" chip should still be drawn. In drawer
   // mode the placard handle already opens the same panel, so the chip is off
@@ -6886,7 +6893,13 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   a ring when open — which made the one control that was doing
                   something look like the one that wasn't, and put it out of
                   step with every other toggle on the card. */}
-              {collapseVariant === "info-icon" && (cardDrawer || (!comparing && isFirst)) && (() => {
+              {/* The placard's corner handle. There is exactly one "i" per card:
+                  in drawer mode the dock under the card carries it (see
+                  `showInfoChip`), so the placard stands down rather than
+                  offering a second button for the same panel. Not the "none"
+                  collapse variant — that one also forces the stats permanently
+                  over the card, which paints the robot out. */}
+              {collapseVariant === "info-icon" && !(cardDrawer && showInfoChip) && (cardDrawer || (!comparing && isFirst)) && (() => {
                 // Hit target runs a touch larger than the manufacturer logo it
                 // sits opposite — at logo size the circle read as decoration
                 // rather than a button.
