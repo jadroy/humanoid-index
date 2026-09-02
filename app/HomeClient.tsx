@@ -354,26 +354,62 @@ const SIDEBAR_GROUP_GAP = 16;
    control with two states rather than as two more things you could go to —
    which is the whole reason Grid stopped being a row. The left cell is a card
    (the wheel view is one card at a time); the right is the grid itself. */
-/* Text form. In a rail with no glyphs left on it, two icon cells were the only
-   drawn marks in the column and read as the one decorated control. As a pair of
-   words on ONE line it is still unmistakably a switch — everything else in the
-   rail is stacked, so horizontal is the whole signal — and the column keeps a
-   single material: type. */
-function ViewSwitchText({ grid, onChange }: { grid: boolean; onChange: (g: boolean) => void }) {
-  const cell = (on: boolean): React.CSSProperties => ({
-    font: "inherit",
-    border: "none",
-    background: "none",
-    padding: 0,
-    cursor: "pointer",
-    color: on ? INK.on : INK.off,
-    transition: "color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
-  });
+/* The grid switch, as an actual switch.
+   
+   Every attempt to make this a WORD ran into the same wall: as a row it looks
+   like Humanoid / Semi / Other, so it reads as a fourth place you can go, and
+   no amount of choosing a better word fixes a rank problem. A switch is not a
+   word. It is unambiguously a control the moment you see it, and it needs no
+   vocabulary at all.
+   
+   It is the one drawn object left in a column of pure type, which is exactly
+   why it works here — with nothing else filled or outlined, a single control
+   reads as deliberate rather than decorative. That is also why it has to stay
+   monochrome and small; a coloured fill would make it the loudest thing on the
+   page instead of the only obvious button on it.
+   
+   Labelled, and not up for debate: an unlabelled switch at the edge of a page
+   is dark mode. That convention is strong enough that a naked toggle here
+   would be quietly misread by people who then never touch it. The label costs
+   one word the rail was already spending, and the curiosity comes from the
+   control itself, not from withholding its name. */
+function GridSwitch({ grid, onChange }: { grid: boolean; onChange: (g: boolean) => void }) {
+  const TRACK_W = 26, TRACK_H = 15, KNOB = 11, PAD = (TRACK_H - KNOB) / 2;
   return (
-    <div role="group" aria-label="View" style={{ ...SIDEBAR_ROW, gap: 12, height: SIDEBAR_ROW_H }}>
-      <button type="button" aria-pressed={!grid} onClick={() => onChange(false)} style={cell(!grid)}>Wheel</button>
-      <button type="button" aria-pressed={grid} onClick={() => onChange(true)} style={cell(grid)}>Grid</button>
-    </div>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={grid}
+      aria-label="Grid"
+      onClick={() => onChange(!grid)}
+      className="sidebar-action cursor-pointer"
+      style={{ ...SIDEBAR_ROW, color: grid ? INK.on : INK.off }}
+    >
+      <span style={{ width: SIDEBAR_LABEL_W, display: "flex" }}>Grid</span>
+      <span
+        aria-hidden
+        style={{
+          position: "relative", flex: "none",
+          width: TRACK_W, height: TRACK_H, borderRadius: 999,
+          // Off, the track is a hairline on nothing — the same seam the drawer
+          // and the search panel divide with. On, it fills a step, which is the
+          // one place a fill earns its keep now that the lane pill is gone.
+          background: grid ? FILL.hover : "transparent",
+          boxShadow: grid ? "none" : `inset 0 0 0 1px ${SEAM}`,
+          transition: "background 200ms cubic-bezier(0.33, 1, 0.68, 1), box-shadow 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+        }}
+      >
+        <span
+          style={{
+            position: "absolute", top: PAD, left: PAD,
+            width: KNOB, height: KNOB, borderRadius: 999,
+            background: grid ? INK.on : INK.off,
+            transform: `translateX(${grid ? TRACK_W - KNOB - PAD * 2 : 0}px)`,
+            transition: "transform 200ms cubic-bezier(0.33, 1, 0.68, 1), background 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+          }}
+        />
+      </span>
+    </button>
   );
 }
 
@@ -2236,7 +2272,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const toolGlyphOn = railIcons !== "no-icons" || comparing;
   /* Where the grid lives. It is a view of the open lane, not a place you go, so
      by default it is a toggle rather than a row among the destinations. */
-  const [gridPlacement, setGridPlacement] = useState<"toggle" | "lane-trailing" | "float" | "row">("toggle");
+  const [gridPlacement, setGridPlacement] = useState<"toggle" | "top-right" | "bottom-right" | "arc-foot" | "lane-trailing" | "row">("toggle");
   // Whole-capsule hover, separate from per-segment hover: the counts belong to
   // the rail, not to the row under the cursor, so they arrive together.
   const [railOpen, setRailOpen] = useState(false);
@@ -4736,27 +4772,6 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             Index", was the same sentence twice. The name is the clue. */}
         <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
 
-        {/* How you are looking, before which lane you are looking at. It sits
-            directly under the mark because it is the outermost of the two
-            choices, and it is a switch rather than a row so it never competes
-            with the destinations under it. Hidden in compare, where the column
-            narrows to glyphs and the grid isn't reachable anyway. */}
-        {gridPlacement === "toggle" && !comparing && (
-          <>
-            {railIcons === "no-icons" ? (
-              <ViewSwitchText grid={gridOpen} onChange={setGridOpen} />
-            ) : (
-              /* 5px, not the rows' 10: the cell is 28 wide around a 15px glyph,
-                 so its own 6.5 of padding does the rest. What has to line up is
-                 the GLYPH with the mark above it and the lane rows below, not
-                 the box around it. */
-              <div style={{ paddingLeft: 5 }}>
-                <ViewSwitch grid={gridOpen} onChange={setGridOpen} />
-              </div>
-            )}
-            <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP - 4 }} />
-          </>
-        )}
 
         {/* Lanes. Their own positioning context so the sliding indicator keeps
             indexing from 0 — putting it in the outer column would have made its
@@ -4877,6 +4892,18 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 the actions as the counts open — an empty slot, not a missing one. */}
             <span aria-hidden style={{ ...railCountStyle, fontSize: 12 }} />
           </button>
+        )}
+        {/* Which lane first, then how you look at it — so the switch sits under
+            the categories it modifies rather than above them. Hidden in
+            compare, where the column narrows to glyphs and the grid isn't
+            reachable anyway. */}
+        {gridPlacement === "toggle" && !comparing && (
+          <>
+            {/* Its own group. Butted straight onto the lanes it read as a
+                fourth one, which is the whole thing we are trying to stop. */}
+            <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
+            <GridSwitch grid={gridOpen} onChange={setGridOpen} />
+          </>
         )}
         {gridPlacement === "lane-trailing" && (
           <button
@@ -5007,12 +5034,25 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       </div>
       )}
 
-      {/* Off the rail entirely — opposite corner, so the column is nothing but
-          destinations. One more floating surface on the page, which is the
-          trade. */}
-      {gridPlacement === "float" && !comparing && (
-        <div className="fixed z-[5]" style={{ top: 20, right: 20 }}>
-          <ViewSwitch grid={gridOpen} onChange={setGridOpen} compact />
+      {/* Off the rail entirely. The rail goes back to being nothing but places
+          you can go, and the one control on the page sits where view controls
+          conventionally sit. The trade is a second floating thing to look at —
+          which is why all three of these are quiet and none of them is a
+          panel. */}
+      {!comparing && (gridPlacement === "top-right" || gridPlacement === "bottom-right" || gridPlacement === "arc-foot") && (
+        <div
+          className="fixed"
+          style={{
+            zIndex: gridOpen ? 22 : 5,
+            ...(gridPlacement === "top-right" ? { top: "var(--nav-edge, 24px)", right: "var(--nav-edge, 24px)" } : null),
+            ...(gridPlacement === "bottom-right" ? { bottom: "var(--nav-edge, 24px)", right: "var(--nav-edge, 24px)" } : null),
+            // The foot of the name wheel: the names run out, and the thing you
+            // reach for next is all of them at once. Sits on the rail's own
+            // left edge so it reads as the end of that column of names.
+            ...(gridPlacement === "arc-foot" ? { bottom: "var(--nav-edge, 24px)", left: "calc(var(--nav-edge, 24px) + 4px)" } : null),
+          }}
+        >
+          <GridSwitch grid={gridOpen} onChange={setGridOpen} />
         </div>
       )}
 
@@ -10077,7 +10117,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           <div data-tuner-group="Layout" className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Rail</p>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Icons</p><div className="flex flex-wrap gap-1.5">{([["lanes-type", "Lanes as type"], ["all-icons", "All icons"], ["no-icons", "No icons"]] as const).map(([v, label]) => (<button key={v} onClick={() => setRailIcons(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railIcons === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{railIcons === "lanes-type" ? "Lanes are words + counts, tools keep glyphs — the two icon families stop sharing a column." : railIcons === "all-icons" ? "Every row icon + label. One family, but one rank too." : "Nothing but words — one material, one text edge. Glyphs come back in compare, where labels collapse."}</p></div>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Open lane</p><div className="flex flex-wrap gap-1.5">{([["ink", "Ink only"], ["pill", "Sliding pill"]] as const).map(([v, label]) => (<button key={v} onClick={() => setRailIndicator(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railIndicator === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{railIndicator === "ink" ? "The selected lane is simply darker. No fill anywhere in the chrome." : "The indicator slides between lanes — nice motion, but the only filled shape in the column."}</p></div>
-            <div><p className="text-[12px] text-neutral-500 mb-1.5">Grid lives</p><div className="flex flex-wrap gap-1.5">{([["toggle", "Switch under mark"], ["lane-trailing", "After lanes"], ["float", "Top-right"], ["row", "Own row"]] as const).map(([v, label]) => (<button key={v} onClick={() => setGridPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${gridPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{gridPlacement === "toggle" ? "Wheel | grid switch under the mark — how you're looking, before which lane." : gridPlacement === "lane-trailing" ? "Unlabelled glyph hanging off the lanes: this lane, seen this way." : gridPlacement === "float" ? "Opposite corner. Rail becomes purely destinations, page gains a floating surface." : "A labelled row, the way it was — reads as a third destination."}</p></div>
+            <div><p className="text-[12px] text-neutral-500 mb-1.5">Grid lives</p><div className="flex flex-wrap gap-1.5">{([["toggle", "In rail"], ["top-right", "Top-right"], ["bottom-right", "Bottom-right"], ["arc-foot", "Foot of the arc"], ["lane-trailing", "After lanes"], ["row", "Own row"]] as const).map(([v, label]) => (<button key={v} onClick={() => setGridPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${gridPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{gridPlacement === "toggle" ? "A labelled switch under the lanes — pick the lane, then flip how you see it." : gridPlacement === "top-right" ? "Where view controls conventionally sit. Balances the rail; adds a floating element." : gridPlacement === "bottom-right" ? "Quieter corner, opposite the rail's foot. Less conventional for a view control." : gridPlacement === "arc-foot" ? "Under the wheel of names: the names run out, and next is all of them at once." : gridPlacement === "lane-trailing" ? "Unlabelled glyph hanging off the lanes: this lane, seen this way." : "A labelled row, the way it was — reads as a third destination."}</p></div>
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 pt-2">Nav</p>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Chrome</p><div className="flex flex-wrap gap-1.5">{(["split", "joined"] as const).map((s) => (<button key={s} onClick={() => onChromeVariantChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${chromeVariant === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
