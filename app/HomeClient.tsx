@@ -8,7 +8,7 @@ import { Toaster, toast } from "sonner";
 import { ArrowUp, Search, Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus, Dices, Bookmark, LayoutGrid } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, type Humanoid } from "@/data/humanoids";
-import { FORM_FILTERS, listFor, listForSaved, countFor, indexOfId, idAt, seat, globalIndexOf, resolveComparePair, resolveDeeplink, type FormFilter } from "@/lib/wheelLanes";
+import { FORM_FILTERS, listFor, listForSaved, formOfLane, countFor, indexOfId, idAt, seat, globalIndexOf, resolveComparePair, resolveDeeplink, type FormFilter } from "@/lib/wheelLanes";
 import { SavedTray, SavedShelf } from "@/components/SavedSurfaces";
 import Image from "next/image";
 import EllipticalCarousel from "@/components/carousel/EllipticalCarousel";
@@ -3062,8 +3062,18 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     semi: CARD_ASPECT,
     other: 0.85,
   };
-  const SINGLE_ASPECT = SINGLE_ASPECT_BY_FORM[formFilter];
-  const COMPARE_ASPECT = COMPARE_ASPECT_BY_FORM[formFilter];
+  // Which lane's proportion is in force. Normally the open form lane — but the
+  // saved lane is a list the VISITOR composed, so it is not described by
+  // whichever form row was lit when they switched it on. Reading `formFilter`
+  // here meant walking Other → Saved rendered a saved biped in the square frame
+  // the vacuums use. It answers for itself instead: one body plan in there, use
+  // that plan's frame; mixed, fall back to the square, which is the frame that
+  // letterboxes nothing. Membership-derived, so it changes only when the saved
+  // set does — already a re-seat moment — and never mid-scroll, which is the
+  // whole reason aspect is per-lane and not per-robot.
+  const aspectLane: FormFilter = savedLaneLive ? (formOfLane(savedLane) ?? "other") : formFilter;
+  const SINGLE_ASPECT = SINGLE_ASPECT_BY_FORM[aspectLane];
+  const COMPARE_ASPECT = COMPARE_ASPECT_BY_FORM[aspectLane];
   // The px cap grows on large displays. At 400 flat, a Studio Display (2560
   // wide) rendered the same 400px card a laptop does — the whole composition
   // sat in a ~670px band with 944px of white on either side, and the card
