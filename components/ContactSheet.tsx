@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { createPortal } from "react-dom";
-import { INK, FILL, SEAM, SCRIM, RADIUS, WEIGHT, EASE, DUR, panelStyle } from "@/lib/design/chrome";
+import { INK, FILL, SEAM, RADIUS, WEIGHT, EASE, DUR } from "@/lib/design/chrome";
+import Overlay from "@/components/Overlay";
 
 type Variant = "feedback" | "suggest";
 
@@ -26,23 +26,14 @@ const COPY: Record<Variant, { title: string; subject: string; submit: string }> 
 };
 
 export default function ContactSheet({ variant, email, onClose }: Props) {
-  const [mounted, setMounted] = useState(false);
   const [message, setMessage] = useState("");
   const firstFieldRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
-  useEffect(() => setMounted(true), []);
-
+  // Esc and the scrim are Overlay's; all this needs to do is take the caret.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
     const t = window.setTimeout(() => firstFieldRef.current?.focus(), 40);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.clearTimeout(t);
-    };
-  }, [onClose]);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const canSubmit = message.trim().length > 0;
 
@@ -54,112 +45,47 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
     onClose();
   };
 
-  if (!mounted) return null;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Cmd/Ctrl+Enter sends, the way it does in every compose box. Plain Enter
+    // stays a newline — this is a paragraph field, not a search query.
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleSubmit(e);
+  };
 
-  return createPortal(
-    <div
-      onClick={onClose}
-      role="presentation"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 60,
-        // Warm and light, matching the search modal's scrim. 32% black over
-        // this page reads as a different app's dialog.
-        background: SCRIM,
-        backdropFilter: "blur(2px)",
-        WebkitBackdropFilter: "blur(2px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-        animation: "contact-fade 180ms ease-out",
-      }}
-    >
-      <form
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={handleSubmit}
-        role="dialog"
-        aria-modal="true"
-        aria-label={COPY[variant].title}
-        style={{
-          width: "100%",
-          maxWidth: 380,
-          // Was a dark panel — the only one in the app besides the tooltip,
-          // and the reason opening Feedback felt like leaving the site. Same
-          // white glass and inset edge as the search modal and the chat.
-          ...panelStyle(),
-          border: "none",
-          padding: 20,
-          display: "flex",
-          flexDirection: "column",
-          gap: 14,
-          animation: "contact-pop 200ms cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 14,
-              fontWeight: WEIGHT.label,
-              letterSpacing: "normal",
-              color: INK.on,
-            }}
-          >
-            {COPY[variant].title}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: 999,
-              border: "none",
-              background: "transparent",
-              color: INK.off,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-              <line x1="3.5" y1="3.5" x2="10.5" y2="10.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              <line x1="10.5" y1="3.5" x2="3.5" y2="10.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-          </button>
+  return (
+    <Overlay onClose={onClose} label={COPY[variant].title}>
+      {/* No title bar, no ✕, no Cancel. The placeholder says what the box is
+          for, and the scrim and Esc are how you leave — the same two exits
+          Search and Ask have. A dialog that spelled out all four was the only
+          surface here that felt like paperwork. */}
+      <form onSubmit={handleSubmit}>
+        {/* Same anatomy as Search: the field is the panel's top, seamed off
+            from a quiet footer. The field used to carry its own inset ring,
+            which drew a second box inside a box — the panel is the container. */}
+        <div style={{ padding: "16px 20px" }}>
+          <Field
+            as="textarea"
+            placeholder={variant === "feedback" ? "What's on your mind?" : "Which humanoid are we missing?"}
+            value={message}
+            onChange={setMessage}
+            onKeyDown={handleKeyDown}
+            rows={variant === "feedback" ? 5 : 2}
+            inputRef={firstFieldRef}
+          />
         </div>
 
-        <Field
-          as="textarea"
-          placeholder={variant === "feedback" ? "What's on your mind?" : "Which humanoid are we missing?"}
-          value={message}
-          onChange={setMessage}
-          rows={variant === "feedback" ? 5 : 2}
-          inputRef={firstFieldRef}
-        />
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 2 }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: "8px 14px",
-              fontSize: 13,
-              fontWeight: WEIGHT.label,
-              letterSpacing: "normal",
-              borderRadius: RADIUS.row,
-              border: "none",
-              background: "transparent",
-              color: INK.off,
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: "10px 12px 10px 20px",
+            borderTop: `1px solid ${SEAM}`,
+          }}
+        >
+          <span style={{ fontSize: 12, fontWeight: WEIGHT.body, color: INK.faint }}>
+            Sends from your mail app
+          </span>
           <button
             type="submit"
             disabled={!canSubmit}
@@ -180,19 +106,7 @@ export default function ContactSheet({ variant, email, onClose }: Props) {
           </button>
         </div>
       </form>
-
-      <style jsx>{`
-        @keyframes contact-fade {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes contact-pop {
-          from { opacity: 0; transform: translateY(6px) scale(0.985); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
-    </div>,
-    document.body,
+    </Overlay>
   );
 }
 
@@ -203,29 +117,26 @@ type FieldProps = {
   as?: "input" | "textarea";
   type?: string;
   rows?: number;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
   inputRef?: React.MutableRefObject<HTMLInputElement | HTMLTextAreaElement | null>;
 };
 
-function Field({ placeholder, value, onChange, as = "input", type = "text", rows, inputRef }: FieldProps) {
-  const [focus, setFocus] = useState(false);
+function Field({ placeholder, value, onChange, as = "input", type = "text", rows, onKeyDown, inputRef }: FieldProps) {
   const base: CSSProperties = {
     width: "100%",
-    padding: "9px 11px",
+    padding: 0,
     fontSize: 14,
     fontWeight: WEIGHT.body,
     letterSpacing: "normal",
     lineHeight: 1.45,
     fontFamily: "inherit",
     color: INK.on,
-    background: focus ? FILL.hover : FILL.rest,
-    // An inset ring rather than a border, so focus does not shift the field by
-    // a pixel and the edge matches every other surface here.
-    boxShadow: `inset 0 0 0 1px ${focus ? "rgba(95, 96, 89, 0.22)" : SEAM}`,
+    // Borderless, like Search's input. The panel is the field's container;
+    // a ring inside it was a box drawn inside a box.
+    background: "transparent",
     border: "none",
-    borderRadius: 14,
     outline: "none",
     resize: "none",
-    transition: `background ${DUR.fast}ms ${EASE}, box-shadow ${DUR.fast}ms ${EASE}`,
   };
   if (as === "textarea") {
     return (
@@ -236,8 +147,7 @@ function Field({ placeholder, value, onChange, as = "input", type = "text", rows
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
+        onKeyDown={onKeyDown}
         rows={rows}
         style={base}
       />
@@ -252,8 +162,7 @@ function Field({ placeholder, value, onChange, as = "input", type = "text", rows
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      onFocus={() => setFocus(true)}
-      onBlur={() => setFocus(false)}
+      onKeyDown={onKeyDown}
       style={base}
     />
   );

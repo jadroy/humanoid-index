@@ -64,6 +64,7 @@ const THREEDEE_ROBOTS: Record<
 > = {};
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import ContactSheet from "@/components/ContactSheet";
+import Overlay from "@/components/Overlay";
 
 const FOOTER_CONTACT_EMAIL = CONTACT_EMAIL;
 import { LogoMark, PlaceholderLogo, SiteMark } from "@/components/LogoMark";
@@ -10296,7 +10297,7 @@ function parseChat(raw: string): { reply: string; results: typeof humanoids; com
 // made it look like a different product's component. 450 sits between the
 // site's body text and its 500 labels.
 
-function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; config: ChatConfig }) {
+function GuideChat({ onSelect, onClose, config }: { onSelect: (id: string) => void; onClose: () => void; config: ChatConfig }) {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<{ role: "user" | "guide"; text: string; suggestions?: typeof humanoids }[]>([
     // The placeholder already shows what a query looks like, so the greeting
@@ -10326,24 +10327,14 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
   };
 
   return (
-    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
-      <div
-        className="overflow-hidden pointer-events-auto"
-        style={{
-          width: `min(${config.width}px, calc(100vw - 48px))`,
-          borderRadius: config.radius,
-          background: `rgba(255,255,255,${config.bgOpacity / 100})`,
-          backdropFilter: `blur(${config.blur}px) saturate(1.4)`,
-          WebkitBackdropFilter: `blur(${config.blur}px) saturate(1.4)`,
-          // The site's glass edge — an inset sheen over an inset hairline —
-          // instead of a flat 1px border. Every other floating surface here
-          // (card icon buttons, the compare minus, the old footer capsule) is
-          // built this way, and the plain border was the tell that this panel
-          // came from somewhere else.
-          boxShadow: `${GLASS_EDGE}, 0 24px 64px rgba(0,0,0,${config.shadowOp / 100}), 0 4px 16px rgba(0,0,0,${config.shadowOp / 200})`,
-          animation: "chat-rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both",
-        }}
-      >
+    <Overlay onClose={onClose} label="Ask">
+      {/* The panel used to build its own glass at the bottom of the screen with
+          no scrim and no way out but the rail row it came from. It sits in the
+          shared frame now, in the same place Search opens — the two are the
+          same gesture, so they are the same object. The dev tuner still drives
+          what is INSIDE (type size, bubble treatment); the frame is the
+          system's and is not tunable. */}
+      <>
         {/* Messages */}
         <div ref={scrollRef} className="max-h-[280px] overflow-y-auto px-5 pt-5 pb-3 space-y-4 scrollbar-hide">
           {messages.map((m, i) => (
@@ -10433,8 +10424,8 @@ function GuideChat({ onSelect, config }: { onSelect: (id: string) => void; confi
             <ArrowUp size={15} strokeWidth={1.75} />
           </button>
         </div>
-      </div>
-    </div>
+      </>
+    </Overlay>
   );
 }
 
@@ -10970,7 +10961,7 @@ export default function HomeClient() {
         toastOptions={{ unstyled: true, style: { display: "flex", justifyContent: "center", width: "100%" } }}
       />
 
-      {chatOpen && <GuideChat onSelect={handleSelectHumanoid} config={chatConfig} />}
+      {chatOpen && <GuideChat onSelect={handleSelectHumanoid} onClose={() => setChatOpen(false)} config={chatConfig} />}
 
       {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
 

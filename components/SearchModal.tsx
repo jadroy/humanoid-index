@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { humanoids } from "@/data/humanoids";
-import { INK, FILL, SEAM, SCRIM, RADIUS, WEIGHT, EASE, DUR, panelStyle } from "@/lib/design/chrome";
+import { INK, FILL, SEAM, RADIUS, WEIGHT, EASE, DUR } from "@/lib/design/chrome";
 import { Key } from "@/components/Key";
+import Overlay from "@/components/Overlay";
 
 // This component lives in `layout.tsx`, a different tree from HomeClient, so
 // there is no prop path between the sidebar's Search row and this modal, or
@@ -89,18 +90,10 @@ export default function SearchModal() {
   if (!isOpen) return null;
 
   return (
-    <div
-      // Warm scrim. `bg-black/20` reads blue-grey over this page and turned the
-      // card behind it muddy.
-      className="fixed inset-0 flex items-start justify-center pt-32 z-50"
-      style={{ background: SCRIM, animation: `share-modal-fade ${DUR.fast}ms ${EASE} both` }}
-      onClick={close}
-    >
-      <div
-        className="w-full max-w-lg overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-        style={{ ...panelStyle(), animation: `chat-rise 320ms ${EASE} both` }}
-      >
+    <Overlay onClose={close} label="Search humanoids">
+      {/* Scrim, placement, Esc and the entry motion all belong to Overlay now —
+          this component is the field and the results, nothing else. */}
+      <>
         {/* Search input */}
         <div style={{ borderBottom: `1px solid ${SEAM}` }}>
           <input
@@ -173,7 +166,7 @@ export default function SearchModal() {
             <span className="flex items-center gap-1.5"><Key>esc</Key>close</span>
           </div>
         )}
-      </div>
-    </div>
+      </>
+    </Overlay>
   );
 }
