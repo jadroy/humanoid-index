@@ -18,7 +18,7 @@ import { humanoidsToItems, humanoidConfig } from "@/app/v3/humanoidCollection";
 import MobileDeck from "@/components/MobileDeck";
 import SpinViewer, { type SpinViewerHandle } from "@/components/SpinViewer";
 import { Tooltip } from "@/components/Tooltip";
-import { INK, WEIGHT, SEAM, GLASS_EDGE } from "@/lib/design/chrome";
+import { INK, FILL, WEIGHT, SEAM, GLASS_EDGE } from "@/lib/design/chrome";
 import { TunerShell } from "@/components/Tuner";
 import { CONTACT_EMAIL } from "@/lib/site";
 
@@ -338,6 +338,39 @@ const sidebarCount = (open: boolean): React.CSSProperties => ({
 });
 
 const SIDEBAR_GROUP_GAP = 16;
+
+/* The wheel / grid view switch. Two cells in one track, so it reads as a
+   control with two states rather than as two more things you could go to —
+   which is the whole reason Grid stopped being a row. The left cell is a card
+   (the wheel view is one card at a time); the right is the grid itself. */
+function ViewSwitch({ grid, onChange, compact = false }: { grid: boolean; onChange: (g: boolean) => void; compact?: boolean }) {
+  const cell = (on: boolean): React.CSSProperties => ({
+    width: compact ? 26 : 28,
+    height: compact ? 26 : 28,
+    borderRadius: 999,
+    border: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    // The lanes' own indicator fill, so the rail has one "this is selected".
+    background: on ? "rgba(95, 96, 89, 0.07)" : "transparent",
+    color: on ? INK.on : INK.off,
+    transition: "background 200ms cubic-bezier(0.33, 1, 0.68, 1), color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+  });
+  return (
+    <div role="group" aria-label="View" style={{ display: "inline-flex", gap: 2 }}>
+      <button type="button" aria-label="Wheel" aria-pressed={!grid} onClick={() => onChange(false)} style={cell(!grid)}>
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <rect x="4.25" y="2.75" width="7.5" height="10.5" rx="2" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
+      </button>
+      <button type="button" aria-label="Grid" aria-pressed={grid} onClick={() => onChange(true)} style={cell(grid)}>
+        <LayoutGrid size={15} strokeWidth={1.6} />
+      </button>
+    </div>
+  );
+}
 // How far past its radius a ring-shaped rail reaches when fully open: half a
 // seat, the label gutter, the label column, the count column, and 24 of air.
 const RING_OPEN_REACH = 14 + 10 + SIDEBAR_LABEL_W + SIDEBAR_COUNT_W + 24;
@@ -2138,6 +2171,27 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
   const [railHover, setRailHover] = useState<FormFilter | null>(null);
+  /* How the rail draws itself.
+     "lanes-type"  — lanes are words + counts, tools keep their glyphs. The
+                     rail's two jobs stop competing: what you are looking AT is
+                     type, what you do WITH it is a glyph. It also settles the
+                     column's oldest inconsistency — the three form glyphs are
+                     custom pictographs and everything under them is lucide line
+                     work, two drawing systems in one column, which is the first
+                     thing the eye catches.
+     "all-icons"   — every row icon + label, one family, one rank.
+     "no-icons"    — nothing but words.
+     The empty glyph gutter stays in every mode: it is what keeps one left edge
+     down the whole column. */
+  const [railIcons, setRailIcons] = useState<"lanes-type" | "all-icons" | "no-icons">("lanes-type");
+  // Compare narrows the column to glyphs — the labels collapse to zero width —
+  // so type-led lanes have nothing left to read by. The glyphs come back for
+  // the duration; a lane you can't see isn't a quieter rail, it's a missing one.
+  const laneGlyphOn = railIcons === "all-icons" || comparing;
+  const toolGlyphOn = railIcons !== "no-icons";
+  /* Where the grid lives. It is a view of the open lane, not a place you go, so
+     by default it is a toggle rather than a row among the destinations. */
+  const [gridPlacement, setGridPlacement] = useState<"toggle" | "lane-trailing" | "float" | "row">("toggle");
   // Whole-capsule hover, separate from per-segment hover: the counts belong to
   // the rail, not to the row under the cursor, so they arrive together.
   const [railOpen, setRailOpen] = useState(false);
@@ -4131,8 +4185,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     }] : []),
     { key: "search", label: "Search", icon: <Search size={16} strokeWidth={1.75} />, onClick: () => window.dispatchEvent(new Event(SEARCH_OPEN_EVENT)), active: false, hint: "\u2318K" },
     { key: "ask", label: "Ask", icon: <Sparkles size={16} strokeWidth={1.75} />, onClick: onToggleChat, active: chatActive },
-    { key: "share", label: "Share", icon: <Share size={16} strokeWidth={1.75} />, onClick: onShareSite, active: false },
-    { key: "feedback", label: "Feedback", icon: <MessageCircle size={16} strokeWidth={1.75} />, onClick: onFeedback, active: false },
+    // No Share row. The dock under the card already carries one, with the same
+    // icon and the same word, and two controls a few hundred pixels apart that
+    // look identical and do slightly different things is worse than one that
+    // does the obvious thing. Feedback is on the credit line — it is a footer
+    // utility, and it was sitting at the same rank as Search.
   ];
 
   return (
@@ -4438,6 +4495,24 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             Index", was the same sentence twice. The name is the clue. */}
         <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
 
+        {/* How you are looking, before which lane you are looking at. It sits
+            directly under the mark because it is the outermost of the two
+            choices, and it is a switch rather than a row so it never competes
+            with the destinations under it. Hidden in compare, where the column
+            narrows to glyphs and the grid isn't reachable anyway. */}
+        {gridPlacement === "toggle" && !comparing && (
+          <>
+            {/* 5px, not the rows' 10: the cell is 28 wide around a 15px glyph,
+                so its own 6.5 of padding does the rest. What has to line up is
+                the GLYPH with the mark above it and the lane pills below, not
+                the box around it. */}
+            <div style={{ paddingLeft: 5 }}>
+              <ViewSwitch grid={gridOpen} onChange={setGridOpen} />
+            </div>
+            <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP - 4 }} />
+          </>
+        )}
+
         {/* Lanes. Their own positioning context so the sliding indicator keeps
             indexing from 0 — putting it in the outer column would have made its
             offset depend on the height of everything stacked above it. */}
@@ -4489,8 +4564,13 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   transition: "color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
                 }}
               >
-                {/* The glyph is solid ink at 18px, which out-weighs the label it
-                    sits next to. Held back a step unless the lane is active. */}
+                {/* The slot is always here, glyph or not: it is what holds one
+                    left edge for every label down the column. In the default
+                    mode the lanes go type-led and it stands empty — the form
+                    glyphs are custom pictographs and every tool under them is
+                    lucide line work, and putting the two families in one column
+                    was the loudest thing in the rail. FormGlyph is untouched;
+                    it still draws the compare header and the grid. */}
                 <span
                   style={{
                     ...SIDEBAR_GLYPH_SLOT,
@@ -4499,7 +4579,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 >
                   {/* Remount on activation so the glyph's one-shot replays;
                       hover is handled in CSS off `.lane-row`. */}
-                  <FormGlyph key={active ? "on" : "off"} form={key} size={18} active={active} />
+                  {laneGlyphOn && <FormGlyph key={active ? "on" : "off"} form={key} size={18} active={active} />}
                 </span>
                 {/* Label and count are separate columns now — the label is
                     fixed, the count is what opens. */}
@@ -4516,30 +4596,50 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
 
         <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
 
-        {/* View. Its own group between the lanes and the actions, because that
-            is what it is: not a filter (it doesn't change which robots you are
-            looking at) and not an action (nothing leaves the page). It sits
-            under the lanes since it reads as the second half of the same
-            sentence — this lane, seen this way. */}
-        <button
-          type="button"
-          onClick={() => setGridOpen((v) => !v)}
-          aria-label="Grid"
-          aria-pressed={gridOpen}
-          onMouseEnter={() => setRailHover(null)}
-          className="sidebar-action cursor-pointer"
-          style={{ ...SIDEBAR_ROW, color: gridOpen ? INK.on : INK.off }}
-        >
-          <span style={{ ...SIDEBAR_GLYPH_SLOT, ...railGlyphStyle(gridOpen ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off) }}>
-            <LayoutGrid size={16} strokeWidth={1.75} />
-          </span>
-          <span aria-hidden={comparing} style={railLabelStyle}>
-            <span>Grid</span>
-          </span>
-          {/* Keeps the trailing column so the row's width tracks the lanes and
-              the actions as the counts open — an empty slot, not a missing one. */}
-          <span aria-hidden style={{ ...railCountStyle, fontSize: 12 }} />
-        </button>
+        {/* View. Not a filter (it doesn't change which robots you are looking
+            at) and not an action (nothing leaves the page) — it is the same
+            lane, seen another way. As a labelled row between the lanes and the
+            actions it read as a third destination, which is the rank it does
+            not have. `gridPlacement` is where it goes instead; the row is kept
+            as one of the options. */}
+        {gridPlacement === "row" && (
+          <button
+            type="button"
+            onClick={() => setGridOpen((v) => !v)}
+            aria-label="Grid"
+            aria-pressed={gridOpen}
+            onMouseEnter={() => setRailHover(null)}
+            className="sidebar-action cursor-pointer"
+            style={{ ...SIDEBAR_ROW, color: gridOpen ? INK.on : INK.off }}
+          >
+            <span style={{ ...SIDEBAR_GLYPH_SLOT, ...railGlyphStyle(gridOpen ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off) }}>
+              {toolGlyphOn && <LayoutGrid size={16} strokeWidth={1.75} />}
+            </span>
+            <span aria-hidden={comparing} style={railLabelStyle}>
+              <span>Grid</span>
+            </span>
+            {/* Keeps the trailing column so the row's width tracks the lanes and
+                the actions as the counts open — an empty slot, not a missing one. */}
+            <span aria-hidden style={{ ...railCountStyle, fontSize: 12 }} />
+          </button>
+        )}
+        {gridPlacement === "lane-trailing" && (
+          <button
+            type="button"
+            onClick={() => setGridOpen((v) => !v)}
+            aria-label="Grid"
+            aria-pressed={gridOpen}
+            onMouseEnter={() => setRailHover(null)}
+            className="sidebar-action cursor-pointer"
+            style={{ ...SIDEBAR_ROW, height: 32, color: gridOpen ? INK.on : INK.off }}
+          >
+            {/* No label. Unlabelled is the point — it hangs off the lanes as
+                "this lane, seen this way" rather than naming a fourth one. */}
+            <span style={{ ...SIDEBAR_GLYPH_SLOT, ...railGlyphStyle(gridOpen ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off) }}>
+              <LayoutGrid size={16} strokeWidth={1.75} />
+            </span>
+          </button>
+        )}
 
         <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
 
@@ -4563,7 +4663,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             }}
           >
             <span style={{ ...SIDEBAR_GLYPH_SLOT, ...railGlyphStyle(item.active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off) }}>
-              {item.icon}
+              {toolGlyphOn && item.icon}
             </span>
             <span aria-hidden={comparing} style={railLabelStyle}>
               <span>{item.label}</span>
@@ -4583,9 +4683,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             one element in here that never changes, which reads as a twitch
             rather than as information arriving. Static, at the column's lowest
             ink, it costs nothing and stops moving. Still collapses in compare,
-            where the whole column narrows to glyphs. */}
+            where the whole column narrows to glyphs.
+            Not aria-hidden any more: Feedback lives on this line now, and a
+            hidden subtree would take the only way to reach it away from anyone
+            using a screen reader. */}
         <div
-          aria-hidden
           style={{
             // Out of flow. In flow, its height was part of the column's height,
             // and the column is centred on the viewport — so a credit line
@@ -4617,11 +4719,37 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             fontWeight: 450,
             color: INK.off,
             whiteSpace: "nowrap",
+            gap: 6,
           }}
         >
-          Roy Jad © 2026
+          <span>Roy Jad © 2026</span>
+          {onFeedback && (
+            <>
+              <span aria-hidden style={{ opacity: 0.5 }}>·</span>
+              {/* Down here rather than at Search's rank. It is the one row in
+                  the column nobody is looking for, and the credit line is
+                  where a site's small print already lives. */}
+              <button
+                type="button"
+                onClick={onFeedback}
+                className="rail-credit-link cursor-pointer"
+                style={{ font: "inherit", color: "inherit", background: "none", border: "none", padding: 0 }}
+              >
+                Feedback
+              </button>
+            </>
+          )}
         </div>
       </div>
+      )}
+
+      {/* Off the rail entirely — opposite corner, so the column is nothing but
+          destinations. One more floating surface on the page, which is the
+          trade. */}
+      {gridPlacement === "float" && !comparing && (
+        <div className="fixed z-[5]" style={{ top: 20, right: 20 }}>
+          <ViewSwitch grid={gridOpen} onChange={setGridOpen} compact />
+        </div>
       )}
 
       {/* Left arc nav */}
@@ -9682,7 +9810,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               </div>
             </div>
           </div>
-          <div data-tuner-group="Layout" className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Nav</p>
+          <div data-tuner-group="Layout" className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Rail</p>
+            <div><p className="text-[12px] text-neutral-500 mb-1.5">Icons</p><div className="flex flex-wrap gap-1.5">{([["lanes-type", "Lanes as type"], ["all-icons", "All icons"], ["no-icons", "No icons"]] as const).map(([v, label]) => (<button key={v} onClick={() => setRailIcons(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railIcons === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{railIcons === "lanes-type" ? "Lanes are words + counts, tools keep glyphs — the form pictographs and the lucide line icons stop sharing a column." : railIcons === "all-icons" ? "Every row icon + label. One family, but one rank too." : "Nothing but words. Loses the filled/empty read on Saved."}</p></div>
+            <div><p className="text-[12px] text-neutral-500 mb-1.5">Grid lives</p><div className="flex flex-wrap gap-1.5">{([["toggle", "Switch under mark"], ["lane-trailing", "After lanes"], ["float", "Top-right"], ["row", "Own row"]] as const).map(([v, label]) => (<button key={v} onClick={() => setGridPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${gridPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{gridPlacement === "toggle" ? "Wheel | grid switch under the mark — how you're looking, before which lane." : gridPlacement === "lane-trailing" ? "Unlabelled glyph hanging off the lanes: this lane, seen this way." : gridPlacement === "float" ? "Opposite corner. Rail becomes purely destinations, page gains a floating surface." : "A labelled row, the way it was — reads as a third destination."}</p></div>
+            <p className="text-[12px] tracking-widest uppercase text-neutral-400 pt-2">Nav</p>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Chrome</p><div className="flex flex-wrap gap-1.5">{(["split", "joined"] as const).map((s) => (<button key={s} onClick={() => onChromeVariantChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${chromeVariant === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             {navStyle === "underline" && (

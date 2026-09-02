@@ -1309,3 +1309,16 @@ main {
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: none; }
 }
+
+/* The credit line's Feedback. Reads as small print until you go for it — a
+   hover state is the only thing that says it is a control, since giving it a
+   row or a glyph is exactly the rank it was moved out of. */
+.rail-credit-link {
+  text-decoration: none;
+  transition: color 200ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+.rail-credit-link:hover {
+  color: rgba(95, 96, 89, 0.95);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
