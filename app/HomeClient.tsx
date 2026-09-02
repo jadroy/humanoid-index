@@ -2241,6 +2241,63 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
   const [railHover, setRailHover] = useState<FormFilter | null>(null);
+
+  /* ── Lane transition ──────────────────────────────────────────────────────
+     Switching category used to swap the wheel's contents in place, which made
+     the lanes read as a filter applied to one thing. Now the stage travels:
+     the open lane leaves in the direction you came from and the new one
+     arrives from the other side, the way an app moves between its main
+     screens.
+
+     Horizontal, because the wheel already owns vertical. Down the arc moves
+     you WITHIN a lane; across moves you BETWEEN lanes. Two axes, two meanings,
+     and nothing has to be learned.
+
+     Only the stage moves — the arc and the card. The rail stays put, because
+     it is the frame the screens move behind, and a page whose chrome slides
+     with its content reads as the whole window lurching.
+
+     This is the cheap version: one stage that exits and re-enters, rather than
+     two lanes on screen at once physically pushing each other. There is no
+     moment where you see both wheels. If that turns out to matter it means
+     rendering two full stages — arc, card and all — in a component that
+     assumes one, which is a much larger change than this. */
+  const LANE_OUT_MS = 170, LANE_IN_MS = 280;
+  const [laneAnim, setLaneAnim] = useState<{ dir: 1 | -1; entering: boolean } | null>(null);
+  const laneTimersRef = useRef<number[]>([]);
+  useEffect(() => () => { laneTimersRef.current.forEach(clearTimeout); }, []);
+  /* The lane change as a GESTURE. Programmatic seats — a deeplink landing, a
+     compare pair resolving — keep calling setFormFilter directly: those aren't
+     a move between screens, they're where you arrived. */
+  const changeLane = (next: FormFilter) => {
+    if (next === formFilter) return;
+    const at = (f: FormFilter) => FORM_FILTERS.findIndex((x) => x.key === f);
+    const dir: 1 | -1 = at(next) > at(formFilter) ? 1 : -1;
+    laneTimersRef.current.forEach(clearTimeout);
+    laneTimersRef.current = [];
+    setLaneAnim({ dir, entering: false });
+    laneTimersRef.current.push(window.setTimeout(() => {
+      // Committing the filter here swaps the list while the stage is off its
+      // mark and at zero opacity, so the spring re-seat never shows.
+      setFormFilter(next);
+      setLaneAnim({ dir, entering: true });
+      // Two frames: one for React to paint the start pose, one to release it.
+      requestAnimationFrame(() => requestAnimationFrame(() => setLaneAnim(null)));
+    }, LANE_OUT_MS));
+  };
+  /* What the stage wears at each step. Travel is small — 40px, not a full
+     screen width: the wheel is a tall thin thing at the left and the card sits
+     in the middle, so a full slide would drag the card most of the way across
+     the page and read as a shove rather than a change. */
+  const LANE_TRAVEL = 40;
+  const laneStageStyle: React.CSSProperties = !laneAnim
+    ? { transform: "translateX(0)", opacity: 1, transition: `transform ${LANE_IN_MS}ms cubic-bezier(0.33, 1, 0.68, 1), opacity ${Math.round(LANE_IN_MS * 0.7)}ms ease` }
+    : laneAnim.entering
+      // Start pose for the arrival. No transition — this frame is the "from".
+      ? { transform: `translateX(${laneAnim.dir * LANE_TRAVEL}px)`, opacity: 0, transition: "none" }
+      // Leaving, against the direction of travel, on a faster and flatter
+      // curve — an exit should feel taken away, an entrance placed.
+      : { transform: `translateX(${-laneAnim.dir * LANE_TRAVEL}px)`, opacity: 0, transition: `transform ${LANE_OUT_MS}ms cubic-bezier(0.4, 0, 1, 1), opacity ${LANE_OUT_MS}ms ease-in` };
   /* How the rail draws itself.
      "lanes-type"  — lanes are words + counts, tools keep their glyphs. The
                      rail's two jobs stop competing: what you are looking AT is
@@ -4413,7 +4470,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             return {
               key, label, lane: key, active: on,
               icon: <FormGlyph key={on ? "on" : "off"} form={key} size={18} active={on} />,
-              onClick: () => { if (comparing) { compareInLane(key); return; } setFormFilter(key); },
+              onClick: () => { if (comparing) { compareInLane(key); return; } changeLane(key); },
               hint: String(countFor(key)),
             };
           }),
@@ -4589,7 +4646,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             return {
               key, label, lane: key, active: on,
               icon: <FormGlyph key={on ? "on" : "off"} form={key} size={18} active={on} />,
-              onClick: () => { if (comparing) { compareInLane(key); return; } setFormFilter(key); },
+              onClick: () => { if (comparing) { compareInLane(key); return; } changeLane(key); },
               hint: String(countFor(key)),
             };
           }),
@@ -4812,7 +4869,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 key={key}
                 onClick={() => {
                   if (comparing) { compareInLane(key); return; }
-                  setFormFilter(key);
+                  changeLane(key);
                 }}
                 onMouseEnter={() => setRailHover(key)}
                 onMouseLeave={() => setRailHover((h) => (h === key ? null : h))}
@@ -5057,7 +5114,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       )}
 
       {/* Left arc nav */}
-      <div className="fixed top-0 bottom-0 left-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0 }}>
+      <div className="fixed top-0 bottom-0 left-0 z-[3] pointer-events-none overflow-visible" style={{ width: 0, ...laneStageStyle }}>
         <ArcDots
           list={lane}
           index={seatL}
@@ -8530,7 +8587,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           ? (cornersCollapsedGap + effectiveStatsW) / 2
           : 0;
         return (
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ zIndex: 11 }}>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ zIndex: 11, ...laneStageStyle }}>
             <div
               className={`flex ${labelPosition === "above" ? "items-end" : "items-start"}`}
               style={cornerCenterShift ? { transform: `translateX(${cornerCenterShift}px)`, transition: `transform ${dur} ${ease}` } : undefined}
