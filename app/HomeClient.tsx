@@ -1808,6 +1808,23 @@ function ClampedBlurb({ text, lines, style, linkColor }: {
 }
 
 const STRIP_PAD_TOP = 14, STRIP_PAD_BOTTOM = 16;
+
+/* The drawer's foot chips. Hairline outline on nothing, like the pills in the
+   nav — the drawer already carries the glass, so a filled chip inside it would
+   be a third surface. Sized a step under the rows so the foot reads as a
+   caption to the figures rather than as more of them. */
+const drawerChipStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "4px 10px",
+  borderRadius: 999,
+  border: `1px solid ${SEAM}`,
+  color: INK.off,
+  fontSize: 12,
+  fontWeight: WEIGHT.body,
+  lineHeight: 1.3,
+  whiteSpace: "nowrap",
+};
 const DRAWER_FADE = `linear-gradient(to bottom, transparent 0, #000 ${STRIP_PAD_TOP}px, #000 calc(100% - ${STRIP_PAD_BOTTOM}px), transparent 100%)`;
 // The drawer gets its own, shorter clock. The card's 0.5s is tuned for things
 // that happen once on arrival; this one is a control someone will hit again and
@@ -3949,18 +3966,51 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // fill. Compare keeps every row and dashes the gaps: the two strips have to
   // be the same height with each row opposite its twin, or there is nothing
   // to compare.
-  const overlayRowsFor = (h: typeof humanoids[0]): { label: string; value: string | null }[] => {
+  /**
+   * The figures in the stats surface.
+   *
+   * Two audiences, so two sets. The compare strip runs the five SPEC rows
+   * always, nulls included, because two columns only read as a comparison when
+   * their labels line up — that's what the `—` is for and it stays.
+   *
+   * The drawer is the other case. It covers the whole card and holds one
+   * height whatever it contains (so scrolling the wheel with it open doesn't
+   * make it breathe), and the spec five are patchy — the lane runs anywhere
+   * from one populated row to five, which turned a constant box into a tail
+   * that was a different size on every robot. Exactly the raggedness you feel
+   * while scrolling.
+   *
+   * So the drawer also carries the facts every robot actually has — year, use
+   * case, drive, status (35/35, 35/35, 34/35, 35/35). Six to ten rows instead
+   * of one to five: the box fills, and what varies is a much smaller share of
+   * it. Filtered, never `—` — a placeholder is honest in a comparison and just
+   * an empty row on its own.
+   */
+  const overlayRowsFor = (h: typeof humanoids[0], deep = false): { label: string; value: string | null }[] => {
     if (statsOverlay === "off") return [];
     const f = useImperial ? IMPERIAL_FMT : METRIC_FMT;
     const price = h.cost && h.cost !== "N/A" ? h.cost : availabilityLabel(h) ?? null;
-    const all = [
+    const specs = [
       { label: "Height", value: h.height ? f.height(h.height) : null },
       { label: "Weight", value: h.weight ? f.weight(h.weight) : null },
       { label: "DOF", value: h.dof ? String(h.dof) : null },
       { label: "Speed", value: h.maxSpeed ? f.speed(h.maxSpeed) : null },
       { label: "Price", value: price },
     ];
-    return comparing ? all : all.filter((r) => r.value);
+    if (comparing) return specs;
+    // Specs first, then the descriptive facts, then price last — it's the line
+    // you read to decide. No Year row: the placard above the card already says
+    // "A3 2026", and a drawer that repeats the header is padding, not depth.
+    const all = deep
+      ? [
+          ...specs.slice(0, 4),
+          { label: "Use case", value: h.useCase ?? null },
+          { label: "Drive", value: h.drive ?? null },
+          { label: "Status", value: h.status ?? null },
+          specs[4],
+        ]
+      : specs;
+    return all.filter((r) => r.value);
   };
 
   // Transition easing — Material standard: smooth, clean, no overshoot
@@ -6743,9 +6793,40 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         };
 
         const renderRobot = (h: typeof humanoids[0], _dist: number, hIdx: number, isFirst: boolean) => {
-          const overlayRows = overlayRowsFor(h);
           // One consolidated pull-up panel per card. See `BlurbDock`.
           const cardDrawer = statsOverlay === "strip" && blurbDock === "drawer";
+          // The drawer gets the deep set; the bare strip keeps the spec five,
+          // which is all it has room for.
+          const overlayRows = overlayRowsFor(h, cardDrawer);
+          // The drawer's foot. Country plus the hand-curated tags — use case
+          // and drive are rows now, so they'd say the same thing twice.
+          // Deduped against the values already standing in the rows above:
+          // several robots carry their price as a tag ("$1,688"), and a chip
+          // repeating the Price row is the kind of small doubling that makes a
+          // panel look assembled rather than composed.
+          const shown = new Set(overlayRows.map((r) => r.value?.toLowerCase()).filter(Boolean));
+          // Budgeted by width, not by count: "USA · Home · Electric" and
+          // "USA · Skills marketplace · 3D-printable parts · Assembled in SF"
+          // are both four chips and one of them is three lines. Characters are
+          // a good enough proxy for a row of pills, and a foot that stays one
+          // line is the whole point — a chip clipped in half by the drawer's
+          // bottom edge reads as a bug, not as "there is more".
+          //
+          // The tags are curated in index order (country → use case → notes),
+          // so what survives the budget is what places the robot; the rest is
+          // colour, and the drawer isn't the place for all of it.
+          const CHIP_BUDGET = 40;
+          const drawerChips = cardDrawer
+            ? Array.from(new Set([h.country, ...(h.tags ?? [])].filter(Boolean) as string[]))
+                .filter((t) => !shown.has(t.toLowerCase()))
+                .reduce<string[]>((acc, t) => {
+                  const used = acc.reduce((n, x) => n + x.length, 0);
+                  // Always take the first, however long — an empty foot is
+                  // worse than a wide one.
+                  if (acc.length === 0 || used + t.length <= CHIP_BUDGET) acc.push(t);
+                  return acc;
+                }, [])
+            : [];
           // The robot behind the sheet. Pulling it back a little as the sheet
           // arrives is what puts the two on different planes — without it the
           // sheet is a rectangle that appeared, with it the sheet is in front.
@@ -7280,7 +7361,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "baseline",
-                          padding: "6px 0",
+                          // A point tighter in the drawer. It carries eight
+                          // rows at full data where the strip carries five, and
+                          // at 6px the tallest robot overflowed the box by
+                          // 18px — enough to push the foot chips into the
+                          // bottom fade. The strip keeps its own rhythm.
+                          padding: drawer ? "5px 0" : "6px 0",
                           fontSize: 14,
                           fontWeight: WEIGHT.body,
                           borderTop: !strip && i > 0 ? `1px solid ${SEAM}` : undefined,
@@ -7417,22 +7503,49 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                           } : null),
                         }}
                       >
-                        {!!blurbText && (
-                          <div
-                            style={{
-                              padding: `${STRIP_PAD_TOP}px 22px 12px`,
-                              borderBottom: overlayRows.length ? `1px solid ${SEAM}` : undefined,
-                            }}
-                          >
-                            <ClampedBlurb
-                              text={blurbText}
-                              lines={blurbClampLines}
-                              style={blurbType}
-                              linkColor="rgba(0,0,0,0.42)"
-                            />
-                          </div>
-                        )}
-                        {rows}
+                        {/* Head, body, foot. The drawer holds one height on
+                            every robot — that's what keeps it from breathing
+                            as you scroll the wheel with it open — so the
+                            content has to be composed for a box it will rarely
+                            fill exactly. Prose at the top, figures under it,
+                            chips pinned to the bottom: the slack collects in
+                            the middle as breathing room instead of trailing
+                            off the end as a void. `minHeight: 100%` so the
+                            foot reaches the bottom on a short robot, and the
+                            block grows past it on a long one. */}
+                        <div style={{ minHeight: "100%", display: "flex", flexDirection: "column" }}>
+                          {!!blurbText && (
+                            <div
+                              style={{
+                                padding: `${STRIP_PAD_TOP}px 22px 10px`,
+                                borderBottom: overlayRows.length ? `1px solid ${SEAM}` : undefined,
+                              }}
+                            >
+                              <ClampedBlurb
+                                text={blurbText}
+                                lines={blurbClampLines}
+                                style={blurbType}
+                                linkColor="rgba(0,0,0,0.42)"
+                              />
+                            </div>
+                          )}
+                          {rows}
+                          {drawerChips.length > 0 && (
+                            <div
+                              style={{
+                                marginTop: "auto",
+                                padding: `10px 22px ${STRIP_PAD_BOTTOM}px`,
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 6,
+                              }}
+                            >
+                              {drawerChips.map((t) => (
+                                <span key={t} style={drawerChipStyle}>{t}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     {!drawer && showBlurb && blurbDock === "chip" && (
