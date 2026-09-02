@@ -4571,19 +4571,28 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     lucide line work, and putting the two families in one column
                     was the loudest thing in the rail. FormGlyph is untouched;
                     it still draws the compare header and the grid. */}
-                <span
-                  style={{
-                    ...SIDEBAR_GLYPH_SLOT,
-                    ...railGlyphStyle(active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off),
-                  }}
-                >
-                  {/* Remount on activation so the glyph's one-shot replays;
-                      hover is handled in CSS off `.lane-row`. */}
-                  {laneGlyphOn && <FormGlyph key={active ? "on" : "off"} form={key} size={18} active={active} />}
-                </span>
+                {/* Type-led, the slot goes with the glyph rather than standing
+                    empty. Holding it open to keep one left edge with the tools
+                    below left a hole in front of every category and pushed the
+                    pill off its own text — the alignment was right on paper and
+                    read as a missing icon on screen. Flush is the better trade:
+                    the pill hugs its word, and the tools' indent reads as the
+                    group it is. */}
+                {laneGlyphOn && (
+                  <span
+                    style={{
+                      ...SIDEBAR_GLYPH_SLOT,
+                      ...railGlyphStyle(active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off),
+                    }}
+                  >
+                    {/* Remount on activation so the glyph's one-shot replays;
+                        hover is handled in CSS off `.lane-row`. */}
+                    <FormGlyph key={active ? "on" : "off"} form={key} size={18} active={active} />
+                  </span>
+                )}
                 {/* Label and count are separate columns now — the label is
                     fixed, the count is what opens. */}
-                <span aria-hidden={comparing} style={railLabelStyle}>
+                <span aria-hidden={comparing} style={{ ...railLabelStyle, ...(laneGlyphOn ? null : { marginLeft: 0 }) }}>
                   <span>{label}</span>
                 </span>
                 <span aria-hidden={comparing} style={railCountStyle}>
@@ -4701,7 +4710,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             top: `calc(100% + ${SIDEBAR_GROUP_GAP - 8}px)`,
             left: 0,
             height: 24,
-            width: SIDEBAR_PROSE_W,
+            // max-content, not the old fixed 104: the line carries Feedback now
+            // and a fixed width just let it hang off the end. Out of flow, so
+            // it still doesn't set the column's width.
+            width: "max-content",
             opacity: railLive ? "var(--rail-p, 0)" : comparing ? 0 : 1,
             transition: "opacity 200ms ease",
             display: "flex",
