@@ -354,6 +354,115 @@ const SIDEBAR_GROUP_GAP = 16;
    control with two states rather than as two more things you could go to —
    which is the whole reason Grid stopped being a row. The left cell is a card
    (the wheel view is one card at a time); the right is the grid itself. */
+/* ── Lane chips ─────────────────────────────────────────────────────────────
+   The categories, along the axis they move on.
+
+   In the rail they were a vertical list while the stage travelled sideways —
+   the control and the motion disagreed, and once the transition existed that
+   mismatch was the loudest thing left. Across the top, the indicator slides in
+   the same direction the wheels do, so the chrome is showing you the same
+   move the page is making.
+
+   The one filled shape on the page, deliberately. We took the pill out of the
+   rail because it was competing with Saved's filled bookmark for "on"; up here
+   nothing else claims that job, and a fill that travels horizontally is the
+   chrome's echo of the stage travelling horizontally. It is measured off the
+   live chips rather than computed from an index, so it stays correct at any
+   label width and through a resize.
+
+   Centred, despite the worry that a bar in the card's own column would read as
+   the card's header. In practice the vertical distance does the work — the
+   chips sit at the top edge and the placard is a hundred pixels below, so they
+   read as the page's, not the card's. Worth rechecking on a short viewport,
+   where that gap is the first thing to close. */
+function LaneChips({
+  active, counts, onPick, top, variant,
+}: {
+  active: FormFilter | null;
+  counts: (f: FormFilter) => number;
+  onPick: (f: FormFilter) => void;
+  top: number;
+  variant: "chips" | "segmented";
+}) {
+  const segmented = variant === "segmented";
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = active ? chipRefs.current[active] : null;
+      // offsetLeft is measured from the track's padding edge, and the pill is
+      // inset by the same padding — so the two agree without subtracting it.
+      setPill(el ? { left: el.offsetLeft - (segmented ? 3 : 0), width: el.offsetWidth } : null);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [active, segmented]);
+  return (
+    <div
+      className="fixed left-1/2 -translate-x-1/2 z-[6]"
+      style={{ top }}
+    >
+      <div
+        ref={wrapRef}
+        style={{
+          position: "relative", display: "flex", gap: 2,
+          // The track is the whole difference between "three buttons" and "one
+          // control with three positions". A hairline, not a fill: the knob
+          // inside is already the filled shape, and two of them would be a
+          // control wearing a control.
+          ...(segmented ? {
+            padding: 3,
+            borderRadius: (SIDEBAR_ROW_H + 6) / 2,
+            boxShadow: `inset 0 0 0 1px ${SEAM}`,
+          } : null),
+        }}
+      >
+        {pill && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute", top: segmented ? 3 : 0, left: segmented ? 3 : 0,
+              height: SIDEBAR_ROW_H, borderRadius: SIDEBAR_ROW_H / 2,
+              background: FILL.rest,
+              width: pill.width,
+              transform: `translateX(${pill.left}px)`,
+              transition: "transform 320ms cubic-bezier(0.33, 1, 0.68, 1), width 320ms cubic-bezier(0.33, 1, 0.68, 1)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+        {FORM_FILTERS.map(({ key, label }) => {
+          const on = active === key;
+          return (
+            <button
+              key={key}
+              ref={(el) => { chipRefs.current[key] = el; }}
+              type="button"
+              onClick={() => onPick(key)}
+              aria-pressed={on}
+              className="lane-row cursor-pointer"
+              style={{
+                ...SIDEBAR_ROW,
+                padding: "0 14px",
+                gap: 8,
+                color: on ? INK.on : INK.off,
+                transition: "color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+              }}
+            >
+              <span>{label}</span>
+              {/* Always on, not hover-revealed. Up here there is room for it,
+                  and an index that will not tell you how many is coy. */}
+              <span style={{ color: INK.faint, fontVariantNumeric: "tabular-nums" }}>{counts(key)}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* The grid switch, as an actual switch.
    
    Every attempt to make this a WORD ran into the same wall: as a row it looks
@@ -2337,6 +2446,14 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   /* Where the grid lives. It is a view of the open lane, not a place you go, so
      by default it is a toggle rather than a row among the destinations. */
   const [gridPlacement, setGridPlacement] = useState<"toggle" | "top-right" | "bottom-right" | "arc-foot" | "lane-trailing" | "row">("toggle");
+  /* Where the categories live. "top" moves them onto the axis the stage travels
+     on and drops the rail to four rows, which is the "shorter rail" the curved
+     experiments were chasing by other means. */
+  const [lanePlacement, setLanePlacement] = useState<"top" | "rail">("top");
+  /* Loose chips, or one enclosed track. Same control either way — the track is
+     what makes it read as a slider rather than as three buttons that happen to
+     sit together. */
+  const [laneChipStyle, setLaneChipStyle] = useState<"chips" | "segmented">("segmented");
   // Whole-capsule hover, separate from per-segment hover: the counts belong to
   // the rail, not to the row under the cursor, so they arrive together.
   const [railOpen, setRailOpen] = useState(false);
@@ -4845,8 +4962,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
 
         {/* Lanes. Their own positioning context so the sliding indicator keeps
             indexing from 0 — putting it in the outer column would have made its
-            offset depend on the height of everything stacked above it. */}
-        <div style={{ position: "relative" }}>
+            offset depend on the height of everything stacked above it.
+            Absent when the chips have them: the rail drops to four rows, which
+            is the shorter column the curved experiments were chasing. */}
+        <div style={{ position: "relative", display: lanePlacement === "rail" ? undefined : "none" }}>
           {/* One shared indicator that slides between segments. The selection
               travels down the rail instead of blinking off one row and on at
               another — same trick the footer capsule used to play horizontally. */}
@@ -5102,6 +5221,17 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           )}
         </div>
       </div>
+      )}
+
+      {/* The categories, across the top, on the axis the stage travels on. */}
+      {lanePlacement === "top" && (
+        <LaneChips
+          active={savedLaneLive ? null : formFilter}
+          counts={countFor}
+          onPick={(f) => { if (comparing) { compareInLane(f); return; } changeLane(f); }}
+          top={navTop + 16}
+          variant={laneChipStyle}
+        />
       )}
 
       {/* Off the rail entirely. The rail goes back to being nothing but places
@@ -10194,6 +10324,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             </div>
           </div>
           <div data-tuner-group="Layout" className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Rail</p>
+            <div><p className="text-[12px] text-neutral-500 mb-1.5">Categories</p><div className="flex flex-wrap gap-1.5">{([["top", "Across the top"], ["rail", "In the rail"]] as const).map(([v, label]) => (<button key={v} onClick={() => setLanePlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${lanePlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{lanePlacement === "top" ? "On the axis the stage travels on — the indicator slides the way the wheels do. Rail drops to four rows." : "Back in the column. The control runs vertically while the transition runs sideways."}</p></div>
+            {lanePlacement === "top" && (<div><p className="text-[12px] text-neutral-500 mb-1.5">Shape</p><div className="flex flex-wrap gap-1.5">{([["segmented", "Segmented"], ["chips", "Loose chips"]] as const).map(([v, label]) => (<button key={v} onClick={() => setLaneChipStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${laneChipStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{laneChipStyle === "segmented" ? "One enclosed track — reads as a single control with three positions." : "No track. Three words with the selected one filled."}</p></div>)}
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Icons</p><div className="flex flex-wrap gap-1.5">{([["lanes-type", "Lanes as type"], ["all-icons", "All icons"], ["no-icons", "No icons"]] as const).map(([v, label]) => (<button key={v} onClick={() => setRailIcons(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railIcons === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{railIcons === "lanes-type" ? "Lanes are words + counts, tools keep glyphs — the two icon families stop sharing a column." : railIcons === "all-icons" ? "Every row icon + label. One family, but one rank too." : "Nothing but words — one material, one text edge. Glyphs come back in compare, where labels collapse."}</p></div>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Open lane</p><div className="flex flex-wrap gap-1.5">{([["ink", "Ink only"], ["pill", "Sliding pill"]] as const).map(([v, label]) => (<button key={v} onClick={() => setRailIndicator(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railIndicator === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{railIndicator === "ink" ? "The selected lane is simply darker. No fill anywhere in the chrome." : "The indicator slides between lanes — nice motion, but the only filled shape in the column."}</p></div>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Grid lives</p><div className="flex flex-wrap gap-1.5">{([["toggle", "In rail"], ["top-right", "Top-right"], ["bottom-right", "Bottom-right"], ["arc-foot", "Foot of the arc"], ["lane-trailing", "After lanes"], ["row", "Own row"]] as const).map(([v, label]) => (<button key={v} onClick={() => setGridPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${gridPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{gridPlacement === "toggle" ? "A labelled switch under the lanes — pick the lane, then flip how you see it." : gridPlacement === "top-right" ? "Where view controls conventionally sit. Balances the rail; adds a floating element." : gridPlacement === "bottom-right" ? "Quieter corner, opposite the rail's foot. Less conventional for a view control." : gridPlacement === "arc-foot" ? "Under the wheel of names: the names run out, and next is all of them at once." : gridPlacement === "lane-trailing" ? "Unlabelled glyph hanging off the lanes: this lane, seen this way." : "A labelled row, the way it was — reads as a third destination."}</p></div>
