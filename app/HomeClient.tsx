@@ -287,18 +287,29 @@ function glassChromeFor({ tint, alpha, blur, ink, outline, sheen }: { tint: stri
   };
 }
 
-// Every row in the floating sidebar is the same object: a 40px borderless
+// Every row in the floating sidebar is the same object: one borderless
 // segment, glyph left, collapsing label right. Mark, lanes and actions all use
 // it, which is what lets three unrelated things read as one control column.
+//
+// 450, not 500. 500 is WEIGHT.label — the site's emphasis weight, for a robot's
+// name in a search result or the title on a card. Everything the site says in
+// its own voice, including every row of the drawer, is 450. The rail was the
+// one surface setting every row at emphasis, which is most of why it read
+// louder than the page it sits beside.
+//
+// 30px, not 40. 40 is an app's nav; this is furniture at the edge of a page,
+// and the extra 10px per row bought nothing but distance between things that
+// belong together.
+const SIDEBAR_ROW_H = 30;
 const SIDEBAR_ROW: React.CSSProperties = {
   fontFamily: "var(--font-geist-sans)",
   fontSize: 14,
-  fontWeight: 500,
+  fontWeight: 450,
   lineHeight: 1,
   letterSpacing: "normal",
-  height: 40,
+  height: SIDEBAR_ROW_H,
   padding: "0 10px",
-  borderRadius: 20,
+  borderRadius: SIDEBAR_ROW_H / 2,
   border: "none",
   background: "transparent",
   whiteSpace: "nowrap",
@@ -343,6 +354,29 @@ const SIDEBAR_GROUP_GAP = 16;
    control with two states rather than as two more things you could go to —
    which is the whole reason Grid stopped being a row. The left cell is a card
    (the wheel view is one card at a time); the right is the grid itself. */
+/* Text form. In a rail with no glyphs left on it, two icon cells were the only
+   drawn marks in the column and read as the one decorated control. As a pair of
+   words on ONE line it is still unmistakably a switch — everything else in the
+   rail is stacked, so horizontal is the whole signal — and the column keeps a
+   single material: type. */
+function ViewSwitchText({ grid, onChange }: { grid: boolean; onChange: (g: boolean) => void }) {
+  const cell = (on: boolean): React.CSSProperties => ({
+    font: "inherit",
+    border: "none",
+    background: "none",
+    padding: 0,
+    cursor: "pointer",
+    color: on ? INK.on : INK.off,
+    transition: "color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+  });
+  return (
+    <div role="group" aria-label="View" style={{ ...SIDEBAR_ROW, gap: 12, height: SIDEBAR_ROW_H }}>
+      <button type="button" aria-pressed={!grid} onClick={() => onChange(false)} style={cell(!grid)}>Wheel</button>
+      <button type="button" aria-pressed={grid} onClick={() => onChange(true)} style={cell(grid)}>Grid</button>
+    </div>
+  );
+}
+
 function ViewSwitch({ grid, onChange, compact = false }: { grid: boolean; onChange: (g: boolean) => void; compact?: boolean }) {
   const cell = (on: boolean): React.CSSProperties => ({
     width: compact ? 26 : 28,
@@ -2183,12 +2217,23 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
      "no-icons"    — nothing but words.
      The empty glyph gutter stays in every mode: it is what keeps one left edge
      down the whole column. */
-  const [railIcons, setRailIcons] = useState<"lanes-type" | "all-icons" | "no-icons">("lanes-type");
+  const [railIcons, setRailIcons] = useState<"lanes-type" | "all-icons" | "no-icons">("no-icons");
+  /* How the open lane says so.
+     "ink"  — ink alone, the way benji.org does it: one weight, one size, and
+              the selected thing is simply darker than the rest. No fill on the
+              page at all, which is what makes a column read as furniture.
+     "pill" — the sliding indicator. Nice motion, but it is the only filled
+              shape in the chrome and it made Saved's filled bookmark a second,
+              conflicting way of saying "on". */
+  const [railIndicator, setRailIndicator] = useState<"ink" | "pill">("ink");
   // Compare narrows the column to glyphs — the labels collapse to zero width —
   // so type-led lanes have nothing left to read by. The glyphs come back for
   // the duration; a lane you can't see isn't a quieter rail, it's a missing one.
   const laneGlyphOn = railIcons === "all-icons" || comparing;
-  const toolGlyphOn = railIcons !== "no-icons";
+  // Same reason the lanes get theirs back: compare collapses every label to
+  // zero width, and a row with neither glyph nor label is not a quieter rail,
+  // it is an empty one.
+  const toolGlyphOn = railIcons !== "no-icons" || comparing;
   /* Where the grid lives. It is a view of the open lane, not a place you go, so
      by default it is a toggle rather than a row among the destinations. */
   const [gridPlacement, setGridPlacement] = useState<"toggle" | "lane-trailing" | "float" | "row">("toggle");
@@ -4698,13 +4743,17 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             narrows to glyphs and the grid isn't reachable anyway. */}
         {gridPlacement === "toggle" && !comparing && (
           <>
-            {/* 5px, not the rows' 10: the cell is 28 wide around a 15px glyph,
-                so its own 6.5 of padding does the rest. What has to line up is
-                the GLYPH with the mark above it and the lane pills below, not
-                the box around it. */}
-            <div style={{ paddingLeft: 5 }}>
-              <ViewSwitch grid={gridOpen} onChange={setGridOpen} />
-            </div>
+            {railIcons === "no-icons" ? (
+              <ViewSwitchText grid={gridOpen} onChange={setGridOpen} />
+            ) : (
+              /* 5px, not the rows' 10: the cell is 28 wide around a 15px glyph,
+                 so its own 6.5 of padding does the rest. What has to line up is
+                 the GLYPH with the mark above it and the lane rows below, not
+                 the box around it. */
+              <div style={{ paddingLeft: 5 }}>
+                <ViewSwitch grid={gridOpen} onChange={setGridOpen} />
+              </div>
+            )}
             <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP - 4 }} />
           </>
         )}
@@ -4723,10 +4772,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               left: 0,
               right: 0,
               top: 0,
-              height: 40,
-              borderRadius: 20,
-              background: "rgba(95, 96, 89, 0.07)",
-              transform: `translateY(${Math.max(0, FORM_FILTERS.findIndex((f) => f.key === formFilter)) * 40}px)`,
+              height: SIDEBAR_ROW_H,
+              borderRadius: SIDEBAR_ROW_H / 2,
+              background: FILL.rest,
+              display: railIndicator === "pill" ? undefined : "none",
+              transform: `translateY(${Math.max(0, FORM_FILTERS.findIndex((f) => f.key === formFilter)) * SIDEBAR_ROW_H}px)`,
               // The saved lane is not a form lane, so while it holds the wheel
               // no form row is the filter in force. The indicator fades rather
               // than sliding away: it stays where it will return to.
@@ -4867,10 +4917,16 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               color: item.active ? INK.on : INK.off,
             }}
           >
-            <span style={{ ...SIDEBAR_GLYPH_SLOT, ...railGlyphStyle(item.active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off) }}>
-              {toolGlyphOn && item.icon}
-            </span>
-            <span aria-hidden={comparing} style={railLabelStyle}>
+            {/* Same rule the lanes follow: the slot goes with the glyph. Held
+                open it left the tools indented from the categories by an empty
+                18px, which is the hole again — one text edge only happens if
+                nothing is reserving space for a mark that isn't drawn. */}
+            {toolGlyphOn && (
+              <span style={{ ...SIDEBAR_GLYPH_SLOT, ...railGlyphStyle(item.active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off) }}>
+                {item.icon}
+              </span>
+            )}
+            <span aria-hidden={comparing} style={{ ...railLabelStyle, ...(toolGlyphOn ? null : { marginLeft: 0 }) }}>
               <span>{item.label}</span>
             </span>
             {/* Same trailing column the lane counts open into — a shortcut is
@@ -10019,7 +10075,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             </div>
           </div>
           <div data-tuner-group="Layout" className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Rail</p>
-            <div><p className="text-[12px] text-neutral-500 mb-1.5">Icons</p><div className="flex flex-wrap gap-1.5">{([["lanes-type", "Lanes as type"], ["all-icons", "All icons"], ["no-icons", "No icons"]] as const).map(([v, label]) => (<button key={v} onClick={() => setRailIcons(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railIcons === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{railIcons === "lanes-type" ? "Lanes are words + counts, tools keep glyphs — the form pictographs and the lucide line icons stop sharing a column." : railIcons === "all-icons" ? "Every row icon + label. One family, but one rank too." : "Nothing but words. Loses the filled/empty read on Saved."}</p></div>
+            <div><p className="text-[12px] text-neutral-500 mb-1.5">Icons</p><div className="flex flex-wrap gap-1.5">{([["lanes-type", "Lanes as type"], ["all-icons", "All icons"], ["no-icons", "No icons"]] as const).map(([v, label]) => (<button key={v} onClick={() => setRailIcons(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railIcons === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{railIcons === "lanes-type" ? "Lanes are words + counts, tools keep glyphs — the two icon families stop sharing a column." : railIcons === "all-icons" ? "Every row icon + label. One family, but one rank too." : "Nothing but words — one material, one text edge. Glyphs come back in compare, where labels collapse."}</p></div>
+            <div><p className="text-[12px] text-neutral-500 mb-1.5">Open lane</p><div className="flex flex-wrap gap-1.5">{([["ink", "Ink only"], ["pill", "Sliding pill"]] as const).map(([v, label]) => (<button key={v} onClick={() => setRailIndicator(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railIndicator === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{railIndicator === "ink" ? "The selected lane is simply darker. No fill anywhere in the chrome." : "The indicator slides between lanes — nice motion, but the only filled shape in the column."}</p></div>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Grid lives</p><div className="flex flex-wrap gap-1.5">{([["toggle", "Switch under mark"], ["lane-trailing", "After lanes"], ["float", "Top-right"], ["row", "Own row"]] as const).map(([v, label]) => (<button key={v} onClick={() => setGridPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${gridPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{gridPlacement === "toggle" ? "Wheel | grid switch under the mark — how you're looking, before which lane." : gridPlacement === "lane-trailing" ? "Unlabelled glyph hanging off the lanes: this lane, seen this way." : gridPlacement === "float" ? "Opposite corner. Rail becomes purely destinations, page gains a floating surface." : "A labelled row, the way it was — reads as a third destination."}</p></div>
             <p className="text-[12px] tracking-widest uppercase text-neutral-400 pt-2">Nav</p>
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Style</p><div className="flex flex-wrap gap-1.5">{NAV_STYLES.map((s) => (<button key={s} onClick={() => onNavStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${navStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
