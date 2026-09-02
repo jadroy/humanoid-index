@@ -2266,24 +2266,31 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [laneAnim, setLaneAnim] = useState<{ dir: 1 | -1; entering: boolean } | null>(null);
   const laneTimersRef = useRef<number[]>([]);
   useEffect(() => () => { laneTimersRef.current.forEach(clearTimeout); }, []);
-  /* The lane change as a GESTURE. Programmatic seats — a deeplink landing, a
-     compare pair resolving — keep calling setFormFilter directly: those aren't
-     a move between screens, they're where you arrived. */
-  const changeLane = (next: FormFilter) => {
-    if (next === formFilter) return;
+  /* The move itself, with the caller's swap run at the midpoint.
+     Single view seats one spring; compare seats two and has to keep them off
+     the same robot — different work, same journey — so the sequence lives here
+     once and each caller passes what it needs done while the stage is dark. */
+  const runLaneTransition = (from: FormFilter, to: FormFilter, commit: () => void) => {
     const at = (f: FormFilter) => FORM_FILTERS.findIndex((x) => x.key === f);
-    const dir: 1 | -1 = at(next) > at(formFilter) ? 1 : -1;
+    const dir: 1 | -1 = at(to) > at(from) ? 1 : -1;
     laneTimersRef.current.forEach(clearTimeout);
     laneTimersRef.current = [];
     setLaneAnim({ dir, entering: false });
     laneTimersRef.current.push(window.setTimeout(() => {
-      // Committing the filter here swaps the list while the stage is off its
-      // mark and at zero opacity, so the spring re-seat never shows.
-      setFormFilter(next);
+      // Committing here swaps the list while the stage is off its mark and at
+      // zero opacity, so the spring re-seat never shows.
+      commit();
       setLaneAnim({ dir, entering: true });
       // Two frames: one for React to paint the start pose, one to release it.
       requestAnimationFrame(() => requestAnimationFrame(() => setLaneAnim(null)));
     }, LANE_OUT_MS));
+  };
+  /* The lane change as a GESTURE. Programmatic seats — a deeplink landing, a
+     compare pair resolving out of a URL — keep calling setFormFilter directly:
+     those aren't a move between screens, they're where you arrived. */
+  const changeLane = (next: FormFilter) => {
+    if (next === formFilter) return;
+    runLaneTransition(formFilter, next, () => setFormFilter(next));
   };
   /* What the stage wears at each step. Travel is small — 40px, not a full
      screen width: the wheel is a tall thin thing at the left and the card sits
@@ -4032,13 +4039,19 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // keep the two sides off the same seat.
   const compareInLane = (f: FormFilter) => {
     if (f === formFilter) return;
-    setFormFilter(f);
-    const next = listFor(f);
-    laneRef.current = next;
-    const l = seat(indexOfId(next, hL?.id));
-    const r = seat(indexOfId(next, hR?.id));
-    springL.snapTo(l);
-    springR.snapTo(r === l ? (l < next.length - 1 ? l + 1 : 0) : r);
+    // Same travel as the single view. The pair is what's on screen, so the pair
+    // is what leaves — a compare that swapped both cards in place while the
+    // single view slid would make the transition look like a property of the
+    // card rather than of the lane.
+    runLaneTransition(formFilter, f, () => {
+      setFormFilter(f);
+      const next = listFor(f);
+      laneRef.current = next;
+      const l = seat(indexOfId(next, hL?.id));
+      const r = seat(indexOfId(next, hR?.id));
+      springL.snapTo(l);
+      springR.snapTo(r === l ? (l < next.length - 1 ? l + 1 : 0) : r);
+    });
   };
 
   // Horizontal swipe → one lane along the rail. Clamped, not wrapped: the rail
@@ -4049,7 +4062,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
     const next = FORM_FILTERS[Math.min(FORM_FILTERS.length - 1, Math.max(0, i + dir))];
     if (!next || next.key === formFilter) return;
     if (comparing) compareInLane(next.key);
-    else setFormFilter(next.key);
+    else changeLane(next.key);
     flashRail();
   };
 
@@ -5164,10 +5177,19 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         className="fixed top-0 bottom-0 right-0 z-[3] overflow-visible"
         style={{
           width: 0,
-          opacity: comparing ? 1 : 0,
+          // Lane travel composed onto the compare fade rather than replacing
+          // it: this element owns two independent reasons to be invisible —
+          // "we are not comparing" and "the lane is changing" — and they run on
+          // different clocks. Applied here rather than to a wrapper, because a
+          // transform becomes the containing block for the absolutely
+          // positioned arc inside and an extra div moved it off screen.
+          transform: laneStageStyle.transform,
+          opacity: comparing ? (laneAnim ? 0 : 1) : 0,
           visibility: comparing ? "visible" : "hidden",
           transition: comparing
-            ? "opacity var(--collapse-dur) var(--collapse-ease), visibility 0s linear 0s"
+            ? (laneAnim?.entering
+                ? "none"
+                : `${laneStageStyle.transition}, visibility 0s linear 0s`)
             : "opacity var(--collapse-dur) var(--collapse-ease), visibility 0s linear var(--collapse-dur)",
         }}
       >
