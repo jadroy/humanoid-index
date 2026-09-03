@@ -9220,6 +9220,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   shared collapse clock so the right side enters as one piece. */}
               <div
                 className="flex-shrink-0 relative compare-rcard"
+                // Single view keeps this card mounted at opacity 0 so the
+                // compare transition has something to animate. `inert` keeps
+                // that invisible copy out of the a11y tree and the tab order,
+                // otherwise screen readers read the same robot twice.
+                inert={!comparing}
                 style={{
                 opacity: comparing ? 1 : 0,
                 pointerEvents: comparing ? "auto" : "none",
