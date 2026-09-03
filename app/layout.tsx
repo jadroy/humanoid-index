@@ -34,6 +34,7 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import SearchModal from "@/components/SearchModal";
+import { SHOW_SEARCH } from "@/lib/features";
 import DevAnnotate from "@/components/DevAnnotate";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -120,7 +121,9 @@ export default function RootLayout({
     <html lang="en" className={fontVars}>
       <body className={`${GeistSans.className} antialiased bg-white text-neutral-700`}>
         {children}
-        <SearchModal />
+        {/* SearchModal owns ⌘K as well as the surface, so gating the
+            element is what actually retires the shortcut. */}
+        {SHOW_SEARCH && <SearchModal />}
         {process.env.NODE_ENV === "development" && <DevAnnotate />}
         <Analytics />
         <Script

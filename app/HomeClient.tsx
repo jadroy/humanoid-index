@@ -69,6 +69,7 @@ import Overlay from "@/components/Overlay";
 const FOOTER_CONTACT_EMAIL = CONTACT_EMAIL;
 import { LogoMark, PlaceholderLogo, SiteMark } from "@/components/LogoMark";
 import { SEARCH_OPEN_EVENT, SEARCH_SELECT_EVENT } from "@/components/SearchModal";
+import { SHOW_SEARCH, SHOW_ASK } from "@/lib/features";
 import { FormGlyph } from "@/components/FormGlyph";
 import { getCompareBlurb } from "@/lib/compareBlurb";
 import { getRobotDescription } from "@/lib/robotDescription";
@@ -4458,8 +4459,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       active: savedSurfaceOn,
       hint: String(savedItems.length),
     }] : []),
-    { key: "search", label: "Search", icon: <Search size={16} strokeWidth={1.75} />, onClick: () => window.dispatchEvent(new Event(SEARCH_OPEN_EVENT)), active: false, hint: "\u2318K" },
-    { key: "ask", label: "Ask", icon: <Sparkles size={16} strokeWidth={1.75} />, onClick: onToggleChat, active: chatActive },
+    // Held back for launches of their own — see lib/features. Spread away
+    // rather than hidden, so the dock closes up around them and does not keep
+    // a gap where a row used to be.
+    ...(SHOW_SEARCH ? [{ key: "search", label: "Search", icon: <Search size={16} strokeWidth={1.75} />, onClick: () => window.dispatchEvent(new Event(SEARCH_OPEN_EVENT)), active: false, hint: "\u2318K" }] : []),
+    ...(SHOW_ASK ? [{ key: "ask", label: "Ask", icon: <Sparkles size={16} strokeWidth={1.75} />, onClick: onToggleChat, active: chatActive }] : []),
     // No Share row. The dock under the card already carries one, with the same
     // icon and the same word, and two controls a few hundred pixels apart that
     // look identical and do slightly different things is worse than one that
@@ -11744,7 +11748,7 @@ export default function HomeClient() {
         toastOptions={{ unstyled: true, style: { display: "flex", justifyContent: "center", width: "100%" } }}
       />
 
-      {chatOpen && <GuideChat onSelect={handleSelectHumanoid} onClose={() => setChatOpen(false)} config={chatConfig} />}
+      {SHOW_ASK && chatOpen && <GuideChat onSelect={handleSelectHumanoid} onClose={() => setChatOpen(false)} config={chatConfig} />}
 
       {showShortcuts && <ShortcutsSheet onClose={() => setShowShortcuts(false)} />}
 

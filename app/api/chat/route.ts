@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { humanoids } from "@/data/humanoids";
 import { NextRequest } from "next/server";
+import { SHOW_ASK } from "@/lib/features";
 
 const client = new Anthropic();
 
@@ -62,9 +63,10 @@ Dataset:
 ${ROBOT_LIST}`;
 
 export async function POST(req: NextRequest) {
-  // Launch gate — chat trigger is hidden from the UI; lock the route too.
-  // Remove this block when re-enabling chat (along with restoring <OptionsMenu> in HomeClient).
-  return new Response(null, { status: 404 });
+  // Ask is held back, so the endpoint goes with it. Leaving a live model call
+  // reachable on the domain with no UI in front of it is an open invitation
+  // and a bill — the rate limit below caps the damage, it does not prevent it.
+  if (!SHOW_ASK) return new Response("Not found", { status: 404 });
 
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "anonymous";
