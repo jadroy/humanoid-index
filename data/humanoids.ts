@@ -218,6 +218,7 @@ const allHumanoids: Humanoid[] = [
     country: "USA",
     useCase: "Home",
     drive: "Wheeled base",
+    form: "semi",
     availability: "consumer",
     logoUrl: "/robots/Nori.png",
     manufacturerUrl: "https://www.norirobotics.com",
