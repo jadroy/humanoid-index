@@ -89,10 +89,13 @@ When adding sharing features, keep zero-upkeep — no maintenance burden.
 
 ## In-flight / pending
 
-- **Browse() decomposition.** `HomeClient.tsx` is still one big file; lucky-tap RAF, compare state machine, and per-card physics dispatch are all inline. Carve order when returning: `useLuckyTap` first (self-contained, zero coupling) → compare state → card physics → spring wiring last. Behavior-preserving carves only. Typecheck + dev-server check after each. Don't create a `lib/types.ts` dumping ground — colocate types with their owner.
-- **Streaming compare blurb.** Plan to replace static `compare-blurbs.json` with `app/api/compare-blurb/route.ts` (Haiku, ~$0.0005/req, validates IDs against humanoids list, streams tokens). React side types in progressively, keeps an in-session `useRef` cache keyed by sorted pair, falls back to JSON on error. Not built yet.
-- **Mobile.** `MobileView.tsx` is a "coming soon" placeholder. Deferred — codebase doesn't transfer cleanly to mobile yet.
-- **Distribution.** Robot-of-the-day cron + HN launch pending. Pretty URL slugs (`?h=atlas-2013` vs `?h=3`) low priority.
+Lives in `app/admin/todo.ts`, rendered at **`/admin`** — one registry, plain-language
+titles, ordered by effort, with the engineering detail on each entry. Coverage numbers
+on that page are counted off `humanoids.ts`, so they can't drift.
+
+Add an item by adding a line to the registry. Finish one by deleting that line — there's
+no `done` flag, because a list of finished things is just `git log`. Don't start a second
+pending list here; that duplication is what `/admin` was built to end.
 
 ## The collection branch
 
