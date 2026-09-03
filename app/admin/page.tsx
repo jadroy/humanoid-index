@@ -35,8 +35,8 @@ export default function AdminPage() {
         .row:first-child { border-top: none; }
         .row > summary {
           list-style: none; cursor: pointer; user-select: none;
-          display: flex; align-items: center; gap: 14px;
-          padding: 17px 20px; transition: background 120ms ease;
+          display: flex; align-items: center; gap: 16px;
+          padding: 19px 22px; transition: background 120ms ease;
         }
         .row > summary::-webkit-details-marker { display: none; }
         .row > summary:hover { background: #FAFAFC; }
@@ -45,8 +45,8 @@ export default function AdminPage() {
         .caret { transition: transform 160ms cubic-bezier(0.2,0.8,0.2,1); flex-shrink: 0; }
       `}</style>
 
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "72px 32px 96px" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.03em", marginBottom: 44 }}>Admin</h1>
+      <div style={{ maxWidth: 820, margin: "0 auto", padding: "76px 32px 104px" }}>
+        <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.03em", marginBottom: 48 }}>Admin</h1>
 
         {/* Flat and ordered by effort rather than grouped by area, because
             "what can I knock out now" is the question this page gets asked.
@@ -56,7 +56,7 @@ export default function AdminPage() {
           if (!list.length) return null;
           return (
             <section key={size} style={{ marginBottom: 46 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.02em", color: INK, marginBottom: 14 }}>
+              <h2 style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em", color: INK, marginBottom: 16 }}>
                 {SIZE_HEADING[size]}
               </h2>
 
@@ -66,28 +66,28 @@ export default function AdminPage() {
                   return (
                     <details key={i.title} className="row">
                       <summary>
-                        <svg className="caret" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="#B8B8C2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <svg className="caret" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#B8B8C2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                           <path d="M6 3 L11 8 L6 13" />
                         </svg>
 
                         <span
                           style={{
                             flexShrink: 0,
-                            fontSize: 12,
+                            fontSize: 13.5,
                             fontWeight: 500,
                             letterSpacing: "-0.005em",
-                            padding: "4px 9px",
-                            borderRadius: 6,
+                            padding: "5px 11px",
+                            borderRadius: 7,
                             background: c.bg,
                             color: c.fg,
-                            width: 108,
+                            width: 124,
                             textAlign: "center",
                           }}
                         >
                           {AREA_LABEL[i.area]}
                         </span>
 
-                        <span style={{ fontSize: 15, fontWeight: 500, letterSpacing: "-0.02em", flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 17, fontWeight: 500, letterSpacing: "-0.02em", flex: 1, minWidth: 0 }}>
                           {i.title}
                         </span>
 
@@ -95,10 +95,10 @@ export default function AdminPage() {
                           <span
                             style={{
                               flexShrink: 0,
-                              fontSize: 12,
+                              fontSize: 13.5,
                               fontWeight: 500,
-                              padding: "4px 9px",
-                              borderRadius: 6,
+                              padding: "5px 11px",
+                              borderRadius: 7,
                               background: "#FBF2E4",
                               color: "#B5761A",
                             }}
@@ -108,20 +108,20 @@ export default function AdminPage() {
                         )}
                       </summary>
 
-                      <div style={{ padding: "2px 24px 22px 146px" }}>
-                        <p style={{ fontSize: 14, color: BODY, letterSpacing: "-0.01em", lineHeight: 1.6 }}>
+                      <div style={{ padding: "2px 26px 24px 170px" }}>
+                        <p style={{ fontSize: 15.5, color: BODY, letterSpacing: "-0.01em", lineHeight: 1.6 }}>
                           {i.note}
                         </p>
                         {i.detail && (
-                          <p style={{ fontSize: 13.5, color: MUTED, letterSpacing: "-0.01em", lineHeight: 1.6, marginTop: 10 }}>
+                          <p style={{ fontSize: 15, color: MUTED, letterSpacing: "-0.01em", lineHeight: 1.6, marginTop: 10 }}>
                             {i.detail}
                           </p>
                         )}
                         {(i.where || i.blocked) && (
                           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 12 }}>
-                            {i.where && <code style={{ fontSize: 12.5, color: MUTED }}>{i.where}</code>}
+                            {i.where && <code style={{ fontSize: 13.5, color: MUTED }}>{i.where}</code>}
                             {i.blocked && (
-                              <span style={{ fontSize: 12.5, color: "#8A7420", letterSpacing: "-0.01em" }}>
+                              <span style={{ fontSize: 13.5, color: "#8A7420", letterSpacing: "-0.01em" }}>
                                 Decide: {i.blocked}
                               </span>
                             )}

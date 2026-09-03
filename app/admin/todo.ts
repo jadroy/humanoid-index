@@ -75,7 +75,7 @@ export const items: Item[] = [
   {
     title: "Three robots have no link to their maker",
     note: "Figure 02, Astribot S1 and Roboy have a Visit button with nowhere to go.",
-    detail: "Neither infoUrl nor manufacturerUrl is set. Surfaced by the coverage bars above, which is the point of counting it.",
+    detail: "Neither infoUrl nor manufacturerUrl is set, so the Visit button falls through to nothing.",
     area: "data",
     size: "quick",
   },
