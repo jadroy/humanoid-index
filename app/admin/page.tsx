@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { items, AREA_LABEL, AREA_COLOR } from "./todo";
 
 // Same posture as the lab — findable if you know it, never crawled.
@@ -46,10 +45,8 @@ export default function AdminPage() {
         .caret { transition: transform 160ms cubic-bezier(0.2,0.8,0.2,1); flex-shrink: 0; }
       `}</style>
 
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "72px 32px 120px" }}>
-        <header style={{ paddingBottom: 22, borderBottom: `1px solid ${LINE}`, marginBottom: 44 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.03em" }}>Admin</h1>
-        </header>
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "72px 32px 96px" }}>
+        <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.03em", marginBottom: 44 }}>Admin</h1>
 
         {/* Flat and ordered by effort rather than grouped by area, because
             "what can I knock out now" is the question this page gets asked.
@@ -59,14 +56,9 @@ export default function AdminPage() {
           if (!list.length) return null;
           return (
             <section key={size} style={{ marginBottom: 46 }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 9, marginBottom: 14 }}>
-                <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.02em", color: INK }}>
-                  {SIZE_HEADING[size]}
-                </h2>
-                <span className="tabular-nums" style={{ fontSize: 13, color: "#B8B8C2" }}>
-                  {list.length}
-                </span>
-              </div>
+              <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.02em", color: INK, marginBottom: 14 }}>
+                {SIZE_HEADING[size]}
+              </h2>
 
               <div style={{ border: `1px solid ${LINE}`, borderRadius: 12, overflow: "hidden", background: "#FFF" }}>
                 {list.map((i) => {
@@ -144,14 +136,6 @@ export default function AdminPage() {
           );
         })}
 
-        <footer style={{ paddingTop: 22, borderTop: `1px solid ${LINE}`, display: "flex", gap: 20 }}>
-          <Link href="/" style={{ fontSize: 13.5, color: BODY, textDecoration: "none", letterSpacing: "-0.01em" }}>
-            ← Back to the index
-          </Link>
-          <Link href="/lab" style={{ fontSize: 13.5, color: BODY, textDecoration: "none", letterSpacing: "-0.01em" }}>
-            Lab
-          </Link>
-        </footer>
       </div>
     </main>
   );
