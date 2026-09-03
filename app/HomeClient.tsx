@@ -11513,25 +11513,41 @@ export default function HomeClient() {
   useEffect(() => {
     if (introPhase !== "done" || newHumanoids.length === 0 || !firstNewId) return;
     const seenKey = `hi:new-toast-seen:${newHumanoids.map((h) => h.id).sort().join(",")}`;
+    // ?announce replays the announcement on demand. It is one-shot per browser
+    // and lives twelve seconds, which makes "did that actually ship?" a
+    // question you cannot answer without clearing localStorage and catching it.
+    // A replay ignores the seen-key, holds for a minute so it can be read
+    // properly, and never records itself — so a genuine first visit still gets
+    // its one showing.
+    let replay = false;
     try {
-      if (localStorage.getItem(seenKey)) return;
+      replay = new URLSearchParams(window.location.search).has("announce");
     } catch {}
+    try {
+      if (!replay && localStorage.getItem(seenKey)) return;
+    } catch {}
+    // Three places retire the toast — viewed, dismissed, and simply shown. All
+    // three go through here so a replay cannot burn the real first visit.
+    const markSeen = () => {
+      if (replay) return;
+      try { localStorage.setItem(seenKey, "1"); } catch {}
+    };
     const t = setTimeout(() => {
       toast.custom((id) => (
         <AnnouncementToast
           humanoids={newHumanoids}
           onView={() => {
-            try { localStorage.setItem(seenKey, "1"); } catch {}
+            markSeen();
             handleSelectHumanoid(firstNewId);
             toast.dismiss(id);
           }}
           onDismiss={() => {
-            try { localStorage.setItem(seenKey, "1"); } catch {}
+            markSeen();
             toast.dismiss(id);
           }}
         />
-      ), { duration: 12000 });
-      try { localStorage.setItem(seenKey, "1"); } catch {}
+      ), { duration: replay ? 60000 : 12000 });
+      markSeen();
     }, 400);
     return () => clearTimeout(t);
   }, [introPhase, newHumanoids, firstNewId, handleSelectHumanoid]);
