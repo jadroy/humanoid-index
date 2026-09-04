@@ -1077,9 +1077,9 @@ const allHumanoids: Humanoid[] = [
 //
 //   Everything in this block now has art. Flip SHOW_PENDING_IMAGE_ENTRIES to
 //   go live whenever the copy has had a last read.
-// Visible on localhost, never in a production build — so these can be reviewed
-// in the browser without any risk of shipping a half-finished entry.
-const SHOW_PENDING_IMAGE_ENTRIES = process.env.NODE_ENV === "development";
+// Live as of 2026-09-03. Held to localhost only while the art landed; it has,
+// so the block ships with the rest.
+const SHOW_PENDING_IMAGE_ENTRIES = true;
 
 const pendingImageHumanoids: Humanoid[] = [
   {
