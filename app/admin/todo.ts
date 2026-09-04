@@ -57,6 +57,13 @@ export const SIZE_LABEL: Record<Size, string> = {
 export const items: Item[] = [
   // ── Data ──
   {
+    title: "Five robots have low-res images",
+    note: "Go2, Spot, Roomba, aibo and Astro all came in on the same day and are the five smallest pictures in the index. They read soft on a card, and four of the five are landscape against a portrait slot.",
+    detail: "All added 2026-08-24, all under 700px on the long edge (372x518 to 678x562) where the rest of the index sits between 900 and 4096. Aspects are 1.00-1.42 against a card expecting 0.29-0.68, and none of the four landscape ones set imageFit or imagePosition. Re-source rather than crop.",
+    area: "data",
+    size: "quick",
+  },
+  {
     title: "106 invisible robots are still being downloaded",
     note: "An old experiment left a pile of placeholder entries in the data file. Nobody can see them, but every visitor still downloads them.",
     detail: "The 2026-05-08 density experiment left ids 30-135 behind SHOW_EXPERIMENT_STUBS = false. Delete the block and the flag with it.",
