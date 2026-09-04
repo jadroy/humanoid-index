@@ -28,7 +28,7 @@ import Image from "next/image";
 import { humanoids, type Humanoid } from "@/data/humanoids";
 import { getRobotDescription } from "@/lib/robotDescription";
 import { withUtm } from "@/lib/outbound";
-import { INK, INK_BODY, INK_MUTED } from "@/lib/design/tokens";
+import { INK, INK_BODY, INK_MUTED, SURFACE } from "@/lib/design/tokens";
 
 // ── Constants ─────────────────────────────────────────────────
 // The deck reads as a deck because the neighbours are visibly there. Slide,
@@ -51,17 +51,19 @@ const SPRING_DAMPING = 0.82; // <1 leaves a trace of overshoot
 const FLICK = 420; // px/s past which a release is a flick, not a drop
 const RUBBER = 150; // px asymptote when dragged past a limit
 
-// Straight off the web version: white page, #F9F9F9 card tiles at radius 20,
-// 1px hairlines, no shadows. The robot gets the tile — same as desktop, where
-// it is the card that is grey and the page that is white — and the sheet is
-// the white page rising over it. Mobile used to have this inverted, which is
-// most of why it didn't feel like the same site.
-// A touch deeper than the desktop card's #F9F9F9. At full card size that
-// value is plenty; in a 6vw sliver at arm's length it disappears, and the
-// sliver is the whole point.
-const TILE_BG = "#F5F5F8";
+// Desktop is a grey card on a white page. Mobile inverts it — white card on
+// a grey page — and that isn't a drift, it's the same idea at a different
+// size. On desktop the card is one object among several on a white sheet of
+// paper. On a phone the card is nearly the whole screen, so painting it grey
+// paints the screen grey, and every robot ends up standing on a dull slab
+// (the art is all shot on white, so it doesn't sit on grey, it fights it).
+// Inverting keeps the robot on the white it was photographed against and
+// spends the grey on the margin instead, where its whole job is to let the
+// neighbouring cards' edges show.
+const PAGE_BG = SURFACE; // #F1F1F6
+const TILE_BG = "#FFFFFF";
 const TILE_RADIUS = 20;
-const SHEET_BG = "#FFFFFF";
+const SHEET_BG = "#FFFFFF"; // same surface as a card — the sheet is one, raised
 const SHEET_TILE = "#F1F1F6";
 const HAIRLINE = "rgba(46,46,54,0.10)";
 const UNDERLINE = "rgba(46,46,54,0.3)";
@@ -546,10 +548,9 @@ function DetailSheet({
           background: SHEET_BG,
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
-          // The sheet is white on a white page now, so the separation is a
-          // hairline plus the faintest lift — not a drop shadow, just enough
-          // that the grey tiles read as sitting behind it.
-          boxShadow: `0 -1px 0 ${HAIRLINE}, 0 -14px 34px rgba(46,46,54,0.05)`,
+          // The sheet is another white surface on the grey page, so the page
+          // separates it and all that's left to do is lift it a little.
+          boxShadow: "0 -10px 30px rgba(46,46,54,0.06)",
           zIndex: 21,
           display: "flex",
           flexDirection: "column",
@@ -916,7 +917,7 @@ export default function MobileDeck() {
         height: "100dvh",
         overflow: "hidden",
         overscrollBehavior: "none",
-        background: "#fff",
+        background: PAGE_BG,
         display: "flex",
         flexDirection: "column",
         paddingTop: "env(safe-area-inset-top)",
