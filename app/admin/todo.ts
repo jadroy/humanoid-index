@@ -55,30 +55,7 @@ export const SIZE_LABEL: Record<Size, string> = {
 };
 
 export const items: Item[] = [
-  // ── Discoverability ──
-  {
-    title: "Google can't find the site",
-    note: "Nothing tells a search engine this site exists, so it barely shows up. Two small config files fix it.",
-    detail: "robots.txt and sitemap.xml both 404. Add app/robots.ts and app/sitemap.ts; the sitemap can enumerate the ?h= deeplinks so the per-robot share cards get indexed.",
-    area: "seo",
-    size: "quick",
-  },
-  {
-    title: "The page has no headline",
-    note: "There's a browser-tab title and nothing else. Search engines and screen readers both look for a real heading first and don't find one.",
-    detail: "No <h1> in the document. Same fix serves SEO and gives assistive tech a landmark to start from.",
-    area: "seo",
-    size: "quick",
-  },
-
   // ── Data ──
-  {
-    title: "Three robots have no link to their maker",
-    note: "Figure 02, Astribot S1 and Roboy have a Visit button with nowhere to go.",
-    detail: "Neither infoUrl nor manufacturerUrl is set, so the Visit button falls through to nothing.",
-    area: "data",
-    size: "quick",
-  },
   {
     title: "106 invisible robots are still being downloaded",
     note: "An old experiment left a pile of placeholder entries in the data file. Nobody can see them, but every visitor still downloads them.",

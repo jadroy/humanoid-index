@@ -435,6 +435,7 @@ const allHumanoids: Humanoid[] = [
   {
     id: "7",
     name: "Figure 02",
+    manufacturerUrl: "https://www.figure.ai",
     availability: "enterprise",
     manufacturer: "Figure AI",
     country: "USA",
@@ -531,6 +532,7 @@ const allHumanoids: Humanoid[] = [
   {
     id: "15",
     name: "Astribot S1",
+    manufacturerUrl: "https://www.astribot.com",
     form: "semi",
     availability: "enterprise",
     manufacturer: "Astribot",
@@ -897,6 +899,7 @@ const allHumanoids: Humanoid[] = [
   {
     id: "25",
     name: "Roboy",
+    infoUrl: "https://roboy.org/robots/",
     availability: "research",
     manufacturer: "Devanthro",
     country: "Switzerland",
