@@ -103,6 +103,14 @@ export const items: Item[] = [
 
   // ── Performance ──
   {
+    title: "The grid downloads 35 MB of images",
+    note: "Clicking Grid pulls the full-size photos — the tiles pop in one by one on a first visit. Serving them at the size they're shown would cut it roughly 20x.",
+    detail: "The v3 grid renders raw <img src> and bypasses the Next image optimizer, unlike the rest of the site. 34.8 MB across 41 tiles displayed at ~300px (armar-6 alone is 5.3 MB). Swap the three <img> to next/image with `sizes`; optimization is already on and the files are local. Wrinkle: layerStyle's contain branch uses height 82% / width auto, so `fill` is out — pass real intrinsic width/height and let the CSS override.",
+    area: "perf",
+    size: "session",
+    where: "app/v3/Collection.tsx:683",
+  },
+  {
     title: "The second compare card is always running",
     note: "Even when you're looking at one robot, the site keeps drawing the hidden second one behind it. Wasted work on every frame.",
     detail: "It stays mounted at opacity 0 so the compare transition has something to animate. `inert` already took it out of the accessibility tree; the render cost is separate.",

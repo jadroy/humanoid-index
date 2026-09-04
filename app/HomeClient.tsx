@@ -2134,13 +2134,25 @@ const STRIP_PAD_TOP = 14, STRIP_PAD_BOTTOM = 16;
    nav — the drawer already carries the glass, so a filled chip inside it would
    be a third surface. Sized a step under the rows so the foot reads as a
    caption to the figures rather than as more of them. */
+// The card face carries a lighter ink than the chrome around it. When the
+// chrome's base went from the warm rgba(95, 96, 89) to the content ink
+// (#2e2e36), the drawer came with it and its rows, blurb and chips went from a
+// soft grey to near-black. These hold the lightness the card had in the new,
+// cooler hue: on #F9F9F9, 0.72 lands where the warm 0.95 did (L 104), 0.42
+// where 0.55 did (L 164), 0.30 where 0.38 did (L 190).
+const CARD_INK = {
+  on: "rgba(46, 46, 54, 0.72)",
+  off: "rgba(46, 46, 54, 0.42)",
+  faint: "rgba(46, 46, 54, 0.30)",
+} as const;
+
 const drawerChipStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   padding: "4px 10px",
   borderRadius: 999,
   border: `1px solid ${SEAM}`,
-  color: INK.off,
+  color: CARD_INK.off,
   fontSize: 12,
   fontWeight: WEIGHT.body,
   lineHeight: 1.3,
@@ -4822,6 +4834,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           style={{
             zIndex: 20,
             background: pageBg,
+            // The lane slide moves the grid ±40px inside this box; without a
+            // clip that travel spills past the sheet's edge.
+            overflow: "hidden",
             // Sized for the rail fully open — the cursor is over the tiles
             // nearest the rail exactly when it is opening, so padding for the
             // resting glyphs ran the labels and counts under the first column.
@@ -4846,12 +4861,23 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               the chrome), no detail panel, no ?h= writing. Clicks come back
               through onPick. `items` is derived per lane, so switching lanes
               re-runs the entry intro — the grid re-deals into the new set. */}
-          <Collection
-            items={gridItems}
-            config={humanoidConfig}
-            embedded
-            onPick={openFromGrid}
-          />
+          {/* The lane change reads the same here as it does on the wheel: the
+              open set leaves the way you came from, the new one arrives from
+              the other side. Same `laneStageStyle`, same `runLaneTransition`,
+              so the tiles swap at the midpoint while the sheet is at zero
+              opacity and the re-deal never shows.
+
+              Only this box travels. The sheet itself holds still because it is
+              what hides the wheel seated behind the grid — slide the whole
+              overlay and the arc flashes through the gap at the edge. */}
+          <div style={{ height: "100%", ...laneStageStyle }}>
+            <Collection
+              items={gridItems}
+              config={humanoidConfig}
+              embedded
+              onPick={openFromGrid}
+            />
+          </div>
         </div>
       )}
 
@@ -8518,7 +8544,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   fontWeight: 500,
                   letterSpacing: "0.01em",
                   lineHeight: 1.35,
-                  color: INK.on,
+                  color: CARD_INK.on,
                 } as const;
                 const glass = (drawer && drawerOpaque) ? {
                   // The card's own surface, so the face reads as having been
@@ -8575,8 +8601,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                           borderTop: !strip && i > 0 ? `1px solid ${SEAM}` : undefined,
                         }}
                       >
-                        <span style={{ color: INK.off }}>{r.label}</span>
-                        <span className="tabular-nums" style={{ color: r.value ? INK.on : INK.faint }}>{r.value ?? "—"}</span>
+                        <span style={{ color: CARD_INK.off }}>{r.label}</span>
+                        <span className="tabular-nums" style={{ color: r.value ? CARD_INK.on : CARD_INK.faint }}>{r.value ?? "—"}</span>
                       </div>
                     ))}
                   </div>
