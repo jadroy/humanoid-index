@@ -48,7 +48,7 @@ export default function AdminPage() {
 
       <div style={{ maxWidth: 820, margin: "0 auto", padding: "76px 32px 104px" }}>
         <div style={{ marginBottom: 48 }}>
-          <PageMark title="Admin" />
+          <PageMark current="admin" />
         </div>
 
         {/* Flat and ordered by effort rather than grouped by area, because

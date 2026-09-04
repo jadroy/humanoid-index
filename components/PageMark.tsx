@@ -1,24 +1,37 @@
 import Link from "next/link";
 
-// The index's mark, inlined rather than loaded from /HI-mark.svg so it can
-// take `currentColor` — the file hardcodes #C9CDCF, which is right on the site
-// and too light on a tool page.
+// The tool pages — the things built on the index that aren't the index. One
+// entry per page; adding one is a line here, not a nav component.
+const PAGES = [
+  { key: "admin", href: "/admin", title: "Admin" },
+  { key: "lab", href: "/lab", title: "Lab" },
+] as const;
+
+export type PageKey = (typeof PAGES)[number]["key"];
+
+// Heads /admin and /lab. The nav *is* the title — the page you're on renders
+// as the heading and its siblings sit quietly beside it, so switching pages
+// costs no element the page didn't already have.
 //
-// Used to head the pages that aren't the site: /admin, /lab, anything else
-// built on top of the index. It doubles as the way back to the index, so the
-// branding isn't costing a separate nav element.
+// The mark is inlined rather than pulled from /HI-mark.svg because that file
+// hardcodes #C9CDCF, which is right on the site and too light here. It links
+// home, so the way back doesn't need a separate control either.
 export default function PageMark({
-  title,
+  current,
   size = 17,
   titleSize = 26,
 }: {
-  title: string;
+  current: PageKey;
   size?: number;
   titleSize?: number;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
-      <Link href="/" aria-label="Back to the index" style={{ display: "inline-flex", flexShrink: 0, color: "#C0C4C7" }}>
+    <div style={{ display: "flex", alignItems: "baseline", gap: 13 }}>
+      <Link
+        href="/"
+        aria-label="Back to the index"
+        style={{ display: "inline-flex", flexShrink: 0, color: "#C0C4C7", alignSelf: "center" }}
+      >
         <svg
           height={size}
           viewBox="7.72656 12.9392 29.551 19.1217"
@@ -34,9 +47,35 @@ export default function PageMark({
         </svg>
       </Link>
 
-      <h1 style={{ fontSize: titleSize, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--c-ink)" }}>
-        {title}
-      </h1>
+      {/* Active page first, always — otherwise the heading lands mid-row and
+          /lab reads as "Admin Lab". The siblings keep their own order after it. */}
+      {[...PAGES].sort((a, b) => Number(b.key === current) - Number(a.key === current)).map((p) =>
+        p.key === current ? (
+          <h1
+            key={p.key}
+            style={{ fontSize: titleSize, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--c-ink)" }}
+          >
+            {p.title}
+          </h1>
+        ) : (
+          <Link
+            key={p.key}
+            href={p.href}
+            className="page-nav-link"
+            style={{
+              fontSize: 15,
+              fontWeight: 500,
+              letterSpacing: "-0.02em",
+              color: "var(--c-ink-muted)",
+              textDecoration: "none",
+            }}
+          >
+            {p.title}
+          </Link>
+        )
+      )}
+
+      <style>{`.page-nav-link:hover { color: var(--c-ink) !important; }`}</style>
     </div>
   );
 }
