@@ -28,7 +28,7 @@ import Image from "next/image";
 import { humanoids, type Humanoid } from "@/data/humanoids";
 import { getRobotDescription } from "@/lib/robotDescription";
 import { withUtm } from "@/lib/outbound";
-import { INK, INK_BODY, INK_MUTED, SURFACE } from "@/lib/design/tokens";
+import { INK, INK_BODY, INK_MUTED } from "@/lib/design/tokens";
 
 // ── Constants ─────────────────────────────────────────────────
 // The deck reads as a deck because the neighbours are visibly there. Slide,
@@ -60,8 +60,16 @@ const RUBBER = 150; // px asymptote when dragged past a limit
 // Inverting keeps the robot on the white it was photographed against and
 // spends the grey on the margin instead, where its whole job is to let the
 // neighbouring cards' edges show.
-const PAGE_BG = SURFACE; // #F1F1F6
+// The page tone only has to be enough that a white card reads as a card. At
+// SURFACE (#F1F1F6) it was doing far more than that — a phone screen is
+// almost entirely page, so a tone chosen for a desktop margin turns into a
+// dark room. This is a third of that step off white, and the card edge is
+// carried by a hairline instead of by contrast, which is the cheaper way to
+// buy the same legibility: the border works at any tone, so the tone gets to
+// be as quiet as it likes.
+const PAGE_BG = "#F8F8F8";
 const TILE_BG = "#FFFFFF";
+const TILE_LINE = "rgba(46,46,54,0.06)";
 const TILE_RADIUS = 20;
 const SHEET_BG = "#FFFFFF"; // same surface as a card — the sheet is one, raised
 const SHEET_TILE = "#F1F1F6";
@@ -230,6 +238,7 @@ function Card({ h, priority }: { h: Humanoid; priority: boolean }) {
         // deck — the neighbour's rounded edge is now visible at both margins.
         background: TILE_BG,
         borderRadius: TILE_RADIUS,
+        border: `1px solid ${TILE_LINE}`,
         overflow: "hidden",
       }}
     >
@@ -548,9 +557,9 @@ function DetailSheet({
           background: SHEET_BG,
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
-          // The sheet is another white surface on the grey page, so the page
-          // separates it and all that's left to do is lift it a little.
-          boxShadow: "0 -10px 30px rgba(46,46,54,0.06)",
+          // Same trick as the cards: a hairline does the separating, so the
+          // page tone doesn't have to.
+          boxShadow: `0 -1px 0 ${TILE_LINE}, 0 -10px 26px rgba(46,46,54,0.045)`,
           zIndex: 21,
           display: "flex",
           flexDirection: "column",
