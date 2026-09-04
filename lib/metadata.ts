@@ -45,3 +45,15 @@ export function robotMetadata(bot: Humanoid, baseUrl: string): Metadata {
 export function siteMetadata(baseUrl: string, description: string): Metadata {
   return socialMetadata("Humanoid Index", description, `${baseUrl}/og-default.png`);
 }
+
+/* The canonical origin, for the files a crawler reads before it has ever made
+   a request we can inspect — robots.txt and the sitemap can't call headers().
+   Preview deploys point at themselves so a preview's sitemap doesn't claim to
+   be production; production falls through to the real domain. */
+export const SITE_URL: string =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_ENV === "production"
+    ? "https://humanoid-index.com"
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "https://humanoid-index.com");

@@ -12,15 +12,32 @@ import type { NextRequest } from "next/server";
    added there later is covered without editing this list.
 
    `/epetri` and `/thumbnails` gate themselves in the page with the same
-   NODE_ENV check — this is belt and braces for them, not their only lock. */
+   NODE_ENV check — this is belt and braces for them, not their only lock.
+
+   `/admin`, `/lab` and `/timeline` joined the list for the same reason the
+   others are on it: the backlog, the experiments and the in-progress timeline
+   are how the site gets made, not part of the site. Gating them here rather
+   than naming them in robots.txt matters — robots.txt is public, so listing a
+   live private route is a directory of the things you would rather nobody
+   opened. A 404 needs no disallow line.
+
+   `/v3` is the odd one: it isn't a harness, it's the grid view, and it works.
+   It is gated because it hasn't been shown yet, not because it is broken.
+   Only the *route* closes — `app/v3/Collection` is imported by the home page
+   and keeps rendering there, so this list never decides what the site looks
+   like, only which URLs answer. */
 const DEV_ROUTES = [
   "/3d-test",
+  "/admin",
   "/dev",
   "/editor",
   "/epetri",
+  "/lab",
   "/spin-test",
   "/stats-lab",
   "/thumbnails",
+  "/timeline",
+  "/v3",
 ];
 
 export default function proxy(req: NextRequest) {
@@ -38,5 +55,17 @@ export default function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/3d-test/:path*", "/dev/:path*", "/editor/:path*", "/epetri/:path*", "/spin-test/:path*", "/stats-lab/:path*", "/thumbnails/:path*"],
+  matcher: [
+    "/3d-test/:path*",
+    "/admin/:path*",
+    "/dev/:path*",
+    "/editor/:path*",
+    "/epetri/:path*",
+    "/lab/:path*",
+    "/spin-test/:path*",
+    "/stats-lab/:path*",
+    "/thumbnails/:path*",
+    "/timeline/:path*",
+    "/v3/:path*",
+  ],
 };
