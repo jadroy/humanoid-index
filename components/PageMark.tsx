@@ -9,6 +9,10 @@ const PAGES = [
 
 export type PageKey = (typeof PAGES)[number]["key"];
 
+// One size for active and inactive alike — the difference is weight and ink,
+// never metrics, so nothing shifts when you move between them.
+const navType = { fontSize: 24, letterSpacing: "-0.03em" } as const;
+
 // Heads /admin and /lab. The nav *is* the title — the page you're on renders
 // as the heading and its siblings sit quietly beside it, so switching pages
 // costs no element the page didn't already have.
@@ -19,11 +23,9 @@ export type PageKey = (typeof PAGES)[number]["key"];
 export default function PageMark({
   current,
   size = 17,
-  titleSize = 26,
 }: {
   current: PageKey;
   size?: number;
-  titleSize?: number;
 }) {
   return (
     <div style={{ display: "flex", alignItems: "baseline", gap: 13 }}>
@@ -47,14 +49,13 @@ export default function PageMark({
         </svg>
       </Link>
 
-      {/* Active page first, always — otherwise the heading lands mid-row and
-          /lab reads as "Admin Lab". The siblings keep their own order after it. */}
-      {[...PAGES].sort((a, b) => Number(b.key === current) - Number(a.key === current)).map((p) =>
+      {/* Stable order and one type size across both entries. Sorting the
+          active page to the front, or giving it its own size, meant the
+          header reflowed on every navigation — the mark moved 78px across
+          and 21px down between /admin and /lab. Only the emphasis moves now. */}
+      {PAGES.map((p) =>
         p.key === current ? (
-          <h1
-            key={p.key}
-            style={{ fontSize: titleSize, fontWeight: 600, letterSpacing: "-0.03em", color: "var(--c-ink)" }}
-          >
+          <h1 key={p.key} style={{ ...navType, fontWeight: 600, color: "var(--c-ink)" }}>
             {p.title}
           </h1>
         ) : (
@@ -62,20 +63,15 @@ export default function PageMark({
             key={p.key}
             href={p.href}
             className="page-nav-link"
-            style={{
-              fontSize: 15,
-              fontWeight: 500,
-              letterSpacing: "-0.02em",
-              color: "var(--c-ink-muted)",
-              textDecoration: "none",
-            }}
+            style={{ ...navType, fontWeight: 500, color: "var(--c-ink-muted)", textDecoration: "none" }}
           >
             {p.title}
           </Link>
         )
       )}
 
-      <style>{`.page-nav-link:hover { color: var(--c-ink) !important; }`}</style>
+      <style>{`.page-nav-link:hover { color: var(--c-ink) !important; }
+        .page-nav-link { transition: color 140ms ease; }`}</style>
     </div>
   );
 }

@@ -46,7 +46,7 @@ export default function AdminPage() {
         .caret { transition: transform 160ms cubic-bezier(0.2,0.8,0.2,1); flex-shrink: 0; }
       `}</style>
 
-      <div style={{ maxWidth: 820, margin: "0 auto", padding: "76px 32px 104px" }}>
+      <div style={{ maxWidth: 940, margin: "0 auto", padding: "56px 28px 96px" }}>
         <div style={{ marginBottom: 48 }}>
           <PageMark current="admin" />
         </div>
