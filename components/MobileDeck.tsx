@@ -31,8 +31,16 @@ import { withUtm } from "@/lib/outbound";
 import { INK, INK_BODY, INK_MUTED } from "@/lib/design/tokens";
 
 // ── Constants ─────────────────────────────────────────────────
-const PEEK = 7; // vw of neighbour visible on each side
-const SLIDE = 100 - PEEK * 2; // vw
+// The deck reads as a deck because the neighbours are visibly there. Slide,
+// gap and side padding are one system: a centre-snapped slide sits at
+// (100 - SLIDE)/2, so the next one shows `(100 - SLIDE)/2 - GAP` of itself.
+// 84 / 2 leaves a 6vw sliver — about 25px on a 393pt phone, enough of a
+// rounded tile edge to say "there is another one over there" without the
+// hint animation having to carry the whole idea.
+const SLIDE = 84; // vw
+const GAP = 2; // vw between slides
+const PAD = (100 - SLIDE) / 2; // vw — side padding, so slide 1 centres
+const GUTTER = 22; // px — text inset inside the sheet, matching the web panel
 const LIP_FALLBACK = 104; // pre-measurement estimate of the resting header
 
 // Sheet geometry. Three detents: peek (the lip), half, full.
@@ -43,14 +51,24 @@ const SPRING_DAMPING = 0.82; // <1 leaves a trace of overshoot
 const FLICK = 420; // px/s past which a release is a flick, not a drop
 const RUBBER = 150; // px asymptote when dragged past a limit
 
-// Straight off the web version's palette: white page, #F9F9F9 card tiles at
-// radius 20, 1px hairlines, no shadows. Here the drawer takes the tile value
-// so it reads as a plinth under the robot, and its own chips go white.
-const SHEET_BG = "#F9F9F9";
-const SHEET_TILE = "#FFFFFF";
-const SHEET_LINE = "rgba(0,0,0,0.06)";
-const HAIRLINE = "rgba(0,0,0,0.07)";
+// Straight off the web version: white page, #F9F9F9 card tiles at radius 20,
+// 1px hairlines, no shadows. The robot gets the tile — same as desktop, where
+// it is the card that is grey and the page that is white — and the sheet is
+// the white page rising over it. Mobile used to have this inverted, which is
+// most of why it didn't feel like the same site.
+// A touch deeper than the desktop card's #F9F9F9. At full card size that
+// value is plenty; in a 6vw sliver at arm's length it disappears, and the
+// sliver is the whole point.
+const TILE_BG = "#F5F5F8";
+const TILE_RADIUS = 20;
+const SHEET_BG = "#FFFFFF";
+const SHEET_TILE = "#F1F1F6";
+const HAIRLINE = "rgba(46,46,54,0.10)";
 const UNDERLINE = "rgba(46,46,54,0.3)";
+
+// The web info panel's type, lifted value for value.
+const LABEL_INK = "rgba(46,46,54,0.55)";
+const VALUE_INK = "rgba(46,46,54,0.95)";
 
 // ── Helpers ───────────────────────────────────────────────────
 function usePrefersReducedMotion() {
@@ -79,18 +97,26 @@ function formatHeight(cm: number) {
 const formatWeight = (kg: number) => `${Math.round(kg * 2.20462)} lb`;
 const formatSpeed = (ms: number) => `${(ms * 2.23694).toFixed(1)} mph`;
 
+// Same rows, same order, same wording as the desktop info panel — "DOF" not
+// "Degrees of freedom", "Use case" not "Use", and no Country row, because
+// country is a chip on the web and is a chip here too.
 function statRowsFor(h: Humanoid) {
   const rows: { label: string; value: string }[] = [];
-  if (h.country) rows.push({ label: "Country", value: h.country });
-  if (h.useCase) rows.push({ label: "Use", value: h.useCase });
-  if (h.drive) rows.push({ label: "Drive", value: h.drive });
   if (h.height) rows.push({ label: "Height", value: formatHeight(h.height) });
   if (h.weight) rows.push({ label: "Weight", value: formatWeight(h.weight) });
+  if (h.dof) rows.push({ label: "DOF", value: `${h.dof}` });
   if (h.maxSpeed) rows.push({ label: "Top speed", value: formatSpeed(h.maxSpeed) });
-  if (h.dof) rows.push({ label: "Degrees of freedom", value: `${h.dof}` });
-  if (h.cost && h.cost !== "N/A") rows.push({ label: "Price", value: h.cost });
+  if (h.useCase) rows.push({ label: "Use case", value: h.useCase });
+  if (h.drive) rows.push({ label: "Drive", value: h.drive });
   if (h.status) rows.push({ label: "Status", value: h.status });
+  rows.push({ label: "Price", value: h.cost && h.cost !== "N/A" ? h.cost : "Not yet for sale" });
   return rows;
+}
+
+// Chips, built the way the web panel builds them: country first, then the
+// hand-curated tags, deduped.
+function chipsFor(h: Humanoid) {
+  return Array.from(new Set([h.country, ...(h.tags ?? [])].filter(Boolean) as string[]));
 }
 
 function visitTarget(h: Humanoid): { href?: string; label: string } {
@@ -179,9 +205,9 @@ function ArrowGlyph({ size = 13, color = "#fff" }: { size?: number; color?: stri
 // source up to ~0.67 aspect lands at exactly 72%, which is 27 of the 29
 // robots. Picked deliberately — a taller target only stretches the tall ones
 // away from the wide ones it can't lift.
-const BOX_W = "94%";
-const BOX_H = "72%";
-const BOX_H_GROUNDED = "76%"; // bottom-anchored sources are cropped, so allow more
+const BOX_W = "88%";
+const BOX_H = "70%";
+const BOX_H_GROUNDED = "78%"; // bottom-anchored sources are cropped, so allow more
 
 function Card({ h, priority }: { h: Humanoid; priority: boolean }) {
   const position = h.imagePosition ?? "center";
@@ -197,6 +223,12 @@ function Card({ h, priority }: { h: Humanoid; priority: boolean }) {
         display: "flex",
         alignItems: grounded ? "flex-end" : "center",
         justifyContent: "center",
+        // The tile. Desktop puts the robot on #F9F9F9 at radius 20 and leaves
+        // the page white; doing the same here is what turns a page into a
+        // deck — the neighbour's rounded edge is now visible at both margins.
+        background: TILE_BG,
+        borderRadius: TILE_RADIUS,
+        overflow: "hidden",
       }}
     >
       <div style={{ position: "relative", width: BOX_W, height: grounded ? BOX_H_GROUNDED : BOX_H }}>
@@ -264,6 +296,7 @@ function DetailSheet({
 
   const { text, long } = getRobotDescription(h);
   const rows = statRowsFor(h);
+  const chips = chipsFor(h);
   const visit = visitTarget(h);
 
   // [full, half, peek] in translateY px. Measured, never assumed — the URL bar
@@ -513,7 +546,10 @@ function DetailSheet({
           background: SHEET_BG,
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
-          borderTop: `1px solid ${HAIRLINE}`,
+          // The sheet is white on a white page now, so the separation is a
+          // hairline plus the faintest lift — not a drop shadow, just enough
+          // that the grey tiles read as sitting behind it.
+          boxShadow: `0 -1px 0 ${HAIRLINE}, 0 -14px 34px rgba(46,46,54,0.05)`,
           zIndex: 21,
           display: "flex",
           flexDirection: "column",
@@ -531,34 +567,62 @@ function DetailSheet({
           tabIndex={0}
           style={{
             flexShrink: 0,
-            padding: `0 ${PEEK}vw`,
-            paddingBottom: "calc(22px + env(safe-area-inset-bottom))",
+            padding: `0 ${GUTTER}px`,
+            paddingBottom: "calc(20px + env(safe-area-inset-bottom))",
             WebkitTapHighlightColor: "transparent",
           }}
         >
           <div style={{ height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ width: 36, height: 4, borderRadius: 999, background: "#D8D8D8" }} />
+            <span style={{ width: 34, height: 4, borderRadius: 999, background: "rgba(46,46,54,0.16)" }} />
           </div>
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
+          {/* The placard, built the way the web one is: logo, name with the
+              year set quiet beside it, manufacturer underneath. Mobile used to
+              run "Manufacturer · Year" as one grey line, which is a caption;
+              this is a label on an object. */}
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 14 }}>
             {/* Keyed so a swipe swaps the identity with a soft fade, not a cut. */}
-            <div key={h.id} style={{ minWidth: 0, animation: "deck-swap 240ms cubic-bezier(0.22,1,0.36,1)" }}>
-              <div
-                style={{
-                  fontSize: 26,
-                  fontWeight: 500,
-                  color: INK,
-                  letterSpacing: "-0.022em",
-                  lineHeight: 1.1,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {h.name}
-              </div>
-              <div style={{ fontSize: 13, color: INK_MUTED, marginTop: 3, lineHeight: 1.3 }}>
-                {[h.manufacturer, h.year].filter(Boolean).join(" · ")}
-              </div>
+            <div key={h.id} style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 10, animation: "deck-swap 240ms cubic-bezier(0.22,1,0.36,1)" }}>
+              {h.logoUrl && (
+                <span
+                  style={{
+                    position: "relative",
+                    flexShrink: 0,
+                    width: 26,
+                    height: 26,
+                    borderRadius: 999,
+                    overflow: "hidden",
+                    background: SHEET_TILE,
+                  }}
+                >
+                  <RobotImage src={h.logoUrl} alt="" fill sizes="26px" style={{ objectFit: "cover" }} />
+                </span>
+              )}
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "flex", alignItems: "baseline", gap: 7, minWidth: 0 }}>
+                  <span
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 500,
+                      color: INK,
+                      letterSpacing: "-0.03em",
+                      lineHeight: 1.15,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {h.name}
+                  </span>
+                  {h.year && (
+                    <span style={{ fontSize: 13, fontWeight: 400, color: INK_MUTED, letterSpacing: "-0.03em", flexShrink: 0 }}>
+                      {h.year}
+                    </span>
+                  )}
+                </span>
+                <span style={{ display: "block", fontSize: 13, fontWeight: 500, color: INK_BODY, letterSpacing: "-0.03em", lineHeight: 1.3, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {h.manufacturer}
+                </span>
+              </span>
             </div>
             {/* Position, on the same alignment as the name — the dots used to
                 float centred between the robot and the drawer with nothing to
@@ -570,7 +634,7 @@ function DetailSheet({
                 lineHeight: 1.3,
                 flexShrink: 0,
                 fontVariantNumeric: "tabular-nums",
-                paddingBottom: 1,
+                paddingBottom: 3,
               }}
             >
               {index + 1} / {total}
@@ -588,24 +652,43 @@ function DetailSheet({
             WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain",
             touchAction: "pan-y",
-            padding: `0 ${PEEK}vw calc(34px + env(safe-area-inset-bottom))`,
+            padding: `0 ${GUTTER}px calc(34px + env(safe-area-inset-bottom))`,
           }}
         >
-          {text && <p style={{ fontSize: 15, lineHeight: 1.55, color: INK_BODY, marginTop: 4 }}>{text}</p>}
-          {long && <p style={{ fontSize: 15, lineHeight: 1.55, color: INK_BODY, marginTop: 12 }}>{long}</p>}
+          {/* Description, stats, chips — the web panel's order exactly. It
+              used to run description, chips, stats, which put the loosest
+              content in the middle and broke the rhythm the desktop has. */}
+          {text && <p style={{ fontSize: 15, lineHeight: 1.55, color: INK_BODY, letterSpacing: "-0.01em", marginTop: 2 }}>{text}</p>}
+          {long && <p style={{ fontSize: 15, lineHeight: 1.55, color: INK_BODY, letterSpacing: "-0.01em", marginTop: 12 }}>{long}</p>}
 
-          {h.tags && h.tags.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 20 }}>
-              {h.tags.map((t) => (
+          {rows.length > 0 && (
+            <div style={{ marginTop: 22, paddingTop: 16, borderTop: `1px solid ${HAIRLINE}` }}>
+              {/* One hairline above the block and none between the rows — the
+                  desktop panel spaces these, it doesn't rule them. Ruled rows
+                  are what made each robot read as a database record. */}
+              {rows.map((r) => (
+                <div key={r.label} className="flex items-baseline justify-between" style={{ padding: "6px 0", gap: 16 }}>
+                  <span style={{ fontSize: 14, fontWeight: 450, color: LABEL_INK, letterSpacing: "-0.03em" }}>{r.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 450, color: VALUE_INK, letterSpacing: "-0.03em", textAlign: "right" }}>{r.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {chips.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 20 }}>
+              {chips.map((t) => (
                 <span
                   key={t}
                   style={{
                     fontSize: 12,
-                    color: INK_BODY,
-                    padding: "7px 12px",
+                    fontWeight: 450,
+                    color: LABEL_INK,
+                    letterSpacing: "-0.03em",
+                    padding: "5px 11px",
                     borderRadius: 999,
-                    background: SHEET_TILE,
-                    lineHeight: 1,
+                    border: `1px solid ${HAIRLINE}`,
+                    lineHeight: 1.35,
                   }}
                 >
                   {t}
@@ -614,22 +697,7 @@ function DetailSheet({
             </div>
           )}
 
-          {rows.length > 0 && (
-            <div style={{ marginTop: 26 }}>
-              {rows.map((r) => (
-                <div
-                  key={r.label}
-                  className="flex items-baseline justify-between"
-                  style={{ padding: "12px 0", borderTop: `1px solid ${SHEET_LINE}` }}
-                >
-                  <span style={{ fontSize: 13, color: INK_MUTED }}>{r.label}</span>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: INK }}>{r.value}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+          <div style={{ display: "flex", gap: 10, marginTop: 26 }}>
             {visit.href && (
               <a
                 href={visit.href}
@@ -676,7 +744,7 @@ function DetailSheet({
           </div>
 
           {/* The honest handoff — the rest of the index is a desktop thing. */}
-          <div style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${SHEET_LINE}` }}>
+          <div style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${HAIRLINE}` }}>
             <div style={{ fontSize: 13, lineHeight: 1.5, color: INK_MUTED }}>
               Compare robots side by side, scale them against each other, and spin the
               360° renders on the full index — built for a bigger screen.
@@ -816,7 +884,7 @@ export default function MobileDeck() {
         if (done) return;
         const p = Math.min(1, (now - t0) / DUR);
         // Out and back on a single sine bump — no settle for snap to argue with.
-        el.scrollLeft = from + 30 * Math.sin(p * Math.PI);
+        el.scrollLeft = from + 46 * Math.sin(p * Math.PI);
         if (p < 1) {
           raf = requestAnimationFrame(step);
         } else {
@@ -862,7 +930,7 @@ export default function MobileDeck() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: `0 ${PEEK}vw`,
+          padding: `0 ${PAD}vw`,
         }}
       >
         <HIMark height={13} />
@@ -893,8 +961,8 @@ export default function MobileDeck() {
           flex: 1,
           minHeight: 0,
           display: "flex",
-          gap: `${PEEK}vw`,
-          padding: `0 ${PEEK}vw ${lipH + 16}px`,
+          gap: `${GAP}vw`,
+          padding: `0 ${PAD}vw ${lipH + 14}px`,
           overflowX: "auto",
           overflowY: "hidden",
           scrollSnapType: "x mandatory",
