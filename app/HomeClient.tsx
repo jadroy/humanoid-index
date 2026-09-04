@@ -5,7 +5,7 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { Toaster, toast } from "sonner";
-import { ArrowUp, Search, Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus, Dices, Bookmark, LayoutGrid } from "lucide-react";
+import { ArrowUp, Search, Pause, Play, Ruler, House, Factory, FlaskConical, Package, Shield, MessageCircle, Sparkles, Box, ChevronsUpDown, PanelRight, Info, Share, Minus, Plus, Dices, Bookmark, LayoutGrid, X } from "lucide-react";
 import { CircleFlag as CircleFlagSvg } from "react-circle-flags";
 import { humanoids, type Humanoid } from "@/data/humanoids";
 import { FORM_FILTERS, listFor, listForSaved, formOfLane, countFor, indexOfId, idAt, seat, globalIndexOf, resolveComparePair, resolveDeeplink, type FormFilter } from "@/lib/wheelLanes";
@@ -336,6 +336,9 @@ const sidebarLabel = (comparing: boolean): React.CSSProperties => ({
   marginLeft: comparing ? 0 : 10,
   opacity: comparing ? 0 : 1,
   transition: "width 320ms cubic-bezier(0.33, 1, 0.68, 1), margin-left 320ms cubic-bezier(0.33, 1, 0.68, 1), opacity 200ms ease",
+  // Labels get out of the way immediately on the way into compare, and wait
+  // for the second card to leave on the way out — see `--return-delay`.
+  transitionDelay: comparing ? "0ms" : "var(--return-delay, 0ms)",
 });
 
 // Right-aligned in its own column so 26 / 7 / 6 stack on their last digit.
@@ -377,13 +380,40 @@ const SIDEBAR_GROUP_GAP = 16;
    read as the page's, not the card's. Worth rechecking on a short viewport,
    where that gap is the first thing to close. */
 function LaneChips({
-  active, counts, onPick, top, variant,
+  active, counts, onPick, top, variant, inline = false, zIndex = 6, saved,
 }: {
   active: FormFilter | null;
   counts: (f: FormFilter) => number;
   onPick: (f: FormFilter) => void;
   top: number;
   variant: "chips" | "segmented";
+  /* Saved, as a fourth lane.
+     It already was one everywhere but on screen: `listForSaved` returns a
+     memoised list exactly the way `listFor` does, `formOfLane` exists so this
+     lane can answer its own card proportion, and `active={savedLaneLive ? null
+     : formFilter}` above already makes it mutually exclusive with the three.
+     It was simply drawn in the sidebar, which put one mutually-exclusive choice
+     in two places with two different "on" indicators — the competition the
+     track's own comment complains about.
+     Outside the track, after a gap, deliberately. The three partition all 41
+     robots; this one is a set the visitor built, and it can hold a biped and a
+     vacuum at once. Same rank, different kind — the gap says so without a
+     second visual language. Appended, also deliberately: the indicator measures
+     off live chips, so a chip that appears BEFORE them would shove the three
+     sideways the first time anything is saved. Nothing precedes it, so nothing
+     moves.
+     Absent, not disabled, at zero — the same rule `FORM_FILTERS` already
+     applies to an empty category, and for the same reason the rail row it
+     replaces was hidden: an empty chip is chrome advertising a feature. */
+  saved?: { count: number; on: boolean; onPick: () => void };
+  // Centred chrome puts the track in a shared flex row with the mark and the
+  // tools, so it can't carry its own fixed box — the cluster is what's centred,
+  // not the lanes.
+  inline?: boolean;
+  // The grid opens *over* the stage at z-20, so anything that stays clickable
+  // while it is open has to be lifted above it — otherwise the control you
+  // used to get in is buried under what it opened.
+  zIndex?: number;
 }) {
   const segmented = variant === "segmented";
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -400,11 +430,7 @@ function LaneChips({
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [active, segmented]);
-  return (
-    <div
-      className="fixed left-1/2 -translate-x-1/2 z-[6]"
-      style={{ top }}
-    >
+  const track = (
       <div
         ref={wrapRef}
         style={{
@@ -460,6 +486,45 @@ function LaneChips({
           );
         })}
       </div>
+  );
+  // The track plus whatever sits beside it. When there is no saved chip this is
+  // the bare track, so every other configuration renders exactly as before.
+  const row = saved && saved.count > 0 ? (
+    // The chip hangs off the track's right edge rather than sharing a flex row
+    // with it. In a row, the pair is what gets centred, so the three chips slid
+    // ~35px left the first time anything was saved — the appended chip moved
+    // them after all, just by the other axis. Out of flow, the track keeps the
+    // centre it had when the chip did not exist.
+    <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      {track}
+      <button
+        type="button"
+        onClick={saved.onPick}
+        aria-pressed={saved.on}
+        className="lane-row cursor-pointer"
+        style={{
+          ...SIDEBAR_ROW,
+          position: "absolute",
+          left: "100%",
+          marginLeft: 8,
+          padding: "0 14px",
+          gap: 8,
+          color: saved.on ? INK.on : INK.off,
+          // The track's pill can't reach out here, so the fill is carried
+          // rather than slid. Same fill, same radius — one "on" in the row.
+          background: saved.on ? FILL.rest : "transparent",
+          transition: "color 200ms cubic-bezier(0.33, 1, 0.68, 1), background 200ms cubic-bezier(0.33, 1, 0.68, 1)",
+        }}
+      >
+        <span>Saved</span>
+        <span style={{ color: INK.faint, fontVariantNumeric: "tabular-nums" }}>{saved.count}</span>
+      </button>
+    </div>
+  ) : track;
+  if (inline) return row;
+  return (
+    <div className="fixed left-1/2 -translate-x-1/2" style={{ top, zIndex }}>
+      {row}
     </div>
   );
 }
@@ -483,7 +548,7 @@ function LaneChips({
    would be quietly misread by people who then never touch it. The label costs
    one word the rail was already spending, and the curiosity comes from the
    control itself, not from withholding its name. */
-function GridSwitch({ grid, onChange }: { grid: boolean; onChange: (g: boolean) => void }) {
+function GridSwitch({ grid, onChange, labelW = SIDEBAR_LABEL_W }: { grid: boolean; onChange: (g: boolean) => void; labelW?: number }) {
   const TRACK_W = 26, TRACK_H = 15, KNOB = 11, PAD = (TRACK_H - KNOB) / 2;
   return (
     <button
@@ -495,7 +560,11 @@ function GridSwitch({ grid, onChange }: { grid: boolean; onChange: (g: boolean) 
       className="sidebar-action cursor-pointer"
       style={{ ...SIDEBAR_ROW, color: grid ? INK.on : INK.off }}
     >
-      <span style={{ width: SIDEBAR_LABEL_W, display: "flex" }}>Grid</span>
+      {/* The label column is 64 because that is what "Humanoid" measures. With
+          the lanes across the top there is no "Humanoid" in this column to line
+          up with, so the switch was held ~38px off its own word by a column
+          that isn't there. Sized to the word instead when the lanes are gone. */}
+      <span style={{ width: labelW, display: "flex" }}>Grid</span>
       <span
         aria-hidden
         style={{
@@ -534,7 +603,7 @@ function ViewSwitch({ grid, onChange, compact = false }: { grid: boolean; onChan
     justifyContent: "center",
     cursor: "pointer",
     // The lanes' own indicator fill, so the rail has one "this is selected".
-    background: on ? "rgba(95, 96, 89, 0.07)" : "transparent",
+    background: on ? "rgba(46, 46, 54, 0.07)" : "transparent",
     color: on ? INK.on : INK.off,
     transition: "background 200ms cubic-bezier(0.33, 1, 0.68, 1), color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
   });
@@ -1493,6 +1562,45 @@ function ScaleToggle({ active, onToggle }: { active: boolean; onToggle: () => vo
 }
 
 // Plain colored dot used inside the status pill.
+// The dock's "i". lucide's Info is a full r=10 ring, which fills the 24-box
+// corner to corner while every open glyph beside it (Bookmark, Box, Share)
+// lives inside ~14 units — so at the same nominal size the ring reads a step
+// heavier than the row. Four marks, switchable from the Card tuner, rather
+// than one guess: "stock" is lucide untouched, "inset" keeps the ring but
+// pulls it to the row's optical weight, "bare" drops the ring so the glyph is
+// only the mark, "type" sets the letter itself in the UI face.
+type InfoGlyphStyle = "stock" | "inset" | "bare" | "type";
+// The button opens a drawer, but an "i" is a noun — it names what is behind
+// the button and then says nothing about whether it is already open. These are
+// the ways it can answer back: "static" leaves the glyph alone and lets the
+// on-state mark carry it, "close" turns the mark into the ✕ that every open
+// panel gets, "chevron" drops the "i" for the affordance the drawer actually
+// is and points it the way the next tap moves the panel — the drawer is a
+// pull-up, so shut points up and open points back down.
+type InfoOpenState = "static" | "close" | "chevron";
+function InfoGlyph({ variant, openState = "static", open = false, size, strokeWidth }: { variant: InfoGlyphStyle; openState?: InfoOpenState; open?: boolean; size: number; strokeWidth: number }) {
+  const chevron = (
+    <span aria-hidden style={{ display: "inline-flex", transition: `transform 240ms ${"cubic-bezier(0.2, 0.8, 0.2, 1)"}`, transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M6 14.5l6-6 6 6" /></svg>
+    </span>
+  );
+  if (openState === "chevron") return chevron;
+  if (openState === "close" && open) return <X size={size} strokeWidth={strokeWidth} />;
+  if (variant === "type") {
+    return (
+      <span aria-hidden style={{ fontSize: Math.round(size * 1.05), lineHeight: 1, fontWeight: 500, letterSpacing: "normal", display: "inline-flex", alignItems: "center", justifyContent: "center", width: size, height: size }}>i</span>
+    );
+  }
+  const svg = (children: React.ReactNode) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden>{children}</svg>
+  );
+  // Ringless, so the mark carries the whole box — the stem grows to the height
+  // the ring used to occupy, otherwise it reads as a stray tick.
+  if (variant === "bare") return svg(<><path d="M12 20v-9" /><path d="M12 6.5h.01" /></>);
+  if (variant === "inset") return svg(<><circle cx="12" cy="12" r="9" /><path d="M12 15.6v-3.9" /><path d="M12 8.6h.01" /></>);
+  return <Info size={size} strokeWidth={strokeWidth} />;
+}
+
 function StatusDot({ color, size = 10 }: { color: string; size?: number }) {
   return <span aria-hidden style={{ width: size, height: size, borderRadius: 999, background: color, flexShrink: 0 }} />;
 }
@@ -2350,6 +2458,18 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [hideUnbuyable, setHideUnbuyable] = useState(false);
   const [isCustom, setIsCustom] = useState(true);
   const [comparing, setComparing] = useState(false);
+  /* ── Leaving compare ──────────────────────────────────────────────────────
+     Entering compare reads as one move because the single view gets out of the
+     way first and the right side arrives into the space it left. Leaving used
+     to run every one of those transitions backwards at once, which is not the
+     same thing: the empty compare slot, the sidebar labels, the single stats
+     and the chip row all snapped back at full strength while the second card
+     was still sitting on top of them, so the middle of the exit showed both
+     states stacked. `unwinding` holds the single view back for the length of
+     the collapse clock, so the compare side leaves and THEN the single view
+     returns — the intro's order, played in reverse. */
+  const [unwinding, setUnwinding] = useState(false);
+  const unwindTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [railHover, setRailHover] = useState<FormFilter | null>(null);
 
   /* ── Lane transition ──────────────────────────────────────────────────────
@@ -2451,6 +2571,31 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
      on and drops the rail to four rows, which is the "shorter rail" the curved
      experiments were chasing by other means. */
   const [lanePlacement, setLanePlacement] = useState<"top" | "rail">("top");
+  /* Where everything that ISN'T the stage lives.
+
+     The rail was built as one object with three ranks by position — identity
+     at the top, navigation in the middle, actions at the bottom. Then the
+     lanes moved to the top bar and Search / Ask / Grid were held back for
+     their own launches, and what is left in the column is a logo and, only
+     once you have saved something, a bookmark. Two glyphs floating at 50%
+     height, in the same vertical band the name wheel travels through.
+
+     Both alternatives here start from the same observation: the arc owns the
+     left and right edges, so chrome has no business on a vertical axis any
+     more. They differ in one decision — where a visitor's own saved state
+     sits.
+
+       rail     today. The column, wherever railShape puts it.
+       band     one horizontal line across the top: mark, lanes, saved.
+       corners  mark and lanes up, saved down at bottom-right, so personal
+                state doesn't rank equal to the page's primary filter. */
+  const [chromeLayout, setChromeLayout] = useState<"rail" | "band" | "corners" | "center">("rail");
+  /* Glyph, or glyph plus the site's name. Only offered off the rail — the
+     column's 64px label track never had room for it. */
+  const [chromeWordmark, setChromeWordmark] = useState(false);
+  // Off the rail, the lanes have nowhere else to be — the column that held
+  // them isn't mounted. The tuner's category placement only applies to `rail`.
+  const laneAtTop = lanePlacement === "top" || chromeLayout !== "rail";
   /* Loose chips, or one enclosed track. Same control either way — the track is
      what makes it read as a slider rather than as three buttons that happen to
      sit together. */
@@ -2499,7 +2644,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // angle, so every menu row sits on the same ray as a name — the column bent
   // onto the wheel's curvature, with the mark on the focused name's ray and
   // the rows wrapped above and below it.
-  const [toggleOnMode, setToggleOnMode] = useState<ToggleOnState>("ink");
+  const [toggleOnMode, setToggleOnMode] = useState<ToggleOnState>("dot");
+  const [infoGlyph, setInfoGlyph] = useState<InfoGlyphStyle>("stock");
+  const [infoOpenState, setInfoOpenState] = useState<InfoOpenState>("static");
   const [railShape, setRailShape] = useState<"column" | "ring" | "concentric" | "gear">("column");
   // The gear's hover is per-ENTRY, not per-lane: every seat on the ring can
   // show its label, and `railHover` only ever names a form lane.
@@ -2724,12 +2871,19 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   const [addHover, setAddHover] = useState(false);
   const [addCtaMode, setAddCtaMode] = useState<"hover" | "always">("hover");
   const [compareSlotStyle, setCompareSlotStyle] = useState<"silhouette" | "plus">("silhouette");
+  /* How far the card and its stats step aside when the cursor finds the empty
+     compare slot. It was a flat 16px on two elements at once — the whole
+     composition sliding left to announce a hover, which is a lot of motion for
+     "you can click here". The pedestal's fill and the glyph coming up already
+     say it. 8 keeps the sense that the row is making room; 0 stops the
+     composition moving at all. */
+  const [addShift, setAddShift] = useState(8);
   // Where the "−" that leaves compare lives. "card-corner" pins it to the top
   // right of the second card — the far right edge of the stage, the edge the
   // hover mode above exists to keep quiet. "seam" floats it in the gap between
   // the stats column and the second card, so it reads as unjoining the pair
   // rather than as a control belonging to one card.
-  const [minusPlacement, setMinusPlacement] = useState<"card-corner" | "veil">("veil");
+  const [minusPlacement, setMinusPlacement] = useState<"card-corner" | "veil" | "hover-x">("hover-x");
   const [pillsLayout, setPillsLayout] = useState<"stack" | "grouped">("stack");
   const [yearPlacement, setYearPlacement] = useState<"off" | "beside" | "below" | "after-name" | "pill" | "chip">("after-name");
   const [groupedFill, setGroupedFill] = useState<string>("#F9F9F9");
@@ -4038,7 +4192,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       if (inputLockedRef.current) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "Tab" && comparing) { e.preventDefault(); setActiveSide((s) => s === "left" ? "right" : "left"); return; }
-      if (e.key === "Escape" && comparing) { setComparing(false); setActiveSide("left"); return; }
+      // Through exitCompare, not its parts: Escape used to flip `comparing`
+      // by hand, so the keyboard way out skipped the unwind choreography and
+      // left splitHover set. One door out.
+      if (e.key === "Escape" && comparing) { exitCompareRef.current(); return; }
       if (isDev) {
         if (e.key === "s") { pickArcStyle(ARC_STYLES[(ARC_STYLES.indexOf(arcStyle) + 1) % ARC_STYLES.length]); return; }
         // preventDefault, or the keystroke that opened the panel lands in the
@@ -4139,17 +4296,130 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // its neighbour. A one-robot lane wraps to the same robot rather than seating
   // out of range.
   const enterCompare = () => {
+    // An exit still unwinding is abandoned rather than allowed to finish —
+    // otherwise the single view would fade back in on top of the compare we
+    // are re-entering.
+    if (unwindTimerRef.current) clearTimeout(unwindTimerRef.current);
+    unwindTimerRef.current = null;
+    document.documentElement.style.setProperty("--return-delay", "0ms");
+    setUnwinding(false);
     springR.jumpTo(seatL < lane.length - 1 ? seatL + 1 : 0);
     setComparing(true);
     setActiveSide("right");
   };
   // Leaving compare keeps the lane and the left seat — there is nothing to
   // restore, since compare never left the category you were browsing.
-  const exitCompare = () => {
+  // Read through a ref by the key handler, which is bound above where
+  // exitCompare is defined.
+  const exitCompareRef = useRef<() => void>(() => {});
+  // `keep` says which robot survives. "left" is the old behaviour — the second
+  // card leaves and you are back where you started. "right" drops the FIRST
+  // one instead: the left seat travels to the right robot on the way out, so
+  // you land in single view on the robot you actually wanted, instead of
+  // closing compare and navigating back to it by hand. Both end in the same
+  // place — plain single view, no trace of which side won.
+  const exitCompare = (keep: "left" | "right" = "left") => {
+    // snapTo, not jumpTo. Animating the left wheel one seat over looks like
+    // the right idea — it is the same travel as browsing — but the exit tears
+    // that animation down halfway and you land on whatever seat it had reached
+    // (verified: dropping the left card left the wheel on Menteebot with the
+    // card still showing Optimus). The seat change is instant instead, hidden
+    // under the outro: by the time the wheel is readable again the arc and the
+    // card agree on the survivor.
+    if (keep === "right" && seatR !== seatL) springL.snapTo(seatR);
     setComparing(false);
     setActiveSide("left");
     setSplitHover(false);
+    // Held for exactly one collapse clock — the time the second card, its
+    // wheel and the merged stats take to slide back off to the right.
+    setUnwinding(true);
+    // Written here, not from an effect: the delay has to be on the element
+    // before the style recalc that starts these transitions, and a passive
+    // effect is not guaranteed to land before that paint.
+    document.documentElement.style.setProperty("--return-delay", `${Math.round(collapseDurMs * 0.55)}ms`);
+    if (unwindTimerRef.current) clearTimeout(unwindTimerRef.current);
+    unwindTimerRef.current = setTimeout(() => {
+      unwindTimerRef.current = null;
+      document.documentElement.style.setProperty("--return-delay", "0ms");
+      setUnwinding(false);
+    }, collapseDurMs);
   };
+  exitCompareRef.current = exitCompare;
+
+  // Hover "×" on a card, the way an app is closed on iOS. The veil variant is
+  // easy to hit and easy to undo, but washing a card out on every pass of the
+  // cursor makes that robot feel provisional — the thing you are looking at
+  // keeps offering to leave. This draws nothing at rest and puts one small
+  // target at the end of the placard row. One renderer for both cards, since
+  // the only thing that differs is which robot survives the click.
+  const compareCloseX = (side: "left" | "right") => {
+    const ico = cardIconRender();
+    const xSize = Math.round(cardIconSize * 0.68);
+    // Never smaller than the circle, and never so big it reaches the placard
+    // text on its left.
+    const xHit = Math.max(44, xSize + 16);
+    return (
+      <button
+        onClick={() => exitCompare(side === "left" ? "right" : "left")}
+        aria-label={`Remove ${side === "left" ? "first" : "second"} robot from compare`}
+        className="absolute z-30 cursor-pointer compare-x"
+        style={{
+          // The button is the HIT BOX, not the dot. A 27px circle you have to
+          // travel to is a real chore with a trackpad, so the target is padded
+          // out to 44 — the size a finger gets on iOS — and the visible circle
+          // is drawn by the span inside it. The padding grows DOWN and LEFT
+          // only, into the card the pointer is already on: an invisible target
+          // hanging off the card's outside edge would be a landmine, since the
+          // reveal is card-hover and out there nothing shows.
+          background: "none",
+          border: "none",
+          padding: 0,
+          color: "rgba(0,0,0,0.62)",
+          width: xHit,
+          height: xHit,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "flex-end",
+          // In the placard row above the image, not on top of the picture. The
+          // row is the card's title bar — the same place a window puts its
+          // close control — and nothing there competes with the robot.
+          // `top: 0` is the wrapper top, which IS the label row.
+          right: 0,
+          top: 2,
+          // On the way out it goes first and fast. Left to the hover rule it
+          // stayed lit under the cursor and rode the card off the screen,
+          // which read as the button leaving rather than the robot.
+          // `undefined` while comparing hands opacity back to the hover class.
+          ...(comparing ? null : { opacity: 0, transform: "scale(0.8)", transition: "opacity 110ms ease, transform 110ms ease" }),
+          pointerEvents: comparing ? "auto" : "none",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <span
+          style={{
+            background: "rgba(0,0,0,0.06)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            width: xSize,
+            height: xSize,
+            borderRadius: xSize / 2,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            transition: "background 150ms ease",
+          }}
+        >
+          <X size={Math.round(ico.iconBoxPx * 0.62)} strokeWidth={ico.iconStrokeWidth} />
+        </span>
+      </button>
+    );
+  };
+  useEffect(() => () => { if (unwindTimerRef.current) clearTimeout(unwindTimerRef.current); }, []);
+  // Single-view furniture returns on the back half of the exit — `unwinding`
+  // for the pieces that mount and unmount, `--return-delay` for the ones that
+  // only cross-fade. Delay, not a second duration: everything keeps its own
+  // pace, it just waits its turn.
 
   // Picking a lane from the rail while comparing switches which category the
   // pair is drawn from instead of closing compare. Seat by id where the robots
@@ -4446,8 +4716,13 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
   // visitor's own state back to them, and its count is the one number in the
   // column that they put there. Hidden until there is something in it — an
   // empty row here would be chrome advertising a feature.
+  // Saved rides the lane chips whenever they are across the top and the lane is
+  // the surface it opens. Keeping the row as well would put one lane in two
+  // places again, which is the doubling the chip was added to end. The tray and
+  // shelf surfaces are not lanes, so those keep their row.
+  const savedInChips = laneAtTop && chromeLayout !== "center" && savedSurface === "lane";
   const railActions: RailRow[] = [
-    ...(savedItems.length > 0 ? [{
+    ...(savedItems.length > 0 && !savedInChips ? [{
       key: "saved",
       label: "Saved",
       icon: <Bookmark size={16} strokeWidth={1.75} fill={savedSurfaceOn ? "currentColor" : "none"} />,
@@ -4550,9 +4825,21 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             // Sized for the rail fully open — the cursor is over the tiles
             // nearest the rail exactly when it is opening, so padding for the
             // resting glyphs ran the labels and counts under the first column.
-            paddingLeft: railShape === "concentric"
+            paddingLeft: chromeLayout !== "rail"
+              ? "var(--nav-edge, 24px)"
+              : railShape === "concentric"
               ? effectiveArcInset - arcTextGap - effectiveRingInset + RING_OPEN_REACH
               : `calc(var(--nav-edge, 24px) + ${railShape === "ring" ? 18 + ringR + RING_OPEN_REACH : 112}px)`,
+            // Same argument as the left inset, on the other axis. With the
+            // chrome on a top band the grid was a full-bleed sheet starting at
+            // y=0 — the first row sat under the lanes, and every row after it
+            // scrolled through them. The sheet still covers the whole stage
+            // (the wheel must not show through); it is the scrolling box inside
+            // that starts below the band, so tiles clip at the band's edge
+            // instead of running under it.
+            paddingTop: laneAtTop ? navTop + 16 + SIDEBAR_ROW_H + 6 : 0,
+            // The credit line and, in `corners`, the tools sit at the foot.
+            paddingBottom: chromeLayout !== "rail" ? `calc(var(--nav-edge, 24px) + ${SIDEBAR_ROW_H}px)` : 0,
           }}
         >
           {/* The v3 Collection, embedded: no header of its own (the column is
@@ -4597,7 +4884,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           label always, so at rest the ring still says what it is instead of
           asking you to learn seven unlabelled marks.
           ──────────────────────────────────────────────────────────────────── */}
-      {railShape === "gear" ? (() => {
+      {chromeLayout !== "rail" ? null : railShape === "gear" ? (() => {
         const entries: RailRow[] = [
           ...FORM_FILTERS.map(({ key, label }) => {
             const on = formFilter === key && !savedLaneLive;
@@ -4678,7 +4965,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               className="site-mark-btn cursor-pointer"
               style={{ position: "absolute", left: -20, top: -20, width: 40, height: 40, borderRadius: 20, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: INK.off, zIndex: 1 }}
             >
-              <SiteMark size={20} color="#5F6059" opacity={SIDEBAR_GLYPH_OP.off} />
+              <SiteMark size={20} color="#2e2e36" opacity={SIDEBAR_GLYPH_OP.off} />
             </button>
             {/* The open lane's indicator, riding the rim between seats. A
                 rotation carries it along the arc rather than across the chord. */}
@@ -4758,15 +5045,16 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               style={{
                 position: "absolute", left: -18, top: R + 26,
                 fontFamily: "var(--font-geist-sans)", fontSize: 13, lineHeight: 1.35, fontWeight: 450,
-                color: INK.off, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6,
+                color: INK.off, whiteSpace: "nowrap",
+                // Stacked, not one line. Beside the copyright the line ran wide
+                // enough to reach under the first grid column — small print is
+                // the one thing here that should never collide with the work.
+                display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2,
               }}
             >
               <span>Roy Jad © 2026</span>
               {onFeedback && (
-                <>
-                  <span aria-hidden style={{ opacity: 0.5 }}>·</span>
-                  <button type="button" onClick={onFeedback} className="rail-credit-link cursor-pointer" style={{ font: "inherit", color: "inherit", background: "none", border: "none", padding: 0 }}>Feedback</button>
-                </>
+                <button type="button" onClick={onFeedback} className="rail-credit-link cursor-pointer" style={{ font: "inherit", color: "inherit", background: "none", border: "none", padding: 0 }}>Feedback</button>
               )}
             </div>
           </div>
@@ -4791,7 +5079,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
         // order. The stack keeps the same rays either way — four rows above
         // the focused name's ray, the rest below.
         const PIVOT = FORM_FILTERS.length + 1;
-        if (concentric) entries.unshift({ key: "mark", label: "", icon: <SiteMark size={18} color="#5F6059" opacity={SIDEBAR_GLYPH_OP.off} />, onClick: onHome, active: false });
+        if (concentric) entries.unshift({ key: "mark", label: "", icon: <SiteMark size={18} color="#2e2e36" opacity={SIDEBAR_GLYPH_OP.off} />, onClick: onHome, active: false });
         const SEAT = 28;
         const n = entries.length;
         // The names hang off the rim at wheelR - textGap (right-aligned, they
@@ -4838,7 +5126,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               aria-hidden
               style={{
                 position: "absolute", left: -R, top: -R, width: R * 2, height: R * 2,
-                borderRadius: "50%", border: "1px solid rgba(95, 96, 89, 0.10)",
+                borderRadius: "50%", border: "1px solid rgba(46, 46, 54, 0.10)",
                 opacity: railLive ? "calc(var(--rail-p, 0) * 0.8)" : comparing ? 0 : 0.8,
                 transition: "opacity 200ms ease",
                 pointerEvents: "none",
@@ -4852,7 +5140,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 className="site-mark-btn cursor-pointer"
                 style={{ position: "absolute", left: -20, top: -20, width: 40, height: 40, borderRadius: 20, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: INK.off, zIndex: 1 }}
               >
-                <SiteMark size={20} color="#5F6059" opacity={SIDEBAR_GLYPH_OP.off} />
+                <SiteMark size={20} color="#2e2e36" opacity={SIDEBAR_GLYPH_OP.off} />
               </button>
             )}
             {/* One indicator that travels along the arc between lanes: a
@@ -4862,7 +5150,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               aria-hidden
               style={{
                 position: "absolute", left: 0, top: 0, width: SEAT, height: SEAT, borderRadius: SEAT / 2,
-                background: "rgba(95, 96, 89, 0.07)",
+                background: "rgba(46, 46, 54, 0.07)",
                 transformOrigin: "0 50%",
                 transform: `translateY(-50%) rotate(${angleAt(Math.max(0, activeLane) + (concentric ? 1 : 0))}deg) translateX(${R - SEAT / 2}px)`,
                 opacity: activeLane < 0 ? 0 : 1,
@@ -4954,14 +5242,18 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             {/* Sized to the glyph column rather than overhanging it. The mark
                 is 1.55:1, so 18 wide lands it at the same optical weight as the
                 18px form glyphs beneath it. */}
-            <SiteMark size={18} color="#5F6059" opacity={SIDEBAR_GLYPH_OP.off} />
+            <SiteMark size={18} color="#2e2e36" opacity={SIDEBAR_GLYPH_OP.off} />
           </span>
         </button>
 
         {/* The blurb that used to sit here read "A visual index of humanoid
             robots." — which, one line under a row now labelled "Humanoid
             Index", was the same sentence twice. The name is the clue. */}
-        <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
+        {/* Only while the lanes are actually below it. With them across the top
+            their container collapses to display:none but the group gaps either
+            side of it don't, so the mark floated three gaps clear of the rows
+            it belongs with. */}
+        {lanePlacement === "rail" && <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />}
 
 
         {/* Lanes. Their own positioning context so the sliding indicator keeps
@@ -5057,7 +5349,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           })}
         </div>
 
-        <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
+        {lanePlacement === "rail" && <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />}
 
         {/* View. Not a filter (it doesn't change which robots you are looking
             at) and not an action (nothing leaves the page) — it is the same
@@ -5095,7 +5387,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             {/* Its own group. Butted straight onto the lanes it read as a
                 fourth one, which is the whole thing we are trying to stop. */}
             <div aria-hidden style={{ height: SIDEBAR_GROUP_GAP }} />
-            <GridSwitch grid={gridOpen} onChange={setGridOpen} />
+            <GridSwitch grid={gridOpen} onChange={setGridOpen} labelW={lanePlacement === "rail" ? SIDEBAR_LABEL_W : 34} />
           </>
         )}
         {gridPlacement === "lane-trailing" && (
@@ -5181,15 +5473,19 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             position: "absolute",
             top: `calc(100% + ${SIDEBAR_GROUP_GAP - 8}px)`,
             left: 0,
-            height: 24,
+            // Auto, not 24: the line stacks now, so a fixed one-row height
+            // clipped Feedback off the bottom.
+            height: "auto",
             // max-content, not the old fixed 104: the line carries Feedback now
             // and a fixed width just let it hang off the end. Out of flow, so
             // it still doesn't set the column's width.
             width: "max-content",
             opacity: railLive ? "var(--rail-p, 0)" : comparing ? 0 : 1,
             transition: "opacity 200ms ease",
+            transitionDelay: comparing ? "0ms" : "var(--return-delay, 0ms)",
             display: "flex",
-            alignItems: "center",
+            flexDirection: "column",
+            alignItems: "flex-start",
             // 10 is the rows' own horizontal inset, so the credit starts on the
             // same vertical as the glyph column above it. 12 was off by two
             // against every other thing in the sidebar.
@@ -5203,40 +5499,260 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             fontWeight: 450,
             color: INK.off,
             whiteSpace: "nowrap",
-            gap: 6,
+            gap: 2,
           }}
         >
           <span>Roy Jad © 2026</span>
           {onFeedback && (
-            <>
-              <span aria-hidden style={{ opacity: 0.5 }}>·</span>
-              {/* Down here rather than at Search's rank. It is the one row in
-                  the column nobody is looking for, and the credit line is
-                  where a site's small print already lives. */}
-              <button
-                type="button"
-                onClick={onFeedback}
-                className="rail-credit-link cursor-pointer"
-                style={{ font: "inherit", color: "inherit", background: "none", border: "none", padding: 0 }}
-              >
-                Feedback
-              </button>
-            </>
+            /* Down here rather than at Search's rank, and on its own row rather
+               than beside the copyright: side by side the line was wide enough
+               to run under the first grid column. */
+            <button
+              type="button"
+              onClick={onFeedback}
+              className="rail-credit-link cursor-pointer"
+              style={{ font: "inherit", color: "inherit", background: "none", border: "none", padding: 0 }}
+            >
+              Feedback
+            </button>
           )}
         </div>
       </div>
       )}
 
       {/* The categories, across the top, on the axis the stage travels on. */}
-      {lanePlacement === "top" && (
+      {laneAtTop && chromeLayout !== "center" && (
         <LaneChips
           active={savedLaneLive ? null : formFilter}
           counts={countFor}
-          onPick={(f) => { if (comparing) { compareInLane(f); return; } changeLane(f); }}
+          onPick={(f) => {
+            if (comparing) { compareInLane(f); return; }
+            // Leaving Saved by clicking a form chip is the gesture the sidebar
+            // never had to handle — there, you left by clicking Saved again.
+            // `changeLane` early-returns when the filter is unchanged, so
+            // without this, clicking the lane you were on before saving looks
+            // dead: the chip lights and the wheel stays on the saved list.
+            if (savedLaneLive) {
+              setSavedLaneOn(false);
+              if (f === formFilter) return;
+            }
+            changeLane(f);
+          }}
           top={navTop + 16}
           variant={laneChipStyle}
+          zIndex={gridOpen ? 21 : 6}
+          saved={savedSurface === "lane" ? {
+            count: savedItems.length,
+            on: savedLaneLive,
+            // Compare rides one lane, so switching the list underneath it is
+            // the one move that isn't available — same guard the rail row used.
+            onPick: () => { if (comparing) return; setSavedLaneOn((v) => !v); },
+          } : undefined}
         />
       )}
+
+      {/* ── Chrome off the rail ─────────────────────────────────────────────
+          The rail's contents, redistributed to the horizontal edges. Not a
+          second implementation of the column: the column's machinery — hover
+          openness, sliding lane indicator, collapsing labels — all existed to
+          make a vertical stack of seven rows work, and none of it has anything
+          to do with a mark in a corner and one bookmark. What is left is three
+          plain pieces of furniture, each anchored to a corner it can hold on
+          its own.
+
+          `railActions` is still the source for the tools, so Saved / Search /
+          Ask stay wired the same way and a row added there shows up here too.
+          ──────────────────────────────────────────────────────────────────── */}
+      {chromeLayout !== "rail" && (() => {
+        // Optically centred on the lane track rather than on its box: the
+        // track is SIDEBAR_ROW_H + 6 tall (3px of padding either side of the
+        // segments), so its middle is 18 below where the chips start.
+        const bandTop = navTop + 16 + (SIDEBAR_ROW_H + 6) / 2 - SIDEBAR_ROW_H / 2;
+        const EDGE = "var(--nav-edge, 24px)";
+        // The rail bumps itself to 21 when the grid is open; this chrome has to
+        // do the same. At 6 it sat under the grid's own z-20 sheet, so opening
+        // the grid from a top-band layout hid the switch that closes it.
+        const bandZ = gridOpen ? 21 : 6;
+        // Compare fades the chrome down the way the column collapses to
+        // glyphs — two cards want the room, and nothing out here is part of
+        // the comparison.
+        const fade: React.CSSProperties = {
+          opacity: comparing ? 0.35 : 1,
+          transition: "opacity 200ms ease",
+        };
+        const showGridSwitch = gridPlacement === "toggle" && !comparing;
+        // Built once and placed by layout, so a row added to `railActions`
+        // lands in whichever corner is in force without a second call site.
+        const tools = railActions.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={item.onClick}
+            aria-label={item.label}
+            aria-pressed={item.active || undefined}
+            className="sidebar-action cursor-pointer"
+            style={{ ...SIDEBAR_ROW, gap: 8, color: item.active ? INK.on : INK.off }}
+          >
+            <span style={{ ...SIDEBAR_GLYPH_SLOT, opacity: item.active ? SIDEBAR_GLYPH_OP.on : SIDEBAR_GLYPH_OP.off }}>
+              {item.icon}
+            </span>
+            {/* The count, always. Same argument the lane chips won on: out here
+                there is room, and a Saved that will not tell you how many is
+                coy. */}
+            {item.hint && (
+              <span style={{ color: INK.faint, fontVariantNumeric: "tabular-nums" }}>{item.hint}</span>
+            )}
+          </button>
+        ));
+        return (
+          <>
+            {/* Identity, top-left. The one position on a page that is not a
+                choice, which is what a mark is. Back in the corner it was in
+                before the column swallowed it — the difference is that this
+                time nothing else is up here pretending to be its equal.
+
+                In `center` it gives that position up: the cluster below holds
+                it, the lanes and the tools as one object. */}
+            {chromeLayout !== "center" && (
+            <div className="fixed" style={{ zIndex: bandZ, top: bandTop, left: EDGE, ...fade }}>
+              <button
+                type="button"
+                onClick={onHome}
+                aria-label="Humanoid Index"
+                className="site-mark-btn cursor-pointer"
+                style={{ ...SIDEBAR_ROW, gap: 8, color: INK.off }}
+              >
+                <span style={SIDEBAR_GLYPH_SLOT}>
+                  <SiteMark size={18} color="#2e2e36" opacity={SIDEBAR_GLYPH_OP.off} />
+                </span>
+                {/* The room the column was rationing. A wordmark only works
+                    out here because the top band has width to spare; in a
+                    64px label column it was the site saying its own name
+                    directly under an icon of its own name. */}
+                {chromeWordmark && <span>Humanoid Index</span>}
+              </button>
+            </div>
+            )}
+
+            {/* ── Centred cluster ───────────────────────────────────────────
+                Everything that was in the column, in one object on the page's
+                own centreline: mark, lanes, tools. The band scatters the same
+                pieces to two corners and asks the eye to collect them; here
+                they are already collected, and the group — not the lane track
+                — is what's centred, so the chrome reads as one thing sitting
+                above the stage rather than as three that happen to share a
+                line.
+
+                The mark keeps its distance from the track (14 against the
+                lanes' own 2/4) because a wordmark abutting a segmented control
+                reads as the control's label. That gap is the whole difference
+                between a cluster and a toolbar. */}
+            {chromeLayout === "center" && (
+              <div
+                className="fixed left-1/2 -translate-x-1/2 flex items-center"
+                style={{ zIndex: bandZ, top: navTop + 16, gap: 14, ...fade }}
+              >
+                <button
+                  type="button"
+                  onClick={onHome}
+                  aria-label="Humanoid Index"
+                  className="site-mark-btn cursor-pointer"
+                  style={{ ...SIDEBAR_ROW, gap: 8, color: INK.off }}
+                >
+                  <span style={SIDEBAR_GLYPH_SLOT}>
+                    <SiteMark size={18} color="#2e2e36" opacity={SIDEBAR_GLYPH_OP.off} />
+                  </span>
+                  {chromeWordmark && <span>Humanoid Index</span>}
+                </button>
+
+                <LaneChips
+                  inline
+                  active={savedLaneLive ? null : formFilter}
+                  counts={countFor}
+                  onPick={(f) => { if (comparing) { compareInLane(f); return; } changeLane(f); }}
+                  top={0}
+                  variant={laneChipStyle}
+                />
+
+                {(tools.length > 0 || showGridSwitch) && (
+                  <div className="flex items-center" style={{ gap: 4 }}>
+                    {tools}
+                    {showGridSwitch && <GridSwitch grid={gridOpen} onChange={setGridOpen} />}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tools. Top-right in `band` — one horizontal line of chrome and
+                nothing else on the page above the stage. Bottom-right in
+                `corners`, which is the version I'd defend: Saved is the
+                visitor's own state, and sitting it beside the lane switcher
+                ranks "what I kept" equal to "what the index is showing",
+                which is the same rank mistake the three glass pills made. */}
+            {/* The view switch stays up top in both layouts, and always beside
+                the lanes. It is not a place you can go — it is the open lane
+                seen another way — so it belongs with the control that picks the
+                lane, not with the visitor's own things.
+
+                In `band` the tools share its flex box rather than sitting in a
+                second fixed box at the same corner: two boxes there needed a
+                hand-measured offset between them, and a hand-measured offset is
+                a collision waiting for the first row anyone adds. */}
+            {chromeLayout !== "center" && (showGridSwitch || (chromeLayout === "band" && tools.length > 0)) && (
+              <div
+                className="fixed flex items-center"
+                style={{ zIndex: bandZ, top: bandTop, right: EDGE, gap: 4, ...fade }}
+              >
+                {chromeLayout === "band" && tools}
+                {showGridSwitch && <GridSwitch grid={gridOpen} onChange={setGridOpen} />}
+              </div>
+            )}
+
+            {chromeLayout === "corners" && tools.length > 0 && (
+              <div
+                className="fixed flex items-center"
+                style={{ zIndex: bandZ, bottom: EDGE, right: EDGE, gap: 2, ...fade }}
+              >
+                {tools}
+              </div>
+            )}
+
+            {/* Small print, bottom-left, in both layouts. It is the one thing
+                in the old column that genuinely belongs at a foot, and down
+                here it can be static — in the rail it had to hide behind the
+                hover reveal to stop a copyright line animating every time the
+                cursor crossed the column. */}
+            <div
+              className="fixed flex flex-col items-start"
+              style={{
+                zIndex: bandZ,
+                bottom: EDGE,
+                left: `calc(${EDGE} + 10px)`,
+                gap: 2,
+                fontFamily: "var(--font-geist-sans)",
+                fontSize: 13,
+                lineHeight: 1.35,
+                fontWeight: 450,
+                color: INK.off,
+                whiteSpace: "nowrap",
+                ...fade,
+              }}
+            >
+              <span>Roy Jad © 2026</span>
+              {onFeedback && (
+                <button
+                  type="button"
+                  onClick={onFeedback}
+                  className="rail-credit-link cursor-pointer"
+                  style={{ font: "inherit", color: "inherit", background: "none", border: "none", padding: 0 }}
+                >
+                  Feedback
+                </button>
+              )}
+            </div>
+          </>
+        );
+      })()}
 
       {/* Off the rail entirely. The rail goes back to being nothing but places
           you can go, and the one control on the page sits where view controls
@@ -5374,9 +5890,14 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
       {!comparing && (() => {
         const alwaysMode = addCtaMode === "always";
         const addShown = alwaysMode || addHover;
-        const baseScale = alwaysMode ? 1 : (addShown ? 1 : 0.75);
-        const hoverScale = addHover ? 1.015 : 1;
-        const liftY = addHover ? -1 : 0;
+        // One reaction, not five. This used to ramp scale 0.75 -> 1, add a
+        // second 1.015 hover scale, lift 1px, spring-ease the transform, fade
+        // opacity, tint the pedestal AND let the glyph run its own
+        // .card-icon-btn:hover — all on different clocks. The pedestal tint and
+        // the glyph fade are enough to say "this is live".
+        const baseScale = 1;
+        const hoverScale = 1;
+        const liftY = 0;
         return (
           <div
             className="absolute flex items-center justify-start cursor-pointer"
@@ -5392,7 +5913,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             // reveal something on hover. The glyph still sits at the slot
             // (justify-start + a fixed-width inner), only the region that wakes
             // it up got bigger.
-            style={{ width: Math.max(110, windowWidth - compareSlotLeft), height: Math.max(100, compareCardH), top: "50%", transform: "translateY(-50%)", left: compareSlotLeft, zIndex: 12 }}
+            // Unmounting the moment compare opens is right — the card lands in
+            // the pedestal's place. Remounting the moment compare closes is
+            // not: the pedestal drew itself under a second card that was still
+            // there. It waits out the collapse clock, then fades up into the
+            // space the card actually vacated.
+            style={{ width: Math.max(110, windowWidth - compareSlotLeft), height: Math.max(100, compareCardH), top: "50%", transform: "translateY(-50%)", left: compareSlotLeft, zIndex: 12, opacity: unwinding ? 0 : 1, pointerEvents: unwinding ? "none" : undefined, transition: "opacity 240ms ease" }}
             onClick={() => { setAddHover(false); enterCompare(); }}
             onMouseEnter={() => setAddHover(true)}
             onMouseLeave={() => setAddHover(false)}
@@ -5436,8 +5962,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 // shape carries that job and the glyph can sit higher; without
                 // it, 0.16 is the most that can be left without giving the
                 // composition a tail.
-                opacity: addHover ? 1 : (alwaysMode ? 0.7 : (compareSlotStyle === "silhouette" ? 0.55 : 0.16)),
-                transition: "transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease, width var(--collapse-dur) var(--collapse-ease)",
+                opacity: addHover ? 1 : (alwaysMode ? 0.7 : (compareSlotStyle === "silhouette" ? 0.7 : 0.16)),
+                transition: "opacity 200ms ease, width var(--collapse-dur) var(--collapse-ease)",
               }}
             >
               {(() => {
@@ -5461,18 +5987,21 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   border: "none",
                   background: "rgba(0,0,0,0.06)",
                   color: "rgba(0,0,0,0.62)",
-                  ["--ci-bg-hover" as string]: "rgba(0,0,0,0.09)",
+                  // Rest values repeated on purpose: the whole slot is the
+                  // target, so the glyph must not react on its own when the
+                  // cursor happens to cross it.
+                  ["--ci-bg-hover" as string]: "rgba(0,0,0,0.06)",
                   ["--ci-border-hover" as string]: "transparent",
-                  ["--ci-color-hover" as string]: "rgba(0,0,0,0.78)",
+                  ["--ci-color-hover" as string]: "rgba(0,0,0,0.62)",
                 };
                 const glassStyle: React.CSSProperties = {
                   ...baseStyle,
                   border: "1px solid rgba(0,0,0,0.12)",
                   background: "transparent",
                   color: "rgba(0,0,0,0.4)",
-                  ["--ci-bg-hover" as string]: "rgba(0,0,0,0.03)",
-                  ["--ci-border-hover" as string]: "rgba(0,0,0,0.2)",
-                  ["--ci-color-hover" as string]: "rgba(0,0,0,0.55)",
+                  ["--ci-bg-hover" as string]: "transparent",
+                  ["--ci-border-hover" as string]: "rgba(0,0,0,0.12)",
+                  ["--ci-color-hover" as string]: "rgba(0,0,0,0.4)",
                 };
                 return (
                   <div
@@ -5485,7 +6014,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               })()}
               <span style={{
                 fontSize: 12,
-                color: "rgba(95, 96, 89, 0.8)",
+                color: "rgba(46, 46, 54, 0.8)",
                 fontWeight: 500,
                 letterSpacing: "normal",
                 userSelect: "none",
@@ -6032,7 +6561,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     const fallbackText = (s as { text?: string }).text ?? "";
                     const cta = (s as { ctaText?: string }).ctaText ?? "Buy";
                     const ctaBg = "rgba(0,0,0,0.06)";
-                    const ctaColor = "rgba(95, 96, 89, 0.8)";
+                    const ctaColor = "rgba(46, 46, 54, 0.8)";
                     const Outer = "div" as React.ElementType;
                     const outerProps = href
                       ? { href, target: "_blank", rel: "noopener noreferrer", onClick: (e: React.MouseEvent) => e.stopPropagation() }
@@ -6627,7 +7156,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               const href = purchaseSection.href!;
               const cta = purchaseSection.ctaText ?? "Buy";
               const ctaBg = "rgba(0,0,0,0.06)";
-              const ctaColor = "rgba(95, 96, 89, 0.8)";
+              const ctaColor = "rgba(46, 46, 54, 0.8)";
 
               const arrowChip = (
                 <span className="cta-chip" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 999, background: ctaBg, flexShrink: 0 }}>
@@ -7444,6 +7973,209 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           );
         };
 
+        /* The dock's contents, for a given robot.
+           Lifted out of renderRobot so the compare dock can ask for the OTHER
+           card's buttons: the row is rendered from the left card, but in
+           compare it acts on whichever side the pointer (or Tab) has named,
+           and that side's robot is not the one whose render we are inside. */
+        const buildChipCtx = (h: typeof humanoids[0], isFirst: boolean) => {
+          const cardDrawer = statsOverlay === "strip" && blurbDock === "drawer";
+          const drawerKey = isFirst ? "left" : "right";
+          const hIdx = globalIndexOf(h.id);
+          const gallery = h.media || [];
+          const allKinds: ("image" | "video")[] = [
+            ...(h.imageUrl ? ["image" as const] : []),
+            ...gallery.map((m) => m.type),
+          ];
+
+            const desc = getRobotDescription(h);
+            const hasInfo = !!desc.text;
+            const hasThreeD = !!THREEDEE_ROBOTS[h.id];
+            const hasSpin = !!SPIN_ROBOTS[h.id];
+            const hasShare = !!onShareView;
+            const hasPanel = collapseVariant === "info-icon";
+            const hasScene = process.env.NODE_ENV === "development" && !!h.sceneUrl;
+            // No early return on an otherwise featureless robot: every entry can
+            // be saved, so the cluster always has at least one button in it.
+            const ico = cardIconRender();
+            const innerBtnStyle: React.CSSProperties = {
+              width: cardIconSize,
+              height: cardIconSize,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              color: "inherit",
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+            };
+            const shareButton = hasShare ? (
+              <Tooltip label="Share this view" shortcut="C">
+                <button type="button" onClick={(e) => { e.stopPropagation(); onShareView?.(); }} aria-label="Share this view" style={innerBtnStyle}>
+                  <Share size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                </button>
+              </Tooltip>
+            ) : null;
+            // Save. Filled when saved, outline when not — the same read as a
+            // bookmark anywhere else, so it needs no label. Sits with the other
+            // card actions rather than on the image: saving is something you do
+            // to the entry, not to the photograph.
+            const saved = favoriteIds.has(h.id);
+            const saveButton = (
+              <Tooltip label={saved ? "Remove from saved" : "Save"} shortcut="⇧S">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleFavorite(h.id); }}
+                  aria-pressed={saved}
+                  aria-label={saved ? "Remove from saved" : "Save"}
+                  style={innerBtnStyle}
+                >
+                  <Bookmark
+                    size={ico.iconBoxPx}
+                    strokeWidth={ico.iconStrokeWidth}
+                    fill={saved ? "currentColor" : "none"}
+                    style={{ transition: `fill ${dur} ${ease}` }}
+                  />
+                </button>
+              </Tooltip>
+            );
+            const shuffleButton = onRandomHumanoid ? (
+              <Tooltip label="Shuffle" shortcut="?">
+                <button type="button" onClick={(e) => { e.stopPropagation(); onRandomHumanoid(); }} aria-label="Shuffle to a random humanoid" style={innerBtnStyle}>
+                  <Dices size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                </button>
+              </Tooltip>
+            ) : null;
+            // In drawer mode the blurb has no independent visibility — it is
+            // part of the drawer — so this drives the same panel the placard's
+            // handle does rather than a second, conflicting toggle.
+            const infoOn = cardDrawer ? drawerOpenFor(drawerKey) : blurbVisible;
+            const infoButton = hasInfo && infoChipOn ? (
+              <Tooltip label={infoOn ? "Hide info" : "Show info"} shortcut="I">
+                <button type="button" onClick={(e) => { e.stopPropagation(); if (cardDrawer) { toggleDrawer(drawerKey); } else { setBlurbVisible((v) => !v); } }} aria-pressed={infoOn} aria-label={infoOn ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, infoOn, cardIconSize) }}>
+                  <InfoGlyph variant={infoGlyph} openState={infoOpenState} open={infoOn} size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                </button>
+              </Tooltip>
+            ) : null;
+            const mediaButtons = (
+              <>
+                {hasThreeD && (
+                  <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }} aria-pressed={show3D} aria-label={show3D ? "Show photo" : "View in 3D"} style={innerBtnStyle}>
+                      <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                    </button>
+                  </Tooltip>
+                )}
+                {hasSpin && (
+                  <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); void toggleSpin(); }} aria-pressed={spinPlaying} aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"} style={innerBtnStyle}>
+                      {spinPlaying ? <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} /> : <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />}
+                    </button>
+                  </Tooltip>
+                )}
+                <VideoPauseInnerButton mIdx={hIdx} allKinds={allKinds} subscribe={subscribeGalleryIdx} read={readGalleryIdx} videoPaused={videoPaused} onToggle={() => setVideoPaused((p) => !p)} iconBoxPx={ico.iconBoxPx} iconStrokeWidth={ico.iconStrokeWidth} size={cardIconSize} />
+              </>
+            );
+            const hasMedia = hasThreeD || hasSpin;
+            const panelButton = hasPanel ? (
+              <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
+                <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, !statsCollapsed, cardIconSize) }}>
+                  <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                </button>
+              </Tooltip>
+            ) : null;
+            // Morph slot — keeps the button mounted so its enter/exit can
+            // animate as the active robot's capability set shifts on scroll.
+            // Outer collapses layout (width); inner runs the visual effect
+            // (transform/filter/opacity). The pairing is data-driven so the
+            // dev tuner can swap styles without touching markup.
+            const popEase = "cubic-bezier(0.5, 1.6, 0.5, 1)";
+            const slotLayoutFixed = morphStyle === "fade-fixed";
+            const slotInstant = morphStyle === "none";
+            const innerFor = (present: boolean): React.CSSProperties => {
+              const t = `transform ${morphDuration}ms ${ease}, opacity ${morphDuration}ms ${ease}, filter ${morphDuration}ms ${ease}`;
+              const baseOpacity = present ? 1 : 0;
+              switch (morphStyle) {
+                case "scale":      return { transition: t, transform: present ? "scale(1)" : "scale(0.4)", opacity: baseOpacity };
+                case "pop":        return { transition: `transform ${morphDuration}ms ${popEase}, opacity ${morphDuration}ms ${ease}`, transform: present ? "scale(1)" : "scale(0)", opacity: baseOpacity };
+                case "slide-up":   return { transition: t, transform: present ? "translateY(0)" : "translateY(10px)", opacity: baseOpacity };
+                case "slide-down": return { transition: t, transform: present ? "translateY(0)" : "translateY(-10px)", opacity: baseOpacity };
+                case "blur":       return { transition: t, filter: present ? "blur(0)" : "blur(6px)", opacity: baseOpacity };
+                case "fade-fixed": return { transition: t, opacity: baseOpacity };
+                case "none":       return { opacity: baseOpacity };
+                case "shrink":
+                default:           return { transition: t, opacity: baseOpacity };
+              }
+            };
+            const slot = (present: boolean, key: string, child: React.ReactNode) => (
+              <div
+                key={key}
+                style={{
+                  width: slotLayoutFixed ? cardIconSize : (present ? cardIconSize : 0),
+                  pointerEvents: present ? "auto" : "none",
+                  overflow: "hidden",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  transition: slotInstant || slotLayoutFixed ? "none" : `width ${morphDuration}ms ${ease}`,
+                }}
+                aria-hidden={!present}
+              >
+                <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: cardIconSize, height: cardIconSize, ...innerFor(present) }}>
+                  {child}
+                </div>
+              </div>
+            );
+            const infoSlot = slot(hasInfo && infoChipOn, "info", (
+              <Tooltip label={infoOn ? "Hide info" : "Show info"} shortcut="I">
+                <button type="button" onClick={(e) => { e.stopPropagation(); if (cardDrawer) { toggleDrawer(drawerKey); } else { setBlurbVisible((v) => !v); } }} aria-pressed={infoOn} aria-label={infoOn ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, infoOn, cardIconSize) }} tabIndex={hasInfo && infoChipOn ? 0 : -1}>
+                  <InfoGlyph variant={infoGlyph} openState={infoOpenState} open={infoOn} size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                </button>
+              </Tooltip>
+            ));
+            const mediaSlots = (
+              <>
+                {slot(hasScene, "scene", (
+                  <Tooltip label={sceneEnabled ? "Hide scene" : "Show scene"} shortcut="E">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setSceneInteracted(true); setSceneEnabled((v) => !v); }} aria-pressed={sceneEnabled} aria-label={sceneEnabled ? "Hide scene" : "Show scene"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, sceneEnabled, cardIconSize) }} tabIndex={hasScene ? 0 : -1}>
+                      <svg width={ico.iconBoxPx} height={ico.iconBoxPx} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M3 18l5-6 4 5 3-4 6 7" />
+                        <circle cx="17" cy="6" r="2" />
+                      </svg>
+                    </button>
+                  </Tooltip>
+                ))}
+                {slot(hasThreeD, "3d", (
+                  <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }} aria-pressed={show3D} aria-label={show3D ? "Show photo" : "View in 3D"} style={innerBtnStyle} tabIndex={hasThreeD ? 0 : -1}>
+                      <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                    </button>
+                  </Tooltip>
+                ))}
+                {slot(hasSpin, "spin", (
+                  <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); void toggleSpin(); }} aria-pressed={spinPlaying} aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"} style={innerBtnStyle} tabIndex={hasSpin ? 0 : -1}>
+                      {spinPlaying ? <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} /> : <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />}
+                    </button>
+                  </Tooltip>
+                ))}
+                <VideoPauseInnerButton mIdx={hIdx} allKinds={allKinds} subscribe={subscribeGalleryIdx} read={readGalleryIdx} videoPaused={videoPaused} onToggle={() => setVideoPaused((p) => !p)} iconBoxPx={ico.iconBoxPx} iconStrokeWidth={ico.iconStrokeWidth} size={cardIconSize} />
+              </>
+            );
+            const hasMediaPill = hasThreeD || hasSpin || hasScene;
+            const otherButtons = (<>{infoSlot}{mediaSlots}</>);
+            // panelButton is deliberately NOT in the default row — the "i"
+            // circle in the label row already toggles the stats column, and two
+            // controls for one action made the bottom bar read as clutter. It
+            // stays exported for the split / image-corner groupings.
+            const buttons = (<>{saveButton}{shuffleButton}{shareButton}{otherButtons}</>);
+            const hasInfoPill = hasInfo && infoChipOn;
+            return { buttons, saveButton, shareButton, shuffleButton, otherButtons, infoSlot, mediaSlots, hasMediaPill, hasInfoPill, panelButton, infoButton, mediaButtons, hasMedia };
+                  };
+
         const renderRobot = (h: typeof humanoids[0], _dist: number, hIdx: number, isFirst: boolean) => {
           // One consolidated pull-up panel per card. See `BlurbDock`.
           const cardDrawer = statsOverlay === "strip" && blurbDock === "drawer";
@@ -7600,194 +8332,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
 
           // Chip cluster — shared button fragment used by both the floating
           // (absolute over image) and panel (flex row below image) layouts.
-          const chipCtx = (!comparing && isFirst) ? (() => {
-            const desc = getRobotDescription(h);
-            const hasInfo = !!desc.text;
-            const hasThreeD = !!THREEDEE_ROBOTS[h.id];
-            const hasSpin = !!SPIN_ROBOTS[h.id];
-            const hasShare = !!onShareView;
-            const hasPanel = collapseVariant === "info-icon";
-            const hasScene = process.env.NODE_ENV === "development" && !!h.sceneUrl;
-            // No early return on an otherwise featureless robot: every entry can
-            // be saved, so the cluster always has at least one button in it.
-            const ico = cardIconRender();
-            const innerBtnStyle: React.CSSProperties = {
-              width: cardIconSize,
-              height: cardIconSize,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              color: "inherit",
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-            };
-            const shareButton = hasShare ? (
-              <Tooltip label="Share this view" shortcut="C">
-                <button type="button" onClick={(e) => { e.stopPropagation(); onShareView?.(); }} aria-label="Share this view" style={innerBtnStyle}>
-                  <Share size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                </button>
-              </Tooltip>
-            ) : null;
-            // Save. Filled when saved, outline when not — the same read as a
-            // bookmark anywhere else, so it needs no label. Sits with the other
-            // card actions rather than on the image: saving is something you do
-            // to the entry, not to the photograph.
-            const saved = favoriteIds.has(h.id);
-            const saveButton = (
-              <Tooltip label={saved ? "Remove from saved" : "Save"} shortcut="⇧S">
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); toggleFavorite(h.id); }}
-                  aria-pressed={saved}
-                  aria-label={saved ? "Remove from saved" : "Save"}
-                  style={innerBtnStyle}
-                >
-                  <Bookmark
-                    size={ico.iconBoxPx}
-                    strokeWidth={ico.iconStrokeWidth}
-                    fill={saved ? "currentColor" : "none"}
-                    style={{ transition: `fill ${dur} ${ease}` }}
-                  />
-                </button>
-              </Tooltip>
-            );
-            const shuffleButton = onRandomHumanoid ? (
-              <Tooltip label="Shuffle" shortcut="?">
-                <button type="button" onClick={(e) => { e.stopPropagation(); onRandomHumanoid(); }} aria-label="Shuffle to a random humanoid" style={innerBtnStyle}>
-                  <Dices size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                </button>
-              </Tooltip>
-            ) : null;
-            // In drawer mode the blurb has no independent visibility — it is
-            // part of the drawer — so this drives the same panel the placard's
-            // handle does rather than a second, conflicting toggle.
-            const infoOn = cardDrawer ? drawerOpenFor(drawerKey) : blurbVisible;
-            const infoButton = hasInfo && infoChipOn ? (
-              <Tooltip label={infoOn ? "Hide info" : "Show info"} shortcut="I">
-                <button type="button" onClick={(e) => { e.stopPropagation(); if (cardDrawer) { toggleDrawer(drawerKey); } else { setBlurbVisible((v) => !v); } }} aria-pressed={infoOn} aria-label={infoOn ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, infoOn, cardIconSize) }}>
-                  <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                </button>
-              </Tooltip>
-            ) : null;
-            const mediaButtons = (
-              <>
-                {hasThreeD && (
-                  <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }} aria-pressed={show3D} aria-label={show3D ? "Show photo" : "View in 3D"} style={innerBtnStyle}>
-                      <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                    </button>
-                  </Tooltip>
-                )}
-                {hasSpin && (
-                  <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); void toggleSpin(); }} aria-pressed={spinPlaying} aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"} style={innerBtnStyle}>
-                      {spinPlaying ? <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} /> : <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />}
-                    </button>
-                  </Tooltip>
-                )}
-                <VideoPauseInnerButton mIdx={hIdx} allKinds={allKinds} subscribe={subscribeGalleryIdx} read={readGalleryIdx} videoPaused={videoPaused} onToggle={() => setVideoPaused((p) => !p)} iconBoxPx={ico.iconBoxPx} iconStrokeWidth={ico.iconStrokeWidth} size={cardIconSize} />
-              </>
-            );
-            const hasMedia = hasThreeD || hasSpin;
-            const panelButton = hasPanel ? (
-              <Tooltip label={statsCollapsed ? "Show details" : "Hide details"} shortcut="D">
-                <button type="button" onClick={(e) => { e.stopPropagation(); setStatsCollapsed((v) => !v); }} aria-label={statsCollapsed ? "Show details" : "Hide details"} aria-pressed={!statsCollapsed} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, !statsCollapsed, cardIconSize) }}>
-                  <PanelRight size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                </button>
-              </Tooltip>
-            ) : null;
-            // Morph slot — keeps the button mounted so its enter/exit can
-            // animate as the active robot's capability set shifts on scroll.
-            // Outer collapses layout (width); inner runs the visual effect
-            // (transform/filter/opacity). The pairing is data-driven so the
-            // dev tuner can swap styles without touching markup.
-            const popEase = "cubic-bezier(0.5, 1.6, 0.5, 1)";
-            const slotLayoutFixed = morphStyle === "fade-fixed";
-            const slotInstant = morphStyle === "none";
-            const innerFor = (present: boolean): React.CSSProperties => {
-              const t = `transform ${morphDuration}ms ${ease}, opacity ${morphDuration}ms ${ease}, filter ${morphDuration}ms ${ease}`;
-              const baseOpacity = present ? 1 : 0;
-              switch (morphStyle) {
-                case "scale":      return { transition: t, transform: present ? "scale(1)" : "scale(0.4)", opacity: baseOpacity };
-                case "pop":        return { transition: `transform ${morphDuration}ms ${popEase}, opacity ${morphDuration}ms ${ease}`, transform: present ? "scale(1)" : "scale(0)", opacity: baseOpacity };
-                case "slide-up":   return { transition: t, transform: present ? "translateY(0)" : "translateY(10px)", opacity: baseOpacity };
-                case "slide-down": return { transition: t, transform: present ? "translateY(0)" : "translateY(-10px)", opacity: baseOpacity };
-                case "blur":       return { transition: t, filter: present ? "blur(0)" : "blur(6px)", opacity: baseOpacity };
-                case "fade-fixed": return { transition: t, opacity: baseOpacity };
-                case "none":       return { opacity: baseOpacity };
-                case "shrink":
-                default:           return { transition: t, opacity: baseOpacity };
-              }
-            };
-            const slot = (present: boolean, key: string, child: React.ReactNode) => (
-              <div
-                key={key}
-                style={{
-                  width: slotLayoutFixed ? cardIconSize : (present ? cardIconSize : 0),
-                  pointerEvents: present ? "auto" : "none",
-                  overflow: "hidden",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  transition: slotInstant || slotLayoutFixed ? "none" : `width ${morphDuration}ms ${ease}`,
-                }}
-                aria-hidden={!present}
-              >
-                <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: cardIconSize, height: cardIconSize, ...innerFor(present) }}>
-                  {child}
-                </div>
-              </div>
-            );
-            const infoSlot = slot(hasInfo && infoChipOn, "info", (
-              <Tooltip label={infoOn ? "Hide info" : "Show info"} shortcut="I">
-                <button type="button" onClick={(e) => { e.stopPropagation(); if (cardDrawer) { toggleDrawer(drawerKey); } else { setBlurbVisible((v) => !v); } }} aria-pressed={infoOn} aria-label={infoOn ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, infoOn, cardIconSize) }} tabIndex={hasInfo && infoChipOn ? 0 : -1}>
-                  <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                </button>
-              </Tooltip>
-            ));
-            const mediaSlots = (
-              <>
-                {slot(hasScene, "scene", (
-                  <Tooltip label={sceneEnabled ? "Hide scene" : "Show scene"} shortcut="E">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setSceneInteracted(true); setSceneEnabled((v) => !v); }} aria-pressed={sceneEnabled} aria-label={sceneEnabled ? "Hide scene" : "Show scene"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, sceneEnabled, cardIconSize) }} tabIndex={hasScene ? 0 : -1}>
-                      <svg width={ico.iconBoxPx} height={ico.iconBoxPx} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ico.iconStrokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M3 18l5-6 4 5 3-4 6 7" />
-                        <circle cx="17" cy="6" r="2" />
-                      </svg>
-                    </button>
-                  </Tooltip>
-                ))}
-                {slot(hasThreeD, "3d", (
-                  <Tooltip label={show3D ? "Show photo" : "View in 3D"} shortcut="3">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setShow3D((v) => !v); }} aria-pressed={show3D} aria-label={show3D ? "Show photo" : "View in 3D"} style={innerBtnStyle} tabIndex={hasThreeD ? 0 : -1}>
-                      <Box width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
-                    </button>
-                  </Tooltip>
-                ))}
-                {slot(hasSpin, "spin", (
-                  <Tooltip label={spinPlaying ? "Pause rotation" : "Auto-rotate"} shortcut="R">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); void toggleSpin(); }} aria-pressed={spinPlaying} aria-label={spinPlaying ? "Pause rotation" : "Auto-rotate"} style={innerBtnStyle} tabIndex={hasSpin ? 0 : -1}>
-                      {spinPlaying ? <Pause width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} /> : <Play width={ico.iconBoxPx} height={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />}
-                    </button>
-                  </Tooltip>
-                ))}
-                <VideoPauseInnerButton mIdx={hIdx} allKinds={allKinds} subscribe={subscribeGalleryIdx} read={readGalleryIdx} videoPaused={videoPaused} onToggle={() => setVideoPaused((p) => !p)} iconBoxPx={ico.iconBoxPx} iconStrokeWidth={ico.iconStrokeWidth} size={cardIconSize} />
-              </>
-            );
-            const hasMediaPill = hasThreeD || hasSpin || hasScene;
-            const otherButtons = (<>{infoSlot}{mediaSlots}</>);
-            // panelButton is deliberately NOT in the default row — the "i"
-            // circle in the label row already toggles the stats column, and two
-            // controls for one action made the bottom bar read as clutter. It
-            // stays exported for the split / image-corner groupings.
-            const buttons = (<>{saveButton}{shuffleButton}{shareButton}{otherButtons}</>);
-            const hasInfoPill = hasInfo && infoChipOn;
-            return { buttons, saveButton, shareButton, shuffleButton, otherButtons, infoSlot, mediaSlots, hasMediaPill, hasInfoPill, panelButton, infoButton, mediaButtons, hasMedia };
-          })() : null;
+          const chipCtx = (isFirst || comparing) ? buildChipCtx(h, isFirst) : null;
 
           return (
             <div className="relative flex-shrink-0 group/card" style={{ zIndex: 1 }}>
@@ -8596,7 +9141,21 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 it floats over the page without inflating the card wrapper's
                 bounding box. Keeps the card's vertical center aligned with
                 the arc names instead of getting pushed up by the chip row. */}
-            {chipCtx && (chipLayout === "below" || chipLayout === "below-left") && (
+            {chipCtx && (chipLayout === "below" || chipLayout === "below-left") && (() => {
+              /* ── The dock ────────────────────────────────────────────────
+                 The row under the card, and in compare the row under EACH
+                 card — the same dock, twice, with the second one wired to the
+                 second robot (`buildChipCtx` takes the side, so its info
+                 button opens that card's drawer and its bookmark saves that
+                 entry). It used to be built only for `!comparing && isFirst`,
+                 which is the whole reason compare had no controls at all.
+
+                 Deliberately not a special compare arrangement: no centred
+                 dock, no separate pair pill, no subset of the buttons. Two of
+                 the thing you already know beats a fourth object to learn, and
+                 the duplication it costs — one shuffle and one share per card
+                 instead of one each — is cheaper than the explanation. */
+              return (
               <div
                 className="pointer-events-auto absolute"
                 style={{
@@ -8605,9 +9164,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   right: 0,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: chipLayout === "below-left"
-                    ? "flex-start"
-                    : (bottomAlignment === "left" ? "flex-start" : bottomAlignment === "right" ? "flex-end" : "center"),
+                  justifyContent: comparing
+                    ? "center"
+                    : chipLayout === "below-left"
+                      ? "flex-start"
+                      : (bottomAlignment === "left" ? "flex-start" : bottomAlignment === "right" ? "flex-end" : "center"),
                 }}
               >
                 {/* Main pill stays centered. In split mode, the secondary pill
@@ -8628,7 +9189,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                         ? (<>{chipCtx.shuffleButton}{chipCtx.shareButton}{chipCtx.infoSlot}{chipCtx.panelButton}</>)
                         : chipCtx.buttons}
                   </div>
-                  {chipGrouping === "split" && (
+                  {chipGrouping === "split" && !comparing && (
                     <div
                       aria-hidden={!chipCtx.hasMediaPill}
                       className="absolute top-1/2"
@@ -8658,7 +9219,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   )}
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {buyLayout === "below" && !comparing && (() => {
               const isSundayBeta = h.manufacturer === "Sunday Robotics";
@@ -8675,7 +9237,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               const leftLabel = hasCost ? h.cost! : avail;
               const fallbackText = isSundayBeta ? "Apply to the 2026 Beta" : (hasCost ? h.cost! : (avail ?? (href ? ctaText : "Not for sale")));
               const ctaBg = "rgba(0,0,0,0.06)";
-              const ctaColor = "rgba(95, 96, 89, 0.8)";
+              const ctaColor = "rgba(46, 46, 54, 0.8)";
               const labelText = leftLabel ?? (href ? " " : fallbackText);
               const labelColor = href ? pillLabelColor : "#c0c0c0";
               const pillRowHeightLocal = statPillPadY * 2 + Math.round(pillLabelFontSize * 1.2);
@@ -8750,14 +9312,20 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               onMouseEnter={chipLayout === "corners" ? () => setCornerRowHover(true) : undefined}
               onMouseLeave={chipLayout === "corners" ? () => setCornerRowHover(false) : undefined}
             >
-              {/* Left robot */}
+              {/* Left robot. In compare it carries the same "×" as the right
+                  one — the first robot was structurally permanent before, so
+                  deciding you cared about the second one meant closing compare
+                  and navigating back. Only mounted while comparing: in single
+                  view there is nothing to remove. */}
               <div
+                className="relative compare-lcard"
                 style={{
-                  transform: splitHover ? "translateX(-12px)" : (addHover && addCtaMode !== "always") ? "translateX(-16px)" : "translateX(0)",
+                  transform: splitHover ? "translateX(-12px)" : (addHover && addCtaMode !== "always" && addShift > 0) ? `translateX(-${addShift}px)` : "translateX(0)",
                   transition: `transform ${dur} ${ease}`,
                 }}
               >
                 {renderRobot(hL, distL, globalIndexOf(hL?.id), true)}
+                {comparing && minusPlacement === "hover-x" && compareCloseX("left")}
               </div>
 
               {/* Stats slot — crossfade single ↔ merged */}
@@ -8798,7 +9366,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   // the row height, and the centred row pushed both cards
                   // further below the focused arc name than single view does.
                   height: cardH,
-                  transform: !comparing && addHover && addCtaMode !== "always" ? "translateX(-16px)" : "translateX(0)",
+                  transform: !comparing && addHover && addCtaMode !== "always" && addShift > 0 ? `translateX(-${addShift}px)` : "translateX(0)",
                   transition: "width var(--collapse-dur) var(--collapse-ease), height var(--collapse-dur) var(--collapse-ease), opacity var(--collapse-dur) var(--collapse-ease), margin-left var(--collapse-dur) var(--collapse-ease), transform var(--collapse-dur) var(--collapse-ease)",
                 }}
               >
@@ -9032,6 +9600,9 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   opacity: comparing ? 0 : 1,
                   pointerEvents: comparing ? "none" : "auto",
                   transition: "opacity var(--collapse-dur) var(--collapse-ease), left var(--collapse-dur) var(--collapse-ease)",
+                  // The single robot's stats wait for the merged compare stats
+                  // to clear the column instead of fading up through them.
+                  transitionDelay: comparing ? "0ms" : "var(--return-delay, 0ms)",
                 }}>
                   {renderStats(hL)}
                 </div>
@@ -9134,7 +9705,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                             className={actionIco.className}
                             style={{ ...actionIco.style, ...cardChipChrome, flexShrink: 0 }}
                           >
-                            <Info size={actionIco.iconBoxPx} strokeWidth={actionIco.iconStrokeWidth} />
+                            <InfoGlyph variant={infoGlyph} openState={infoOpenState} open={blurbVisible} size={actionIco.iconBoxPx} strokeWidth={actionIco.iconStrokeWidth} />
                           </button>
                         </Tooltip>
                       )}
@@ -9272,10 +9843,12 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   // Hover state is CSS (`.compare-rcard:hover .compare-veil`
                   // in globals.css) — a re-render of Browse per card
                   // enter/leave is a high price for an opacity flip.
+                  if (minusPlacement === "hover-x") return compareCloseX("right");
+
                   if (minusPlacement === "veil") {
                     return (
                       <div
-                        onClick={exitCompare}
+                        onClick={() => exitCompare()}
                         role="button"
                         aria-label="Remove from compare"
                         className="absolute z-30 compare-veil"
@@ -9335,7 +9908,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
 
                   return (
                     <button
-                      onClick={exitCompare}
+                      onClick={() => exitCompare()}
                       aria-label="Remove from compare"
                       className="absolute z-30 cursor-pointer"
                       style={{
@@ -9416,7 +9989,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     {hasInfo && infoChipOn && (
                       <Tooltip label={blurbVisible ? "Hide info" : "Show info"} shortcut="I">
                         <button type="button" onClick={(e) => { e.stopPropagation(); setBlurbVisible((v) => !v); }} aria-pressed={blurbVisible} aria-label={blurbVisible ? "Hide info" : "Show info"} style={{ ...innerBtnStyle, ...toggleOnStyle(toggleOnMode, blurbVisible, cardIconSize) }}>
-                          <Info size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
+                          <InfoGlyph variant={infoGlyph} openState={infoOpenState} open={blurbVisible} size={ico.iconBoxPx} strokeWidth={ico.iconStrokeWidth} />
                         </button>
                       </Tooltip>
                     )}
@@ -9703,7 +10276,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     onClick={() => onSurfaceColorChange(c)}
                     title={title}
                     className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: surfaceColor.toLowerCase() === c.toLowerCase() ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)" }}
+                    style={{ background: c, border: surfaceColor.toLowerCase() === c.toLowerCase() ? "1.5px solid rgba(46, 46, 54, 0.95)" : "1px solid rgba(46, 46, 54, 0.18)" }}
                   />
                 ))}
                 <input
@@ -9723,7 +10296,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     key={c}
                     onClick={() => onSurfaceHoverChange(c)}
                     className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: surfaceHover.toLowerCase() === c ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)" }}
+                    style={{ background: c, border: surfaceHover.toLowerCase() === c ? "1.5px solid rgba(46, 46, 54, 0.95)" : "1px solid rgba(46, 46, 54, 0.18)" }}
                   />
                 ))}
                 <input
@@ -9867,7 +10440,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     key={c}
                     onClick={() => setCardFillColor(c)}
                     className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: cardFillColor === c ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)" }}
+                    style={{ background: c, border: cardFillColor === c ? "1.5px solid rgba(46, 46, 54, 0.95)" : "1px solid rgba(46, 46, 54, 0.18)" }}
                   />
                 ))}
                 <input
@@ -10167,10 +10740,10 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               )}
             </div>
           )}
-          <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div></div>
+          <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Add CTA</p><div className="flex flex-wrap gap-1.5">{(["hover", "always"] as const).map((v) => (<button key={v} onClick={() => setAddCtaMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${addCtaMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "hover" ? "Hover + hint" : "Always dim"}</button>))}</div><div className="mt-3"><label className="text-[12px] text-neutral-500 flex justify-between">Hover step-aside <span className="tabular-nums text-neutral-400">{addShift === 0 ? "Still" : `${addShift}px`}</span></label><input type="range" min={0} max={16} value={addShift} onChange={(e) => setAddShift(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /><p className="text-[11px] text-neutral-400 mt-1.5">{addShift === 0 ? "The composition holds still — only the pedestal fill and the glyph react." : "How far the card and stats slide left to make room. Was a flat 16."}</p></div></div>
           <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Compare slot</p><div className="flex flex-wrap gap-1.5">{(["silhouette", "plus"] as const).map((v) => (<button key={v} onClick={() => setCompareSlotStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${compareSlotStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div>
           <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Stats over card</p><div className="flex flex-wrap gap-1.5">{(["off", "strip", "wash"] as const).map((v) => (<button key={v} onClick={() => setStatsOverlay(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${statsOverlay === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "off" ? "Column" : v}</button>))}</div>{blurbDock === "drawer" ? (<p className="text-[11px] text-neutral-400 mt-3">Image fit is the drawer&rsquo;s own &ldquo;Lift robot above it&rdquo; below — the sheet reads `drawerLift`, not `stripFit`.</p>) : (<div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Fit image above strip</label><button type="button" onClick={() => setStripFit((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${stripFit ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{stripFit ? "On" : "Off"}</button></div>)}</div><div className="mt-3"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Info blurb</p><div className="flex flex-wrap gap-1.5">{([["drawer", "Drawer"], ["shelf", "Shelf"], ["chip", "Chip"], ["swap", "Swap"], ["free", "Free"]] as const).map(([v, label]) => (<button key={v} onClick={() => setBlurbDock(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${blurbDock === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{blurbDock === "drawer" ? "One pull-up panel per card — blurb + rows, scrolls, hides on the card's i." : blurbDock === "shelf" ? "Top row of the stats strip — one glass panel." : blurbDock === "chip" ? "Own chip, resting on the strip's top edge." : blurbDock === "swap" ? "Replaces the rows while info is on." : "Floats loose in the image (pre-shelf)."}</p>{blurbDock === "drawer" && (<><div className="flex items-center justify-between mt-3"><label className="text-[12px] text-neutral-500">Open by default</label><button type="button" onClick={() => { setDrawerDefaultOpen((v) => !v); setDrawerOverrides({}); }} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerDefaultOpen ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerDefaultOpen ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Keep card-row &ldquo;i&rdquo;</label><button type="button" onClick={() => setShowInfoChip((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${showInfoChip ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{showInfoChip ? "On" : "Off"}</button></div><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Lift robot above it</label><button type="button" onClick={() => setDrawerLift((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerLift ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerLift ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Height<span className="tabular-nums text-neutral-400">{drawerMaxPct}%</span></label><input type="range" min={25} max={100} step={1} value={drawerMaxPct} onChange={(e) => setDrawerMaxPct(+e.target.value)} className="w-full" /><div className="flex items-center justify-between mt-2"><label className="text-[12px] text-neutral-500">Opaque</label><button type="button" onClick={() => setDrawerOpaque((v) => !v)} className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${drawerOpaque ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`}>{drawerOpaque ? "On" : "Off"}</button></div><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Top radius<span className="tabular-nums text-neutral-400">{drawerRadius}px</span></label><input type="range" min={0} max={36} step={1} value={drawerRadius} onChange={(e) => setDrawerRadius(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500 mt-2">Blurb lines<span className="tabular-nums text-neutral-400">{blurbClampLines === 0 ? "Off" : blurbClampLines}</span></label><input type="range" min={0} max={12} step={1} value={blurbClampLines} onChange={(e) => setBlurbClampLines(+e.target.value)} className="w-full" /><p className="text-[11px] text-neutral-400 mt-1">Lines of description before &ldquo;More&rdquo;. 0 = no cap. Keeps the stat rows in the drawer&rsquo;s first screenful.</p><p className="text-[12px] tracking-widest uppercase text-neutral-400 mt-3 mb-2">Motion</p><div className="flex gap-1.5">{([["slide", "Slide"], ["genie", "Genie"]] as const).map(([m, label]) => (<button key={m} onClick={() => setDrawerMotion(m)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${drawerMotion === m ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{drawerMotion === "genie" ? "Scales out of the placard\u2019s i \u2014 Dock un-minimise, inverted." : "Slides up from the card\u2019s bottom edge."}</p>{drawerMotion === "genie" && (<div className="mt-3 rounded-lg bg-neutral-50 p-2.5 space-y-2"><p className="text-[11px] text-neutral-400">Spring, not a curve — damping is the character. 1.00 is dead flat; below ~0.85 the sheet passes its mark and comes back.</p><label className="flex items-center justify-between text-[12px] text-neutral-500">Damping<span className="tabular-nums text-neutral-400">{genieDamping.toFixed(2)}</span></label><input type="range" min={0.55} max={1} step={0.01} value={genieDamping} onChange={(e) => setGenieDamping(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Open<span className="tabular-nums text-neutral-400">{genieDur + "ms"}</span></label><input type="range" min={160} max={900} step={10} value={genieDur} onChange={(e) => setGenieDur(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Close<span className="tabular-nums text-neutral-400">{genieCloseDur + "ms"}</span></label><input type="range" min={120} max={700} step={10} value={genieCloseDur} onChange={(e) => setGenieCloseDur(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Stagger<span className="tabular-nums text-neutral-400">{genieStagger === 0 ? "none" : `${genieStagger > 0 ? "tall" : "wide"} first ${Math.abs(genieStagger).toFixed(2)}`}</span></label><input type="range" min={-0.9} max={0.9} step={0.05} value={genieStagger} onChange={(e) => setGenieStagger(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Shut width<span className="tabular-nums text-neutral-400">{genieShutX.toFixed(2)}</span></label><input type="range" min={0.02} max={1} step={0.01} value={genieShutX} onChange={(e) => setGenieShutX(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Shut height<span className="tabular-nums text-neutral-400">{genieShutY.toFixed(2)}</span></label><input type="range" min={0.02} max={1} step={0.01} value={genieShutY} onChange={(e) => setGenieShutY(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Contents in at<span className="tabular-nums text-neutral-400">{Math.round(genieContent * 100) + "%"}</span></label><input type="range" min={0} max={0.9} step={0.05} value={genieContent} onChange={(e) => setGenieContent(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">Robot recedes<span className="tabular-nums text-neutral-400">{genieRecede === 0 ? "Off" : genieRecede + "%"}</span></label><input type="range" min={0} max={14} step={1} value={genieRecede} onChange={(e) => setGenieRecede(+e.target.value)} className="w-full" /><label className="flex items-center justify-between text-[12px] text-neutral-500">i hands off<span className="tabular-nums text-neutral-400">{genieHandoff === 0 ? "Off" : Math.round(genieHandoff * 100) + "%"}</span></label><input type="range" min={0} max={1} step={0.05} value={genieHandoff} onChange={(e) => setGenieHandoff(+e.target.value)} className="w-full" /><p className="text-[11px] text-neutral-400">Stagger is which axis leads — tall-first is the Dock. Close runs the axes in reverse so the sheet retreats the way it came.</p></div>)}</>)}</div>
-          <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Minus</p><div className="flex flex-wrap gap-1.5">{(["veil", "card-corner"] as const).map((v) => (<button key={v} onClick={() => setMinusPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${minusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "veil" ? "Hover veil" : "Card corner"}</button>))}</div></div>
+          <div data-tuner-group="Compare" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Minus</p><div className="flex flex-wrap gap-1.5">{(["hover-x", "veil", "card-corner"] as const).map((v) => (<button key={v} onClick={() => setMinusPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${minusPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "veil" ? "Hover veil" : v === "hover-x" ? "Hover ×" : "Card corner"}</button>))}</div></div>
           <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Year placement</p><div className="flex flex-wrap gap-1.5">{(["off", "beside", "below", "after-name", "pill", "chip"] as const).map((v) => (<button key={v} onClick={() => setYearPlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${yearPlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v === "after-name" ? "After name" : v.charAt(0).toUpperCase() + v.slice(1)}</button>))}</div></div>
           <div data-tuner-group="Stats" className="pt-2 border-t border-neutral-100 space-y-2">
             <p className="text-[12px] tracking-widest uppercase text-neutral-400">Pills layout</p>
@@ -10187,7 +10760,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   <label className="text-[12px] text-neutral-500 flex justify-between">Fill <span className="tabular-nums text-neutral-400">{groupedFill}</span></label>
                   <div className="flex gap-1.5 mt-1.5 items-center">
                     {["#F9F9F9", "#F4F4F4", "#FFFFFF", "#FAFAFA"].map((c) => (
-                      <button key={c} onClick={() => setGroupedFill(c)} className="w-6 h-6 rounded cursor-pointer" style={{ background: c, border: groupedFill.toLowerCase() === c.toLowerCase() ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)" }} />
+                      <button key={c} onClick={() => setGroupedFill(c)} className="w-6 h-6 rounded cursor-pointer" style={{ background: c, border: groupedFill.toLowerCase() === c.toLowerCase() ? "1.5px solid rgba(46, 46, 54, 0.95)" : "1px solid rgba(46, 46, 54, 0.18)" }} />
                     ))}
                     <input type="color" value={groupedFill} onChange={(e) => setGroupedFill(e.target.value)} className="w-6 h-6 rounded cursor-pointer border border-neutral-200" style={{ padding: 0 }} />
                   </div>
@@ -10211,6 +10784,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
           </div>
           <div data-tuner-group="Card" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Share Button</p><div className="flex flex-wrap gap-1.5">{BUTTON_VARIANTS.map((v) => (<button key={v} onClick={() => onButtonVariantChange(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${buttonVariant === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{BUTTON_LABELS[v]}</button>))}</div></div>
           <div data-tuner-group="Card" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Toggle on-state</p><div className="flex flex-wrap gap-1.5">{(["ink", "pill", "dot"] as const).map((v) => (<button key={v} onClick={() => setToggleOnMode(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${toggleOnMode === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div>
+          <div data-tuner-group="Card" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Info glyph</p><div className="flex flex-wrap gap-1.5">{(["stock", "inset", "bare", "type"] as const).map((v) => (<button key={v} onClick={() => setInfoGlyph(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${infoGlyph === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div>
+          <div data-tuner-group="Card" className="pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400 mb-2">Info open-state</p><div className="flex flex-wrap gap-1.5">{(["static", "close", "chevron"] as const).map((v) => (<button key={v} onClick={() => setInfoOpenState(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${infoOpenState === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{v}</button>))}</div></div>
           <div data-tuner-group="Card" className="space-y-3 pt-2 border-t border-neutral-100">
             <div className="flex items-center justify-between">
               <p className="text-[12px] tracking-widest uppercase text-neutral-400">Card Icons</p>
@@ -10307,7 +10882,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     key={c}
                     onClick={() => setGlassTint(c)}
                     className="w-6 h-6 rounded cursor-pointer"
-                    style={{ background: c, border: glassTint.toLowerCase() === c ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)" }}
+                    style={{ background: c, border: glassTint.toLowerCase() === c ? "1.5px solid rgba(46, 46, 54, 0.95)" : "1px solid rgba(46, 46, 54, 0.18)" }}
                   />
                 ))}
                 <input
@@ -10333,6 +10908,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             </div>
           </div>
           <div data-tuner-group="Layout" className="space-y-3 pt-2 border-t border-neutral-100"><p className="text-[12px] tracking-widest uppercase text-neutral-400">Rail</p>
+            <div><p className="text-[12px] text-neutral-500 mb-1.5">Chrome</p><div className="flex flex-wrap gap-1.5">{([["rail", "Rail"], ["band", "Top band"], ["corners", "Corners"], ["center", "Centered"]] as const).map(([v, label]) => (<button key={v} onClick={() => setChromeLayout(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${chromeLayout === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{chromeLayout === "rail" ? "The column, wherever Shape puts it. With the lanes up top and Search/Ask held back, it is a logo and a bookmark floating in the arc's own band." : chromeLayout === "band" ? "One horizontal line: mark, lanes, tools. Nothing on a vertical edge but names — but Saved ends up ranked equal to the filter." : chromeLayout === "center" ? "The band, collected: mark, lanes and tools as one cluster on the page's centreline. Nothing in any corner but the credit." : "Mark and lanes up, Saved down at bottom-right, credit bottom-left. Every edge midpoint stays free for the arc."}</p></div>
+            {chromeLayout !== "rail" && (<div><p className="text-[12px] text-neutral-500 mb-1.5">Mark</p><div className="flex flex-wrap gap-1.5">{([[false, "Glyph"], [true, "With wordmark"]] as const).map(([v, label]) => (<button key={String(v)} onClick={() => setChromeWordmark(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${chromeWordmark === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{chromeWordmark ? "The room the column was rationing — the top band has width the 64px label track never did." : "The mark is the label."}</p></div>)}
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Categories</p><div className="flex flex-wrap gap-1.5">{([["top", "Across the top"], ["rail", "In the rail"]] as const).map(([v, label]) => (<button key={v} onClick={() => setLanePlacement(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${lanePlacement === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{lanePlacement === "top" ? "On the axis the stage travels on — the indicator slides the way the wheels do. Rail drops to four rows." : "Back in the column. The control runs vertically while the transition runs sideways."}</p></div>
             {lanePlacement === "top" && (<div><p className="text-[12px] text-neutral-500 mb-1.5">Shape</p><div className="flex flex-wrap gap-1.5">{([["segmented", "Segmented"], ["chips", "Loose chips"]] as const).map(([v, label]) => (<button key={v} onClick={() => setLaneChipStyle(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${laneChipStyle === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{laneChipStyle === "segmented" ? "One enclosed track — reads as a single control with three positions." : "No track. Three words with the selected one filled."}</p></div>)}
             <div><p className="text-[12px] text-neutral-500 mb-1.5">Icons</p><div className="flex flex-wrap gap-1.5">{([["lanes-type", "Lanes as type"], ["all-icons", "All icons"], ["no-icons", "No icons"]] as const).map(([v, label]) => (<button key={v} onClick={() => setRailIcons(v)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all ${railIcons === v ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{label}</button>))}</div><p className="text-[11px] text-neutral-400 mt-1.5">{railIcons === "lanes-type" ? "Lanes are words + counts, tools keep glyphs — the two icon families stop sharing a column." : railIcons === "all-icons" ? "Every row icon + label. One family, but one rank too." : "Nothing but words — one material, one text edge. Glyphs come back in compare, where labels collapse."}</p></div>
@@ -10345,6 +10922,11 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               <div><p className="text-[12px] text-neutral-500 mb-1.5">Switcher</p><div className="flex flex-wrap gap-1.5">{SWITCHER_STYLES.map((s) => (<button key={s} onClick={() => onSwitcherStyleChange(s)} className={`px-2.5 py-1 rounded-full text-[12px] cursor-pointer transition-all capitalize ${switcherStyle === s ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"}`}>{s}</button>))}</div></div>
             )}
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Top offset <span className="tabular-nums text-neutral-400">{navTop}px</span></label><input type="range" min={0} max={48} value={navTop} onChange={(e) => setNavTop(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
+            {/* The lever that actually shrinks the card on a laptop. `Card
+                growth` only sets the rate the cap climbs on big displays —
+                below ~1800px wide this floor is what binds, so a card that
+                feels too large at 1440 does not move until this does. */}
+            <div><label className="text-[12px] text-neutral-500 flex justify-between">Card size <span className="tabular-nums text-neutral-400">{robotMaxW}px floor → {Math.round(cardW)}px</span></label><input type="range" min={260} max={560} step={4} value={robotMaxW} onChange={(e) => setRobotMaxW(Number(e.target.value))} className="w-full accent-neutral-900 h-1" /></div>
             <div><label className="text-[12px] text-neutral-500 flex justify-between">Card growth <span className="tabular-nums text-neutral-400">{cardGrowth.toFixed(2)} → {effectiveMaxW}px cap</span></label><input type="range" min={18} max={32} value={Math.round(cardGrowth * 100)} onChange={(e) => setCardGrowth(Number(e.target.value) / 100)} className="w-full accent-neutral-900 h-1" /></div>
             <div className="flex items-center gap-2 mb-1"><label className="text-[12px] text-neutral-500 flex-1">Rail pull-in <span className="text-neutral-300">(wide screens)</span></label><button className={`px-2 py-0.5 rounded text-[12px] cursor-pointer ${railPullIn ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-500"}`} onClick={() => setRailPullIn(!railPullIn)}>{railPullIn ? "On" : "Off"}</button></div>
             <div style={{ opacity: railPullIn ? 1 : 0.5 }}><label className="text-[12px] text-neutral-500 flex justify-between">Pull rate <span className="tabular-nums text-neutral-400">{railPull.toFixed(2)} → {navEdge}px</span></label><input type="range" min={0} max={100} value={Math.round(railPull * 100)} onChange={(e) => { setRailPull(Number(e.target.value) / 100); setRailPullIn(true); }} className="w-full accent-neutral-900 h-1" /></div>
@@ -10427,7 +11009,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       }
                     }}
                     className="text-[12px] px-2 py-1 rounded transition-colors"
-                    style={{ background: isLegacy ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: isLegacy ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer" }}
+                    style={{ background: isLegacy ? "rgba(46, 46, 54, 0.95)" : "rgba(46, 46, 54, 0.07)", color: isLegacy ? "#fff" : "rgba(46, 46, 54, 0.85)", border: "none", cursor: "pointer" }}
                   >
                     {isLegacy ? "ON" : "OFF"}
                   </button>
@@ -10612,7 +11194,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     type="button"
                     onClick={() => setPillLabelFont(value)}
                     className="text-left px-2 py-1 rounded transition-colors"
-                    style={{ background: pillLabelFont === value ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: pillLabelFont === value ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer", fontSize: pillLabelFontSize, fontFamily: value, letterSpacing: "0.06em" }}
+                    style={{ background: pillLabelFont === value ? "rgba(46, 46, 54, 0.95)" : "rgba(46, 46, 54, 0.07)", color: pillLabelFont === value ? "#fff" : "rgba(46, 46, 54, 0.85)", border: "none", cursor: "pointer", fontSize: pillLabelFontSize, fontFamily: value, letterSpacing: "0.06em" }}
                   >
                     INFO · OVERVIEW · STATUS
                   </button>
@@ -10626,7 +11208,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 {[300, 400, 500, 600, 700, 800].map((w) => (
                   <button key={w} type="button" onClick={() => setPillLabelWeight(w)}
                     className="text-[12px] px-2 py-1 rounded transition-colors tabular-nums"
-                    style={{ background: pillLabelWeight === w ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: pillLabelWeight === w ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer", fontWeight: w }}>
+                    style={{ background: pillLabelWeight === w ? "rgba(46, 46, 54, 0.95)" : "rgba(46, 46, 54, 0.07)", color: pillLabelWeight === w ? "#fff" : "rgba(46, 46, 54, 0.85)", border: "none", cursor: "pointer", fontWeight: w }}>
                     {w}
                   </button>
                 ))}
@@ -10636,7 +11218,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
               <label className="text-[12px] text-neutral-500">Uppercase</label>
               <button type="button" onClick={() => setPillLabelUppercase((v) => !v)}
                 className="text-[12px] px-2 py-1 rounded transition-colors"
-                style={{ background: pillLabelUppercase ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: pillLabelUppercase ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer" }}>
+                style={{ background: pillLabelUppercase ? "rgba(46, 46, 54, 0.95)" : "rgba(46, 46, 54, 0.07)", color: pillLabelUppercase ? "#fff" : "rgba(46, 46, 54, 0.85)", border: "none", cursor: "pointer" }}>
                 {pillLabelUppercase ? "ON" : "OFF"}
               </button>
             </div>
@@ -10658,7 +11240,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     type="button"
                     onClick={() => setOutlineStyle(s)}
                     className="text-[11px] px-1.5 py-0.5 rounded capitalize cursor-pointer transition-colors"
-                    style={{ background: outlineStyle === s ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: outlineStyle === s ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none" }}
+                    style={{ background: outlineStyle === s ? "rgba(46, 46, 54, 0.95)" : "rgba(46, 46, 54, 0.07)", color: outlineStyle === s ? "#fff" : "rgba(46, 46, 54, 0.85)", border: "none" }}
                   >
                     {s}
                   </button>
@@ -10679,7 +11261,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       style={{
                         background: b.bg,
                         boxShadow: selected
-                          ? `${b.shadow}, 0 0 0 2px rgba(95, 96, 89, 0.95)`
+                          ? `${b.shadow}, 0 0 0 2px rgba(46, 46, 54, 0.95)`
                           : b.shadow,
                         backdropFilter: b.backdropFilter,
                         WebkitBackdropFilter: b.backdropFilter,
@@ -10703,7 +11285,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                       style={{
                         background: b.bg,
                         boxShadow: selected
-                          ? `${b.shadow}, 0 0 0 2px rgba(95, 96, 89, 0.95)`
+                          ? `${b.shadow}, 0 0 0 2px rgba(46, 46, 54, 0.95)`
                           : b.shadow,
                         backdropFilter: b.backdropFilter,
                         WebkitBackdropFilter: b.backdropFilter,
@@ -10717,7 +11299,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   type="button"
                   onClick={() => setBlurbFloat((v) => !v)}
                   className="text-[12px] px-2 py-1 rounded transition-colors"
-                  style={{ background: blurbFloat ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: blurbFloat ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer" }}
+                  style={{ background: blurbFloat ? "rgba(46, 46, 54, 0.95)" : "rgba(46, 46, 54, 0.07)", color: blurbFloat ? "#fff" : "rgba(46, 46, 54, 0.85)", border: "none", cursor: "pointer" }}
                 >
                   Float to top
                 </button>
@@ -10725,7 +11307,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                   type="button"
                   onClick={() => setSplitBlurb((v) => !v)}
                   className="text-[12px] px-2 py-1 rounded transition-colors ml-1"
-                  style={{ background: splitBlurb ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)", color: splitBlurb ? "#fff" : "rgba(95, 96, 89, 0.85)", border: "none", cursor: "pointer" }}
+                  style={{ background: splitBlurb ? "rgba(46, 46, 54, 0.95)" : "rgba(46, 46, 54, 0.07)", color: splitBlurb ? "#fff" : "rgba(46, 46, 54, 0.85)", border: "none", cursor: "pointer" }}
                 >
                   Split columns
                 </button>
@@ -10745,8 +11327,8 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     onClick={() => setBlurbExpandIndicator(opt.key)}
                     className="text-[12px] px-2 py-1 rounded transition-colors"
                     style={{
-                      background: blurbExpandIndicator === opt.key ? "rgba(95, 96, 89, 0.95)" : "rgba(95, 96, 89, 0.07)",
-                      color: blurbExpandIndicator === opt.key ? "#fff" : "rgba(95, 96, 89, 0.85)",
+                      background: blurbExpandIndicator === opt.key ? "rgba(46, 46, 54, 0.95)" : "rgba(46, 46, 54, 0.07)",
+                      color: blurbExpandIndicator === opt.key ? "#fff" : "rgba(46, 46, 54, 0.85)",
                       border: "none",
                       cursor: "pointer",
                     }}
@@ -10787,7 +11369,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     className="w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110"
                     style={{
                       background: c === "transparent" ? "repeating-conic-gradient(#e5e5e5 0% 25%, #fff 0% 50%) 50% / 8px 8px" : c,
-                      border: statPillBg === c ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)",
+                      border: statPillBg === c ? "1.5px solid rgba(46, 46, 54, 0.95)" : "1px solid rgba(46, 46, 54, 0.18)",
                     }}
                     aria-label={c}
                   />
@@ -10906,7 +11488,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                     className="w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110"
                     style={{
                       background: c === "transparent" ? "repeating-conic-gradient(#e5e5e5 0% 25%, #fff 0% 50%) 50% / 8px 8px" : c,
-                      border: arcDiskColor === c ? "1.5px solid rgba(95, 96, 89, 0.95)" : "1px solid rgba(95, 96, 89, 0.18)",
+                      border: arcDiskColor === c ? "1.5px solid rgba(46, 46, 54, 0.95)" : "1px solid rgba(46, 46, 54, 0.18)",
                     }}
                     aria-label={c}
                   />
@@ -11114,8 +11696,8 @@ function GuideChat({ onSelect, onClose, config }: { onSelect: (id: string) => vo
   const userBubbleStyle = (): React.CSSProperties => {
     const base: React.CSSProperties = { fontSize: config.fontSize, fontWeight: WEIGHT.body, maxWidth: "80%", lineHeight: 1.5 };
     if (config.userStyle === "dark") return { ...base, background: "var(--c-ink)", color: "white" };
-    if (config.userStyle === "outline") return { ...base, background: "transparent", boxShadow: "inset 0 0 0 1px rgba(95, 96, 89, 0.18)", color: INK.on };
-    return { ...base, background: "rgba(95, 96, 89, 0.08)", color: INK.on };
+    if (config.userStyle === "outline") return { ...base, background: "transparent", boxShadow: "inset 0 0 0 1px rgba(46, 46, 54, 0.18)", color: INK.on };
+    return { ...base, background: "rgba(46, 46, 54, 0.08)", color: INK.on };
   };
 
   return (
@@ -11133,7 +11715,7 @@ function GuideChat({ onSelect, onClose, config }: { onSelect: (id: string) => vo
             <div key={i}>
               {m.role === "guide" ? (
                 config.guideStyle === "bubble" ? (
-                  <div style={{ display: "inline-block", background: "rgba(95, 96, 89, 0.06)", borderRadius: 18, padding: "8px 12px", fontSize: config.fontSize, fontWeight: WEIGHT.body, color: INK.on, lineHeight: 1.5 }}>
+                  <div style={{ display: "inline-block", background: "rgba(46, 46, 54, 0.06)", borderRadius: 18, padding: "8px 12px", fontSize: config.fontSize, fontWeight: WEIGHT.body, color: INK.on, lineHeight: 1.5 }}>
                     {m.text}
                   </div>
                 ) : (
@@ -11158,7 +11740,7 @@ function GuideChat({ onSelect, onClose, config }: { onSelect: (id: string) => vo
                         className="chat-suggestion flex items-center gap-2.5 px-3 py-2 cursor-pointer"
                         style={{
                           borderRadius: 18,
-                          background: "rgba(95, 96, 89, 0.05)",
+                          background: "rgba(46, 46, 54, 0.05)",
                           border: "none",
                           transition: "background 200ms cubic-bezier(0.33, 1, 0.68, 1)",
                         }}
@@ -11184,7 +11766,7 @@ function GuideChat({ onSelect, onClose, config }: { onSelect: (id: string) => vo
         </div>
 
         {/* Input */}
-        <div className="flex items-center gap-3 px-5 py-4" style={{ borderTop: "1px solid rgba(95, 96, 89, 0.08)" }}>
+        <div className="flex items-center gap-3 px-5 py-4" style={{ borderTop: "1px solid rgba(46, 46, 54, 0.08)" }}>
           <input
             ref={inputRef}
             value={query}
@@ -11206,8 +11788,8 @@ function GuideChat({ onSelect, onClose, config }: { onSelect: (id: string) => vo
               height: 28,
               borderRadius: config.inputRadius,
               border: "none",
-              background: query.trim() ? "rgba(95, 96, 89, 0.09)" : "transparent",
-              color: query.trim() ? INK.on : "rgba(95, 96, 89, 0.3)",
+              background: query.trim() ? "rgba(46, 46, 54, 0.09)" : "transparent",
+              color: query.trim() ? INK.on : "rgba(46, 46, 54, 0.3)",
               cursor: query.trim() ? "pointer" : "default",
               transition: "background 200ms cubic-bezier(0.33, 1, 0.68, 1), color 200ms cubic-bezier(0.33, 1, 0.68, 1)",
             }}
@@ -11227,7 +11809,7 @@ function MobileComingSoon() {
     fontWeight: 500,
     letterSpacing: "normal",
     lineHeight: 1,
-    color: "rgba(95, 96, 89, 0.75)",
+    color: "rgba(46, 46, 54, 0.75)",
     padding: "10px 16px",
     borderRadius: 999,
     background: "rgba(0,0,0,0.05)",
@@ -11274,7 +11856,7 @@ function MobileComingSoon() {
           fontWeight: 500,
           letterSpacing: "normal",
           lineHeight: 1.4,
-          color: "rgba(95, 96, 89, 0.5)",
+          color: "rgba(46, 46, 54, 0.5)",
           textAlign: "center",
           maxWidth: 280,
         }}
