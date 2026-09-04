@@ -12,23 +12,35 @@ import type React from "react";
  * One source, imported by the sidebar and every overlay.
  */
 
-/** The site's ink. Three steps for text, and that is the whole scale. */
+/**
+ * The site's ink. Four steps for text, and that is the whole scale.
+ *
+ * The base is `--c-ink` (#2e2e36), the SAME ink the centre content sets names
+ * and values in — the chrome is that ink at lower alpha, not a grey of its own.
+ * It used to be rgba(95, 96, 89), which was wrong twice: too light, so a whole
+ * column of chrome rested at roughly `--c-ink-muted` (#a0a0ad), the rank the
+ * stat rows use for their faintest captions; and too warm, since the design
+ * system's cool grey is `95, 96, 110` and this had the blue channel knocked
+ * down 21 points, which is what made the chrome read olive against a violet
+ * page. At this base the steps land on the content ramp: 0.95 ≈ `--c-ink`,
+ * 0.55 sits between `--c-ink-body` and `--c-ink-muted`, 0.38 ≈ `--c-ink-subtle`.
+ */
 export const INK = {
-  on: "rgba(95, 96, 89, 0.95)",
-  hover: "rgba(95, 96, 89, 0.75)",
-  off: "rgba(95, 96, 89, 0.55)",
-  faint: "rgba(95, 96, 89, 0.38)",
+  on: "rgba(46, 46, 54, 0.95)",
+  hover: "rgba(46, 46, 54, 0.75)",
+  off: "rgba(46, 46, 54, 0.55)",
+  faint: "rgba(46, 46, 54, 0.38)",
 } as const;
 
 /** Fills, in the same hue. Used for row highlights, chips and pressed states. */
 export const FILL = {
-  rest: "rgba(95, 96, 89, 0.05)",
-  hover: "rgba(95, 96, 89, 0.09)",
-  active: "rgba(95, 96, 89, 0.07)",
+  rest: "rgba(46, 46, 54, 0.05)",
+  hover: "rgba(46, 46, 54, 0.09)",
+  active: "rgba(46, 46, 54, 0.07)",
 } as const;
 
 /** Hairlines and dividers, where a surface genuinely needs one. */
-export const SEAM = "rgba(95, 96, 89, 0.10)";
+export const SEAM = "rgba(46, 46, 54, 0.10)";
 
 /**
  * The glass edge: an inset sheen over an inset hairline, then the drop. This is
@@ -44,7 +56,7 @@ export const PANEL_SHADOW = "0 24px 64px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0
  * Scrim behind a modal. Warm and light — `bg-black/20` reads blue-grey against
  * this page and turns the white card behind it muddy.
  */
-export const SCRIM = "rgba(95, 96, 89, 0.14)";
+export const SCRIM = "rgba(46, 46, 54, 0.14)";
 
 /**
  * The one deliberate inversion. Tooltips are transient, sit directly under the

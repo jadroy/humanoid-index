@@ -276,7 +276,7 @@ function AppleTrigger({
           <IconQuestion size={17} />
         )}
       </span>
-      <span style={{ fontSize: 12, color: "rgba(95, 96, 89, 0.8)", fontWeight: 500, letterSpacing: "normal" }}>
+      <span style={{ fontSize: 12, color: "rgba(46, 46, 54, 0.8)", fontWeight: 500, letterSpacing: "normal" }}>
         {chatOpen ? "Close" : "Help"}
       </span>
     </button>

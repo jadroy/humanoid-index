@@ -18,8 +18,8 @@ import { EASE } from "@/lib/design/chrome";
 // The third option, Lane, needs no component at all: it swaps the wheel's list
 // for the saved one and the existing card renders it.
 
-const INK = "#5F6059";
-const ink = (a: number) => `rgba(95, 96, 89, ${a})`;
+const INK = "#2e2e36";
+const ink = (a: number) => `rgba(46, 46, 54, ${a})`;
 
 /** $20,900 — no cents, no abbreviation. A total that rounds is a total you distrust. */
 const money = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -41,7 +41,7 @@ function Thumb({ h, size }: { h: Humanoid; size: number }) {
   return (
     <div
       className="flex-shrink-0 relative overflow-hidden"
-      style={{ width: size, height: size, borderRadius: Math.round(size * 0.22), background: "rgba(95, 96, 89, 0.05)" }}
+      style={{ width: size, height: size, borderRadius: Math.round(size * 0.22), background: "rgba(46, 46, 54, 0.05)" }}
     >
       {h.imageUrl && (
         <Image
@@ -161,7 +161,7 @@ export function SavedTray({
                   href={h.purchaseUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontSize: 12, fontWeight: 450, color: INK, padding: "4px 9px", borderRadius: 999, background: "rgba(95, 96, 89, 0.07)", textDecoration: "none" }}
+                  style={{ fontSize: 12, fontWeight: 450, color: INK, padding: "4px 9px", borderRadius: 999, background: "rgba(46, 46, 54, 0.07)", textDecoration: "none" }}
                 >
                   {h.name} ↗
                 </a>
@@ -227,7 +227,7 @@ export function SavedShelf({
               type="button"
               onClick={(e) => { e.stopPropagation(); onShare(); }}
               className="cursor-pointer"
-              style={{ fontSize: 13, fontWeight: 450, color: INK, padding: "5px 11px", borderRadius: 999, background: "rgba(95, 96, 89, 0.07)", border: "none" }}
+              style={{ fontSize: 13, fontWeight: 450, color: INK, padding: "5px 11px", borderRadius: 999, background: "rgba(46, 46, 54, 0.07)", border: "none" }}
             >
               Share
             </button>

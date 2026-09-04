@@ -229,7 +229,7 @@ function FiltersNav({ onShareSite, onLogoClick }: { onShareSite?: () => void; on
               fontSize: 13,
               fontWeight: 500,
               letterSpacing: "normal",
-              color: "rgba(95, 96, 89, 0.8)",
+              color: "rgba(46, 46, 54, 0.8)",
               background: "transparent",
             }}
           >
@@ -246,8 +246,8 @@ function FiltersNav({ onShareSite, onLogoClick }: { onShareSite?: () => void; on
                 className="filter-pill cursor-pointer"
                 aria-pressed={on}
                 style={{
-                  background: on ? "rgba(29, 29, 31, 0.92)" : "rgba(95, 96, 89, 0.08)",
-                  color: on ? "#ffffff" : "rgba(95, 96, 89, 0.85)",
+                  background: on ? "rgba(29, 29, 31, 0.92)" : "rgba(46, 46, 54, 0.08)",
+                  color: on ? "#ffffff" : "rgba(46, 46, 54, 0.85)",
                   fontSize: 12,
                   fontWeight: 500,
                   letterSpacing: "normal",
@@ -270,7 +270,7 @@ function FiltersNav({ onShareSite, onLogoClick }: { onShareSite?: () => void; on
               fontSize: 13,
               fontWeight: 500,
               letterSpacing: "normal",
-              color: "rgba(95, 96, 89, 0.8)",
+              color: "rgba(46, 46, 54, 0.8)",
               background: "transparent",
             }}
           >
@@ -487,8 +487,8 @@ function ChipNav({
           style={{
             marginLeft: 8,
             fontSize: 11,
-            color: "rgba(95, 96, 89, 0.6)",
-            background: "rgba(95, 96, 89, 0.06)",
+            color: "rgba(46, 46, 54, 0.6)",
+            background: "rgba(46, 46, 54, 0.06)",
             border: "none",
             borderRadius: 999,
             padding: "4px 10px",
@@ -611,8 +611,8 @@ export function LayoutSwitcher({
         fontSize: 13,
         fontWeight: 500,
         letterSpacing: "normal",
-        color: "rgba(95, 96, 89, 0.85)",
-        background: "rgba(95, 96, 89, 0.08)",
+        color: "rgba(46, 46, 54, 0.85)",
+        background: "rgba(46, 46, 54, 0.08)",
       }}
     >
       Shuffle
@@ -1257,7 +1257,7 @@ export function LayoutSwitcher({
               fontSize: 13,
               fontWeight: 500,
               letterSpacing: "normal",
-              color: "rgba(95, 96, 89, 0.8)",
+              color: "rgba(46, 46, 54, 0.8)",
               background: navStyle === "centered2" ? "#F9F9F9" : "transparent",
             }}
           >
@@ -1283,7 +1283,7 @@ export function LayoutSwitcher({
               fontSize: 13,
               fontWeight: 500,
               letterSpacing: "normal",
-              color: "rgba(95, 96, 89, 0.8)",
+              color: "rgba(46, 46, 54, 0.8)",
               background: "transparent",
             }}
           >
@@ -1295,7 +1295,7 @@ export function LayoutSwitcher({
               fontSize: 13,
               fontWeight: 500,
               letterSpacing: "normal",
-              color: "rgba(95, 96, 89, 0.8)",
+              color: "rgba(46, 46, 54, 0.8)",
               background: "transparent",
             }}
           >
@@ -1318,7 +1318,7 @@ export function LayoutSwitcher({
       fontSize: 13,
       fontWeight: 500,
       letterSpacing: "normal",
-      color: "rgba(95, 96, 89, 0.8)",
+      color: "rgba(46, 46, 54, 0.8)",
       whiteSpace: "nowrap",
       lineHeight: 1,
       backfaceVisibility: "hidden",
@@ -1377,7 +1377,7 @@ export function LayoutSwitcher({
               fontSize: 13,
               fontWeight: 500,
               letterSpacing: "normal",
-              color: "rgba(95, 96, 89, 0.8)",
+              color: "rgba(46, 46, 54, 0.8)",
               background: "transparent",
               whiteSpace: "nowrap",
               display: "inline-flex",
@@ -1429,7 +1429,7 @@ export function LayoutSwitcher({
                   height: 11,
                   width: 117,
                   display: "block",
-                  background: "rgba(95, 96, 89, 0.8)",
+                  background: "rgba(46, 46, 54, 0.8)",
                   WebkitMaskImage: "url(/HI-logo.svg)",
                   maskImage: "url(/HI-logo.svg)",
                   WebkitMaskRepeat: "no-repeat",
@@ -1452,7 +1452,7 @@ export function LayoutSwitcher({
                 fontSize: 13,
                 fontWeight: 500,
                 letterSpacing: "normal",
-                color: "rgba(95, 96, 89, 0.8)",
+                color: "rgba(46, 46, 54, 0.8)",
                 background: "transparent",
               }}
             >
@@ -1487,7 +1487,7 @@ export function LayoutSwitcher({
                 height: 11,
                 width: 117,
                 display: "block",
-                background: "rgba(95, 96, 89, 0.8)",
+                background: "rgba(46, 46, 54, 0.8)",
                 WebkitMaskImage: "url(/HI-logo.svg)",
                 maskImage: "url(/HI-logo.svg)",
                 WebkitMaskRepeat: "no-repeat",
@@ -1504,7 +1504,7 @@ export function LayoutSwitcher({
     );
   }
 
-  // ── Style: chip2 — chip nav, Geist medium 12px, #5F6059, "Index" at 63% ──
+  // ── Style: chip2 — chip nav, Geist medium 12px, #2e2e36, "Index" at 63% ──
   else if (navStyle === "chip2") {
     navEl = (
       <ChipNav
@@ -1517,7 +1517,7 @@ export function LayoutSwitcher({
           fontSize: 13,
           fontWeight: 500,
           letterSpacing: "normal",
-          color: "rgba(95, 96, 89, 0.8)",
+          color: "rgba(46, 46, 54, 0.8)",
         }}
         wordmark="Humanoid Index"
       />

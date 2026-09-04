@@ -28,6 +28,8 @@ export type CollectionItem = {
   id: string;
   title: string;
   subtitle?: string;              // second line (maker, brand, …)
+  logo?: string;                  // maker's mark, left of the name (placard form)
+  year?: number;                  // sits faint beside the title, as on the placard
   image: string;                  // primary render
   imageFit?: "contain" | "cover"; // default "contain"
   imagePosition?: string;         // "ground" (default) | "center" | "bottom" | CSS object-position
@@ -571,13 +573,19 @@ export default function Collection({ items, config, details, initialSel, embedde
                   <Card
                     key={it.id}
                     item={it}
-                    hint={showHint && i === 0}
+                    hint={showHint && canPanel && i === 0}
                     trueToSize={trueToSize}
                     refSize={refSize}
                     centered={centered}
                     selected={panelOpen && sel === it.id}
                     onOpen={canPanel ? () => changeSel(it.id) : onPick ? () => onPick(it.id) : undefined}
-                    openHint={!canPanel && onPick ? "Open" : undefined}
+                    // Embedded, the grid is the index rearranged — the same cards,
+                    // laid out flat. A chip that appears on hover to say "Open"
+                    // is chrome the scroll view never needed, on a wall where
+                    // every tile is obviously a robot you can go to. It stays
+                    // on /v3, where the detail panel is a thing you have to
+                    // find out exists.
+                    openHint={canPanel ? "Details" : undefined}
                   />
                 ))}
                 {suggest && (
@@ -693,22 +701,38 @@ function Card({ item, trueToSize, refSize, centered, selected, onOpen, openHint,
             )}
           </>
         )}
-        {onOpen && <span className={`v3-detail-hint${hint ? " v3-detail-hint--pinned" : ""}`}>{openHint ?? "Details"}</span>}
+        {onOpen && openHint && <span className={`v3-detail-hint${hint ? " v3-detail-hint--pinned" : ""}`}>{openHint}</span>}
       </div>
 
-      <div className="flex items-baseline justify-between" style={{ marginTop: 12, gap: 12 }}>
-        <span className="v3-label">{item.title}</span>
-        {item.price ? (
-          <span className="v3-label v3-label--faint" style={{ whiteSpace: "nowrap" }}>{item.price}</span>
-        ) : item.badge ? (
-          <span className="v3-label v3-label--faint" style={{ whiteSpace: "nowrap" }}>{item.badge}</span>
-        ) : null}
+      {/* The placard, and nothing else. Same object as the one under the card
+          in the scroll view: the maker's mark, the name with the year faint
+          beside it, the maker under. No price, no spec line — a tile is a
+          robot, not a row in a table, and the moment a second value hangs off
+          the right edge the label stops being a placard and starts being a
+          listing. The numbers live in the card's own detail, where someone who
+          wants them is already looking. */}
+      <div className="flex items-center" style={{ marginTop: 12, gap: 8 }}>
+        <div className="v3-tile-logo" aria-hidden={!item.logo}>
+          {item.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={item.logo} alt={item.subtitle ?? ""} loading="lazy" />
+          ) : (
+            <svg width={11} height={11} viewBox="0 0 20 20" fill="none" style={{ opacity: 0.18 }}>
+              <circle cx="10" cy="5" r="3" fill="currentColor" />
+              <rect x="7" y="9.5" width="6" height="8" rx="3" fill="currentColor" />
+            </svg>
+          )}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div className="v3-label truncate">
+            {item.title}
+            {item.year ? (
+              <span className="v3-label--faint" style={{ marginLeft: 6 }}>{item.year}</span>
+            ) : null}
+          </div>
+          {item.subtitle && <div className="v3-label v3-label--soft truncate">{item.subtitle}</div>}
+          </div>
       </div>
-
-      {item.subtitle && <div className="v3-label v3-label--soft" style={{ marginTop: 3 }}>{item.subtitle}</div>}
-      {item.meta && (
-        <div className="v3-label v3-label--faint" style={{ marginTop: 4 }}>{item.meta}</div>
-      )}
     </a>
   );
 }

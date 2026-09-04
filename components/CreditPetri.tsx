@@ -2,8 +2,8 @@
 
 import React from "react";
 
-const ACTIVE = "rgba(95, 96, 89, 0.75)";
-const GHOST = "rgba(95, 96, 89, 0.18)";
+const ACTIVE = "rgba(46, 46, 54, 0.75)";
+const GHOST = "rgba(46, 46, 54, 0.18)";
 
 const LINE_GAP = 4;
 const LINE_H = 14;

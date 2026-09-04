@@ -41,6 +41,8 @@ function baseItem(r: Humanoid) {
     id: r.id,
     title: r.name,
     subtitle: r.manufacturer,
+    logo: r.logoUrl,
+    year: r.year,
     image: r.imageUrl ?? "",
     imageFit: r.imageFit,
     imagePosition: r.imagePosition,
@@ -56,7 +58,10 @@ export function humanoidsToItems(robots: Humanoid[]): CollectionItem[] {
     .filter((r) => r.imageUrl)
     .map((r) => {
       const spin = SPIN[r.id];
-      const meta = [r.year, r.height ? `${r.height}cm` : null, r.dof ? `${r.dof} DOF` : null].filter(Boolean).join("  ·  ");
+      // No year here any more — it sits beside the name on the placard, the
+      // way it does in the scroll view. Repeating it at the head of the specs
+      // was the old label's way of finding it a home.
+      const meta = [r.height ? `${r.height}cm` : null, r.dof ? `${r.dof} DOF` : null].filter(Boolean).join("  ·  ");
       return {
         ...baseItem(r),
         meta: meta || undefined,
