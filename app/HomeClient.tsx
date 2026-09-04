@@ -5078,7 +5078,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2,
               }}
             >
-              <span>Roy Jad © 2026</span>
+              <span><a href="https://royjad.com/" target="_blank" rel="noopener noreferrer" className="rail-credit-link cursor-pointer" style={{ color: "inherit" }}>Roy Jad</a> © 2026</span>
               {onFeedback && (
                 <button type="button" onClick={onFeedback} className="rail-credit-link cursor-pointer" style={{ font: "inherit", color: "inherit", background: "none", border: "none", padding: 0 }}>Feedback</button>
               )}
@@ -5528,7 +5528,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
             gap: 2,
           }}
         >
-          <span>Roy Jad © 2026</span>
+          <span><a href="https://royjad.com/" target="_blank" rel="noopener noreferrer" className="rail-credit-link cursor-pointer" style={{ color: "inherit" }}>Roy Jad</a> © 2026</span>
           {onFeedback && (
             /* Down here rather than at Search's rank, and on its own row rather
                than beside the copyright: side by side the line was wide enough
@@ -5764,7 +5764,7 @@ function Browse({ goToId, homeNonce = 0, navStyle, onNavStyleChange, switcherSty
                 ...fade,
               }}
             >
-              <span>Roy Jad © 2026</span>
+              <span><a href="https://royjad.com/" target="_blank" rel="noopener noreferrer" className="rail-credit-link cursor-pointer" style={{ color: "inherit" }}>Roy Jad</a> © 2026</span>
               {onFeedback && (
                 <button
                   type="button"
