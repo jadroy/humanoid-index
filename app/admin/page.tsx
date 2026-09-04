@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import PageMark from "@/components/PageMark";
 import { items, AREA_LABEL, AREA_COLOR } from "./todo";
 
 // Same posture as the lab — findable if you know it, never crawled.
@@ -46,7 +47,9 @@ export default function AdminPage() {
       `}</style>
 
       <div style={{ maxWidth: 820, margin: "0 auto", padding: "76px 32px 104px" }}>
-        <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.03em", marginBottom: 48 }}>Admin</h1>
+        <div style={{ marginBottom: 48 }}>
+          <PageMark title="Admin" />
+        </div>
 
         {/* Flat and ordered by effort rather than grouped by area, because
             "what can I knock out now" is the question this page gets asked.
